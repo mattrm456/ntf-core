@@ -34,7 +34,7 @@ namespace ntsa {
 struct NotificationType {
   public:
     /// Provide an enumeration of the notification types.
-    enum Value { e_UNDEFINED = 0, e_TIMESTAMP = 1 };
+    enum Value { e_UNDEFINED = 0, e_TIMESTAMP = 1, e_MSG_ZEROCOPY = 2 };
 
     /// Return the string representation exactly matching the enumerator
     /// name corresponding to the specified enumeration 'value'.

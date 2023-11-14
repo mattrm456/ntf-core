@@ -90,7 +90,9 @@ struct SocketOptionType {
         e_RX_TIMESTAMPING = 15,
 
         /// This option type allows to enable or disable transmit timestamps.
-        e_TX_TIMESTAMPING = 16
+        e_TX_TIMESTAMPING = 16,
+
+        e_MSG_ZEROCOPY = 17
     };
 
     /// Return the string representation exactly matching the enumerator

@@ -89,6 +89,7 @@ class SendOptions
     bdlb::NullableValue<ntsa::Handle>   d_foreignHandle;
     bsl::size_t                         d_maxBytes;
     bsl::size_t                         d_maxBuffers;
+    bool                                d_zeroCopy;
 
   public:
     /// Create new send options having the default value.
@@ -123,6 +124,8 @@ class SendOptions
     /// Set the maximum number of buffers to copy to the specified 'value'.
     void setMaxBuffers(bsl::size_t value);
 
+    void setZeroCopy(bool value);
+
     /// Return the remote endpoint to which the data should be sent.
     const bdlb::NullableValue<ntsa::Endpoint>& endpoint() const;
 
@@ -134,6 +137,8 @@ class SendOptions
 
     /// Return the maximum number of buffers to copy.
     bsl::size_t maxBuffers() const;
+
+    bool zeroCopy() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -201,6 +206,7 @@ SendOptions::SendOptions()
 , d_foreignHandle()
 , d_maxBytes(0)
 , d_maxBuffers(0)
+, d_zeroCopy(false)
 {
 }
 
@@ -210,6 +216,7 @@ SendOptions::SendOptions(const SendOptions& original)
 , d_foreignHandle(original.d_foreignHandle)
 , d_maxBytes(original.d_maxBytes)
 , d_maxBuffers(original.d_maxBuffers)
+, d_zeroCopy(original.d_zeroCopy)
 {
 }
 
@@ -225,6 +232,7 @@ SendOptions& SendOptions::operator=(const SendOptions& other)
     d_foreignHandle = other.d_foreignHandle;
     d_maxBytes   = other.d_maxBytes;
     d_maxBuffers = other.d_maxBuffers;
+    d_zeroCopy   = other.d_zeroCopy;
     return *this;
 }
 
@@ -235,6 +243,7 @@ void SendOptions::reset()
     d_foreignHandle.reset();
     d_maxBytes   = 0;
     d_maxBuffers = 0;
+    d_zeroCopy   = false;
 }
 
 NTSCFG_INLINE
@@ -262,6 +271,12 @@ void SendOptions::setMaxBuffers(bsl::size_t value)
 }
 
 NTSCFG_INLINE
+void SendOptions::setZeroCopy(bool value)
+{
+    d_zeroCopy = value;
+}
+
+NTSCFG_INLINE
 const bdlb::NullableValue<ntsa::Endpoint>& SendOptions::endpoint() const
 {
     return d_endpoint;
@@ -283,6 +298,12 @@ NTSCFG_INLINE
 bsl::size_t SendOptions::maxBuffers() const
 {
     return d_maxBuffers;
+}
+
+NTSCFG_INLINE
+bool SendOptions::zeroCopy() const
+{
+    return d_zeroCopy;
 }
 
 NTSCFG_INLINE
@@ -318,6 +339,7 @@ void hashAppend(HASH_ALGORITHM& algorithm, const SendOptions& value)
     hashAppend(algorithm, value.foreignHandle());
     hashAppend(algorithm, value.maxBytes());
     hashAppend(algorithm, value.maxBuffers());
+    hashAppend(algorithm, value.zeroCopy());
 }
 
 }  // close package namespace

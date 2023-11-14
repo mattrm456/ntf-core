@@ -21,6 +21,7 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_notificationtype.h>
 #include <ntsa_timestamp.h>
+#include <ntsa_zerocopy.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bsls_objectbuffer.h>
@@ -42,6 +43,7 @@ class Notification
 {
     union {
         bsls::ObjectBuffer<ntsa::Timestamp> d_timestamp;
+        bsls::ObjectBuffer<ntsa::ZeroCopy> d_zerocopy;
     };
 
     ntsa::NotificationType::Value d_type;
@@ -73,9 +75,14 @@ class Notification
     /// 'value'. Return a reference to the modifiable representation.
     ntsa::Timestamp& makeTimestamp(const ntsa::Timestamp& ts);
 
+    ntsa::ZeroCopy& makeZeroCopy();
+    ntsa::ZeroCopy& makeZeroCopy(const ntsa::ZeroCopy& zc);
+
     /// Return a reference to the modifiable "timestamp" representation.
     /// The behavior is undefined unless 'isTimestamp()' is true.
     const ntsa::Timestamp& timestamp() const;
+
+    const ntsa::ZeroCopy& zeroCopy() const;
 
     /// Return the type of the notification representation.
     ntsa::NotificationType::Value type() const;
@@ -83,6 +90,8 @@ class Notification
     /// Return true if the "timestamp" representation is currently selected,
     /// otherwise return false.
     bool isTimestamp() const;
+
+    bool isZeroCopy() const;
 
     /// Return true if the notification representation is undefined, otherwise
     /// return false.
@@ -196,10 +205,47 @@ ntsa::Timestamp& Notification::makeTimestamp(const ntsa::Timestamp& ts)
 }
 
 NTSCFG_INLINE
+ntsa::ZeroCopy& Notification::makeZeroCopy()
+{
+    if (d_type == ntsa::NotificationType::e_MSG_ZEROCOPY) {
+        d_zerocopy.object() = ntsa::ZeroCopy();
+    }
+    else {
+        this->reset();
+        new (d_zerocopy.buffer()) ntsa::ZeroCopy();
+        d_type = ntsa::NotificationType::e_MSG_ZEROCOPY;
+    }
+
+    return d_zerocopy.object();
+}
+
+NTSCFG_INLINE
+ntsa::ZeroCopy& Notification::makeZeroCopy(const ntsa::ZeroCopy& zc)
+{
+    if (d_type == ntsa::NotificationType::e_MSG_ZEROCOPY) {
+        d_zerocopy.object() = zc;
+    }
+    else {
+        this->reset();
+        new (d_zerocopy.buffer()) ntsa::ZeroCopy(zc);
+        d_type = ntsa::NotificationType::e_MSG_ZEROCOPY;
+    }
+
+    return d_zerocopy.object();
+}
+
+NTSCFG_INLINE
 const ntsa::Timestamp& Notification::timestamp() const
 {
     BSLS_ASSERT(d_type == ntsa::NotificationType::e_TIMESTAMP);
     return d_timestamp.object();
+}
+
+NTSCFG_INLINE
+const ntsa::ZeroCopy& Notification::zeroCopy() const
+{
+    BSLS_ASSERT(d_type == ntsa::NotificationType::e_MSG_ZEROCOPY);
+    return d_zerocopy.object();
 }
 
 NTSCFG_INLINE
@@ -215,6 +261,12 @@ bool Notification::isTimestamp() const
 }
 
 NTSCFG_INLINE
+bool Notification::isZeroCopy() const
+{
+    return d_type == ntsa::NotificationType::e_MSG_ZEROCOPY;
+}
+
+NTSCFG_INLINE
 bool Notification::isUndefined() const
 {
     return d_type == ntsa::NotificationType::e_UNDEFINED;
@@ -227,6 +279,9 @@ void hashAppend(HASH_ALGORITHM& algorithm, const Notification& value)
 
     if (value.isTimestamp()) {
         hashAppend(algorithm, value.timestamp());
+    }
+    else if (value.isZeroCopy()) {
+        hashAppend(algorithm, value.zeroCopy());
     }
 }
 

@@ -688,6 +688,32 @@ ntsa::Error SocketOptionUtil::setInlineOutOfBandData(ntsa::Handle socket,
     return ntsa::Error();
 }
 
+ntsa::Error SocketOptionUtil::setAllowMsgZeroCopy(ntsa::Handle socket,
+                                                  bool allowMsgZeroCopy)
+{
+    NTSCFG_WARNING_UNUSED(socket);
+    NTSCFG_WARNING_UNUSED(allowMsgZeroCopy);
+
+#if defined(BSLS_PLATFORM_OS_LINUX)
+
+    int optionValue = static_cast<bool>(allowMsgZeroCopy);
+
+    int rc = setsockopt(socket,
+                        SOL_SOCKET,
+                        SO_ZEROCOPY,
+                        &optionValue,
+                        sizeof(optionValue));
+
+    if (rc != 0) {
+        return ntsa::Error(errno);
+    }
+
+    return ntsa::Error();
+#else
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+#endif
+}
+
 ntsa::Error SocketOptionUtil::getKeepAlive(bool*        keepAlive,
                                            ntsa::Handle socket)
 {
@@ -782,7 +808,7 @@ ntsa::Error SocketOptionUtil::getLinger(bool*               linger,
                                         bsls::TimeInterval* duration,
                                         ntsa::Handle        socket)
 {
-    *linger = false;
+    *linger   = false;
     *duration = bsls::TimeInterval();
 
     struct linger optionValue = {0, 0};
@@ -1046,6 +1072,37 @@ ntsa::Error SocketOptionUtil::getTimestampIncomingData(bool* timestampFlag,
     return ntsa::Error();
 #else
 
+    NTSCFG_WARNING_UNUSED(socket);
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+
+#endif
+}
+
+ntsa::Error SocketOptionUtil::getAllowMsgZeroCopy(bool*        zeroCopyFlag,
+                                                  ntsa::Handle socket)
+{
+#if defined(BSLS_PLATFORM_OS_LINUX)
+    int       optionValue = 0;
+    socklen_t len         = static_cast<socklen_t>(sizeof(optionValue));
+
+    int rc = getsockopt(socket, SOL_SOCKET, SO_ZEROCOPY, &optionValue, &len);
+
+    if (rc != 0) {
+        return ntsa::Error(errno);
+    }
+
+    if (optionValue != 0) {
+        *zeroCopyFlag = true;
+    }
+    else {
+        *zeroCopyFlag = false;
+    }
+
+    return ntsa::Error();
+
+#else
+
+    NTSCFG_WARNING_UNUSED(zeroCopyFlag);
     NTSCFG_WARNING_UNUSED(socket);
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 
@@ -1725,7 +1782,6 @@ ntsa::Error SocketOptionUtil::setReuseAddress(ntsa::Handle socket,
     return ntsa::Error();
 }
 
-
 ntsa::Error SocketOptionUtil::setTimestampOutgoingData(ntsa::Handle socket,
                                                        bool timestampFlag)
 {
@@ -1987,7 +2043,7 @@ ntsa::Error SocketOptionUtil::getLinger(bool*               linger,
                                         bsls::TimeInterval* duration,
                                         ntsa::Handle        socket)
 {
-    *linger = false;
+    *linger   = false;
     *duration = bsls::TimeInterval();
 
     struct linger optionValue = {};

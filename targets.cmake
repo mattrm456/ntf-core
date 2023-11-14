@@ -158,6 +158,7 @@ if (${NTF_BUILD_WITH_NTS})
     ntf_component(NAME ntsa_timestamp)
     ntf_component(NAME ntsa_timestamptype)
     ntf_component(NAME ntsa_uri)
+    ntf_component(NAME ntsa_zerocopy)
 
     ntf_package_end(NAME ntsa)
 

@@ -61,6 +61,7 @@ class SocketOption
         bsls::ObjectBuffer<bool>         d_inlineOutOfBandData;
         bsls::ObjectBuffer<bool>         d_timestampIncomingData;
         bsls::ObjectBuffer<bool>         d_timestampOutgoingData;
+        bsls::ObjectBuffer<bool>         d_allowMsgZeroCopy;
     };
 
     ntsa::SocketOptionType::Value d_type;
@@ -225,6 +226,9 @@ class SocketOption
     // representation.
     bool& makeTimestampOutgoingData(bool value);
 
+    bool& makeAllowMsgZeroCopy();
+    bool& makeAllowMsgZeroCopy(bool value);
+
     /// Return a reference to the modifiable "reuseAddress" representation.
     /// The behavior is undefined unless 'isReuseAddress()' is true.
     bool& reuseAddress();
@@ -298,6 +302,8 @@ class SocketOption
     /// 'isTimestampOutOutgoingData()' is true.
     bool& timestampOutgoingData();
 
+    bool& allowMsgZeroCopy();
+
     /// Return the non-modifiable "reuseAddress" representation. The
     /// behavior is undefined unless 'isReuseAddress()' is true.
     bool reuseAddress() const;
@@ -364,6 +370,8 @@ class SocketOption
     /// Return the non-modifiable "timestampOutgoingData" representation. The
     /// behavior is undefined unless 'isTimestampOutgoingData()' is true.
     bool timestampOutgoingData() const;
+
+    bool allowMsgZeroCopy() const;
 
     /// Return the type of the option representation.
     enum ntsa::SocketOptionType::Value type() const;
@@ -435,6 +443,8 @@ class SocketOption
     /// Return true if the "timestampOutgoingData" representation is
     /// currently selected, otherwise return false.
     bool isTimestampOutgoingData() const;
+
+    bool isAllowMsgZeroCopy() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -621,6 +631,13 @@ bool& SocketOption::timestampOutgoingData()
 }
 
 NTSCFG_INLINE
+bool& SocketOption::allowMsgZeroCopy()
+{
+    BSLS_ASSERT(d_type == ntsa::SocketOptionType::e_MSG_ZEROCOPY);
+    return d_allowMsgZeroCopy.object();
+}
+
+NTSCFG_INLINE
 bool SocketOption::reuseAddress() const
 {
     BSLS_ASSERT(d_type == ntsa::SocketOptionType::e_REUSE_ADDRESS);
@@ -734,6 +751,13 @@ bool SocketOption::timestampOutgoingData() const
 }
 
 NTSCFG_INLINE
+bool SocketOption::allowMsgZeroCopy() const
+{
+    BSLS_ASSERT(d_type == ntsa::SocketOptionType::e_MSG_ZEROCOPY);
+    return d_allowMsgZeroCopy.object();
+}
+
+NTSCFG_INLINE
 ntsa::SocketOptionType::Value SocketOption::type() const
 {
     return d_type;
@@ -842,6 +866,12 @@ bool SocketOption::isTimestampOutgoingData() const
 }
 
 NTSCFG_INLINE
+bool SocketOption::isAllowMsgZeroCopy() const
+{
+    return (d_type == ntsa::SocketOptionType::e_MSG_ZEROCOPY);
+}
+
+NTSCFG_INLINE
 bsl::ostream& operator<<(bsl::ostream& stream, const SocketOption& object)
 {
     return object.print(stream, 0, -1);
@@ -917,6 +947,9 @@ void hashAppend(HASH_ALGORITHM& algorithm, const SocketOption& value)
     }
     else if (value.isTimestampOutgoingData()) {
         hashAppend(algorithm, value.timestampOutgoingData());
+    }
+    else if (value.isAllowMsgZeroCopy()) {
+        hashAppend(algorithm, value.allowMsgZeroCopy());
     }
 }
 

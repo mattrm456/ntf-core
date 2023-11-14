@@ -81,6 +81,14 @@ SocketOption::SocketOption(const SocketOption& other)
         new (d_timestampOutgoingData.buffer()) bool(
             other.d_timestampOutgoingData.object());
         break;
+    case ntsa::SocketOptionType::e_RX_TIMESTAMPING:
+        new (d_timestampIncomingData.buffer()) bool(
+            other.d_timestampIncomingData.object());
+        break;
+    case ntsa::SocketOptionType::e_MSG_ZEROCOPY:
+        new (d_allowMsgZeroCopy.buffer()) bool(
+            other.d_allowMsgZeroCopy.object());
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::SocketOptionType::e_UNDEFINED);
     }
@@ -144,9 +152,17 @@ SocketOption& SocketOption::operator=(const SocketOption& other)
         new (d_inlineOutOfBandData.buffer()) bool(
             other.d_inlineOutOfBandData.object());
         break;
+    case ntsa::SocketOptionType::e_RX_TIMESTAMPING:
+        new (d_timestampIncomingData.buffer()) bool(
+            other.d_timestampIncomingData.object());
+        break;
     case ntsa::SocketOptionType::e_TX_TIMESTAMPING:
         new (d_timestampOutgoingData.buffer()) bool(
             other.d_timestampOutgoingData.object());
+        break;
+    case ntsa::SocketOptionType::e_MSG_ZEROCOPY:
+        new (d_allowMsgZeroCopy.buffer()) bool(
+            other.d_allowMsgZeroCopy.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::SocketOptionType::e_UNDEFINED);
@@ -603,6 +619,34 @@ bool& SocketOption::makeTimestampOutgoingData(bool value)
     }
 
     return d_timestampOutgoingData.object();
+}
+
+bool& SocketOption::makeAllowMsgZeroCopy()
+{
+    if (d_type == ntsa::SocketOptionType::e_MSG_ZEROCOPY) {
+        d_allowMsgZeroCopy.object() = false;
+    }
+    else {
+        this->reset();
+        new (d_allowMsgZeroCopy.buffer()) bool();
+        d_type = ntsa::SocketOptionType::e_MSG_ZEROCOPY;
+    }
+
+    return d_allowMsgZeroCopy.object();
+}
+
+bool& SocketOption::makeAllowMsgZeroCopy(bool value)
+{
+    if (d_type == ntsa::SocketOptionType::e_MSG_ZEROCOPY) {
+        d_allowMsgZeroCopy.object() = value;
+    }
+    else {
+        this->reset();
+        new (d_allowMsgZeroCopy.buffer()) bool(value);
+        d_type = ntsa::SocketOptionType::e_MSG_ZEROCOPY;
+    }
+
+    return d_allowMsgZeroCopy.object();
 }
 
 bool SocketOption::equals(const SocketOption& other) const

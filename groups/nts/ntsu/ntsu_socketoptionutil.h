@@ -137,6 +137,9 @@ struct SocketOptionUtil {
     static ntsa::Error setTimestampOutgoingData(ntsa::Handle socket,
                                                 bool timestampOutgoingData);
 
+    static ntsa::Error setAllowMsgZeroCopy(ntsa::Handle socket,
+                                           bool         allowMsgZeroCopy);
+
     /// Load into the specified 'option' the socket option of the specified
     /// 'type' for the specified 'socket'. Return the error.
     static ntsa::Error getOption(ntsa::SocketOption*           option,
@@ -218,6 +221,9 @@ struct SocketOptionUtil {
     /// timestamps for incoming data.  Return the error.
     static ntsa::Error getTimestampIncomingData(bool*        timestampFlag,
                                                 ntsa::Handle socket);
+
+    static ntsa::Error getAllowMsgZeroCopy(bool*        zeroCopyFlag,
+                                           ntsa::Handle socket);
 
     /// Load into the specified 'size' the option for the specified 'socket'
     /// that indicates the amount of space left in the send buffer. Return

@@ -28,6 +28,7 @@ int NotificationType::fromInt(NotificationType::Value* result, int number)
     switch (number) {
     case NotificationType::e_UNDEFINED:
     case NotificationType::e_TIMESTAMP:
+    case NotificationType::e_MSG_ZEROCOPY:
         *result = static_cast<NotificationType::Value>(number);
         return 0;
     default:
@@ -46,6 +47,10 @@ int NotificationType::fromString(NotificationType::Value* result,
         *result = e_TIMESTAMP;
         return 0;
     }
+    if (bdlb::String::areEqualCaseless(string, "MSG_ZEROCOPY")) {
+        *result = e_MSG_ZEROCOPY;
+        return 0;
+    }
 
     return -1;
 }
@@ -58,6 +63,9 @@ const char* NotificationType::toString(NotificationType::Value value)
     } break;
     case e_TIMESTAMP: {
         return "TIMESTAMP";
+    } break;
+    case e_MSG_ZEROCOPY: {
+        return "MSG_ZEROCOPY";
     } break;
     }
 
