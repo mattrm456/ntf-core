@@ -79,6 +79,15 @@ namespace ntsa {
 /// zero, or, for stream sockets only, to NTSCFG_DEFAULT_MAX_INPLACE_BUFFERS.
 /// Note that this value is currently only honored when sending blobs.
 ///
+/// @li @b d_zeroCopy:
+/// The option is applicable only for Linux. If the flag is true then the OS is
+/// requested to use copy avoidance mechanism (Linux MSG_ZEROCOPY). If the flag
+/// is set to true then the user must ensure that transmitted data is not
+/// touched (e.g. deallocated) until the OS acknowledges it (via socket error
+/// queue notification mechanism). Note that the OS has the right to do copy
+/// data anyway. The actual status (if the data was copied or not) is learned
+/// from examining the error queue.
+///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
@@ -124,6 +133,7 @@ class SendOptions
     /// Set the maximum number of buffers to copy to the specified 'value'.
     void setMaxBuffers(bsl::size_t value);
 
+    /// Set the MSG_ZEROCOPY flag to the specified 'value'.
     void setZeroCopy(bool value);
 
     /// Return the remote endpoint to which the data should be sent.
@@ -138,6 +148,7 @@ class SendOptions
     /// Return the maximum number of buffers to copy.
     bsl::size_t maxBuffers() const;
 
+    /// Return true is MSG_ZEROCOPY is set to true. Otherwise return false.
     bool zeroCopy() const;
 
     /// Return true if this object has the same value as the specified
