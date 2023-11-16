@@ -1837,13 +1837,37 @@ void testDatagramSocketTransmissionMultipleMessages(
 /// Comparator with is used to help sorting Timestamps according to their time
 /// value.
 struct TimestampTimeComparator {
-    /// Return true if the specified 'a' coccured ealier than the specified 'b'
-    /// Otherwise return false.
+    /// Return true if the specified 'a' occurred earlier than the specified
+    /// 'b'. Otherwise return false.
     bool operator()(const ntsa::Timestamp& a, const ntsa::Timestamp& b)
     {
         return a.time() < b.time();
     }
 };
+
+void extractZeroCopyNotifications(bsl::list<ntsa::ZeroCopy>* zerocopy,
+                                  ntsa::Handle               handle,
+                                  ntscfg::TestAllocator&     ta)
+{
+    ntsa::NotificationQueue notifications(&ta);
+    notifications.setHandle(handle);
+
+    ntsa::Error error =
+        ntsu::SocketUtil::receiveNotifications(&notifications, handle);
+    NTSCFG_TEST_OK(error);
+
+    NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
+
+    // save zerocopy notifications for later validation
+    for (bsl::vector<ntsa::Notification>::const_iterator it =
+             notifications.notifications().cbegin();
+         it != notifications.notifications().cend();
+         ++it)
+    {
+        NTSCFG_TEST_TRUE(it->isZeroCopy());
+        zerocopy->push_back(it->zeroCopy());
+    }
+}
 
 }  // close namespace 'test'
 
@@ -7434,8 +7458,6 @@ NTSCFG_TEST_CASE(27)
 {
     //Concern: zerocopy basic test case
 
-    typedef bsl::list<ntsa::ZeroCopy> Feedbacks;
-
     ntscfg::TestAllocator ta;
     {
         // Observation: if system MTU is 1500 bytes then maximum payload size
@@ -7484,7 +7506,7 @@ NTSCFG_TEST_CASE(27)
         ntsa::Endpoint endpoint;
         NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
 
-        Feedbacks                         feedback(&ta);
+        bsl::list<ntsa::ZeroCopy>         feedback(&ta);
         bsl::unordered_set<bsl::uint32_t> sendIDs(&ta);
 
         for (int i = 0; i < numMessagesToSend; ++i) {
@@ -7506,45 +7528,11 @@ NTSCFG_TEST_CASE(27)
             NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
             NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
 
-            ntsa::NotificationQueue notifications(&ta);
-            notifications.setHandle(handle);
-            error =
-                ntsu::SocketUtil::receiveNotifications(&notifications, handle);
-            NTSCFG_TEST_OK(error);
-
-            NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
-
-            // save zerocopy notifications for later validation
-            for (bsl::vector<ntsa::Notification>::const_iterator it =
-                     notifications.notifications().cbegin();
-                 it != notifications.notifications().cend();
-                 ++it)
-            {
-                NTSCFG_TEST_TRUE(it->isZeroCopy());
-                feedback.push_back(it->zeroCopy());
-            }
+            test::extractZeroCopyNotifications(&feedback, handle, ta);
         }
 
         while (!sendIDs.empty()) {
-            {
-                ntsa::NotificationQueue notifications(&ta);
-                notifications.setHandle(handle);
-                error = ntsu::SocketUtil::receiveNotifications(&notifications,
-                                                               handle);
-                NTSCFG_TEST_OK(error);
-
-                NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
-
-                // save zerocopy notifications for later validation
-                for (bsl::vector<ntsa::Notification>::const_iterator it =
-                         notifications.notifications().cbegin();
-                     it != notifications.notifications().cend();
-                     ++it)
-                {
-                    NTSCFG_TEST_TRUE(it->isZeroCopy());
-                    feedback.push_back(it->zeroCopy());
-                }
-            }
+            test::extractZeroCopyNotifications(&feedback, handle, ta);
 
             while (!feedback.empty()) {
                 const ntsa::ZeroCopy& zc = feedback.front();
