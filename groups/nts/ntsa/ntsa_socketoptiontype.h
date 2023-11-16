@@ -92,6 +92,8 @@ struct SocketOptionType {
         /// This option type allows to enable or disable transmit timestamps.
         e_TX_TIMESTAMPING = 16,
 
+        /// This option type allows or forbids usage of Linux MSG_ZEROCOPY
+        /// mechanism
         e_MSG_ZEROCOPY = 17
     };
 
