@@ -28,6 +28,28 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
+/// Provide a type holding a result of send() with copy avoidance mechanis.
+///
+/// @details
+/// Provide a value-semantic type that holds a result of send() with
+/// MSG_ZEROCOPY flag set.
+///
+/// @par Attributes
+/// This class is composed of the following attributes:
+///
+/// @li @b d_from:
+/// Number identifying the start of the range for which this result relates
+/// (inclusive)
+///
+/// @li @b d_to:
+/// Number identifying the end of the range for which this result relates
+/// (inclusive)
+///
+/// @li @b d_code:
+/// Code describing result of copy avoidance mechanism application.
+///
+/// @par Thread Safety
+/// This class is not thread safe.
 class ZeroCopy
 {
     bsl::uint32_t d_from;
@@ -35,24 +57,47 @@ class ZeroCopy
     bsl::uint8_t  d_code;
 
   public:
+
+    /// Create a new instance having the default value.
     ZeroCopy();
+
+    /// Create a new instance using the specified 'from', the specified 'to'
+    /// and the specified 'code' as initial values.
     ZeroCopy(bsl::uint32_t from, bsl::uint32_t to, bsl::uint8_t code);
 
+    /// Create new object having the same value as the specified 'original'
+    /// object.
     ZeroCopy(const ZeroCopy& original);
 
     /// Destroy this object.
     ~ZeroCopy();
 
-    /// Assign the value of the specified 'other' object to this object.
-    /// Return a reference to this modifiable object.
+    /// Assign the value of the specified 'other' object to this object. Return
+    /// a reference to this modifiable object.
     ZeroCopy& operator=(const ZeroCopy& other);
 
+    /// Set the number identifying the start (inclusive) of the range for which
+    /// this object relates to the specified 'value'.
     void setFrom(bsl::uint32_t value);
+
+    /// Set the number identifying the end (inclusive) of the range for which
+    /// this object relates to the specified 'value'.
     void setTo(bsl::uint32_t value);
+
+    /// Set the code describing result of copy avoidance mechanism application
+    /// to the specified value.
     void setCode(bsl::uint8_t value);
 
+    /// Return the number identifying the start (inclusive) of the range for
+    /// which this object relates.
     BSLS_ANNOTATION_NODISCARD bsl::uint32_t from() const;
+
+    /// Return the number identifying the end (inclusive) of the range for
+    /// which this object relates.
     BSLS_ANNOTATION_NODISCARD bsl::uint32_t to() const;
+
+    /// Return the code describing result of copy avoidance mechanism
+    /// application.
     BSLS_ANNOTATION_NODISCARD bsl::uint8_t code() const;
 
     /// Return true if this object has the same value as the specified

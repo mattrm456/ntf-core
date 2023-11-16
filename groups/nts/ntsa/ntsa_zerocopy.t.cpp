@@ -22,11 +22,39 @@ using namespace ntsa;
 
 NTSCFG_TEST_CASE(1)
 {
-    ZeroCopy zc;
-    NTSCFG_TEST_EQ(zc.from(), 0);
-    NTSCFG_TEST_EQ(zc.to(), 0);
-}
+    {
+        ZeroCopy zc;
+        NTSCFG_TEST_EQ(zc.from(), 0);
+        NTSCFG_TEST_EQ(zc.to(), 0);
+        NTSCFG_TEST_EQ(zc.code(), 0);
+    }
+    {
+        const bsl::uint32_t from = 5;
+        const bsl::uint32_t to   = 15;
+        const bsl::uint8_t  code = 1;
 
+        ZeroCopy zc(from, to, code);
+        NTSCFG_TEST_EQ(zc.from(), from);
+        NTSCFG_TEST_EQ(zc.to(), to);
+        NTSCFG_TEST_EQ(zc.code(), code);
+    }
+    {
+        const bsl::uint32_t from = 10;
+        const bsl::uint32_t to   = 22;
+        const bsl::uint8_t  code = 1;
+        
+        ZeroCopy zc;
+        zc.setFrom(from);
+        zc.setTo(to);
+        zc.setCode(code);
+        NTSCFG_TEST_EQ(zc.from(), from);
+        NTSCFG_TEST_EQ(zc.to(), to);
+        NTSCFG_TEST_EQ(zc.code(), code);
+
+        ZeroCopy copy(zc);
+        NTSCFG_TEST_EQ(copy, zc);
+    }
+}
 
 NTSCFG_TEST_DRIVER
 {
