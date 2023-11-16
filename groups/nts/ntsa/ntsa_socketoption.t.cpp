@@ -83,9 +83,35 @@ NTSCFG_TEST_CASE(2)
     NTSCFG_TEST_FALSE(so.isTimestampOutgoingData());
 }
 
+NTSCFG_TEST_CASE(3)
+{
+    // Concern: test allowMsgZeroCopy option
+
+    ntsa::SocketOption so;
+    NTSCFG_TEST_FALSE(so.isAllowMsgZeroCopy());
+
+    so.makeAllowMsgZeroCopy(true);
+    NTSCFG_TEST_TRUE(so.isAllowMsgZeroCopy());
+
+    bool& val = so.allowMsgZeroCopy();
+    NTSCFG_TEST_TRUE(val);
+    val = false;
+    NTSCFG_TEST_FALSE(so.allowMsgZeroCopy());
+
+    val = true;
+    NTSCFG_TEST_TRUE(so.allowMsgZeroCopy());
+
+    so.makeAllowMsgZeroCopy();
+    NTSCFG_TEST_FALSE(so.allowMsgZeroCopy());
+
+    so.reset();
+    NTSCFG_TEST_FALSE(so.isAllowMsgZeroCopy());
+}
+
 NTSCFG_TEST_DRIVER
 {
     NTSCFG_TEST_REGISTER(1);
     NTSCFG_TEST_REGISTER(2);
+    NTSCFG_TEST_REGISTER(3);
 }
 NTSCFG_TEST_DRIVER_END;

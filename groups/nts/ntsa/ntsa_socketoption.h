@@ -221,12 +221,16 @@ class SocketOption
     /// to the modifiable representation.
     bool& makeTimestampOutgoingData();
 
-    // Select the "timestampOutgoingData" representation initially having the
-    // specified 'value'. Return a reference to the modifiable
-    // representation.
+    /// Select the "timestampOutgoingData" representation initially having the
+    /// specified 'value'. Return a reference to the modifiable representation.
     bool& makeTimestampOutgoingData(bool value);
 
+    /// Select the "allowMsgZeroCopy" representation. Return a reference
+    /// to the modifiable representation.
     bool& makeAllowMsgZeroCopy();
+
+    /// Select the "allowMsgZeroCopy" representation initially having the
+    /// specified 'value'. Return a reference to the modifiable representation.
     bool& makeAllowMsgZeroCopy(bool value);
 
     /// Return a reference to the modifiable "reuseAddress" representation.
@@ -371,6 +375,8 @@ class SocketOption
     /// behavior is undefined unless 'isTimestampOutgoingData()' is true.
     bool timestampOutgoingData() const;
 
+    /// Return the non-modifiable "allowMsgZeroCopy" representation. The
+    /// behavior is undefined unless 'isAllowMsgZeroCopy()' is true.
     bool allowMsgZeroCopy() const;
 
     /// Return the type of the option representation.
@@ -436,14 +442,16 @@ class SocketOption
     /// selected, otherwise return false.
     bool isInlineOutOfBandData() const;
 
-    /// Return true if the "timestampIncomingData" representation is
-    /// currently selected, otherwise return false.
+    /// Return true if the "timestampIncomingData" representation is currently
+    /// selected, otherwise return false.
     bool isTimestampIncomingData() const;
 
-    /// Return true if the "timestampOutgoingData" representation is
-    /// currently selected, otherwise return false.
+    /// Return true if the "timestampOutgoingData" representation is currently
+    /// selected, otherwise return false.
     bool isTimestampOutgoingData() const;
 
+    /// Return true if the "allowMsgZeroCopy" representation is currently
+    /// selected, otherwise return false.
     bool isAllowMsgZeroCopy() const;
 
     /// Return true if this object has the same value as the specified
