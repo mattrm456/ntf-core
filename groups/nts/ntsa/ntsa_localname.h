@@ -64,9 +64,6 @@ class LocalName
 
   public:
     /// Create a new, abstract local name.
-    BSLS_DEPRECATE_FEATURE("ntci",
-                           "socket-detachment",
-                           "use detachSocketAsync instead")
     explicit LocalName();
 
     /// Create a new local name having the same value as the specified

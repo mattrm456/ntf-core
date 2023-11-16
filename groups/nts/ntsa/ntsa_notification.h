@@ -43,7 +43,7 @@ class Notification
 {
     union {
         bsls::ObjectBuffer<ntsa::Timestamp> d_timestamp;
-        bsls::ObjectBuffer<ntsa::ZeroCopy> d_zerocopy;
+        bsls::ObjectBuffer<ntsa::ZeroCopy>  d_zerocopy;
     };
 
     ntsa::NotificationType::Value d_type;
@@ -75,13 +75,20 @@ class Notification
     /// 'value'. Return a reference to the modifiable representation.
     ntsa::Timestamp& makeTimestamp(const ntsa::Timestamp& ts);
 
+    /// Select the "zerocopy" representation. Return a reference to the
+    /// modifiable representation.
     ntsa::ZeroCopy& makeZeroCopy();
+
+    /// Select the "zerocopy" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
     ntsa::ZeroCopy& makeZeroCopy(const ntsa::ZeroCopy& zc);
 
-    /// Return a reference to the modifiable "timestamp" representation.
+    /// Return a reference to the "timestamp" representation.
     /// The behavior is undefined unless 'isTimestamp()' is true.
     const ntsa::Timestamp& timestamp() const;
 
+    /// Return a reference to the "zerocopy" representation.
+    /// The behavior is undefined unless 'isZeroCopy()' is true.
     const ntsa::ZeroCopy& zeroCopy() const;
 
     /// Return the type of the notification representation.
@@ -91,6 +98,8 @@ class Notification
     /// otherwise return false.
     bool isTimestamp() const;
 
+    /// Return true if the "zerocopy" representation is currently selected,
+    /// otherwise return false.
     bool isZeroCopy() const;
 
     /// Return true if the notification representation is undefined, otherwise
