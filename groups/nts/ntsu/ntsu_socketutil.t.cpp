@@ -1936,7 +1936,7 @@ void testStreamSocketMsgZeroCopy(ntsa::Transport::Value transport,
 
         while (!feedback.empty()) {
             const ntsa::ZeroCopy& zc = feedback.front();
-            NTSCFG_TEST_EQ(zc.code(), 1); // we know that OS copied data
+            NTSCFG_TEST_EQ(zc.code(), 1);  // we know that OS copied data
             if (zc.from() == zc.to()) {
                 NTSCFG_TEST_EQ(sendIDs.erase(zc.from()), 1);
             }
@@ -7561,6 +7561,7 @@ NTSCFG_TEST_CASE(27)
     // used it is possible to use some random (but reachable) IPv4/6 addresses.
     // See related code section below.
 
+#if defined(BSLS_PLATFORM_OS_LINUX)
     bsl::vector<ntsa::Transport::Value> socketTypes;
     if (ntsu::AdapterUtil::supportsTransport(
             ntsa::Transport::e_UDP_IPV4_DATAGRAM))
@@ -7666,6 +7667,7 @@ NTSCFG_TEST_CASE(27)
         }
         NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
     }
+#endif
 }
 
 NTSCFG_TEST_CASE(28)
@@ -7678,11 +7680,13 @@ NTSCFG_TEST_CASE(28)
     // if data is sent with MSG_ZEROCOPY flag then related notifications will
     // appear on a socket error queue.
 
+#if defined(BSLS_PLATFORM_OS_LINUX)
     ntscfg::TestAllocator ta;
     {
         test::executeStreamSocketTest(&test::testStreamSocketMsgZeroCopy);
     }
     NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+#endif
 }
 
 NTSCFG_TEST_DRIVER
