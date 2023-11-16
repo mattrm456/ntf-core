@@ -1869,19 +1869,14 @@ void testStreamSocketMsgZeroCopy(ntsa::Transport::Value transport,
 
     NTSCFG_TEST_LOG_DEBUG << "Testing " << transport << NTSCFG_TEST_LOG_END;
 
-    const int msgSize           = 2;
+    // Note: for this test case msgSize is not really important as loopback
+    // device is used - it means that even if MSG_ZEROCOPY option is used then
+    // anyway data will be copied
+
+    const int msgSize           = 200;
     const int numMessagesToSend = 200;
 
     ntsa::Error error;
-
-    {
-        bsl::size_t sendBufferSize = 0;
-        NTSCFG_TEST_OK(
-            ntsu::SocketOptionUtil::getSendBufferSize(&sendBufferSize,
-                                                      client));
-        NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size is "
-                              << sendBufferSize << NTSCFG_TEST_LOG_END;
-    }
 
     error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(client, true);
     NTSCFG_TEST_OK(error);
@@ -1916,6 +1911,7 @@ void testStreamSocketMsgZeroCopy(ntsa::Transport::Value transport,
         test::extractZeroCopyNotifications(&feedback, client, allocator);
     }
 
+    // receive data
     {
         bsl::vector<char> rBuffer(msgSize, allocator);
         for (int totalSend = msgSize * numMessagesToSend; totalSend > 0;) {
@@ -1933,11 +1929,14 @@ void testStreamSocketMsgZeroCopy(ntsa::Transport::Value transport,
         }
     }
 
+    // retrieve data from the socket error queue until all send system
+    // calls are acknowledged by the OS
     while (!sendIDs.empty()) {
         test::extractZeroCopyNotifications(&feedback, client, allocator);
 
         while (!feedback.empty()) {
             const ntsa::ZeroCopy& zc = feedback.front();
+            NTSCFG_TEST_EQ(zc.code(), 1); // we know that OS copied data
             if (zc.from() == zc.to()) {
                 NTSCFG_TEST_EQ(sendIDs.erase(zc.from()), 1);
             }
@@ -7549,17 +7548,18 @@ NTSCFG_TEST_CASE(26)
 
 NTSCFG_TEST_CASE(27)
 {
-    // Concern: Test Linux MSG_ZEROCOPY mechanism applied for DATAGRAM sockets
+    // Concern: Test that Linux MSG_ZEROCOPY mechanism is applied for DATAGRAM
+    // sockets
 
-    // Note that on that level we cannot really to validate whether data is
+    // Note that on that level we cannot really validate whether data is
     // actually copied into the send buffer or not. We can only validate that
     // if data is sent with MSG_ZEROCOPY flag then related notifications will
     // appear on a socket error queue.
     //
     // By default, the test sends data to a loopback address using loopback
-    // device. Though, to see how the system behaves when other device is used
-    // it is possible to use some random (but reachable) IPv4/6 addresses. See
-    // related code section below.
+    // device. Though, to see how the system behaves when another device is
+    // used it is possible to use some random (but reachable) IPv4/6 addresses.
+    // See related code section below.
 
     bsl::vector<ntsa::Transport::Value> socketTypes;
     if (ntsu::AdapterUtil::supportsTransport(
@@ -7583,10 +7583,10 @@ NTSCFG_TEST_CASE(27)
 
         ntscfg::TestAllocator ta;
         {
-            // Observation: if system MTU is 1500 bytes then maximum payload size
-            // of UDP IPV4 packet for which MSG_ZEROCOPY functionality can actually
-            // work is 1472 bytes (because UDP header is 8 bytes and IPV4 header is
-            // 20 bytes).
+            // Observation: if system MTU is 1500 bytes then maximum payload
+            // size of UDP IPV4 packet for which MSG_ZEROCOPY functionality can
+            // really work is 1472 bytes (because UDP header is 8 bytes and
+            // IPV4 header is 20 bytes).
 
             const int msgSize           = 1472;
             const int numMessagesToSend = 200;
@@ -7643,6 +7643,8 @@ NTSCFG_TEST_CASE(27)
                 test::extractZeroCopyNotifications(&feedback, handle, &ta);
             }
 
+            // retrieve data from the socket error queue until all send system
+            // calls are acknowledged by the OS
             while (!sendIDs.empty()) {
                 test::extractZeroCopyNotifications(&feedback, handle, &ta);
 
@@ -7668,7 +7670,14 @@ NTSCFG_TEST_CASE(27)
 
 NTSCFG_TEST_CASE(28)
 {
-    //Concern: zerocopy basic test case for STREAM sockets
+    // Concern: Test that Linux MSG_ZEROCOPY mechanism is applied for STREAM
+    // sockets
+
+    // Note that on that level we cannot really validate whether data is
+    // actually copied into the send buffer or not. We can only validate that
+    // if data is sent with MSG_ZEROCOPY flag then related notifications will
+    // appear on a socket error queue.
+
     ntscfg::TestAllocator ta;
     {
         test::executeStreamSocketTest(&test::testStreamSocketMsgZeroCopy);
