@@ -306,6 +306,8 @@ class SocketOption
     /// 'isTimestampOutOutgoingData()' is true.
     bool& timestampOutgoingData();
 
+    /// Return a reference to the modifiable "allowMsgZeroCopy" representation.
+    /// The behavior is undefined unless 'isAllowMsgZeroCopy()' is true.
     bool& allowMsgZeroCopy();
 
     /// Return the non-modifiable "reuseAddress" representation. The
