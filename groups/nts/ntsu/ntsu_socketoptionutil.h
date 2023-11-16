@@ -137,6 +137,9 @@ struct SocketOptionUtil {
     static ntsa::Error setTimestampOutgoingData(ntsa::Handle socket,
                                                 bool timestampOutgoingData);
 
+    /// Set the option for the specified 'socket' that allows Linux
+    /// MSG_ZEROCOPY mechanism usage according to the specified
+    /// 'allowMsgZeroCopy' flag. Return the error.
     static ntsa::Error setAllowMsgZeroCopy(ntsa::Handle socket,
                                            bool         allowMsgZeroCopy);
 
@@ -222,6 +225,9 @@ struct SocketOptionUtil {
     static ntsa::Error getTimestampIncomingData(bool*        timestampFlag,
                                                 ntsa::Handle socket);
 
+    /// Load into the specified 'zeroCopyFlag' the option for the specified
+    /// 'socket' that indicates if Linux MSG_ZEROCOPY mechanism can be used.
+    ///  Return the error.
     static ntsa::Error getAllowMsgZeroCopy(bool*        zeroCopyFlag,
                                            ntsa::Handle socket);
 
