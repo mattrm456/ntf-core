@@ -28,7 +28,9 @@
 #include <bslmt_threadgroup.h>
 #include <bsls_platform.h>
 #include <bsl_iostream.h>
+#include <bsl_list.h>
 #include <bsl_set.h>
+#include <bsl_unordered_set.h>
 
 #if defined(BSLS_PLATFORM_OS_WINDOWS)
 #define WIN32_LEAN_AND_MEAN
@@ -7413,7 +7415,7 @@ NTSCFG_TEST_CASE(26)
 
     {
         ntsa::Handle socket = ntsa::k_INVALID_HANDLE;
-        error = ntsu::SocketUtil::create(&socket,
+        error               = ntsu::SocketUtil::create(&socket,
                                          ntsa::Transport::e_TCP_IPV4_STREAM);
         NTSCFG_TEST_OK(error);
 
@@ -7426,6 +7428,140 @@ NTSCFG_TEST_CASE(26)
         bool result2 = ntsu::SocketUtil::isSocket(socket);
         NTSCFG_TEST_FALSE(result2);
     }
+}
+
+NTSCFG_TEST_CASE(27)
+{
+    //Concern: zerocopy basic test case
+
+    typedef bsl::list<ntsa::ZeroCopy> Feedbacks;
+
+    ntscfg::TestAllocator ta;
+    {
+        // Observation: if system MTU is 1500 bytes then maximum payload size
+        // of UDP IPV4 packet for which MSG_ZEROCOPY functionality can actually
+        // work is 1472 bytes (because UDP header is 8 bytes and IPV4 header is
+        // 20 bytes).
+
+        const int msgSize           = 1472;
+        const int numMessagesToSend = 200;
+
+        ntsa::Error  error;
+        ntsa::Handle handle = ntsa::k_INVALID_HANDLE;
+
+        error = ntsu::SocketUtil::create(&handle,
+                                         ntsa::Transport::e_UDP_IPV4_DATAGRAM);
+        NTSCFG_TEST_ASSERT(!error);
+
+        {
+            bsl::size_t sendBufferSize = 0;
+            NTSCFG_TEST_OK(
+                ntsu::SocketOptionUtil::getSendBufferSize(&sendBufferSize,
+                                                          handle));
+            NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size is "
+                                  << sendBufferSize << NTSCFG_TEST_LOG_END;
+        }
+
+        //        {
+        //            bsl::size_t sendBufferSize = 1000000;
+        //            NTSCFG_TEST_OK(
+        //                ntsu::SocketOptionUtil::setSendBufferSize(handle,
+        //                                                          sendBufferSize));
+        //            NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size was changed to "
+        //                                  << sendBufferSize << NTSCFG_TEST_LOG_END;
+        //        }
+
+        error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(handle, true);
+        NTSCFG_TEST_OK(error);
+
+        bsl::vector<char> message(msgSize, &ta);
+        for (int i = 0; i < msgSize; ++i) {
+            message[i] = bsl::rand() % 100;
+        }
+        const ntsa::Data data(
+            ntsa::ConstBuffer(message.data(), message.size()));
+
+        ntsa::Endpoint endpoint;
+        NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
+
+        Feedbacks                         feedback(&ta);
+        bsl::unordered_set<bsl::uint32_t> sendIDs(&ta);
+
+        for (int i = 0; i < numMessagesToSend; ++i) {
+            ntsa::SendContext context;
+            ntsa::SendOptions options;
+            options.setEndpoint(endpoint);
+            options.setZeroCopy(true);
+
+            error = ntsu::SocketUtil::send(&context, data, options, handle);
+            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK) ||
+                error == ntsa::Error(ntsa::Error::e_LIMIT))
+            {
+                --i;
+                continue;
+            }
+            NTSCFG_TEST_OK(error);
+            sendIDs.insert(i);
+
+            NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
+            NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
+
+            ntsa::NotificationQueue notifications(&ta);
+            notifications.setHandle(handle);
+            error =
+                ntsu::SocketUtil::receiveNotifications(&notifications, handle);
+            NTSCFG_TEST_OK(error);
+
+            NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
+
+            // save zerocopy notifications for later validation
+            for (bsl::vector<ntsa::Notification>::const_iterator it =
+                     notifications.notifications().cbegin();
+                 it != notifications.notifications().cend();
+                 ++it)
+            {
+                NTSCFG_TEST_TRUE(it->isZeroCopy());
+                feedback.push_back(it->zeroCopy());
+            }
+        }
+
+        while (!sendIDs.empty()) {
+            {
+                ntsa::NotificationQueue notifications(&ta);
+                notifications.setHandle(handle);
+                error = ntsu::SocketUtil::receiveNotifications(&notifications,
+                                                               handle);
+                NTSCFG_TEST_OK(error);
+
+                NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
+
+                // save zerocopy notifications for later validation
+                for (bsl::vector<ntsa::Notification>::const_iterator it =
+                         notifications.notifications().cbegin();
+                     it != notifications.notifications().cend();
+                     ++it)
+                {
+                    NTSCFG_TEST_TRUE(it->isZeroCopy());
+                    feedback.push_back(it->zeroCopy());
+                }
+            }
+
+            while (!feedback.empty()) {
+                const ntsa::ZeroCopy& zc = feedback.front();
+                if (zc.from() == zc.to()) {
+                    NTSCFG_TEST_EQ(sendIDs.erase(zc.from()), 1);
+                }
+                else {
+                    for (bsl::uint32_t i = zc.from(); i != (zc.to() + 1); ++i)
+                    {
+                        NTSCFG_TEST_EQ(sendIDs.erase(i), 1);
+                    }
+                }
+                feedback.pop_front();
+            }
+        }
+    }
+    NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
 }
 
 NTSCFG_TEST_DRIVER
@@ -7456,5 +7592,6 @@ NTSCFG_TEST_DRIVER
     NTSCFG_TEST_REGISTER(24);
     NTSCFG_TEST_REGISTER(25);
     NTSCFG_TEST_REGISTER(26);
+    NTSCFG_TEST_REGISTER(27);
 }
 NTSCFG_TEST_DRIVER_END;

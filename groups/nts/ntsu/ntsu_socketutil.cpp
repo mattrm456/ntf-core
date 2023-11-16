@@ -3355,7 +3355,7 @@ ntsa::Error SocketUtil::receiveNotifications(
                     }
                 }
                 else if (ser.ee_origin == SO_EE_ORIGIN_ZEROCOPY) {
-                    ntsa::ZeroCopy zc(ser.ee_info, ser.ee_data);
+                    ntsa::ZeroCopy zc(ser.ee_info, ser.ee_data, ser.ee_code);
                     notification.makeZeroCopy(zc);
                     notifications->addNotification(notification);
                 }

@@ -32,10 +32,11 @@ class ZeroCopy
 {
     bsl::uint32_t d_from;
     bsl::uint32_t d_to;
+    bsl::uint8_t  d_code;
 
   public:
     ZeroCopy();
-    ZeroCopy(bsl::uint32_t from, bsl::uint32_t to);
+    ZeroCopy(bsl::uint32_t from, bsl::uint32_t to, bsl::uint8_t code);
 
     ZeroCopy(const ZeroCopy& original);
 
@@ -48,9 +49,11 @@ class ZeroCopy
 
     void setFrom(bsl::uint32_t value);
     void setTo(bsl::uint32_t value);
+    void setCode(bsl::uint8_t value);
 
     BSLS_ANNOTATION_NODISCARD bsl::uint32_t from() const;
     BSLS_ANNOTATION_NODISCARD bsl::uint32_t to() const;
+    BSLS_ANNOTATION_NODISCARD bsl::uint8_t code() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -116,13 +119,15 @@ NTSCFG_INLINE
 ZeroCopy::ZeroCopy()
 : d_from(0)
 , d_to(0)
+, d_code(0)
 {
 }
 
 NTSCFG_INLINE
-ZeroCopy::ZeroCopy(bsl::uint32_t from, bsl::uint32_t to)
+ZeroCopy::ZeroCopy(bsl::uint32_t from, bsl::uint32_t to, bsl::uint8_t code)
 : d_from(from)
 , d_to(to)
+, d_code(code)
 {
 }
 
@@ -130,6 +135,7 @@ NTSCFG_INLINE
 ZeroCopy::ZeroCopy(const ZeroCopy& original)
 : d_from(original.d_from)
 , d_to(original.d_to)
+, d_code(original.d_code)
 {
 }
 
@@ -143,6 +149,7 @@ ZeroCopy& ZeroCopy::operator=(const ZeroCopy& other)
 {
     d_from = other.d_from;
     d_to   = other.d_to;
+    d_code = other.d_code;
     return *this;
 }
 
@@ -159,6 +166,12 @@ void ZeroCopy::setTo(bsl::uint32_t value)
 }
 
 NTSCFG_INLINE
+void ZeroCopy::setCode(bsl::uint8_t value)
+{
+    d_code = value;
+}
+
+NTSCFG_INLINE
 bsl::uint32_t ZeroCopy::from() const
 {
     return d_from;
@@ -168,6 +181,12 @@ NTSCFG_INLINE
 bsl::uint32_t ZeroCopy::to() const
 {
     return d_to;
+}
+
+NTSCFG_INLINE
+bsl::uint8_t ZeroCopy::code() const
+{
+    return d_code;
 }
 
 NTSCFG_INLINE
@@ -201,6 +220,7 @@ void hashAppend(HASH_ALGORITHM& algorithm, const ZeroCopy& value)
 
     hashAppend(algorithm, value.from());
     hashAppend(algorithm, value.to());
+    hashAppend(algorithm, value.code());
 }
 
 }  // close package namespace

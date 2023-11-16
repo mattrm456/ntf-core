@@ -25,7 +25,8 @@ namespace ntsa {
 
 bool ZeroCopy::equals(const ZeroCopy& other) const
 {
-    return (d_from == other.d_from && d_to == other.d_to);
+    return (d_from == other.d_from && d_to == other.d_to &&
+            d_code == other.d_code);
 }
 
 bool ZeroCopy::less(const ZeroCopy& other) const
@@ -37,7 +38,16 @@ bool ZeroCopy::less(const ZeroCopy& other) const
     if (other.d_from < d_from) {
         return false;
     }
-    return d_to < other.d_to;
+
+    if (d_to < other.d_to) {
+        return true;
+    }
+
+    if (other.d_to < d_to) {
+        return false;
+    }
+
+    return d_code < other.d_code;
 }
 
 bsl::ostream& ZeroCopy::print(bsl::ostream& stream,
@@ -48,6 +58,7 @@ bsl::ostream& ZeroCopy::print(bsl::ostream& stream,
     printer.start();
     printer.printAttribute("from", d_from);
     printer.printAttribute("to", d_to);
+    printer.printAttribute("code", d_code);
     printer.end();
     return stream;
 }
