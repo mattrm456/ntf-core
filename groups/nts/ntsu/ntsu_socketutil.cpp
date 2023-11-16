@@ -3324,7 +3324,10 @@ ntsa::Error SocketUtil::receiveNotifications(
         for (cmsghdr* hdr = CMSG_FIRSTHDR(&msg); hdr != 0;
              hdr          = CMSG_NXTHDR(&msg, hdr))
         {
-            if (hdr->cmsg_level == SOL_IP && hdr->cmsg_type == IP_RECVERR) {
+            if ((hdr->cmsg_level == SOL_IP && hdr->cmsg_type == IP_RECVERR) ||
+                (hdr->cmsg_level == SOL_IPV6 &&
+                 hdr->cmsg_type == IPV6_RECVERR))
+            {
                 sock_extended_err ser;
                 std::memcpy(&ser, CMSG_DATA(hdr), sizeof(ser));
 

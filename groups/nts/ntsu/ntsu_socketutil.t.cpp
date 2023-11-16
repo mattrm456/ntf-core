@@ -7458,98 +7458,127 @@ NTSCFG_TEST_CASE(27)
 {
     //Concern: zerocopy basic test case
 
-    ntscfg::TestAllocator ta;
+    bsl::vector<ntsa::Transport::Value> socketTypes;
+    if (ntsu::AdapterUtil::supportsTransport(
+            ntsa::Transport::e_UDP_IPV4_DATAGRAM))
     {
-        // Observation: if system MTU is 1500 bytes then maximum payload size
-        // of UDP IPV4 packet for which MSG_ZEROCOPY functionality can actually
-        // work is 1472 bytes (because UDP header is 8 bytes and IPV4 header is
-        // 20 bytes).
-
-        const int msgSize           = 1472;
-        const int numMessagesToSend = 200;
-
-        ntsa::Error  error;
-        ntsa::Handle handle = ntsa::k_INVALID_HANDLE;
-
-        error = ntsu::SocketUtil::create(&handle,
-                                         ntsa::Transport::e_UDP_IPV4_DATAGRAM);
-        NTSCFG_TEST_ASSERT(!error);
-
-        {
-            bsl::size_t sendBufferSize = 0;
-            NTSCFG_TEST_OK(
-                ntsu::SocketOptionUtil::getSendBufferSize(&sendBufferSize,
-                                                          handle));
-            NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size is "
-                                  << sendBufferSize << NTSCFG_TEST_LOG_END;
-        }
-
-        //        {
-        //            bsl::size_t sendBufferSize = 1000000;
-        //            NTSCFG_TEST_OK(
-        //                ntsu::SocketOptionUtil::setSendBufferSize(handle,
-        //                                                          sendBufferSize));
-        //            NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size was changed to "
-        //                                  << sendBufferSize << NTSCFG_TEST_LOG_END;
-        //        }
-
-        error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(handle, true);
-        NTSCFG_TEST_OK(error);
-
-        bsl::vector<char> message(msgSize, &ta);
-        for (int i = 0; i < msgSize; ++i) {
-            message[i] = bsl::rand() % 100;
-        }
-        const ntsa::Data data(
-            ntsa::ConstBuffer(message.data(), message.size()));
-
-        ntsa::Endpoint endpoint;
-        NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
-
-        bsl::list<ntsa::ZeroCopy>         feedback(&ta);
-        bsl::unordered_set<bsl::uint32_t> sendIDs(&ta);
-
-        for (int i = 0; i < numMessagesToSend; ++i) {
-            ntsa::SendContext context;
-            ntsa::SendOptions options;
-            options.setEndpoint(endpoint);
-            options.setZeroCopy(true);
-
-            error = ntsu::SocketUtil::send(&context, data, options, handle);
-            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK) ||
-                error == ntsa::Error(ntsa::Error::e_LIMIT))
-            {
-                --i;
-                continue;
-            }
-            NTSCFG_TEST_OK(error);
-            sendIDs.insert(i);
-
-            NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
-            NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
-
-            test::extractZeroCopyNotifications(&feedback, handle, ta);
-        }
-
-        while (!sendIDs.empty()) {
-            test::extractZeroCopyNotifications(&feedback, handle, ta);
-
-            while (!feedback.empty()) {
-                const ntsa::ZeroCopy& zc = feedback.front();
-                if (zc.from() == zc.to()) {
-                    NTSCFG_TEST_EQ(sendIDs.erase(zc.from()), 1);
-                }
-                else {
-                    for (bsl::uint32_t i = zc.from(); i != (zc.to() + 1); ++i)
-                    {
-                        NTSCFG_TEST_EQ(sendIDs.erase(i), 1);
-                    }
-                }
-                feedback.pop_front();
-            }
-        }
+        socketTypes.push_back(ntsa::Transport::e_UDP_IPV4_DATAGRAM);
     }
-    NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+    if (ntsu::AdapterUtil::supportsTransport(
+            ntsa::Transport::e_UDP_IPV6_DATAGRAM))
+    {
+        socketTypes.push_back(ntsa::Transport::e_UDP_IPV6_DATAGRAM);
+    }
+
+    for (bsl::vector<ntsa::Transport::Value>::const_iterator transport =
+             socketTypes.cbegin();
+         transport != socketTypes.cend();
+         ++transport)
+    {
+        NTSCFG_TEST_LOG_DEBUG << "Testing " << *transport
+                              << NTSCFG_TEST_LOG_END;
+
+        ntscfg::TestAllocator ta;
+        {
+            // Observation: if system MTU is 1500 bytes then maximum payload size
+            // of UDP IPV4 packet for which MSG_ZEROCOPY functionality can actually
+            // work is 1472 bytes (because UDP header is 8 bytes and IPV4 header is
+            // 20 bytes).
+
+            const int msgSize           = 1472;
+            const int numMessagesToSend = 200;
+
+            ntsa::Error  error;
+            ntsa::Handle handle = ntsa::k_INVALID_HANDLE;
+
+            error = ntsu::SocketUtil::create(&handle, *transport);
+            NTSCFG_TEST_ASSERT(!error);
+
+            {
+                bsl::size_t sendBufferSize = 0;
+                NTSCFG_TEST_OK(
+                    ntsu::SocketOptionUtil::getSendBufferSize(&sendBufferSize,
+                                                              handle));
+                NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size is "
+                                      << sendBufferSize << NTSCFG_TEST_LOG_END;
+            }
+
+            //        {
+            //            bsl::size_t sendBufferSize = 1000000;
+            //            NTSCFG_TEST_OK(
+            //                ntsu::SocketOptionUtil::setSendBufferSize(handle,
+            //                                                          sendBufferSize));
+            //            NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size was changed to "
+            //                                  << sendBufferSize << NTSCFG_TEST_LOG_END;
+            //        }
+
+            error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(handle, true);
+            NTSCFG_TEST_OK(error);
+
+            bsl::vector<char> message(msgSize, &ta);
+            for (int i = 0; i < msgSize; ++i) {
+                message[i] = bsl::rand() % 100;
+            }
+            const ntsa::Data data(
+                ntsa::ConstBuffer(message.data(), message.size()));
+
+            ntsa::Endpoint endpoint;
+            if (*transport == ntsa::Transport::e_UDP_IPV4_DATAGRAM) {
+//                NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
+                NTSCFG_TEST_TRUE(endpoint.parse("127.0.0.1:5555"));
+            }
+            else if (*transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
+                NTSCFG_TEST_TRUE(endpoint.parse("[::1]:5555"));
+//                NTSCFG_TEST_TRUE(endpoint.parse("[fe80::215:5dff:fe8d:6bd1]:5555"));
+            }
+
+            bsl::list<ntsa::ZeroCopy>         feedback(&ta);
+            bsl::unordered_set<bsl::uint32_t> sendIDs(&ta);
+
+            for (int i = 0; i < numMessagesToSend; ++i) {
+                ntsa::SendContext context;
+                ntsa::SendOptions options;
+                options.setEndpoint(endpoint);
+                options.setZeroCopy(true);
+
+                error =
+                    ntsu::SocketUtil::send(&context, data, options, handle);
+                if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK) ||
+                    error == ntsa::Error(ntsa::Error::e_LIMIT))
+                {
+                    --i;
+                    continue;
+                }
+                NTSCFG_TEST_OK(error);
+                sendIDs.insert(i);
+
+                NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
+                NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
+
+                test::extractZeroCopyNotifications(&feedback, handle, ta);
+            }
+
+            while (!sendIDs.empty()) {
+                test::extractZeroCopyNotifications(&feedback, handle, ta);
+
+                while (!feedback.empty()) {
+                    const ntsa::ZeroCopy& zc = feedback.front();
+                    if (zc.from() == zc.to()) {
+                        NTSCFG_TEST_EQ(sendIDs.erase(zc.from()), 1);
+                    }
+                    else {
+                        for (bsl::uint32_t i = zc.from(); i != (zc.to() + 1);
+                             ++i)
+                        {
+                            NTSCFG_TEST_EQ(sendIDs.erase(i), 1);
+                        }
+                    }
+                    feedback.pop_front();
+                }
+            }
+        }
+        NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+    }
 }
 
 NTSCFG_TEST_DRIVER
