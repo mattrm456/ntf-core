@@ -7549,7 +7549,17 @@ NTSCFG_TEST_CASE(26)
 
 NTSCFG_TEST_CASE(27)
 {
-    //Concern: zerocopy basic test case
+    // Concern: Test Linux MSG_ZEROCOPY mechanism applied for DATAGRAM sockets
+
+    // Note that on that level we cannot really to validate whether data is
+    // actually copied into the send buffer or not. We can only validate that
+    // if data is sent with MSG_ZEROCOPY flag then related notifications will
+    // appear on a socket error queue.
+    //
+    // By default, the test sends data to a loopback address using loopback
+    // device. Though, to see how the system behaves when other device is used
+    // it is possible to use some random (but reachable) IPv4/6 addresses. See
+    // related code section below.
 
     bsl::vector<ntsa::Transport::Value> socketTypes;
     if (ntsu::AdapterUtil::supportsTransport(
@@ -7587,24 +7597,6 @@ NTSCFG_TEST_CASE(27)
             error = ntsu::SocketUtil::create(&handle, *transport);
             NTSCFG_TEST_ASSERT(!error);
 
-            {
-                bsl::size_t sendBufferSize = 0;
-                NTSCFG_TEST_OK(
-                    ntsu::SocketOptionUtil::getSendBufferSize(&sendBufferSize,
-                                                              handle));
-                NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size is "
-                                      << sendBufferSize << NTSCFG_TEST_LOG_END;
-            }
-
-            //        {
-            //            bsl::size_t sendBufferSize = 1000000;
-            //            NTSCFG_TEST_OK(
-            //                ntsu::SocketOptionUtil::setSendBufferSize(handle,
-            //                                                          sendBufferSize));
-            //            NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size was changed to "
-            //                                  << sendBufferSize << NTSCFG_TEST_LOG_END;
-            //        }
-
             error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(handle, true);
             NTSCFG_TEST_OK(error);
 
@@ -7618,11 +7610,11 @@ NTSCFG_TEST_CASE(27)
             ntsa::Endpoint endpoint;
             if (*transport == ntsa::Transport::e_UDP_IPV4_DATAGRAM) {
                 NTSCFG_TEST_TRUE(endpoint.parse("127.0.0.1:5555"));
-                //              NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
+                // NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
             }
             else if (*transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
                 NTSCFG_TEST_TRUE(endpoint.parse("[::1]:5555"));
-                //              NTSCFG_TEST_TRUE(endpoint.parse("[fe80::215:5dff:fe8d:6bd1]:5555"));
+                // NTSCFG_TEST_TRUE(endpoint.parse("[fe80::215:5dff:fe8d:6bd1]:5555"));
             }
 
             bsl::list<ntsa::ZeroCopy>         feedback(&ta);
