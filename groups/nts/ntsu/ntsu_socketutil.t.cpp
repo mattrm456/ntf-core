@@ -138,6 +138,30 @@ bool supportsTxTimestamps(ntsa::Handle socket)
 
 #endif
 
+void extractZeroCopyNotifications(bsl::list<ntsa::ZeroCopy>* zerocopy,
+                                  ntsa::Handle               handle,
+                                  bslma::Allocator*          allocator)
+{
+    ntsa::NotificationQueue notifications(allocator);
+    notifications.setHandle(handle);
+
+    ntsa::Error error =
+        ntsu::SocketUtil::receiveNotifications(&notifications, handle);
+    NTSCFG_TEST_OK(error);
+
+    NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
+
+    // save zerocopy notifications for later validation
+    for (bsl::vector<ntsa::Notification>::const_iterator it =
+             notifications.notifications().cbegin();
+         it != notifications.notifications().cend();
+         ++it)
+    {
+        NTSCFG_TEST_TRUE(it->isZeroCopy());
+        zerocopy->push_back(it->zeroCopy());
+    }
+}
+
 /// This typedef defines a callback function invoked to test a particular
 /// portion of the component using the specified connected 'server' and
 /// 'client' having the specified stream socket 'transport', supplying
@@ -1834,6 +1858,99 @@ void testDatagramSocketTransmissionMultipleMessages(
     }
 }
 
+void testStreamSocketMsgZeroCopy(ntsa::Transport::Value transport,
+                                 ntsa::Handle           server,
+                                 ntsa::Handle           client,
+                                 bslma::Allocator*      allocator)
+{
+    if (transport == ntsa::Transport::e_LOCAL_STREAM) {
+        return;
+    }
+
+    NTSCFG_TEST_LOG_DEBUG << "Testing " << transport << NTSCFG_TEST_LOG_END;
+
+    const int msgSize           = 2;
+    const int numMessagesToSend = 200;
+
+    ntsa::Error error;
+
+    {
+        bsl::size_t sendBufferSize = 0;
+        NTSCFG_TEST_OK(
+            ntsu::SocketOptionUtil::getSendBufferSize(&sendBufferSize,
+                                                      client));
+        NTSCFG_TEST_LOG_DEBUG << "Socket send buffer size is "
+                              << sendBufferSize << NTSCFG_TEST_LOG_END;
+    }
+
+    error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(client, true);
+    NTSCFG_TEST_OK(error);
+
+    bsl::vector<char> message(msgSize, allocator);
+    for (int i = 0; i < msgSize; ++i) {
+        message[i] = bsl::rand() % 100;
+    }
+    const ntsa::Data data(ntsa::ConstBuffer(message.data(), message.size()));
+
+    bsl::list<ntsa::ZeroCopy>         feedback(allocator);
+    bsl::unordered_set<bsl::uint32_t> sendIDs(allocator);
+
+    for (int i = 0; i < numMessagesToSend; ++i) {
+        ntsa::SendContext context;
+        ntsa::SendOptions options;
+        options.setZeroCopy(true);
+
+        error = ntsu::SocketUtil::send(&context, data, options, client);
+        if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK) ||
+            error == ntsa::Error(ntsa::Error::e_LIMIT))
+        {
+            --i;
+            continue;
+        }
+        NTSCFG_TEST_OK(error);
+        sendIDs.insert(i);
+
+        NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
+        NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
+
+        test::extractZeroCopyNotifications(&feedback, client, allocator);
+    }
+
+    {
+        bsl::vector<char> rBuffer(msgSize, allocator);
+        for (int totalSend = msgSize * numMessagesToSend; totalSend > 0;) {
+            ntsa::ReceiveContext context;
+            ntsa::ReceiveOptions options;
+
+            ntsa::Data data(
+                ntsa::MutableBuffer(rBuffer.data(), rBuffer.size()));
+
+            error =
+                ntsu::SocketUtil::receive(&context, &data, options, server);
+            if (!error) {
+                totalSend -= context.bytesReceived();
+            }
+        }
+    }
+
+    while (!sendIDs.empty()) {
+        test::extractZeroCopyNotifications(&feedback, client, allocator);
+
+        while (!feedback.empty()) {
+            const ntsa::ZeroCopy& zc = feedback.front();
+            if (zc.from() == zc.to()) {
+                NTSCFG_TEST_EQ(sendIDs.erase(zc.from()), 1);
+            }
+            else {
+                for (bsl::uint32_t i = zc.from(); i != (zc.to() + 1); ++i) {
+                    NTSCFG_TEST_EQ(sendIDs.erase(i), 1);
+                }
+            }
+            feedback.pop_front();
+        }
+    }
+}
+
 /// Comparator with is used to help sorting Timestamps according to their time
 /// value.
 struct TimestampTimeComparator {
@@ -1844,30 +1961,6 @@ struct TimestampTimeComparator {
         return a.time() < b.time();
     }
 };
-
-void extractZeroCopyNotifications(bsl::list<ntsa::ZeroCopy>* zerocopy,
-                                  ntsa::Handle               handle,
-                                  ntscfg::TestAllocator&     ta)
-{
-    ntsa::NotificationQueue notifications(&ta);
-    notifications.setHandle(handle);
-
-    ntsa::Error error =
-        ntsu::SocketUtil::receiveNotifications(&notifications, handle);
-    NTSCFG_TEST_OK(error);
-
-    NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
-
-    // save zerocopy notifications for later validation
-    for (bsl::vector<ntsa::Notification>::const_iterator it =
-             notifications.notifications().cbegin();
-         it != notifications.notifications().cend();
-         ++it)
-    {
-        NTSCFG_TEST_TRUE(it->isZeroCopy());
-        zerocopy->push_back(it->zeroCopy());
-    }
-}
 
 }  // close namespace 'test'
 
@@ -7524,12 +7617,12 @@ NTSCFG_TEST_CASE(27)
 
             ntsa::Endpoint endpoint;
             if (*transport == ntsa::Transport::e_UDP_IPV4_DATAGRAM) {
-//                NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
                 NTSCFG_TEST_TRUE(endpoint.parse("127.0.0.1:5555"));
+                //              NTSCFG_TEST_TRUE(endpoint.parse("108.22.44.23:5555"));
             }
             else if (*transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
                 NTSCFG_TEST_TRUE(endpoint.parse("[::1]:5555"));
-//                NTSCFG_TEST_TRUE(endpoint.parse("[fe80::215:5dff:fe8d:6bd1]:5555"));
+                //              NTSCFG_TEST_TRUE(endpoint.parse("[fe80::215:5dff:fe8d:6bd1]:5555"));
             }
 
             bsl::list<ntsa::ZeroCopy>         feedback(&ta);
@@ -7555,11 +7648,11 @@ NTSCFG_TEST_CASE(27)
                 NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
                 NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
 
-                test::extractZeroCopyNotifications(&feedback, handle, ta);
+                test::extractZeroCopyNotifications(&feedback, handle, &ta);
             }
 
             while (!sendIDs.empty()) {
-                test::extractZeroCopyNotifications(&feedback, handle, ta);
+                test::extractZeroCopyNotifications(&feedback, handle, &ta);
 
                 while (!feedback.empty()) {
                     const ntsa::ZeroCopy& zc = feedback.front();
@@ -7579,6 +7672,16 @@ NTSCFG_TEST_CASE(27)
         }
         NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
     }
+}
+
+NTSCFG_TEST_CASE(28)
+{
+    //Concern: zerocopy basic test case for STREAM sockets
+    ntscfg::TestAllocator ta;
+    {
+        test::executeStreamSocketTest(&test::testStreamSocketMsgZeroCopy);
+    }
+    NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
 }
 
 NTSCFG_TEST_DRIVER
@@ -7610,5 +7713,6 @@ NTSCFG_TEST_DRIVER
     NTSCFG_TEST_REGISTER(25);
     NTSCFG_TEST_REGISTER(26);
     NTSCFG_TEST_REGISTER(27);
+    NTSCFG_TEST_REGISTER(28);
 }
 NTSCFG_TEST_DRIVER_END;
