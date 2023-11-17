@@ -187,6 +187,29 @@ void extractTimestampNotifications(bsl::list<ntsa::Timestamp>* ts,
     }
 }
 
+void extractNotifications(bsl::list<ntsa::Notification>* nt,
+                          ntsa::Handle                   handle,
+                          bslma::Allocator*              allocator)
+{
+    ntsa::NotificationQueue notifications(allocator);
+    notifications.setHandle(handle);
+
+    ntsa::Error error =
+        ntsu::SocketUtil::receiveNotifications(&notifications, handle);
+    NTSCFG_TEST_OK(error);
+
+    NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
+
+    // save zerocopy notifications for later validation
+    for (bsl::vector<ntsa::Notification>::const_iterator it =
+             notifications.notifications().cbegin();
+         it != notifications.notifications().cend();
+         ++it)
+    {
+        nt->push_back(*it);
+    }
+}
+
 /// This typedef defines a callback function invoked to test a particular
 /// portion of the component using the specified connected 'server' and
 /// 'client' having the specified stream socket 'transport', supplying
@@ -2188,6 +2211,279 @@ void testStreamSocketTxTimestamps(ntsa::Transport::Value transport,
             timestampsToValidate[ts.id()].erase(ts.type());
             if (timestampsToValidate[ts.id()].empty()) {
                 timestampsToValidate.erase(ts.id());
+            }
+            feedback.pop_front();
+        }
+    }
+}
+
+void testDatagramSocketTxTimestampsAndZeroCopy(
+    ntsa::Transport::Value transport,
+    ntsa::Handle           server,
+    const ntsa::Endpoint&  serverEndpoint,
+    ntsa::Handle           client,
+    const ntsa::Endpoint&  clientEndpoint,
+    bslma::Allocator*      allocator)
+{
+    if (transport == ntsa::Transport::e_LOCAL_DATAGRAM) {
+        return;
+    }
+
+    if (!ntscfg::Platform::supportsTimestamps()) {
+        return;
+    }
+
+    NTSCFG_TEST_LOG_DEBUG << "Testing " << transport << NTSCFG_TEST_LOG_END;
+
+    ntsa::Error error;
+
+    error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client, true);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(client, true);
+    NTSCFG_TEST_OK(error);
+
+    const int msgSize           = 200;
+    const int numMessagesToSend = 100;
+
+    bsl::vector<char> message(msgSize, allocator);
+    for (int i = 0; i < msgSize; ++i) {
+        message[i] = bsl::rand() % 100;
+    }
+    const ntsa::Data data(ntsa::ConstBuffer(message.data(), message.size()));
+
+    bsl::list<ntsa::Notification> feedback(allocator);
+
+    // for each TS id there is a map of each expected TS type and a reference
+    // time
+    bsl::unordered_map<
+        bsl::uint32_t,
+        bsl::unordered_map<ntsa::TimestampType::Value, bsls::TimeInterval> >
+                                      timestampsToValidate(allocator);
+    bsl::unordered_set<bsl::uint32_t> zeroCopyToValidate(allocator);
+
+    // Enqueue outgoing data to transmit by the client socket.
+
+    for (int i = 0; i < numMessagesToSend; ++i) {
+        ntsa::SendContext context;
+        ntsa::SendOptions options;
+        options.setEndpoint(serverEndpoint);
+        options.setZeroCopy(true);
+
+        const bsls::TimeInterval sysTimeBeforeSending =
+            bdlt::CurrentTime::now();
+        error = ntsu::SocketUtil::send(&context, data, options, client);
+        if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK) ||
+            error == ntsa::Error(ntsa::Error::e_LIMIT))
+        {
+            --i;
+            continue;
+        }
+        NTSCFG_TEST_OK(error);
+
+        timestampsToValidate[i][ntsa::TimestampType::e_SENT] =
+            sysTimeBeforeSending;
+        timestampsToValidate[i][ntsa::TimestampType::e_SCHEDULED] =
+            sysTimeBeforeSending;
+        zeroCopyToValidate.insert(i);
+
+        NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
+        NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
+
+        test::extractNotifications(&feedback, client, allocator);
+    }
+
+    // receive data
+    {
+        bsl::vector<char> rBuffer(msgSize, allocator);
+        for (int totalSend = msgSize * numMessagesToSend; totalSend > 0;) {
+            ntsa::ReceiveContext context;
+            ntsa::ReceiveOptions options;
+
+            ntsa::Data data(
+                ntsa::MutableBuffer(rBuffer.data(), rBuffer.size()));
+
+            error =
+                ntsu::SocketUtil::receive(&context, &data, options, server);
+            if (!error) {
+                totalSend -= context.bytesReceived();
+            }
+        }
+    }
+
+    // retrieve data from the socket error queue until all send system
+    // calls related timestamps received
+    while (!timestampsToValidate.empty() || !zeroCopyToValidate.empty()) {
+        test::extractNotifications(&feedback, client, allocator);
+
+        while (!feedback.empty()) {
+            const ntsa::Notification& nt = feedback.front();
+            if (nt.isTimestamp()) {
+                const ntsa::Timestamp& ts = nt.timestamp();
+                NTSCFG_TEST_EQ(timestampsToValidate.count(ts.id()), 1);
+                NTSCFG_TEST_EQ(timestampsToValidate[ts.id()].count(ts.type()),
+                               1);
+                NTSCFG_TEST_LT(timestampsToValidate[ts.id()][ts.type()],
+                               ts.time());
+                timestampsToValidate[ts.id()].erase(ts.type());
+                if (timestampsToValidate[ts.id()].empty()) {
+                    timestampsToValidate.erase(ts.id());
+                }
+            }
+            else if (nt.isZeroCopy()) {
+                const ntsa::ZeroCopy& zc = nt.zeroCopy();
+                NTSCFG_TEST_EQ(zc.code(), 1);
+                if (zc.from() == zc.to()) {
+                    NTSCFG_TEST_EQ(zeroCopyToValidate.erase(zc.from()), 1);
+                }
+                else {
+                    for (bsl::uint32_t i = zc.from(); i != (zc.to() + 1); ++i)
+                    {
+                        NTSCFG_TEST_EQ(zeroCopyToValidate.erase(i), 1);
+                    }
+                }
+            }
+            else {
+                NTSCFG_TEST_ASSERT(false);
+            }
+            feedback.pop_front();
+        }
+    }
+}
+
+void testStreamSocketTxTimestampsAndZeroCopy(ntsa::Transport::Value transport,
+                                             ntsa::Handle           server,
+                                             ntsa::Handle           client,
+                                             bslma::Allocator*      allocator)
+{
+    if (transport == ntsa::Transport::e_LOCAL_STREAM) {
+        return;
+    }
+
+    if (!ntscfg::Platform::supportsTimestamps()) {
+        return;
+    }
+
+    NTSCFG_TEST_LOG_DEBUG << "Testing " << transport << NTSCFG_TEST_LOG_END;
+
+    ntsa::Error error;
+
+    error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client, true);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(client, true);
+    NTSCFG_TEST_OK(error);
+
+    const int msgSize           = 200;
+    const int numMessagesToSend = 5;
+
+    bsl::vector<char> message(msgSize, allocator);
+    for (int i = 0; i < msgSize; ++i) {
+        message[i] = bsl::rand() % 100;
+    }
+    const ntsa::Data data(ntsa::ConstBuffer(message.data(), message.size()));
+
+    bsl::list<ntsa::Notification> feedback(allocator);
+
+    // for each TS id there is a map of each expected TS type and a reference
+    // time
+    bsl::unordered_map<
+        bsl::uint32_t,
+        bsl::unordered_map<ntsa::TimestampType::Value, bsls::TimeInterval> >
+                                      timestampsToValidate(allocator);
+    bsl::unordered_set<bsl::uint32_t> zeroCopyToValidate(allocator);
+
+    // Enqueue outgoing data to transmit by the client socket.
+
+    bsl::uint32_t byteCounter = 0;
+    for (int i = 0; i < numMessagesToSend; ++i) {
+        ntsa::SendContext context;
+        ntsa::SendOptions options;
+        options.setZeroCopy(true);
+
+        const bsls::TimeInterval sysTimeBeforeSending =
+            bdlt::CurrentTime::currentTimeDefault();
+        if (sysTimeBeforeSending.totalSeconds() > 0) {
+            error = ntsu::SocketUtil::send(&context, data, options, client);
+            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK) ||
+                error == ntsa::Error(ntsa::Error::e_LIMIT))
+            {
+                --i;
+                continue;
+            }
+        }
+        NTSCFG_TEST_OK(error);
+
+        byteCounter += msgSize;
+
+        timestampsToValidate[byteCounter - 1][ntsa::TimestampType::e_SENT] =
+            sysTimeBeforeSending;
+        timestampsToValidate[byteCounter - 1]
+                            [ntsa::TimestampType::e_SCHEDULED] =
+                                sysTimeBeforeSending;
+        timestampsToValidate[byteCounter - 1]
+                            [ntsa::TimestampType::e_ACKNOWLEDGED] =
+                                sysTimeBeforeSending;
+        zeroCopyToValidate.insert(i);
+
+        NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
+        NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
+
+        test::extractNotifications(&feedback, client, allocator);
+    }
+
+    // receive data
+    {
+        bsl::vector<char> rBuffer(msgSize, allocator);
+        for (int totalSend = msgSize * numMessagesToSend; totalSend > 0;) {
+            ntsa::ReceiveContext context;
+            ntsa::ReceiveOptions options;
+
+            ntsa::Data data(
+                ntsa::MutableBuffer(rBuffer.data(), rBuffer.size()));
+
+            error =
+                ntsu::SocketUtil::receive(&context, &data, options, server);
+            if (!error) {
+                totalSend -= context.bytesReceived();
+            }
+        }
+    }
+
+    // retrieve data from the socket error queue until all send system
+    // calls related timestamps received
+    while (!timestampsToValidate.empty() || !zeroCopyToValidate.empty()) {
+        test::extractNotifications(&feedback, client, allocator);
+
+        while (!feedback.empty()) {
+            const ntsa::Notification& nt = feedback.front();
+            if (nt.isTimestamp()) {
+                const ntsa::Timestamp& ts = nt.timestamp();
+                NTSCFG_TEST_EQ(timestampsToValidate.count(ts.id()), 1);
+                NTSCFG_TEST_EQ(timestampsToValidate[ts.id()].count(ts.type()),
+                               1);
+                NTSCFG_TEST_LT(timestampsToValidate[ts.id()][ts.type()],
+                               ts.time());
+                timestampsToValidate[ts.id()].erase(ts.type());
+                if (timestampsToValidate[ts.id()].empty()) {
+                    timestampsToValidate.erase(ts.id());
+                }
+            }
+            else if (nt.isZeroCopy()) {
+                const ntsa::ZeroCopy& zc = nt.zeroCopy();
+                NTSCFG_TEST_EQ(zc.code(), 1);
+                if (zc.from() == zc.to()) {
+                    NTSCFG_TEST_EQ(zeroCopyToValidate.erase(zc.from()), 1);
+                }
+                else {
+                    for (bsl::uint32_t i = zc.from(); i != (zc.to() + 1); ++i)
+                    {
+                        NTSCFG_TEST_EQ(zeroCopyToValidate.erase(i), 1);
+                    }
+                }
+            }
+            else {
+                NTSCFG_TEST_ASSERT(false);
             }
             feedback.pop_front();
         }
@@ -7581,6 +7877,34 @@ NTSCFG_TEST_CASE(30)
 #endif
 }
 
+NTSCFG_TEST_CASE(31)
+{
+    // Concern: Test TX timestamping an MSG_ZEROCOPY functionality for
+    // DATAGRAM sockets
+#if defined(BSLS_PLATFORM_OS_LINUX)
+    ntscfg::TestAllocator ta;
+    {
+        test::executeDatagramSocketTest(
+            &test::testDatagramSocketTxTimestampsAndZeroCopy);
+    }
+    NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+#endif
+}
+
+NTSCFG_TEST_CASE(32)
+{
+    // Concern: Test TX timestamping an MSG_ZEROCOPY functionality for
+    // STREAM sockets
+#if defined(BSLS_PLATFORM_OS_LINUX)
+    ntscfg::TestAllocator ta;
+    {
+        test::executeStreamSocketTest(
+            &test::testStreamSocketTxTimestampsAndZeroCopy);
+    }
+    NTSCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+#endif
+}
+
 NTSCFG_TEST_DRIVER
 {
     NTSCFG_TEST_REGISTER(1);
@@ -7613,5 +7937,7 @@ NTSCFG_TEST_DRIVER
     NTSCFG_TEST_REGISTER(28);
     NTSCFG_TEST_REGISTER(29);
     NTSCFG_TEST_REGISTER(30);
+    NTSCFG_TEST_REGISTER(31);
+    NTSCFG_TEST_REGISTER(32);
 }
 NTSCFG_TEST_DRIVER_END;
