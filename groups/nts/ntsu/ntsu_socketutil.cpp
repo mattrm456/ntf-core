@@ -3308,13 +3308,18 @@ ntsa::Error SocketUtil::receiveNotifications(
         }
 
         /*
-        It is assumed that timestamp information comes in pairs: meta data + timestamp message.
-        Meta data is sock_extend_err structure (cmsg_level == SOL_IP && cmsg_type == IP_RECVERR)
-        and timestamp information is (cmsg_level == SOL_SOCKET && hdr->cmsg_type == SO_TIMESTAMPING).
+        It is assumed that timestamp information comes in pairs: meta data +
+        timestamp message.
+        Meta data is sock_extend_err structure: for IPv4:
+        (cmsg_level == SOL_IP && cmsg_type == IP_RECVERR) and for IPv6:
+        (cmsg_level == SOL_IPV6 && cmsg_type == IPV6_RECVERR)
+        and timestamp information is (cmsg_level == SOL_SOCKET &&
+        hdr->cmsg_type == SO_TIMESTAMPING).
 
-        Code below should be ready to handle messages in any order, e.g. IP_RECVERR -> SO_TIMESTAMPING
-        or SO_TIMESTAMPING -> IP_RECVERR
+        Code below should be ready to handle messages in any order, e.g.
+        IP_RECVERR -> SO_TIMESTAMPING or SO_TIMESTAMPING -> IP_RECVERR
         */
+
         bool tsMetaDataReceied = false;
         bool timestampReceived = false;
 
