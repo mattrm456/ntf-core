@@ -155,6 +155,11 @@ ntsa::Error SocketOptionUtil::setOption(ntsa::Handle              socket,
             socket,
             option.timestampOutgoingData());
     }
+    else if (option.isAllowMsgZeroCopy()) {
+        return SocketOptionUtil::setAllowMsgZeroCopy(
+            socket,
+            option.allowMsgZeroCopy());
+    }
     else {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
@@ -293,6 +298,15 @@ ntsa::Error SocketOptionUtil::getOption(ntsa::SocketOption*           option,
             return error;
         }
         option->makeTimestampIncomingData(value);
+        return ntsa::Error();
+    }
+    else if (type == ntsa::SocketOptionType::e_MSG_ZEROCOPY) {
+        bool value = false;
+        error      = SocketOptionUtil::getAllowMsgZeroCopy(&value, socket);
+        if (error) {
+            return error;
+        }
+        option->makeAllowMsgZeroCopy(value);
         return ntsa::Error();
     }
     else {
