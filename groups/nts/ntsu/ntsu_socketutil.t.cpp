@@ -7726,6 +7726,19 @@ NTSCFG_TEST_CASE(27)
     // See related code section below.
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
+    // Linux kernels versions < 5.0.0 do not support MSG_ZEROCOPY for DGRAM
+    // sockets
+    {
+        int major, minor, patch, build;
+        NTSCFG_TEST_ASSERT(
+            ntsscm::Version::systemVersion(&major, &minor, &patch, &build) ==
+            0);
+
+        if (KERNEL_VERSION(major, minor, patch) < KERNEL_VERSION(5, 0, 0)) {
+            return;
+        }
+    }
+
     bsl::vector<ntsa::Transport::Value> socketTypes;
     if (ntsu::AdapterUtil::supportsTransport(
             ntsa::Transport::e_UDP_IPV4_DATAGRAM))
@@ -7845,6 +7858,18 @@ NTSCFG_TEST_CASE(28)
     // appear on a socket error queue.
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
+    // Linux kernels versions < 4.14.0 do not support MSG_ZEROCOPY for STREAM
+    // sockets
+    {
+        int major, minor, patch, build;
+        NTSCFG_TEST_ASSERT(
+            ntsscm::Version::systemVersion(&major, &minor, &patch, &build) ==
+            0);
+
+        if (KERNEL_VERSION(major, minor, patch) < KERNEL_VERSION(4, 14, 0)) {
+            return;
+        }
+    }
     ntscfg::TestAllocator ta;
     {
         test::executeStreamSocketTest(&test::testStreamSocketMsgZeroCopy);
@@ -7857,6 +7882,18 @@ NTSCFG_TEST_CASE(29)
 {
     // Concern: Test TX timestamping functionality for DATAGRAM sockets
 #if defined(BSLS_PLATFORM_OS_LINUX)
+    // Linux kernels versions < 5.0.0 do not support MSG_ZEROCOPY for DGRAM
+    // sockets
+    {
+        int major, minor, patch, build;
+        NTSCFG_TEST_ASSERT(
+            ntsscm::Version::systemVersion(&major, &minor, &patch, &build) ==
+            0);
+
+        if (KERNEL_VERSION(major, minor, patch) < KERNEL_VERSION(5, 0, 0)) {
+            return;
+        }
+    }
     ntscfg::TestAllocator ta;
     {
         test::executeDatagramSocketTest(&test::testDatagramSocketTxTimestamps);
@@ -7869,6 +7906,18 @@ NTSCFG_TEST_CASE(30)
 {
     // Concern: Test TX timestamping functionality for STREAM sockets
 #if defined(BSLS_PLATFORM_OS_LINUX)
+    // Linux kernels versions < 4.14.0 do not support MSG_ZEROCOPY for STREAM
+    // sockets
+    {
+        int major, minor, patch, build;
+        NTSCFG_TEST_ASSERT(
+            ntsscm::Version::systemVersion(&major, &minor, &patch, &build) ==
+            0);
+
+        if (KERNEL_VERSION(major, minor, patch) < KERNEL_VERSION(4, 14, 0)) {
+            return;
+        }
+    }
     ntscfg::TestAllocator ta;
     {
         test::executeStreamSocketTest(&test::testStreamSocketTxTimestamps);
@@ -7882,6 +7931,20 @@ NTSCFG_TEST_CASE(31)
     // Concern: Test TX timestamping an MSG_ZEROCOPY functionality for
     // DATAGRAM sockets
 #if defined(BSLS_PLATFORM_OS_LINUX)
+
+    // Linux kernels versions < 5.0.0 do not support MSG_ZEROCOPY for DGRAM
+    // sockets
+    {
+        int major, minor, patch, build;
+        NTSCFG_TEST_ASSERT(
+            ntsscm::Version::systemVersion(&major, &minor, &patch, &build) ==
+            0);
+
+        if (KERNEL_VERSION(major, minor, patch) < KERNEL_VERSION(5, 0, 0)) {
+            return;
+        }
+    }
+
     ntscfg::TestAllocator ta;
     {
         test::executeDatagramSocketTest(
@@ -7896,6 +7959,18 @@ NTSCFG_TEST_CASE(32)
     // Concern: Test TX timestamping an MSG_ZEROCOPY functionality for
     // STREAM sockets
 #if defined(BSLS_PLATFORM_OS_LINUX)
+    // Linux kernels versions < 4.14.0 do not support MSG_ZEROCOPY for STREAM
+    // sockets
+    {
+        int major, minor, patch, build;
+        NTSCFG_TEST_ASSERT(
+            ntsscm::Version::systemVersion(&major, &minor, &patch, &build) ==
+            0);
+
+        if (KERNEL_VERSION(major, minor, patch) < KERNEL_VERSION(4, 14, 0)) {
+            return;
+        }
+    }
     ntscfg::TestAllocator ta;
     {
         test::executeStreamSocketTest(

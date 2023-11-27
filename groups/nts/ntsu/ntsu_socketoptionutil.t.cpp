@@ -1764,6 +1764,7 @@ NTSCFG_TEST_CASE(8)
 
 NTSCFG_TEST_CASE(9)
 {
+    // test SO_ZEROCOPY
     const ntsa::Transport::Value SOCKET_TYPES[] = {
         ntsa::Transport::e_TCP_IPV4_STREAM,
         ntsa::Transport::e_TCP_IPV6_STREAM,
@@ -1800,10 +1801,44 @@ NTSCFG_TEST_CASE(9)
         }
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
-        const bool setSupported =
-            (transport != ntsa::Transport::e_LOCAL_STREAM) &&
-            (transport != ntsa::Transport::e_LOCAL_DATAGRAM);
-        const bool getSupported = true;
+
+        bool setSupported = false;
+        bool getSupported = false;
+
+        {
+            int major, minor, patch, build;
+            NTSCFG_TEST_ASSERT(ntsscm::Version::systemVersion(&major,
+                                                              &minor,
+                                                              &patch,
+                                                              &build) == 0);
+
+            // Linux kernels versions < 4.14.0 do not support MSG_ZEROCOPY at
+            // all
+            // Linux kernels versions < 5.0.0 do not support MSG_ZEROCOPY for
+            // DGRAM sockets
+            if (KERNEL_VERSION(major, minor, patch) < KERNEL_VERSION(4, 14, 0))
+            {
+                setSupported = false;
+                getSupported = false;
+            }
+            else if (KERNEL_VERSION(major, minor, patch) <
+                     KERNEL_VERSION(5, 0, 0))
+            {
+                if (transport == ntsa::Transport::e_TCP_IPV4_STREAM ||
+                    transport == ntsa::Transport::e_TCP_IPV4_STREAM)
+                {
+                    setSupported = true;
+                }
+                getSupported = true;
+            }
+            else {
+                setSupported =
+                    (transport != ntsa::Transport::e_LOCAL_STREAM) &&
+                    (transport != ntsa::Transport::e_LOCAL_DATAGRAM);
+                getSupported = true;
+            }
+        }
+
 #else
         const bool setSupported = false;
         const bool getSupported = false;
