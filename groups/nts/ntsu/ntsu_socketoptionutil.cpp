@@ -1100,7 +1100,11 @@ ntsa::Error SocketOptionUtil::getAllowMsgZeroCopy(bool*        zeroCopyFlag,
     int       optionValue = 0;
     socklen_t len         = static_cast<socklen_t>(sizeof(optionValue));
 
-    int rc = getsockopt(socket, SOL_SOCKET, SO_ZEROCOPY, &optionValue, &len);
+    int rc = getsockopt(socket,
+                        SOL_SOCKET,
+                        MsgzerocopyUtil::e_SO_ZEROCOPY,
+                        &optionValue,
+                        &len);
 
     if (rc != 0) {
         return ntsa::Error(errno);
