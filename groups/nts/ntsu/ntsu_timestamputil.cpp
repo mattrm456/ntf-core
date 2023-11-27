@@ -18,18 +18,15 @@
 #include <bslmf_assert.h>
 #include <bsls_platform.h>
 
+// clang-format off
 #if defined(BSLS_PLATFORM_OS_LINUX)
-//keep this include separate from below includes
-//as it must precede errqueue.h inclusion
-#include <linux/time.h>
-#endif
-
-#if defined(BSLS_PLATFORM_OS_LINUX)
-#include <asm-generic/socket.h>
+#include <sys/time.h>
+#include <sys/socket.h>
 #include <linux/errqueue.h>
 #include <linux/net_tstamp.h>
 #include <linux/version.h>
 #endif
+// clang-format on
 
 namespace BloombergLP {
 namespace ntsu {

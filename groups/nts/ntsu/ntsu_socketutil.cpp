@@ -27,6 +27,7 @@ BSLS_IDENT_RCSID(ntsu_socketutil_cpp, "$Id$ $CSID$")
 #include <ntscfg_limits.h>
 #include <ntsu_adapterutil.h>
 #include <ntsu_bufferutil.h>
+#include <ntsu_msgzerocopyutil.h>
 #include <ntsu_socketoptionutil.h>
 #include <ntsu_timestamputil.h>
 
@@ -1392,7 +1393,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1466,7 +1467,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1537,7 +1538,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1607,7 +1608,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*            context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1677,7 +1678,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*               context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1751,7 +1752,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*         context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1822,7 +1823,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*         context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1892,7 +1893,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*              context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1961,7 +1962,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*                 context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -2034,7 +2035,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -2142,7 +2143,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MSG_ZEROCOPY;
+        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -3362,7 +3363,9 @@ ntsa::Error SocketUtil::receiveNotifications(
                         timestampReceived = false;
                     }
                 }
-                else if (ser.ee_origin == SO_EE_ORIGIN_ZEROCOPY) {
+                else if (ser.ee_origin ==
+                         MsgzerocopyUtil::e_SO_EE_ORIGIN_ZEROCOPY)
+                {
                     ntsa::ZeroCopy zc(ser.ee_info, ser.ee_data, ser.ee_code);
                     notification.makeZeroCopy(zc);
                     notifications->addNotification(notification);

@@ -20,6 +20,7 @@ BSLS_IDENT_RCSID(ntsu_socketoptionutil_cpp, "$Id$ $CSID$")
 
 #include <ntscfg_platform.h>
 #include <ntsu_adapterutil.h>
+#include <ntsu_msgzerocopyutil.h>
 #include <ntsu_timestamputil.h>
 
 #include <bsls_assert.h>
@@ -714,7 +715,7 @@ ntsa::Error SocketOptionUtil::setAllowMsgZeroCopy(ntsa::Handle socket,
 
     int rc = setsockopt(socket,
                         SOL_SOCKET,
-                        SO_ZEROCOPY,
+                        MsgzerocopyUtil::e_SO_ZEROCOPY,
                         &optionValue,
                         sizeof(optionValue));
 
