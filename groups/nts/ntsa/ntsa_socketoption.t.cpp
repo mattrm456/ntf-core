@@ -88,24 +88,24 @@ NTSCFG_TEST_CASE(3)
     // Concern: test allowMsgZeroCopy option
 
     ntsa::SocketOption so;
-    NTSCFG_TEST_FALSE(so.isAllowMsgZeroCopy());
+    NTSCFG_TEST_FALSE(so.isZeroCopy());
 
-    so.makeAllowMsgZeroCopy(true);
-    NTSCFG_TEST_TRUE(so.isAllowMsgZeroCopy());
+    so.makeZeroCopy(true);
+    NTSCFG_TEST_TRUE(so.isZeroCopy());
 
-    bool& val = so.allowMsgZeroCopy();
+    bool& val = so.zeroCopy();
     NTSCFG_TEST_TRUE(val);
     val = false;
-    NTSCFG_TEST_FALSE(so.allowMsgZeroCopy());
+    NTSCFG_TEST_FALSE(so.zeroCopy());
 
     val = true;
-    NTSCFG_TEST_TRUE(so.allowMsgZeroCopy());
+    NTSCFG_TEST_TRUE(so.zeroCopy());
 
-    so.makeAllowMsgZeroCopy();
-    NTSCFG_TEST_FALSE(so.allowMsgZeroCopy());
+    so.makeZeroCopy();
+    NTSCFG_TEST_FALSE(so.zeroCopy());
 
     so.reset();
-    NTSCFG_TEST_FALSE(so.isAllowMsgZeroCopy());
+    NTSCFG_TEST_FALSE(so.isZeroCopy());
 }
 
 NTSCFG_TEST_DRIVER

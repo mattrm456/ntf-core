@@ -79,14 +79,18 @@ namespace ntsa {
 /// zero, or, for stream sockets only, to NTSCFG_DEFAULT_MAX_INPLACE_BUFFERS.
 /// Note that this value is currently only honored when sending blobs.
 ///
-/// @li @b d_zeroCopy:
-/// The option is applicable only for Linux. If the flag is true then the OS is
-/// requested to use copy avoidance mechanism (Linux MSG_ZEROCOPY). If the flag
-/// is set to true then the user must ensure that transmitted data is not
-/// touched (e.g. deallocated) until the OS acknowledges it (via socket error
-/// queue notification mechanism). Note that the OS has the right to do copy
-/// data anyway. The actual status (if the data was copied or not) is learned
-/// from examining the error queue.
+/// @li @b zeroCopy:
+/// The flag to request the data-to-send be referenced in-place rather than
+/// copied to the send buffer to the specified 'value'. Note that this flag is
+/// advisory; the operating system may neither support nor decide to allow
+/// zero-copy semantics. Regardless, if zero-copy semantics are requested the
+/// application must ensure the data-to-send is neither overwritten nor
+/// invalidated (i.e. freed) until the completion of the send operation is
+/// indicated in a subsequent notification (which also indicates whether the
+/// data was referenced in-place or copied.) Also note that this option is only
+/// supported on platforms where 'ntscfg::Platform::supportsZeroCopy()' returns
+/// true. Send operations requesting zero-copy semantics on platforms that do
+/// not support zero-copy will result in an error.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -127,13 +131,13 @@ class SendOptions
     // 'value'.
     void setForeignHandle(ntsa::Handle value);
 
-    /// Set the maximum number of bytes to copy to the specified 'value'.
+    /// Set the maximum number of bytes to send to the specified 'value'.
     void setMaxBytes(bsl::size_t value);
 
-    /// Set the maximum number of buffers to copy to the specified 'value'.
+    /// Set the maximum number of buffers to send to the specified 'value'.
     void setMaxBuffers(bsl::size_t value);
 
-    /// Set the MSG_ZEROCOPY flag to the specified 'value'.
+    /// Set the flag to request zero-copy semantics to the specified 'value'.
     void setZeroCopy(bool value);
 
     /// Return the remote endpoint to which the data should be sent.
@@ -142,13 +146,13 @@ class SendOptions
     /// Return the handle to the open socket to send to the peer.
     const bdlb::NullableValue<ntsa::Handle>& foreignHandle() const;
 
-    /// Return the maximum number of bytes to copy.
+    /// Return the maximum number of bytes to send.
     bsl::size_t maxBytes() const;
 
-    /// Return the maximum number of buffers to copy.
+    /// Return the maximum number of buffers to send.
     bsl::size_t maxBuffers() const;
 
-    /// Return true is MSG_ZEROCOPY is set to true. Otherwise return false.
+    /// Return the flag that indicates zero-copy semantics are requested.
     bool zeroCopy() const;
 
     /// Return true if this object has the same value as the specified

@@ -20,7 +20,7 @@ BSLS_IDENT_RCSID(ntsu_socketoptionutil_cpp, "$Id$ $CSID$")
 
 #include <ntscfg_platform.h>
 #include <ntsu_adapterutil.h>
-#include <ntsu_msgzerocopyutil.h>
+#include <ntsu_zerocopyutil.h>
 #include <ntsu_timestamputil.h>
 
 #include <bsls_assert.h>
@@ -156,10 +156,8 @@ ntsa::Error SocketOptionUtil::setOption(ntsa::Handle              socket,
             socket,
             option.timestampOutgoingData());
     }
-    else if (option.isAllowMsgZeroCopy()) {
-        return SocketOptionUtil::setAllowMsgZeroCopy(
-            socket,
-            option.allowMsgZeroCopy());
+    else if (option.isZeroCopy()) {
+        return SocketOptionUtil::setZeroCopy(socket, option.zeroCopy());
     }
     else {
         return ntsa::Error(ntsa::Error::e_INVALID);
@@ -301,13 +299,13 @@ ntsa::Error SocketOptionUtil::getOption(ntsa::SocketOption*           option,
         option->makeTimestampIncomingData(value);
         return ntsa::Error();
     }
-    else if (type == ntsa::SocketOptionType::e_MSG_ZEROCOPY) {
+    else if (type == ntsa::SocketOptionType::e_ZERO_COPY) {
         bool value = false;
-        error      = SocketOptionUtil::getAllowMsgZeroCopy(&value, socket);
+        error      = SocketOptionUtil::getZeroCopy(&value, socket);
         if (error) {
             return error;
         }
-        option->makeAllowMsgZeroCopy(value);
+        option->makeZeroCopy(value);
         return ntsa::Error();
     }
     else {
@@ -703,19 +701,15 @@ ntsa::Error SocketOptionUtil::setInlineOutOfBandData(ntsa::Handle socket,
     return ntsa::Error();
 }
 
-ntsa::Error SocketOptionUtil::setAllowMsgZeroCopy(ntsa::Handle socket,
-                                                  bool allowMsgZeroCopy)
+ntsa::Error SocketOptionUtil::setZeroCopy(ntsa::Handle socket, bool zeroCopy)
 {
-    NTSCFG_WARNING_UNUSED(socket);
-    NTSCFG_WARNING_UNUSED(allowMsgZeroCopy);
-
 #if defined(BSLS_PLATFORM_OS_LINUX)
 
-    int optionValue = static_cast<bool>(allowMsgZeroCopy);
+    int optionValue = static_cast<bool>(zeroCopy);
 
     int rc = setsockopt(socket,
                         SOL_SOCKET,
-                        MsgzerocopyUtil::e_SO_ZEROCOPY,
+                        ntsu::ZeroCopyUtil::e_SO_ZEROCOPY,
                         &optionValue,
                         sizeof(optionValue));
 
@@ -725,6 +719,9 @@ ntsa::Error SocketOptionUtil::setAllowMsgZeroCopy(ntsa::Handle socket,
 
     return ntsa::Error();
 #else
+    NTSCFG_WARNING_UNUSED(socket);
+    NTSCFG_WARNING_UNUSED(zeroCopy);
+
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 #endif
 }
@@ -1093,8 +1090,8 @@ ntsa::Error SocketOptionUtil::getTimestampIncomingData(bool* timestampFlag,
 #endif
 }
 
-ntsa::Error SocketOptionUtil::getAllowMsgZeroCopy(bool*        zeroCopyFlag,
-                                                  ntsa::Handle socket)
+ntsa::Error SocketOptionUtil::getZeroCopy(bool*        zeroCopyFlag,
+                                          ntsa::Handle socket)
 {
 #if defined(BSLS_PLATFORM_OS_LINUX)
     int       optionValue = 0;
@@ -1102,7 +1099,7 @@ ntsa::Error SocketOptionUtil::getAllowMsgZeroCopy(bool*        zeroCopyFlag,
 
     int rc = getsockopt(socket,
                         SOL_SOCKET,
-                        MsgzerocopyUtil::e_SO_ZEROCOPY,
+                        ntsu::ZeroCopyUtil::e_SO_ZEROCOPY,
                         &optionValue,
                         &len);
 

@@ -1926,7 +1926,7 @@ void testStreamSocketMsgZeroCopy(ntsa::Transport::Value transport,
 
     ntsa::Error error;
 
-    error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(client, true);
+    error = ntsu::SocketOptionUtil::setZeroCopy(client, true);
     NTSCFG_TEST_OK(error);
 
     bsl::vector<char> message(msgSize, allocator);
@@ -2240,7 +2240,7 @@ void testDatagramSocketTxTimestampsAndZeroCopy(
     error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client, true);
     NTSCFG_TEST_OK(error);
 
-    error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(client, true);
+    error = ntsu::SocketOptionUtil::setZeroCopy(client, true);
     NTSCFG_TEST_OK(error);
 
     const int msgSize           = 200;
@@ -2371,7 +2371,7 @@ void testStreamSocketTxTimestampsAndZeroCopy(ntsa::Transport::Value transport,
     error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client, true);
     NTSCFG_TEST_OK(error);
 
-    error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(client, true);
+    error = ntsu::SocketOptionUtil::setZeroCopy(client, true);
     NTSCFG_TEST_OK(error);
 
     const int msgSize           = 200;
@@ -7775,7 +7775,7 @@ NTSCFG_TEST_CASE(27)
             error = ntsu::SocketUtil::create(&handle, *transport);
             NTSCFG_TEST_ASSERT(!error);
 
-            error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(handle, true);
+            error = ntsu::SocketOptionUtil::setZeroCopy(handle, true);
             NTSCFG_TEST_OK(error);
 
             bsl::vector<char> message(msgSize, &ta);

@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSU_MSGZEROCOPYUTIL
-#define INCLUDED_NTSU_MSGZEROCOPYUTIL
+#ifndef INCLUDED_NTSU_ZEROCOPYUTIL
+#define INCLUDED_NTSU_ZEROCOPYUTIL
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
@@ -24,8 +24,7 @@ namespace ntsu {
 
 /// This struct is used to define/redefine types and constants used for Linux
 /// msg zerocopy feature.
-
-struct MsgzerocopyUtil {
+struct ZeroCopyUtil {
     enum {  //copied from include/asm-generic/socket.h
         e_SO_ZEROCOPY = 60
     };

@@ -1857,42 +1857,42 @@ NTSCFG_TEST_CASE(9)
         if (setSupported && getSupported) {
             bool zeroCopy = true;
             error =
-                ntsu::SocketOptionUtil::getAllowMsgZeroCopy(&zeroCopy, socket);
+                ntsu::SocketOptionUtil::getZeroCopy(&zeroCopy, socket);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_FALSE(zeroCopy);
 
-            error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(socket, true);
+            error = ntsu::SocketOptionUtil::setZeroCopy(socket, true);
             NTSCFG_TEST_OK(error);
 
             zeroCopy = false;
             error =
-                ntsu::SocketOptionUtil::getAllowMsgZeroCopy(&zeroCopy, socket);
+                ntsu::SocketOptionUtil::getZeroCopy(&zeroCopy, socket);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(zeroCopy);
 
-            error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(socket, false);
+            error = ntsu::SocketOptionUtil::setZeroCopy(socket, false);
             NTSCFG_TEST_OK(error);
 
             zeroCopy = true;
             error =
-                ntsu::SocketOptionUtil::getAllowMsgZeroCopy(&zeroCopy, socket);
+                ntsu::SocketOptionUtil::getZeroCopy(&zeroCopy, socket);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_FALSE(zeroCopy);
         }
         else if (setSupported == false && getSupported == true) {
             bool zeroCopy = true;
             error =
-                ntsu::SocketOptionUtil::getAllowMsgZeroCopy(&zeroCopy, socket);
+                ntsu::SocketOptionUtil::getZeroCopy(&zeroCopy, socket);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_FALSE(zeroCopy);
 
-            error = ntsu::SocketOptionUtil::setAllowMsgZeroCopy(socket, false);
+            error = ntsu::SocketOptionUtil::setZeroCopy(socket, false);
             NTSCFG_TEST_TRUE(error);
         }
         else if (setSupported == false && getSupported == false) {
             bool zeroCopy = true;
             error =
-                ntsu::SocketOptionUtil::getAllowMsgZeroCopy(&zeroCopy, socket);
+                ntsu::SocketOptionUtil::getZeroCopy(&zeroCopy, socket);
             NTSCFG_TEST_ERROR(error,
                               ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED));
             NTSCFG_TEST_TRUE(zeroCopy);

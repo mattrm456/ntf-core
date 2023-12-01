@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ntsu_msgzerocopyutil.h"
+#include <ntsu_zerocopyutil.h>
 
 #include <bslmf_assert.h>
 #include <bsls_platform.h>
@@ -34,14 +34,14 @@ namespace ntsu {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 
-BSLMF_ASSERT(MsgzerocopyUtil::e_SO_ZEROCOPY == static_cast<int>(SO_ZEROCOPY));
+BSLMF_ASSERT(ZeroCopyUtil::e_SO_ZEROCOPY == static_cast<int>(SO_ZEROCOPY));
 
-BSLMF_ASSERT(MsgzerocopyUtil::e_MSG_ZEROCOPY ==
+BSLMF_ASSERT(ZeroCopyUtil::e_MSG_ZEROCOPY ==
              static_cast<int>(MSG_ZEROCOPY));
 
-BSLMF_ASSERT(MsgzerocopyUtil::e_SO_EE_ORIGIN_ZEROCOPY ==
+BSLMF_ASSERT(ZeroCopyUtil::e_SO_EE_ORIGIN_ZEROCOPY ==
              static_cast<int>(SO_EE_ORIGIN_ZEROCOPY));
-BSLMF_ASSERT(MsgzerocopyUtil::e_SO_EE_CODE_ZEROCOPY_COPIED ==
+BSLMF_ASSERT(ZeroCopyUtil::e_SO_EE_CODE_ZEROCOPY_COPIED ==
              static_cast<int>(SO_EE_CODE_ZEROCOPY_COPIED));
 
 #endif

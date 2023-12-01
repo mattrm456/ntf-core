@@ -27,7 +27,7 @@ BSLS_IDENT_RCSID(ntsu_socketutil_cpp, "$Id$ $CSID$")
 #include <ntscfg_limits.h>
 #include <ntsu_adapterutil.h>
 #include <ntsu_bufferutil.h>
-#include <ntsu_msgzerocopyutil.h>
+#include <ntsu_zerocopyutil.h>
 #include <ntsu_socketoptionutil.h>
 #include <ntsu_timestamputil.h>
 
@@ -1393,7 +1393,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1467,7 +1467,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1538,7 +1538,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1608,7 +1608,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*            context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1678,7 +1678,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*               context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1752,7 +1752,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*         context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1823,7 +1823,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*         context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1893,7 +1893,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*              context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -1962,7 +1962,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*                 context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -2035,7 +2035,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -2143,7 +2143,7 @@ ntsa::Error SocketUtil::send(ntsa::SendContext*       context,
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
     if (options.zeroCopy()) {
-        sendFlags |= MsgzerocopyUtil::e_MSG_ZEROCOPY;
+        sendFlags |= ntsu::ZeroCopyUtil::e_MSG_ZEROCOPY;
     }
 #endif
 
@@ -3302,26 +3302,25 @@ ntsa::Error SocketUtil::receiveNotifications(
             }
         }
 
-        // it is required to drain the socket error queue even if there is no
-        // space to store incoming notification
+        // The socket error queue must be drained even if there is no space to
+        // store the notification.
+
         if (notifications == 0) {
             continue;
         }
 
-        /*
-        It is assumed that timestamp information comes in pairs: meta data +
-        timestamp message.
-        Meta data is sock_extend_err structure: for IPv4:
-        (cmsg_level == SOL_IP && cmsg_type == IP_RECVERR) and for IPv6:
-        (cmsg_level == SOL_IPV6 && cmsg_type == IPV6_RECVERR)
-        and timestamp information is (cmsg_level == SOL_SOCKET &&
-        hdr->cmsg_type == SO_TIMESTAMPING).
+        // Assume the timestamp information comes in pairs: meta data +
+        // timestamp message.
+        // Meta data is sock_extend_err structure: for IPv4:
+        // (cmsg_level == SOL_IP && cmsg_type == IP_RECVERR) and for IPv6:
+        // (cmsg_level == SOL_IPV6 && cmsg_type == IPV6_RECVERR)
+        // and timestamp information is (cmsg_level == SOL_SOCKET &&
+        // hdr->cmsg_type == SO_TIMESTAMPING).
+        //
+        // The messages may be received in any order, e.g.
+        // IP_RECVERR -> SO_TIMESTAMPING or SO_TIMESTAMPING -> IP_RECVERR.
 
-        Code below should be ready to handle messages in any order, e.g.
-        IP_RECVERR -> SO_TIMESTAMPING or SO_TIMESTAMPING -> IP_RECVERR
-        */
-
-        bool tsMetaDataReceied = false;
+        bool tsMetaDataReceived = false;
         bool timestampReceived = false;
 
         ntsa::Timestamp    ts;
@@ -3353,18 +3352,18 @@ ntsa::Error SocketUtil::receiveNotifications(
                         //error, drop timestamp
                     }
                     }
-                    tsMetaDataReceied = true;
+                    tsMetaDataReceived = true;
                     if (timestampReceived) {
                         notification.reset();
                         notification.makeTimestamp(ts);
 
                         notifications->addNotification(notification);
-                        tsMetaDataReceied = false;
+                        tsMetaDataReceived = false;
                         timestampReceived = false;
                     }
                 }
                 else if (ser.ee_origin ==
-                         MsgzerocopyUtil::e_SO_EE_ORIGIN_ZEROCOPY)
+                         ntsu::ZeroCopyUtil::e_SO_EE_ORIGIN_ZEROCOPY)
                 {
                     ntsa::ZeroCopy zc(ser.ee_info, ser.ee_data, ser.ee_code);
                     notification.makeZeroCopy(zc);
@@ -3384,23 +3383,24 @@ ntsa::Error SocketUtil::receiveNotifications(
                 ts.setTime(ti);
 
                 timestampReceived = true;
-                if (tsMetaDataReceied) {
+                if (tsMetaDataReceived) {
                     notification.reset();
                     notification.makeTimestamp(ts);
 
                     notifications->addNotification(notification);
 
-                    tsMetaDataReceied = false;
+                    tsMetaDataReceived = false;
                     timestampReceived = false;
                 }
             }
             else {
                 BSLS_LOG_WARN(
-                    "unexpected ctrl data received: cmsg_level=%d, "
-                    "cmsg_type=%d, tsMetaDataReceied=%d, timestampReceived=%d",
+                    "Unexpected control message received: cmsg_level = %d, "
+                    "cmsg_type = %d, tsMetaDataReceied = %d, "
+                    "timestampReceived = %d",
                     hdr->cmsg_level,
                     hdr->cmsg_type,
-                    tsMetaDataReceied,
+                    tsMetaDataReceived,
                     timestampReceived);
             }
         }

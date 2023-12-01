@@ -21,32 +21,26 @@ BSLS_IDENT("$Id: $")
 
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
-
 #include <bslh_hash.h>
 #include <bsl_ostream.h>
 
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide a type holding a result of send() with copy avoidance mechanis.
-///
-/// @details
-/// Provide a value-semantic type that holds a result of send() with
-/// MSG_ZEROCOPY flag set.
+/// Describe a notification for the completion of one or more send operations
+/// with zero-copy semantics.
 ///
 /// @par Attributes
 /// This class is composed of the following attributes:
 ///
-/// @li @b d_from:
-/// Number identifying the start of the range for which this result relates
-/// (inclusive)
+/// @li @b from:
+/// The identifier of the first zero-copy send that completed, inclusive.
 ///
-/// @li @b d_to:
-/// Number identifying the end of the range for which this result relates
-/// (inclusive)
+/// @li @b to:
+/// The identifier of the last zero-copy send that completed, inclusive.
 ///
-/// @li @b d_code:
-/// Code describing result of copy avoidance mechanism application.
+/// @li @b code:
+/// The code indicating whether the copy was avoided or was performed.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -57,7 +51,6 @@ class ZeroCopy
     bsl::uint8_t  d_code;
 
   public:
-
     /// Create a new instance having the default value.
     ZeroCopy();
 
@@ -76,28 +69,28 @@ class ZeroCopy
     /// a reference to this modifiable object.
     ZeroCopy& operator=(const ZeroCopy& other);
 
-    /// Set the number identifying the start (inclusive) of the range for which
-    /// this object relates to the specified 'value'.
+    /// Set the identifier of the first zero-copy send that completed, 
+    /// inclusive, to the specified 'value'. 
     void setFrom(bsl::uint32_t value);
 
-    /// Set the number identifying the end (inclusive) of the range for which
-    /// this object relates to the specified 'value'.
+    /// Set the identifier of the last zero-copy send that completed, 
+    /// inclusive, to the specified 'value'. 
     void setTo(bsl::uint32_t value);
 
-    /// Set the code describing result of copy avoidance mechanism application
-    /// to the specified value.
+    /// Set the code indicating whether the copy was avoided or was performed
+    /// to the specified 'value'.
     void setCode(bsl::uint8_t value);
 
-    /// Return the number identifying the start (inclusive) of the range for
-    /// which this object relates.
+    /// Return the identifier of the first zero-copy send that completed, 
+    /// inclusive.
     BSLS_ANNOTATION_NODISCARD bsl::uint32_t from() const;
 
-    /// Return the number identifying the end (inclusive) of the range for
-    /// which this object relates.
+    /// Return the identifier of the last zero-copy send that completed, 
+    /// inclusive.
     BSLS_ANNOTATION_NODISCARD bsl::uint32_t to() const;
 
-    /// Return the code describing result of copy avoidance mechanism
-    /// application.
+    /// Return the code indicating whether the copy was avoided or was 
+    /// performed.
     BSLS_ANNOTATION_NODISCARD bsl::uint8_t code() const;
 
     /// Return true if this object has the same value as the specified
@@ -108,17 +101,16 @@ class ZeroCopy
     /// the specified 'other' object, otherwise return false.
     BSLS_ANNOTATION_NODISCARD bool less(const ZeroCopy& other) const;
 
-    /// Format this object to the specified output 'stream' at the
-    /// optionally specified indentation 'level' and return a reference to
-    /// the modifiable 'stream'.  If 'level' is specified, optionally
-    /// specify 'spacesPerLevel', the number of spaces per indentation level
-    /// for this and all of its nested objects.  Each line is indented by
-    /// the absolute value of 'level * spacesPerLevel'.  If 'level' is
-    /// negative, suppress indentation of the first line.  If
-    /// 'spacesPerLevel' is negative, suppress line breaks and format the
-    /// entire output on one line.  If 'stream' is initially invalid, this
-    /// operation has no effect.  Note that a trailing newline is provided
-    /// in multiline mode only.
+    /// Format this object to the specified output 'stream' at the optionally
+    /// specified indentation 'level' and return a reference to the modifiable
+    /// 'stream'.  If 'level' is specified, optionally specify
+    /// 'spacesPerLevel', the number of spaces per indentation level for this
+    /// and all of its nested objects.  Each line is indented by the absolute
+    /// value of 'level * spacesPerLevel'.  If 'level' is negative, suppress
+    /// indentation of the first line.  If 'spacesPerLevel' is negative,
+    /// suppress line breaks and format the entire output on one line.  If
+    /// 'stream' is initially invalid, this operation has no effect.  Note that
+    /// a trailing newline is provided in multiline mode only.
     bsl::ostream& print(bsl::ostream& stream,
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;

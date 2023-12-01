@@ -31,8 +31,8 @@ Notification::Notification(const Notification& original)
         new (d_timestamp.buffer())
             ntsa::Timestamp(original.d_timestamp.object());
         break;
-    case (ntsa::NotificationType::e_MSG_ZEROCOPY):
-        new (d_zerocopy.buffer()) ntsa::ZeroCopy(original.d_zerocopy.object());
+    case (ntsa::NotificationType::e_ZERO_COPY):
+        new (d_zeroCopy.buffer()) ntsa::ZeroCopy(original.d_zeroCopy.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::NotificationType::e_UNDEFINED);
@@ -53,8 +53,8 @@ Notification& Notification::operator=(const Notification& other)
     case (ntsa::NotificationType::e_TIMESTAMP):
         new (d_timestamp.buffer()) ntsa::Timestamp(other.d_timestamp.object());
         break;
-    case (ntsa::NotificationType::e_MSG_ZEROCOPY):
-        new (d_zerocopy.buffer()) ntsa::ZeroCopy(other.d_zerocopy.object());
+    case (ntsa::NotificationType::e_ZERO_COPY):
+        new (d_zeroCopy.buffer()) ntsa::ZeroCopy(other.d_zeroCopy.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::NotificationType::e_UNDEFINED);
@@ -72,8 +72,8 @@ bool Notification::equals(const Notification& other) const
     switch (d_type) {
     case ntsa::NotificationType::e_TIMESTAMP:
         return d_timestamp.object() == other.d_timestamp.object();
-    case ntsa::NotificationType::e_MSG_ZEROCOPY:
-        return d_zerocopy.object() == other.d_zerocopy.object();
+    case ntsa::NotificationType::e_ZERO_COPY:
+        return d_zeroCopy.object() == other.d_zeroCopy.object();
     default:
         return true;
     }
@@ -88,8 +88,8 @@ bool Notification::less(const Notification& other) const
     switch (d_type) {
     case ntsa::NotificationType::e_TIMESTAMP:
         return d_timestamp.object() < other.d_timestamp.object();
-    case ntsa::NotificationType::e_MSG_ZEROCOPY:
-        return d_zerocopy.object() < other.d_zerocopy.object();
+    case ntsa::NotificationType::e_ZERO_COPY:
+        return d_zeroCopy.object() < other.d_zeroCopy.object();
     default:
         return true;
     }
@@ -103,8 +103,8 @@ bsl::ostream& Notification::print(bsl::ostream& stream,
     case ntsa::NotificationType::e_TIMESTAMP:
         d_timestamp.object().print(stream, level, spacesPerLevel);
         break;
-    case ntsa::NotificationType::e_MSG_ZEROCOPY:
-        d_zerocopy.object().print(stream, level, spacesPerLevel);
+    case ntsa::NotificationType::e_ZERO_COPY:
+        d_zeroCopy.object().print(stream, level, spacesPerLevel);
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::NotificationType::e_UNDEFINED);

@@ -128,7 +128,7 @@ NTSCFG_TEST_CASE(6)
     NTSCFG_TEST_TRUE(n.isZeroCopy());
     NTSCFG_TEST_FALSE(n.isUndefined());
     NTSCFG_TEST_FALSE(n.isTimestamp());
-    NTSCFG_TEST_EQ(n.type(), NotificationType::e_MSG_ZEROCOPY);
+    NTSCFG_TEST_EQ(n.type(), NotificationType::e_ZERO_COPY);
 
     zc.setFrom(1);
     zc.setTo(22);

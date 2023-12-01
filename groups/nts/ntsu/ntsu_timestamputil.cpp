@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ntsu_timestamputil.h"
+#include <ntsu_timestamputil.h>
 
 #include <bslmf_assert.h>
 #include <bsls_platform.h>

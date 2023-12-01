@@ -86,15 +86,15 @@ struct SocketOptionType {
         /// Place out-of-band data into the normal incoming data stream.
         e_INLINE_OUT_OF_BAND_DATA = 14,
 
-        /// This option type allows to enable or disable receive timestamps.
+        /// Generate timestamps for incoming data.
         e_RX_TIMESTAMPING = 15,
 
-        /// This option type allows to enable or disable transmit timestamps.
+        /// Generate timestamps for outgoing data.
         e_TX_TIMESTAMPING = 16,
 
-        /// This option type allows or forbids usage of Linux MSG_ZEROCOPY
-        /// mechanism
-        e_MSG_ZEROCOPY = 17
+        /// Allow each send operation to request copy avoidance when enqueing
+        /// data to the socket send buffer.
+        e_ZERO_COPY = 17
     };
 
     /// Return the string representation exactly matching the enumerator

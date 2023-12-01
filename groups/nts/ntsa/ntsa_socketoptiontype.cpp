@@ -43,7 +43,7 @@ int SocketOptionType::fromInt(SocketOptionType::Value* result, int number)
     case SocketOptionType::e_INLINE_OUT_OF_BAND_DATA:
     case SocketOptionType::e_RX_TIMESTAMPING:
     case SocketOptionType::e_TX_TIMESTAMPING:
-    case SocketOptionType::e_MSG_ZEROCOPY:
+    case SocketOptionType::e_ZERO_COPY:
         *result = static_cast<SocketOptionType::Value>(number);
         return 0;
     default:
@@ -123,8 +123,8 @@ int SocketOptionType::fromString(SocketOptionType::Value* result,
         *result = e_TX_TIMESTAMPING;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "MSG_ZEROCOPY")) {
-        *result = e_MSG_ZEROCOPY;
+    if (bdlb::String::areEqualCaseless(string, "ZERO_COPY")) {
+        *result = e_ZERO_COPY;
         return 0;
     }
 
@@ -185,8 +185,8 @@ const char* SocketOptionType::toString(SocketOptionType::Value value)
     case e_TX_TIMESTAMPING: {
         return "TX_TIMESTAMPING";
     } break;
-    case e_MSG_ZEROCOPY: {
-        return "MSG_ZEROCOPY";
+    case e_ZERO_COPY: {
+        return "ZERO_COPY";
     } break;
     }
 

@@ -214,7 +214,7 @@ if (${NTF_BUILD_WITH_NTS})
 
     ntf_component(NAME ntsu_adapterutil)
     ntf_component(NAME ntsu_bufferutil)
-    ntf_component(NAME ntsu_msgzerocopyutil)
+    ntf_component(NAME ntsu_zerocopyutil)
     ntf_component(NAME ntsu_resolverutil)
     ntf_component(NAME ntsu_socketutil)
     ntf_component(NAME ntsu_socketoptionutil)
