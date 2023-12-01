@@ -2243,8 +2243,14 @@ void testDatagramSocketTxTimestampsAndZeroCopy(
     error = ntsu::SocketOptionUtil::setZeroCopy(client, true);
     NTSCFG_TEST_OK(error);
 
-    const int msgSize           = 200;
-    const int numMessagesToSend = 100;
+    // Note that zero-copy requires significantly more resources on the
+    // receiver's side. Sending a large number of bigger datagram may exceed
+    // the receiver's capacity to receive them, resulting in successful sends
+    // but dropped datagrams, resulting in the receiver blocking indefinitely
+    // receiving datagram from the receive buffer.
+
+    const int msgSize           = 100;
+    const int numMessagesToSend = 10;
 
     bsl::vector<char> message(msgSize, allocator);
     for (int i = 0; i < msgSize; ++i) {
