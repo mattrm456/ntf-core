@@ -2265,10 +2265,7 @@ ntsa::Error DatagramSocket::privateOpen(
             option.makeZeroCopy(true);
             error = datagramSocket->setOption(option);
             if (error) {
-                NTCI_LOG_WARN("ZeroCopy was requested but the OS refused to "
-                              "enable it, continue in normal mode");
-                d_options.zeroCopyThreshold() =
-                    bdlb::NullableValue<bsl::size_t>();
+                NTCI_LOG_DEBUG("Zero-copy was requested but not supported");
                 d_zeroCopyThreshold = bsl::numeric_limits<bsl::size_t>::max();
             }
             else {

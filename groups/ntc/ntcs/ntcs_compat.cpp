@@ -316,7 +316,6 @@ void Compat::convert(ntca::StreamSocketOptions*         result,
             options.timestampIncomingData().value());
     }
 
-    //TODO: modify functions below accordingly
     if (!options.zeroCopyThreshold().isNull()) {
         result->setZeroCopyThreshold(options.zeroCopyThreshold().value());
     }
@@ -454,7 +453,6 @@ void Compat::convert(ntca::ListenerSocketOptions*     result,
     result->setLoadBalancingOptions(options.loadBalancingOptions());
 }
 
-//TODO: timestamping? ZeroCopy?
 void Compat::convert(ntca::DatagramSocketOptions*       result,
                      const ntca::DatagramSocketOptions& options,
                      const ntca::InterfaceConfig&       config)
@@ -533,6 +531,26 @@ void Compat::convert(ntca::DatagramSocketOptions*       result,
     if (result->receiveTimeout().isNull()) {
         if (!config.receiveTimeout().isNull()) {
             result->setReceiveTimeout(config.receiveTimeout().value());
+        }
+    }
+
+    if (result->timestampOutgoingData().isNull()) {
+        if (!config.timestampOutgoingData().isNull()) {
+            result->setTimestampOutgoingData(
+                config.timestampOutgoingData().value());
+        }
+    }
+
+    if (result->timestampIncomingData().isNull()) {
+        if (!config.timestampIncomingData().isNull()) {
+            result->setTimestampIncomingData(
+                config.timestampIncomingData().value());
+        }
+    }
+
+    if (result->zeroCopyThreshold().isNull()) {
+        if (!config.zeroCopyThreshold().isNull()) {
+            result->setZeroCopyThreshold(config.zeroCopyThreshold().value());
         }
     }
 
@@ -726,6 +744,26 @@ void Compat::convert(ntca::ListenerSocketOptions*       result,
         }
     }
 
+    if (result->timestampOutgoingData().isNull()) {
+        if (!config.timestampOutgoingData().isNull()) {
+            result->setTimestampOutgoingData(
+                config.timestampOutgoingData().value());
+        }
+    }
+
+    if (result->timestampIncomingData().isNull()) {
+        if (!config.timestampIncomingData().isNull()) {
+            result->setTimestampIncomingData(
+                config.timestampIncomingData().value());
+        }
+    }
+
+    if (result->zeroCopyThreshold().isNull()) {
+        if (!config.zeroCopyThreshold().isNull()) {
+            result->setZeroCopyThreshold(config.zeroCopyThreshold().value());
+        }
+    }
+
     if (result->keepAlive().isNull()) {
         if (!config.keepAlive().isNull()) {
             result->setKeepAlive(config.keepAlive().value());
@@ -887,6 +925,26 @@ void Compat::convert(ntca::StreamSocketOptions*       result,
     if (result->receiveTimeout().isNull()) {
         if (!config.receiveTimeout().isNull()) {
             result->setReceiveTimeout(config.receiveTimeout().value());
+        }
+    }
+
+    if (result->timestampOutgoingData().isNull()) {
+        if (!config.timestampOutgoingData().isNull()) {
+            result->setTimestampOutgoingData(
+                config.timestampOutgoingData().value());
+        }
+    }
+
+    if (result->timestampIncomingData().isNull()) {
+        if (!config.timestampIncomingData().isNull()) {
+            result->setTimestampIncomingData(
+                config.timestampIncomingData().value());
+        }
+    }
+
+    if (result->zeroCopyThreshold().isNull()) {
+        if (!config.zeroCopyThreshold().isNull()) {
+            result->setZeroCopyThreshold(config.zeroCopyThreshold().value());
         }
     }
 
