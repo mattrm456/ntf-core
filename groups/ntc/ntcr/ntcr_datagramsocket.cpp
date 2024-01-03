@@ -402,6 +402,11 @@ ntsa::Error DatagramSocket::privateTimestampOutgoingData(
         return ntsa::Error();
     }
 
+    if (!d_socket_sp) {
+        d_options.setTimestampOutgoingData(enable);
+        return ntsa::Error();
+    }
+
     if (enable) {
         ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
         if (!reactorRef || !reactorRef->supportsNotifications()) {
@@ -413,9 +418,9 @@ ntsa::Error DatagramSocket::privateTimestampOutgoingData(
 
         error = d_socket_sp->setOption(option);
         if (error) {
-            NTCI_LOG_ERROR(
-                "Failed to enable timestamping of outgoing data: %s",
-                error.text().c_str());
+            NTCI_LOG_DEBUG("Failed to set socket option: "
+                           "timestamp outgoing data: %s",
+                           error.text().c_str());
             return error;
         }
 
@@ -428,14 +433,57 @@ ntsa::Error DatagramSocket::privateTimestampOutgoingData(
 
         error = d_socket_sp->setOption(option);
         if (error) {
-            NTCI_LOG_ERROR(
-                "Failed to disable timestamping of outgoing data: %s",
-                error.text().c_str());
+            NTCI_LOG_DEBUG("Failed to set socket option: "
+                           "timestamp outgoing data: %s",
+                           error.text().c_str());
+            return error;
         }
 
         d_timestampOutgoingData = false;
         d_timestampCounter      = 0;
         d_timestampCorrelator.reset();
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DatagramSocket::privateTimestampIncomingData(
+        const bsl::shared_ptr<DatagramSocket>& self,
+        bool                                   enable)
+{
+    NTCI_LOG_CONTEXT();
+
+    NTCCFG_WARNING_UNUSED(self);
+
+    ntsa::Error error;
+
+    if (d_timestampIncomingData == enable) {
+        return ntsa::Error();
+    }
+
+    if (!d_socket_sp) {
+        d_options.setTimestampIncomingData(enable);
+        return ntsa::Error();
+    }
+
+    ntsa::SocketOption option;
+    option.makeTimestampIncomingData(enable);
+    error = d_socket_sp->setOption(option);
+    if (error) {
+        NTCI_LOG_DEBUG("Failed to set socket option: "
+                       "timestamp incoming data: %s",
+                       error.text().c_str());
+        return error;
+    }
+
+    d_options.setTimestampIncomingData(enable);
+    d_timestampIncomingData = enable;
+    
+    if (enable) {
+        d_receiveOptions.showTimestamp();
+    }
+    else {
+        d_receiveOptions.hideTimestamp();
     }
 
     return ntsa::Error();
@@ -2343,7 +2391,8 @@ ntsa::Error DatagramSocket::privateOpen(
             option.makeZeroCopy(true);
             error = datagramSocket->setOption(option);
             if (error) {
-                NTCI_LOG_DEBUG("Zero-copy was requested but not supported");
+                NTCI_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
+                                error.text().c_str());
                 d_zeroCopyThreshold = bsl::numeric_limits<bsl::size_t>::max();
             }
             else {
@@ -4046,6 +4095,8 @@ ntsa::Error DatagramSocket::deregisterSession()
 
 ntsa::Error DatagramSocket::setZeroCopyThreshold(bsl::size_t value)
 {
+    NTCI_LOG_CONTEXT();
+
     ntsa::Error error;
 
     bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
@@ -4056,19 +4107,20 @@ ntsa::Error DatagramSocket::setZeroCopyThreshold(bsl::size_t value)
     }
 
     ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
-    if (reactorRef) {
-        if (!reactorRef->supportsNotifications()) {
-            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-        }
-    }
-    else {
+    if (!reactorRef) {
         return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!reactorRef->supportsNotifications()) {
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
 
     ntsa::SocketOption option;
     option.makeZeroCopy(true);
     error = d_socket_sp->setOption(option);
     if (error) {
+        NTCI_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
+                       error.text().c_str());
         return error;
     }
 
@@ -4432,20 +4484,11 @@ ntsa::Error DatagramSocket::timestampOutgoingData(bool enable)
 
 ntsa::Error DatagramSocket::timestampIncomingData(bool enable)
 {
+    bsl::shared_ptr<DatagramSocket> self = this->getSelf(this);
+
     bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
 
-    d_timestampIncomingData = enable;
-    
-    if (d_timestampIncomingData) {
-        d_receiveOptions.showTimestamp();
-    }
-    else {
-        d_receiveOptions.hideTimestamp();
-    }
-
-    // MRM: Set socket option.
-
-    return ntsa::Error();
+    return privateTimestampIncomingData(self, enable);
 }
 
 ntsa::Error DatagramSocket::relaxFlowControl(

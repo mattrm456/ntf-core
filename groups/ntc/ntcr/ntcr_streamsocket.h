@@ -528,6 +528,12 @@ class StreamSocket : public ntci::StreamSocket,
         const bsl::shared_ptr<StreamSocket>& self,
         bool                                 enable);
 
+    /// Enable or disable timestamping of incoming data according to the 
+    /// specified 'enable' flag. Return the error.
+    ntsa::Error privateTimestampIncomingData(
+        const bsl::shared_ptr<StreamSocket>& self,
+        bool                                 enable);
+
     /// Process the detection of the specified outgoing data 'timestamp'.
     void privateTimestampUpdate(
             const bsl::shared_ptr<StreamSocket>& self,
