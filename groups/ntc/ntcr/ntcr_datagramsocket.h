@@ -95,26 +95,30 @@ class DatagramSocket : public ntci::DatagramSocket,
     bsl::shared_ptr<ntcs::Metrics>               d_metrics_sp;
     ntcs::FlowControlState                       d_flowControlState;
     ntcs::ShutdownState                          d_shutdownState;
-    ntcq::SendQueue                              d_sendQueue;
     ntcq::ZeroCopyWaitList                       d_zeroCopyList;
     bsl::size_t                                  d_zeroCopyThreshold;
+    ntcq::SendQueue                              d_sendQueue;
     bsl::shared_ptr<ntci::RateLimiter>           d_sendRateLimiter_sp;
     bsl::shared_ptr<ntci::Timer>                 d_sendRateTimer_sp;
     bool                                         d_sendGreedily;
+    ntsa::ReceiveOptions                         d_receiveOptions;
     ntcq::ReceiveQueue                           d_receiveQueue;
     bsl::shared_ptr<ntci::RateLimiter>           d_receiveRateLimiter_sp;
     bsl::shared_ptr<ntci::Timer>                 d_receiveRateTimer_sp;
     bool                                         d_receiveGreedily;
     bsl::shared_ptr<bdlbb::Blob>                 d_receiveBlob_sp;
+    bool                                         d_timestampOutgoingData;
+    bool                                         d_timestampIncomingData;
+    ntcu::TimestampCorrelator                    d_timestampCorrelator;
+    bsl::uint32_t                                d_timestampCounter;
     bsl::size_t                                  d_maxDatagramSize;
     const bool                                   d_oneShot;
-    bool                                         d_timestampOutgoingData;
-    ntca::DatagramSocketOptions                  d_options;
-    ntcu::TimestampCorrelator                    d_timestampCorrelator;
-    bsl::uint32_t                                d_dgramTsIdCounter;
     ntcs::DetachState                            d_detachState;
     ntci::CloseCallback                          d_closeCallback;
     ntci::Executor::FunctorSequence              d_deferredCalls;
+    bsl::size_t                                  d_totalBytesSent;
+    bsl::size_t                                  d_totalBytesReceived;
+    ntca::DatagramSocketOptions                  d_options;
     bslma::Allocator*                            d_allocator_p;
 
   private:
@@ -854,6 +858,10 @@ class DatagramSocket : public ntci::DatagramSocket,
     /// Return the error.
     ntsa::Error deregisterSession() BSLS_KEYWORD_OVERRIDE;
 
+    /// Set the minimum number of bytes that must be available to send in order
+    /// to attempt a zero-copy send to the specified 'value'. Return the error.
+    ntsa::Error setZeroCopyThreshold(bsl::size_t value) BSLS_KEYWORD_OVERRIDE;
+
     /// Set the write rate limiter to the specified 'rateLimiter'. Return
     /// the error.
     ntsa::Error setWriteRateLimiter(const bsl::shared_ptr<ntci::RateLimiter>&
@@ -930,6 +938,11 @@ class DatagramSocket : public ntci::DatagramSocket,
     /// successful (though it does not guarantee that transmit timestamps would
     /// be generated). Otherwise return false.
     ntsa::Error timestampOutgoingData(bool enable) BSLS_KEYWORD_OVERRIDE;
+
+    /// Request the implementation to start timestamping incoming data if the
+    /// specified 'enable' flag is true. Otherwise, request the implementation
+    /// to stop timestamping outgoing data. Return the error.
+    ntsa::Error timestampIncomingData(bool enable) BSLS_KEYWORD_OVERRIDE;
 
     /// Enable copying from the socket buffers in the specified 'direction'.
     ntsa::Error relaxFlowControl(ntca::FlowControlType::Value direction)

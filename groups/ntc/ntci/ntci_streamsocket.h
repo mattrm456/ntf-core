@@ -1463,6 +1463,10 @@ class StreamSocket : public ntsi::Descriptor,
     /// Return the error.
     virtual ntsa::Error deregisterSession() = 0;
 
+    /// Set the minimum number of bytes that must be available to send in order
+    /// to attempt a zero-copy send to the specified 'value'. Return the error.
+    virtual ntsa::Error setZeroCopyThreshold(bsl::size_t value);
+
     /// Set the write rate limiter to the specified 'rateLimiter'. Return
     /// the error.
     virtual ntsa::Error setWriteRateLimiter(
@@ -1506,6 +1510,11 @@ class StreamSocket : public ntsi::Descriptor,
     /// specified 'enable' flag is true. Otherwise, request the implementation
     /// to stop timestamping outgoing data. Return the error.
     virtual ntsa::Error timestampOutgoingData(bool enable);
+
+    /// Request the implementation to start timestamping incoming data if the
+    /// specified 'enable' flag is true. Otherwise, request the implementation
+    /// to stop timestamping outgoing data. Return the error.
+    virtual ntsa::Error timestampIncomingData(bool enable);
 
     /// Enable copying from the socket buffers in the specified 'direction'.
     /// Return the error.

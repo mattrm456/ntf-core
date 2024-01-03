@@ -420,7 +420,7 @@ ntsa::Error DatagramSocket::privateTimestampOutgoingData(
         }
 
         d_timestampOutgoingData = true;
-        d_dgramTsIdCounter      = 0;
+        d_timestampCounter      = 0;
     }
     else {
         ntsa::SocketOption option;
@@ -434,7 +434,7 @@ ntsa::Error DatagramSocket::privateTimestampOutgoingData(
         }
 
         d_timestampOutgoingData = false;
-        d_dgramTsIdCounter      = 0;
+        d_timestampCounter      = 0;
         d_timestampCorrelator.reset();
     }
 
@@ -873,7 +873,7 @@ ntsa::Error DatagramSocket::privateSocketWritableIteration(
             ntcq::ZeroCopyEntry zeroCopyEntry;
             if (callbackEntry) {
                 callbackEntry->clearTimer();
-                zeroCopyEntry.setCallback(callbackEntry->callback());
+                zeroCopyEntry.addCallback(callbackEntry->callback());
             }
             zeroCopyEntry.setData(data);
             d_zeroCopyList.addEntry(zeroCopyEntry);
@@ -1769,14 +1769,16 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
 
         options.setEndpoint(endpoint.value());
 
-        if (static_cast<bsl::size_t>(data.totalSize()) >= d_zeroCopyThreshold)
+        if (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold)
         {
             options.setZeroCopy(true);
         }
 
-        const bsls::TimeInterval ts = d_timestampOutgoingData
-                                          ? this->currentTime()
-                                          : bsls::TimeInterval();
+        bsls::TimeInterval timestamp;
+        if (d_timestampOutgoingData) {
+            timestamp = this->currentTime();
+        }
+
         error = d_socket_sp->send(&context, data, options);
         if (NTCCFG_UNLIKELY(error)) {
             if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
@@ -1788,10 +1790,11 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
                 return error;
             }
         }
+
         if (d_timestampOutgoingData) {
-            d_timestampCorrelator.saveTimestampBeforeSend(ts,
-                                                          d_dgramTsIdCounter);
-            ++d_dgramTsIdCounter;
+            d_timestampCorrelator.saveTimestampBeforeSend(timestamp,
+                                                          d_timestampCounter);
+            ++d_timestampCounter;
         }
 
         if (d_sourceEndpoint.isUndefined()) {
@@ -1807,6 +1810,8 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
 
         NTCR_DATAGRAMSOCKET_LOG_SEND_RESULT(context);
         NTCS_METRICS_UPDATE_SEND_COMPLETE(context);
+
+        d_totalBytesSent += context.bytesSent();
 
         return ntsa::Error();
     }
@@ -1817,13 +1822,17 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
 
         ntsa::SendContext context;
         ntsa::SendOptions options;
-        if (static_cast<bsl::size_t>(data.totalSize()) >= d_zeroCopyThreshold)
+
+        if (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold)
         {
             options.setZeroCopy(true);
         }
-        const bsls::TimeInterval ts = d_timestampOutgoingData
-                                          ? this->currentTime()
-                                          : bsls::TimeInterval();
+
+        bsls::TimeInterval timestamp;
+        if (d_timestampOutgoingData) {
+            timestamp = this->currentTime();
+        }
+
         error = d_socket_sp->send(&context, data, options);
         if (NTCCFG_UNLIKELY(error)) {
             if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
@@ -1835,10 +1844,11 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
                 return error;
             }
         }
+
         if (d_timestampOutgoingData) {
-            d_timestampCorrelator.saveTimestampBeforeSend(ts,
-                                                          d_dgramTsIdCounter);
-            ++d_dgramTsIdCounter;
+            d_timestampCorrelator.saveTimestampBeforeSend(timestamp,
+                                                          d_timestampCounter);
+            ++d_timestampCounter;
         }
 
         if (d_sourceEndpoint.isUndefined()) {
@@ -1854,6 +1864,8 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
 
         NTCR_DATAGRAMSOCKET_LOG_SEND_RESULT(context);
         NTCS_METRICS_UPDATE_SEND_COMPLETE(context);
+
+        d_totalBytesSent += context.bytesSent();
 
         return ntsa::Error();
     }
@@ -1890,9 +1902,11 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
             options.setZeroCopy(true);
         }
 
-        const bsls::TimeInterval ts = d_timestampOutgoingData
-                                          ? this->currentTime()
-                                          : bsls::TimeInterval();
+        bsls::TimeInterval timestamp;
+        if (d_timestampOutgoingData) {
+            timestamp = this->currentTime();
+        }
+
         error = d_socket_sp->send(&context, data, options);
         if (NTCCFG_UNLIKELY(error)) {
             if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
@@ -1904,10 +1918,11 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
                 return error;
             }
         }
+
         if (d_timestampOutgoingData) {
-            d_timestampCorrelator.saveTimestampBeforeSend(ts,
-                                                          d_dgramTsIdCounter);
-            ++d_dgramTsIdCounter;
+            d_timestampCorrelator.saveTimestampBeforeSend(timestamp,
+                                                          d_timestampCounter);
+            ++d_timestampCounter;
         }
 
         if (d_sourceEndpoint.isUndefined()) {
@@ -1923,6 +1938,8 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
 
         NTCR_DATAGRAMSOCKET_LOG_SEND_RESULT(context);
         NTCS_METRICS_UPDATE_SEND_COMPLETE(context);
+
+        d_totalBytesSent += context.bytesSent();
 
         return ntsa::Error();
     }
@@ -1931,16 +1948,19 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
             return ntsa::Error::invalid();
         }
 
-        const bsls::TimeInterval ts = d_timestampOutgoingData
-                                          ? this->currentTime()
-                                          : bsls::TimeInterval();
-        ntsa::SendContext        context;
-        ntsa::SendOptions        options;
+        ntsa::SendContext context;
+        ntsa::SendOptions options;
+
         if (data.size() >= d_zeroCopyThreshold) {
             options.setZeroCopy(true);
         }
-        error = d_socket_sp->send(&context, data, options);
 
+        bsls::TimeInterval timestamp;
+        if (d_timestampOutgoingData) {
+            timestamp = this->currentTime();
+        }
+
+        error = d_socket_sp->send(&context, data, options);
         if (NTCCFG_UNLIKELY(error)) {
             if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
                 NTCR_DATAGRAMSOCKET_LOG_SEND_BUFFER_OVERFLOW();
@@ -1951,10 +1971,11 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
                 return error;
             }
         }
+
         if (d_timestampOutgoingData) {
-            d_timestampCorrelator.saveTimestampBeforeSend(ts,
-                                                          d_dgramTsIdCounter);
-            ++d_dgramTsIdCounter;
+            d_timestampCorrelator.saveTimestampBeforeSend(timestamp,
+                                                          d_timestampCounter);
+            ++d_timestampCounter;
         }
 
         if (d_sourceEndpoint.isUndefined()) {
@@ -1970,6 +1991,8 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
 
         NTCR_DATAGRAMSOCKET_LOG_SEND_RESULT(context);
         NTCS_METRICS_UPDATE_SEND_COMPLETE(context);
+
+        d_totalBytesSent += context.bytesSent();
 
         return ntsa::Error();
     }
@@ -1997,13 +2020,8 @@ ntsa::Error DatagramSocket::privateDequeueReceiveBuffer(
     }
 
     if (NTCCFG_LIKELY(d_remoteEndpoint.isUndefined())) {
-        ntsa::ReceiveOptions opts;
-        if (d_options.timestampIncomingData().value_or(false)) {
-            opts.showTimestamp();
-        }
         ntsa::ReceiveContext context;
-
-        error = d_socket_sp->receive(&context, data, opts);
+        error = d_socket_sp->receive(&context, data, d_receiveOptions);
         if (NTCCFG_UNLIKELY(error)) {
             if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
                 NTCR_DATAGRAMSOCKET_LOG_RECEIVE_BUFFER_UNDERFLOW();
@@ -2015,7 +2033,7 @@ ntsa::Error DatagramSocket::privateDequeueReceiveBuffer(
             }
         }
 
-        if (opts.wantTimestamp()) {
+        if (d_receiveOptions.wantTimestamp()) {
             const bdlb::NullableValue<bsls::TimeInterval>& softwareTs =
                 context.softwareTimestamp();
             const bdlb::NullableValue<bsls::TimeInterval>& hardwareTs =
@@ -2055,15 +2073,13 @@ ntsa::Error DatagramSocket::privateDequeueReceiveBuffer(
         BSLS_ASSERT(NTCCFG_WARNING_PROMOTE(bsl::size_t, data->length()) ==
                     context.bytesReceived());
 
+        d_totalBytesReceived += context.bytesReceived();
+
         return ntsa::Error();
     }
     else {
-        ntsa::ReceiveOptions opts;
-        if (d_options.timestampIncomingData().value_or(false)) {
-            opts.showTimestamp();
-        }
         ntsa::ReceiveContext context;
-        error = d_socket_sp->receive(&context, data, opts);
+        error = d_socket_sp->receive(&context, data, d_receiveOptions);
         if (NTCCFG_UNLIKELY(error)) {
             if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
                 NTCR_DATAGRAMSOCKET_LOG_RECEIVE_BUFFER_UNDERFLOW();
@@ -2075,7 +2091,7 @@ ntsa::Error DatagramSocket::privateDequeueReceiveBuffer(
             }
         }
 
-        if (opts.wantTimestamp()) {
+        if (d_receiveOptions.wantTimestamp()) {
             const bdlb::NullableValue<bsls::TimeInterval>& softwareTs =
                 context.softwareTimestamp();
             const bdlb::NullableValue<bsls::TimeInterval>& hardwareTs =
@@ -2113,6 +2129,8 @@ ntsa::Error DatagramSocket::privateDequeueReceiveBuffer(
         BSLS_ASSERT(NTCCFG_WARNING_PROMOTE(bsl::size_t, data->length()) ==
                     context.bytesReceived());
         *endpoint = d_remoteEndpoint;
+
+        d_totalBytesReceived += context.bytesReceived();
 
         return ntsa::Error();
     }
@@ -2595,27 +2613,31 @@ DatagramSocket::DatagramSocket(
 , d_metrics_sp()
 , d_flowControlState()
 , d_shutdownState()
-, d_sendQueue(basicAllocator)
 , d_zeroCopyList(basicAllocator)
 , d_zeroCopyThreshold(bsl::numeric_limits<bsl::size_t>::max())
+, d_sendQueue(basicAllocator)
 , d_sendRateLimiter_sp()
 , d_sendRateTimer_sp()
 , d_sendGreedily(NTCCFG_DEFAULT_DATAGRAM_SOCKET_WRITE_GREEDILY)
+, d_receiveOptions()
 , d_receiveQueue(basicAllocator)
 , d_receiveRateLimiter_sp()
 , d_receiveRateTimer_sp()
 , d_receiveGreedily(NTCCFG_DEFAULT_DATAGRAM_SOCKET_READ_GREEDILY)
 , d_receiveBlob_sp()
-, d_maxDatagramSize(NTCCFG_DEFAULT_DATAGRAM_SOCKET_MAX_MESSAGE_SIZE)
-, d_oneShot(reactor->oneShot())
 , d_timestampOutgoingData(false)
-, d_options(options)
+, d_timestampIncomingData(false)
 , d_timestampCorrelator(ntsa::TransportMode::e_DATAGRAM,
                         bslma::Default::allocator(basicAllocator))
-, d_dgramTsIdCounter(0)
+, d_timestampCounter(0)
+, d_maxDatagramSize(NTCCFG_DEFAULT_DATAGRAM_SOCKET_MAX_MESSAGE_SIZE)
+, d_oneShot(reactor->oneShot())
 , d_detachState(ntcs::DetachState::e_DETACH_IDLE)
 , d_closeCallback(bslma::Default::allocator(basicAllocator))
 , d_deferredCalls(bslma::Default::allocator(basicAllocator))
+, d_totalBytesSent(0)
+, d_totalBytesReceived(0)
+, d_options(options)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
     if (reactor->maxThreads() > 1) {
@@ -2688,6 +2710,16 @@ DatagramSocket::DatagramSocket(
     }
     else {
         d_metrics_sp = metrics;
+    }
+
+    d_timestampIncomingData = 
+        d_options.timestampIncomingData().value_or(false);
+    
+    if (d_timestampIncomingData) {
+        d_receiveOptions.showTimestamp();
+    }
+    else {
+        d_receiveOptions.hideTimestamp();
     }
 }
 
@@ -3027,12 +3059,11 @@ ntsa::Error DatagramSocket::send(const bdlbb::Blob&       data,
             }
         }
         else {
-            // MSG_ZEROCOPY_DEV
-            if (static_cast<bsl::size_t>(data.totalSize()) >=
-                d_zeroCopyThreshold)
+            // MRM: MSG_ZEROCOPY_DEV
+            if (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold)
             {
                 ntcq::ZeroCopyEntry zeroCopyEntry;
-                //no callback, no sendContext....
+                // MRM: no callback, no sendContext....
 
                 bsl::shared_ptr<ntsa::Data> dataContainer =
                     d_dataPool_sp->createOutgoingData();
@@ -3305,8 +3336,7 @@ ntsa::Error DatagramSocket::send(const bdlbb::Blob&        data,
             }
         }
         else {
-            if (static_cast<bsl::size_t>(data.totalSize()) <
-                d_zeroCopyThreshold)
+            if (static_cast<bsl::size_t>(data.length()) < d_zeroCopyThreshold)
             {
                 ntca::SendContext sendContext;
 
@@ -3324,11 +3354,11 @@ ntsa::Error DatagramSocket::send(const bdlbb::Blob&        data,
                                                        defer,
                                                        &d_mutex);
 
-                // MSG_ZEROCOPY_DE
+                // MRM: MSG_ZEROCOPY_DE
             }
             else {
                 ntcq::ZeroCopyEntry zeroCopyEntry;
-                zeroCopyEntry.setCallback(callback);
+                zeroCopyEntry.addCallback(callback);
 
                 bsl::shared_ptr<ntsa::Data> dataContainer =
                     d_dataPool_sp->createOutgoingData();
@@ -3490,7 +3520,7 @@ ntsa::Error DatagramSocket::send(const ntsa::Data&         data,
             // MSG_ZEROCOPY_DEV
             else {
                 ntcq::ZeroCopyEntry zeroCopyEntry;
-                zeroCopyEntry.setCallback(callback);
+                zeroCopyEntry.addCallback(callback);
 
                 bsl::shared_ptr<ntsa::Data> dataContainer =
                     d_dataPool_sp->createOutgoingData();
@@ -4013,6 +4043,41 @@ ntsa::Error DatagramSocket::deregisterSession()
     return ntsa::Error();
 }
 
+
+ntsa::Error DatagramSocket::setZeroCopyThreshold(bsl::size_t value)
+{
+    ntsa::Error error;
+
+    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
+
+    if (!d_socket_sp) {
+        d_options.setZeroCopyThreshold(value);
+        return ntsa::Error();
+    }
+
+    ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
+    if (reactorRef) {
+        if (!reactorRef->supportsNotifications()) {
+            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    ntsa::SocketOption option;
+    option.makeZeroCopy(true);
+    error = d_socket_sp->setOption(option);
+    if (error) {
+        return error;
+    }
+
+    d_options.setZeroCopyThreshold(value);
+    d_zeroCopyThreshold = value;
+
+    return ntsa::Error();
+}
+
 ntsa::Error DatagramSocket::setWriteRateLimiter(
     const bsl::shared_ptr<ntci::RateLimiter>& rateLimiter)
 {
@@ -4363,6 +4428,24 @@ ntsa::Error DatagramSocket::timestampOutgoingData(bool enable)
     bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
 
     return privateTimestampOutgoingData(self, enable);
+}
+
+ntsa::Error DatagramSocket::timestampIncomingData(bool enable)
+{
+    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
+
+    d_timestampIncomingData = enable;
+    
+    if (d_timestampIncomingData) {
+        d_receiveOptions.showTimestamp();
+    }
+    else {
+        d_receiveOptions.hideTimestamp();
+    }
+
+    // MRM: Set socket option.
+
+    return ntsa::Error();
 }
 
 ntsa::Error DatagramSocket::relaxFlowControl(
@@ -4760,14 +4843,14 @@ bsl::size_t DatagramSocket::writeQueueHighWatermark() const
 
 bsl::size_t DatagramSocket::totalBytesSent() const
 {
-    // TODO
-    return 0;
+    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
+    return d_totalBytesSent;
 }
 
 bsl::size_t DatagramSocket::totalBytesReceived() const
 {
-    // TODO
-    return 0;
+    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
+    return d_totalBytesReceived;
 }
 
 bsls::TimeInterval DatagramSocket::currentTime() const

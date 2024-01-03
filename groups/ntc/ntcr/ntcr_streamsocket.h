@@ -108,16 +108,14 @@ class StreamSocket : public ntci::StreamSocket,
     ntcs::OpenState                            d_openState;
     ntcs::FlowControlState                     d_flowControlState;
     ntcs::ShutdownState                        d_shutdownState;
-    ntsa::SendOptions                          d_sendOptions;
-    ntcq::SendQueue                            d_sendQueue;
     ntcq::ZeroCopyWaitList                     d_zeroCopyList;
     bsl::size_t                                d_zeroCopyThreshold;
-//    bool                                       d_limitDueToZeroCopy;
+    ntsa::SendOptions                          d_sendOptions;
+    ntcq::SendQueue                            d_sendQueue;
     bsl::shared_ptr<ntci::RateLimiter>         d_sendRateLimiter_sp;
     bsl::shared_ptr<ntci::Timer>               d_sendRateTimer_sp;
     bool                                       d_sendGreedily;
     bsl::uint64_t                              d_sendCount;
-    bsl::size_t                                d_totalBytesSent;
     bsl::shared_ptr<ntsa::Data>                d_sendData_sp;
     ntsa::ReceiveOptions                       d_receiveOptions;
     ntcq::ReceiveQueue                         d_receiveQueue;
@@ -140,15 +138,18 @@ class StreamSocket : public ntci::StreamSocket,
     ntci::UpgradeCallback                      d_upgradeCallback;
     bsl::shared_ptr<ntci::Timer>               d_upgradeTimer_sp;
     bool                                       d_upgradeInProgress;
-    const bool                                 d_oneShot;
     bool                                       d_timestampOutgoingData;
-    ntca::StreamSocketOptions                  d_options;
+    bool                                       d_timestampIncomingData;
     ntcu::TimestampCorrelator                  d_timestampCorrelator;
-    bsl::uint32_t                              d_totalBytesSentTimestamped;
+    bsl::uint32_t                              d_timestampCounter;
+    const bool                                 d_oneShot;
     bool                                       d_retryConnect;
     ntcs::DetachState                          d_detachState;
     ntci::CloseCallback                        d_closeCallback;
     ntci::Executor::FunctorSequence            d_deferredCalls;
+    bsl::size_t                                d_totalBytesSent;
+    bsl::size_t                                d_totalBytesReceived;
+    ntca::StreamSocketOptions                  d_options;
     bslma::Allocator*                          d_allocator_p;
 
   private:
@@ -1111,6 +1112,10 @@ class StreamSocket : public ntci::StreamSocket,
     /// Return the error.
     ntsa::Error deregisterSession() BSLS_KEYWORD_OVERRIDE;
 
+    /// Set the minimum number of bytes that must be available to send in order
+    /// to attempt a zero-copy send to the specified 'value'. Return the error.
+    ntsa::Error setZeroCopyThreshold(bsl::size_t value) BSLS_KEYWORD_OVERRIDE;
+
     /// Set the write rate limiter to the specified 'rateLimiter'. Return
     /// the error.
     ntsa::Error setWriteRateLimiter(const bsl::shared_ptr<ntci::RateLimiter>&
@@ -1157,6 +1162,11 @@ class StreamSocket : public ntci::StreamSocket,
     /// specified 'enable' flag is true. Otherwise, request the implementation
     /// to stop timestamping outgoing data. Return the error.
     ntsa::Error timestampOutgoingData(bool enable) BSLS_KEYWORD_OVERRIDE;
+
+    /// Request the implementation to start timestamping incoming data if the
+    /// specified 'enable' flag is true. Otherwise, request the implementation
+    /// to stop timestamping outgoing data. Return the error.
+    ntsa::Error timestampIncomingData(bool enable) BSLS_KEYWORD_OVERRIDE;
 
     /// Enable copying from the socket buffers in the specified 'direction'.
     ntsa::Error relaxFlowControl(ntca::FlowControlType::Value direction)
