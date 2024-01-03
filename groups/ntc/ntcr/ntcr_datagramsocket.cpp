@@ -18,8 +18,6 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntcr_datagramsocket_cpp, "$Id$ $CSID$")
 
-#define FORCE_ZEROCOPY false
-
 #include <ntccfg_limits.h>
 #include <ntci_log.h>
 #include <ntci_monitorable.h>
@@ -368,32 +366,87 @@ void DatagramSocket::processNotifications(
     NTCI_LOG_CONTEXT_GUARD_DESCRIPTOR(d_publicHandle);
     NTCI_LOG_CONTEXT_GUARD_SOURCE_ENDPOINT(d_sourceEndpoint);
 
-    const bsl::vector<ntsa::Notification>& nots =
-        notifications.notifications();
+    typedef bsl::vector<ntsa::Notification>::const_iterator 
+    NotificationIterator;
 
-    for (size_t i = 0; i < nots.size(); ++i) {
-        const ntsa::Notification& notification = nots[i];
-        switch (notification.type()) {
-        case (ntsa::NotificationType::e_ZERO_COPY): {
-            d_zeroCopyList.zeroCopyAcknowledge(notification.zeroCopy(),
-                                               self,
-                                               self);
-        } break;
-        case (ntsa::NotificationType::e_TIMESTAMP): {
+    NotificationIterator it = notifications.notifications().begin();
+    NotificationIterator et = notifications.notifications().end();
+
+    for (; it != et; ++it) {
+        const ntsa::Notification& notification = *it;
+
+        if (notification.isZeroCopy()) {
+            this->privateZeroCopyUpdate(self, notification.zeroCopy());
+        }
+        else if (notification.isTimestamp()) {
             if (d_timestampOutgoingData) {
-                processTimestampNotification(notification.timestamp());
+                this->privateTimestampUpdate(self, notification.timestamp());
             }
-        } break;
-        default:;
         }
     }
 
     this->privateRearmAfterNotification(self);
 }
 
-void DatagramSocket::processTimestampNotification(
-    const ntsa::Timestamp& timestamp)
+ntsa::Error DatagramSocket::privateTimestampOutgoingData(
+        const bsl::shared_ptr<DatagramSocket>& self,
+        bool                                   enable)
 {
+    NTCCFG_WARNING_UNUSED(self);
+
+    NTCI_LOG_CONTEXT();
+
+    ntsa::Error error;
+
+    if (d_timestampOutgoingData == enable) {
+        return ntsa::Error();
+    }
+
+    if (enable) {
+        ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
+        if (!reactorRef || !reactorRef->supportsNotifications()) {
+            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        }
+
+        ntsa::SocketOption option;
+        option.makeTimestampOutgoingData(true);
+
+        error = d_socket_sp->setOption(option);
+        if (error) {
+            NTCI_LOG_ERROR(
+                "Failed to enable timestamping of outgoing data: %s",
+                error.text().c_str());
+            return error;
+        }
+
+        d_timestampOutgoingData = true;
+        d_dgramTsIdCounter      = 0;
+    }
+    else {
+        ntsa::SocketOption option;
+        option.makeTimestampOutgoingData(false);
+
+        error = d_socket_sp->setOption(option);
+        if (error) {
+            NTCI_LOG_ERROR(
+                "Failed to disable timestamping of outgoing data: %s",
+                error.text().c_str());
+        }
+
+        d_timestampOutgoingData = false;
+        d_dgramTsIdCounter      = 0;
+        d_timestampCorrelator.reset();
+    }
+
+    return ntsa::Error();
+}
+
+void DatagramSocket::privateTimestampUpdate(
+        const bsl::shared_ptr<DatagramSocket>& self,
+        const ntsa::Timestamp&                 timestamp)
+{
+    NTCCFG_WARNING_UNUSED(self);
+
 #if NTCR_DATAGRAMSOCKET_TRACE_TIMESTAMPS
     NTCI_LOG_CONTEXT();
 #endif
@@ -420,6 +473,13 @@ void DatagramSocket::processTimestampNotification(
     else {
         NTCR_DATAGRAMSOCKET_LOG_FAILED_TO_CORRELATE_TIMESTAMP(timestamp);
     }
+}
+
+void DatagramSocket::privateZeroCopyUpdate(
+        const bsl::shared_ptr<DatagramSocket>& self,
+        const ntsa::ZeroCopy&                  zeroCopy)
+{
+    d_zeroCopyList.zeroCopyAcknowledge(zeroCopy, self, self);
 }
 
 void DatagramSocket::processSendRateTimer(
@@ -2308,7 +2368,7 @@ ntsa::Error DatagramSocket::privateOpen(
     d_socket_sp      = datagramSocket;
 
     if (d_options.timestampOutgoingData().value_or(false)) {
-        startTimestampOutgoingData();
+        this->privateTimestampOutgoingData(self, true);
     }
 
     NTCI_LOG_CONTEXT_GUARD_DESCRIPTOR(d_publicHandle);
@@ -2558,9 +2618,6 @@ DatagramSocket::DatagramSocket(
 , d_deferredCalls(bslma::Default::allocator(basicAllocator))
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-    if (FORCE_ZEROCOPY) {
-        d_options.setZeroCopyThreshold(0);
-    }
     if (reactor->maxThreads() > 1) {
         if (!reactor->oneShot()) {
             BSLS_ASSERT(!"Dynamic load balancing requires one-shot mode");
@@ -4299,6 +4356,15 @@ ntsa::Error DatagramSocket::leaveMulticastGroup(
     }
 }
 
+ntsa::Error DatagramSocket::timestampOutgoingData(bool enable)
+{
+    bsl::shared_ptr<DatagramSocket> self = this->getSelf(this);
+
+    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
+
+    return privateTimestampOutgoingData(self, enable);
+}
+
 ntsa::Error DatagramSocket::relaxFlowControl(
     ntca::FlowControlType::Value direction)
 {
@@ -4503,26 +4569,6 @@ void DatagramSocket::close(const ntci::CloseCallback& callback)
                           true);
 }
 
-ntsa::Error DatagramSocket::timestampOutgoingData(bool enable)
-{
-    ntsa::Error error;
-
-    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
-
-    if (d_timestampOutgoingData == enable) {
-        return error;
-    }
-
-    if (enable) {
-        error = startTimestampOutgoingData();
-    }
-    else {
-        error = stopTimestampOutgoingData();
-    }
-
-    return error;
-}
-
 void DatagramSocket::execute(const Functor& functor)
 {
     if (d_reactorStrand_sp) {
@@ -4722,64 +4768,6 @@ bsl::size_t DatagramSocket::totalBytesReceived() const
 {
     // TODO
     return 0;
-}
-
-ntsa::Error DatagramSocket::startTimestampOutgoingData()
-{
-    ntsa::Error error;
-
-    if (d_timestampOutgoingData) {
-        return error;
-    }
-
-    ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
-    if (!reactorRef || !reactorRef->supportsNotifications()) {
-        error = ntsa::Error::e_NOT_IMPLEMENTED;
-        return error;
-    }
-
-    d_timestampOutgoingData = true;
-
-    error = privateTimestampOutgoingData(true);
-
-    if (error) {
-        d_timestampOutgoingData = false;
-    }
-
-    d_dgramTsIdCounter = 0;
-
-    return error;
-}
-
-ntsa::Error DatagramSocket::stopTimestampOutgoingData()
-{
-    ntsa::Error error;
-
-    NTCI_LOG_CONTEXT();
-
-    if (!d_timestampOutgoingData) {
-        return error;
-    }
-
-    error = privateTimestampOutgoingData(false);
-    if (error) {
-        NTCI_LOG_ERROR("Failed to stop timestamping of outgoing data.");
-    }
-
-    d_timestampOutgoingData = false;
-    d_timestampCorrelator.reset();
-    d_dgramTsIdCounter = 0;
-
-    return error;
-}
-
-ntsa::Error DatagramSocket::privateTimestampOutgoingData(bool enable)
-{
-    ntsa::SocketOption option;
-    option.makeTimestampOutgoingData(enable);
-
-    ntsa::Error error = d_socket_sp->setOption(option);
-    return error;
 }
 
 bsls::TimeInterval DatagramSocket::currentTime() const

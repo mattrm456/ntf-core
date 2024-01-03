@@ -18,8 +18,6 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntcr_streamsocket_cpp, "$Id$ $CSID$")
 
-#define FORCE_ZEROCOPY false
-
 #include <ntccfg_limits.h>
 #include <ntci_encryption.h>
 #include <ntci_encryptioncertificate.h>
@@ -168,7 +166,7 @@ BSLS_IDENT_RCSID(ntcr_streamsocket_cpp, "$Id$ $CSID$")
                    "has saturated the number of pinned pages")
 
 #define NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED()                            \
-    NTCI_LOG_ERROR("Zero copy is disabled due to ENOBUFS")
+    NTCI_LOG_WARN("Zero copy is disabled due to ENOBUFS")
 
 #define NTCR_STREAMSOCKET_LOG_SEND_RESULT(context)                            \
     NTCI_LOG_TRACE("Stream socket "                                           \
@@ -446,41 +444,24 @@ void StreamSocket::processNotifications(
     NTCI_LOG_CONTEXT_GUARD_DESCRIPTOR(d_publicHandle);
     NTCI_LOG_CONTEXT_GUARD_SOURCE_ENDPOINT(d_sourceEndpoint);
 
-    const bsl::vector<ntsa::Notification>& nots =
-        notifications.notifications();
+    typedef bsl::vector<ntsa::Notification>::const_iterator 
+    NotificationIterator;
 
-    //int zcAcknowledged = 0;
+    NotificationIterator it = notifications.notifications().begin();
+    NotificationIterator et = notifications.notifications().end();
 
-    for (size_t i = 0; i < nots.size(); ++i) {
-        const ntsa::Notification& notification = nots[i];
+    for (; it != et; ++it) {
+        const ntsa::Notification& notification = *it;
 
-        NTCI_LOG_STREAM_DEBUG << "Notification " << notification
-                              << NTCI_LOG_STREAM_END;
-
-        switch (notification.type()) {
-        case (ntsa::NotificationType::e_ZERO_COPY): {
-            //zcAcknowledged +=
-                d_zeroCopyList.zeroCopyAcknowledge(notification.zeroCopy(),
-                                                   self,
-                                                   self);
-        } break;
-        case (ntsa::NotificationType::e_TIMESTAMP): {
+        if (notification.isZeroCopy()) {
+            this->privateZeroCopyUpdate(self, notification.zeroCopy());
+        }
+        else if (notification.isTimestamp()) {
             if (d_timestampOutgoingData) {
-                processTimestampNotification(notification.timestamp());
+                this->privateTimestampUpdate(self, notification.timestamp());
             }
-        } break;
-        default:;
         }
     }
-
-    //TODO: rearm interest in writability if required and zcAcknowledged > 0
-
-//    if (zcAcknowledged > 0) {
-//        this->privateRelaxFlowControl(self,
-//                                      ntca::FlowControlType::e_SEND,
-//                                      false,
-//                                      false);
-//    }
 
     this->privateRearmAfterNotification(self);
 }
@@ -1102,7 +1083,7 @@ ntsa::Error StreamSocket::privateSocketWritableConnection(
     d_openState.set(ntcs::OpenState::e_CONNECTED);
 
     if (d_options.timestampOutgoingData().value_or(false)) {
-        ntsa::Error error = startTimestampOutgoingData();
+        ntsa::Error error = this->privateTimestampOutgoingData(self, true);
         if (error) {
             NTCR_STREAMSOCKET_LOG_TIMESTAMP_PROCESSING_ERROR();
         }
@@ -4019,7 +4000,7 @@ ntsa::Error StreamSocket::privateOpen(
         d_openState.set(ntcs::OpenState::e_CONNECTED);
 
         if (d_options.timestampOutgoingData().value_or(false)) {
-            ntsa::Error error = startTimestampOutgoingData();
+            ntsa::Error error = this->privateTimestampOutgoingData(self, true);
             if (error) {
                 NTCR_STREAMSOCKET_LOG_TIMESTAMP_PROCESSING_ERROR();
             }
@@ -4472,71 +4453,72 @@ ntsa::Error StreamSocket::privateRetryConnectToEndpoint(
     return ntsa::Error();
 }
 
-ntsa::Error StreamSocket::privateTimestampOutgoingData(bool enable)
+ntsa::Error StreamSocket::privateTimestampOutgoingData(
+        const bsl::shared_ptr<StreamSocket>& self,
+        bool                                 enable)
 {
-    ntsa::SocketOption option;
-    option.makeTimestampOutgoingData(enable);
-
-    ntsa::Error error = d_socket_sp->setOption(option);
-    return error;
-}
-
-ntsa::Error StreamSocket::startTimestampOutgoingData()
-{
-    ntsa::Error error;
-
-    if (d_timestampOutgoingData) {
-        return error;
-    }
-
-    ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
-    if (!reactorRef || !reactorRef->supportsNotifications()) {
-        error = ntsa::Error::e_NOT_IMPLEMENTED;
-        return error;
-    }
-
-    d_totalBytesSentTimestamped = 0;
-    d_timestampOutgoingData     = true;
-
-    error = privateTimestampOutgoingData(true);
-
-    if (error) {
-        d_timestampOutgoingData = false;
-    }
-
-    return error;
-}
-
-ntsa::Error StreamSocket::stopTimestampOutgoingData()
-{
-    ntsa::Error error;
+    NTCCFG_WARNING_UNUSED(self);
 
     NTCI_LOG_CONTEXT();
 
-    if (!d_timestampOutgoingData) {
-        return error;
+    ntsa::Error error;
+
+    if (d_timestampOutgoingData == enable) {
+        return ntsa::Error();
     }
 
-    error = privateTimestampOutgoingData(false);
-    if (error) {
-        NTCI_LOG_ERROR("Failed to stop timestamping of outgoing data.");
+    if (enable) {
+        ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
+        if (!reactorRef || !reactorRef->supportsNotifications()) {
+            error = ntsa::Error::e_NOT_IMPLEMENTED;
+            return error;
+        }
+
+        ntsa::SocketOption option;
+        option.makeTimestampOutgoingData(true);
+
+        error = d_socket_sp->setOption(option);
+        if (error) {
+            NTCI_LOG_ERROR(
+                "Failed to enable timestamping of outgoing data: %s",
+                error.text().c_str());
+            return error;
+        }
+
+        d_timestampOutgoingData     = true;
+        d_totalBytesSentTimestamped = 0;
+    }
+    else {
+        ntsa::SocketOption option;
+        option.makeTimestampOutgoingData(true);
+
+        error = d_socket_sp->setOption(option);
+        if (error) {
+            NTCI_LOG_ERROR(
+                "Failed to disable timestamping of outgoing data: %s",
+                error.text().c_str());
+        }
+
+        d_timestampOutgoingData = false;
+        d_timestampCorrelator.reset();
     }
 
-    d_timestampOutgoingData = false;
-    d_timestampCorrelator.reset();
-
-    return error;
+    return ntsa::Error();
 }
 
-void StreamSocket::processTimestampNotification(
-    const ntsa::Timestamp& timestamp)
+void StreamSocket::privateTimestampUpdate(
+        const bsl::shared_ptr<StreamSocket>& self,
+        const ntsa::Timestamp&               timestamp)
 {
+    NTCCFG_WARNING_UNUSED(self);
+
 #if NTCR_STREAMSOCKET_TRACE_TIMESTAMPS
     NTCI_LOG_CONTEXT();
 #endif
 
     const bdlb::NullableValue<bsls::TimeInterval> delay =
         d_timestampCorrelator.timestampReceived(timestamp);
+
     if (delay.has_value()) {
         NTCR_STREAMSOCKET_LOG_TX_DELAY(delay, timestamp.type());
 
@@ -4560,6 +4542,13 @@ void StreamSocket::processTimestampNotification(
     else {
         NTCR_STREAMSOCKET_LOG_FAILED_TO_CORRELATE_TIMESTAMP(timestamp);
     }
+}
+
+void StreamSocket::privateZeroCopyUpdate(
+            const bsl::shared_ptr<StreamSocket>& self,
+            const ntsa::ZeroCopy&                zeroCopy)
+{
+    d_zeroCopyList.zeroCopyAcknowledge(zeroCopy, self, self);
 }
 
 StreamSocket::StreamSocket(
@@ -4644,9 +4633,6 @@ StreamSocket::StreamSocket(
 , d_deferredCalls(bslma::Default::allocator(basicAllocator))
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-    if (FORCE_ZEROCOPY) {
-        d_options.setZeroCopyThreshold(0);
-    }
     if (reactor->maxThreads() > 1) {
         if (!reactor->oneShot()) {
             BSLS_ASSERT(!"Dynamic load balancing requires one-shot mode");
@@ -6432,6 +6418,15 @@ ntsa::Error StreamSocket::setReadQueueWatermarks(bsl::size_t lowWatermark,
     return ntsa::Error();
 }
 
+ntsa::Error StreamSocket::timestampOutgoingData(bool enable)
+{
+    bsl::shared_ptr<StreamSocket> self = this->getSelf(this);
+
+    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
+
+    return privateTimestampOutgoingData(self, enable);
+}
+
 ntsa::Error StreamSocket::relaxFlowControl(
     ntca::FlowControlType::Value direction)
 {
@@ -7078,22 +7073,6 @@ const bsl::shared_ptr<bdlbb::BlobBufferFactory>& StreamSocket::
     outgoingBlobBufferFactory() const
 {
     return d_outgoingBufferFactory_sp;
-}
-
-ntsa::Error StreamSocket::timestampOutgoingData(bool enable)
-{
-    ntsa::Error                    error;
-    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
-
-    if (!d_timestampOutgoingData && enable) {
-        error = ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-    }
-
-    if (d_timestampOutgoingData && !enable) {
-        error = stopTimestampOutgoingData();
-    }
-
-    return error;
 }
 
 }  // close package namespace

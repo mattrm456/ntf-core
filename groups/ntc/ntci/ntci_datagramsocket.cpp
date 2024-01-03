@@ -27,6 +27,13 @@ DatagramSocket::~DatagramSocket()
 {
 }
 
+ntsa::Error DatagramSocket::timestampOutgoingData(bool enable)
+{
+    NTCCFG_WARNING_UNUSED(enable);
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
 void DatagramSocketCloseGuard::complete(bslmt::Semaphore* semaphore)
 {
     semaphore->post();

@@ -27,6 +27,13 @@ StreamSocket::~StreamSocket()
 {
 }
 
+ntsa::Error StreamSocket::timestampOutgoingData(bool enable)
+{
+    NTCCFG_WARNING_UNUSED(enable);
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
 void StreamSocketCloseGuard::complete(bslmt::Semaphore* semaphore)
 {
     semaphore->post();

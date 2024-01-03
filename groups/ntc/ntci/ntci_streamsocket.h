@@ -1502,6 +1502,11 @@ class StreamSocket : public ntsi::Descriptor,
     virtual ntsa::Error setReadQueueWatermarks(bsl::size_t lowWatermark,
                                                bsl::size_t highWatermark) = 0;
 
+    /// Request the implementation to start timestamping outgoing data if the
+    /// specified 'enable' flag is true. Otherwise, request the implementation
+    /// to stop timestamping outgoing data. Return the error.
+    virtual ntsa::Error timestampOutgoingData(bool enable);
+
     /// Enable copying from the socket buffers in the specified 'direction'.
     /// Return the error.
     virtual ntsa::Error relaxFlowControl(

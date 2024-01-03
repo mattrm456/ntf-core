@@ -364,21 +364,22 @@ class DatagramSocket : public ntci::DatagramSocket,
         const ntca::ConnectOptions&            connectOptions,
         const ntci::ConnectCallback&           connectCallback);
 
-    /// Start timestamping outgoing data. Prepare buffers and request the OS to
-    /// enable transmit timestamps. Return no error in case of success,
-    /// return error otherwise.
-    ntsa::Error startTimestampOutgoingData();
+    /// Enable or disable timestamping of outgoing data according to the 
+    /// specified 'enable' flag. Return the error.
+    ntsa::Error privateTimestampOutgoingData(
+        const bsl::shared_ptr<DatagramSocket>& self,
+        bool                                   enable);
 
-    /// Stop timestamping outgoing data. Return no error in case of success,
-    /// return error otherwise.
-    ntsa::Error stopTimestampOutgoingData();
+    /// Process the detection of the specified outgoing data 'timestamp'.
+    void privateTimestampUpdate(
+            const bsl::shared_ptr<DatagramSocket>& self,
+            const ntsa::Timestamp&                 timestamp);
 
-    /// Request the OS to enable transmit timestamps if the specified 'enable'
-    /// is true. Return true in case of success. Return false otherwise.
-    ntsa::Error privateTimestampOutgoingData(bool enable);
-
-    /// Process notification containing the specified 'timestamp'.
-    void processTimestampNotification(const ntsa::Timestamp& timestamp);
+    // Process the completion of one or more zero-copy tranmsissions described
+    // by the specified 'zeroCopy' notification.
+    void privateZeroCopyUpdate(
+            const bsl::shared_ptr<DatagramSocket>& self,
+            const ntsa::ZeroCopy&                  zeroCopy);
 
   public:
     /// Create a new, initially uninitilialized datagram socket. Optionally
@@ -923,6 +924,13 @@ class DatagramSocket : public ntci::DatagramSocket,
                                     const ntsa::IpAddress& group)
         BSLS_KEYWORD_OVERRIDE;
 
+    /// Request the implementation to start timestamping outgoing data if the
+    /// specified 'enable' flag is true. Otherwise, request the implementation
+    /// to stop timestamping outgoing data. Return true if operation was
+    /// successful (though it does not guarantee that transmit timestamps would
+    /// be generated). Otherwise return false.
+    ntsa::Error timestampOutgoingData(bool enable) BSLS_KEYWORD_OVERRIDE;
+
     /// Enable copying from the socket buffers in the specified 'direction'.
     ntsa::Error relaxFlowControl(ntca::FlowControlType::Value direction)
         BSLS_KEYWORD_OVERRIDE;
@@ -970,13 +978,6 @@ class DatagramSocket : public ntci::DatagramSocket,
     /// invoked on this object's strand unless an explicit strand is
     /// specified at the time the callback is created.
     void close(const ntci::CloseCallback& callback) BSLS_KEYWORD_OVERRIDE;
-
-    /// Request the implementation to start timestamping outgoing data if the
-    /// specified 'enable' flag is true. Otherwise, request the implementation
-    /// to stop timestamping outgoing data. Return true if operation was
-    /// successful (though it does not guarantee that transmit timestamps would
-    /// be generated). Otherwise return false.
-    ntsa::Error timestampOutgoingData(bool enable) BSLS_KEYWORD_OVERRIDE;
 
     /// Defer the execution of the specified 'functor'.
     void execute(const Functor& functor) BSLS_KEYWORD_OVERRIDE;

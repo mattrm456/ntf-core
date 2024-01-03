@@ -521,21 +521,22 @@ class StreamSocket : public ntci::StreamSocket,
     ntsa::Error privateRetryConnectToEndpoint(
         const bsl::shared_ptr<StreamSocket>& self);
 
-    /// Request the OS to enable transmis timestamps if the specified 'enable'
-    /// is true. Return true in case of success. Return false otherwise.
-    ntsa::Error privateTimestampOutgoingData(bool enable);
+    /// Enable or disable timestamping of outgoing data according to the 
+    /// specified 'enable' flag. Return the error.
+    ntsa::Error privateTimestampOutgoingData(
+        const bsl::shared_ptr<StreamSocket>& self,
+        bool                                 enable);
 
-    /// Start timestamping outgoing data. Prepare buffers and request the OS to
-    /// enable transmit timestamps. Return no error in case of success,
-    /// return error otherwise.
-    ntsa::Error startTimestampOutgoingData();
+    /// Process the detection of the specified outgoing data 'timestamp'.
+    void privateTimestampUpdate(
+            const bsl::shared_ptr<StreamSocket>& self,
+            const ntsa::Timestamp&               timestamp);
 
-    /// Stop timestamping outgoing data. Return no error in case of success,
-    /// return error otherwise.
-    ntsa::Error stopTimestampOutgoingData();
-
-    /// Process notification containing the specified 'timestamp'.
-    void processTimestampNotification(const ntsa::Timestamp& timestamp);
+    // Process the completion of one or more zero-copy tranmsissions described
+    // by the specified 'zeroCopy' notification.
+    void privateZeroCopyUpdate(
+            const bsl::shared_ptr<StreamSocket>& self,
+            const ntsa::ZeroCopy&                zeroCopy);
 
   public:
     /// Create a new, initially uninitilialized stream socket. Optionally
@@ -1152,6 +1153,11 @@ class StreamSocket : public ntci::StreamSocket,
                                        bsl::size_t highWatermark)
         BSLS_KEYWORD_OVERRIDE;
 
+    /// Request the implementation to start timestamping outgoing data if the
+    /// specified 'enable' flag is true. Otherwise, request the implementation
+    /// to stop timestamping outgoing data. Return the error.
+    ntsa::Error timestampOutgoingData(bool enable) BSLS_KEYWORD_OVERRIDE;
+
     /// Enable copying from the socket buffers in the specified 'direction'.
     ntsa::Error relaxFlowControl(ntca::FlowControlType::Value direction)
         BSLS_KEYWORD_OVERRIDE;
@@ -1275,13 +1281,6 @@ class StreamSocket : public ntci::StreamSocket,
     /// buffer allocated from the outgoing blob buffer factory.
     void createOutgoingBlobBuffer(bdlbb::BlobBuffer* blobBuffer)
         BSLS_KEYWORD_OVERRIDE;
-
-    /// Request the implementation to start timestamping outgoing data if the
-    /// specified 'enable' flag is true. Otherwise, request the implementation
-    /// to stop timestamping outgoing data. Return true if operation was
-    /// successful (though it does not guarantee that transmit timestamps would
-    /// be generated). Otherwise return false.
-    ntsa::Error timestampOutgoingData(bool enable) BSLS_KEYWORD_OVERRIDE;
 
     /// Return the descriptor handle.
     ntsa::Handle handle() const BSLS_KEYWORD_OVERRIDE;

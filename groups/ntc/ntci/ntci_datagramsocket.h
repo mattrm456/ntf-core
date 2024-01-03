@@ -846,6 +846,11 @@ class DatagramSocket : public ntsi::Descriptor,
     virtual ntsa::Error leaveMulticastGroup(const ntsa::IpAddress& interface,
                                             const ntsa::IpAddress& group) = 0;
 
+    /// Request the implementation to start timestamping outgoing data if the
+    /// specified 'enable' flag is true. Otherwise, request the implementation
+    /// to stop timestamping outgoing data. Return the error.
+    virtual ntsa::Error timestampOutgoingData(bool enable);
+
     /// Enable copying from the socket buffers in the specified 'direction'.
     virtual ntsa::Error relaxFlowControl(
         ntca::FlowControlType::Value direction) = 0;
