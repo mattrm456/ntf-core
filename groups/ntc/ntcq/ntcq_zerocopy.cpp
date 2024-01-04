@@ -68,7 +68,9 @@ void ZeroCopyEntry::setError(const ntsa::Error& error)
 
 void ZeroCopyEntry::addCallback(const ntci::SendCallback& callback)
 {
-    d_callbacks.push_back(callback);
+    if (callback) {
+        d_callbacks.push_back(callback);
+    }
 }
 
 void ZeroCopyEntry::dispatch(const bsl::shared_ptr<ntci::Sender>&   sender,
@@ -109,8 +111,11 @@ bslma::Allocator* ZeroCopyEntry::allocator() const
     return d_allocator_p;
 }
 
-ZeroCopyWaitList::ZeroCopyWaitList(bslma::Allocator* basicAllocator)
+ZeroCopyWaitList::ZeroCopyWaitList(
+    const bsl::shared_ptr<ntci::DataPool>& dataPool,
+    bslma::Allocator*                      basicAllocator)
 : d_entryList(basicAllocator)
+, d_dataPool_sp(dataPool)
 , d_strand()
 , d_nextId(0)
 {
@@ -126,13 +131,90 @@ void ZeroCopyWaitList::setStrand(const bsl::shared_ptr<ntci::Strand>& strand)
     d_strand = strand;
 }
 
-void ZeroCopyWaitList::addEntry(ZeroCopyEntry& entry)
+void ZeroCopyWaitList::addEntry(const ZeroCopyEntry& entry)
 {
-    BSLS_ASSERT(!cancelled);
+    d_entryList.push_back(entry);
+    d_entryList.back().setId(d_nextId++);
+}
+
+void ZeroCopyWaitList::addEntry(const bdlbb::Blob& data)
+{
+    bsl::shared_ptr<ntsa::Data> dataContainer =
+        d_dataPool_sp->createOutgoingData();
+
+    dataContainer->makeBlob(data);
+
+    d_entryList.resize(d_entryList.size() + 1);
+    ZeroCopyEntry& entry = d_entryList.back();
 
     entry.setId(d_nextId++);
+    entry.setData(dataContainer);
+}
+    
+void ZeroCopyWaitList::addEntry(const bdlbb::Blob&        data, 
+                                const ntci::SendCallback& callback)
+{
+    bsl::shared_ptr<ntsa::Data> dataContainer =
+        d_dataPool_sp->createOutgoingData();
 
-    d_entryList.push_back(entry);
+    dataContainer->makeBlob(data);
+
+    d_entryList.resize(d_entryList.size() + 1);
+    ZeroCopyEntry& entry = d_entryList.back();
+
+    entry.setId(d_nextId++);
+    entry.setData(dataContainer);
+    entry.addCallback(callback);
+}
+
+void ZeroCopyWaitList::addEntry(const ntsa::Data& data)
+{
+    bsl::shared_ptr<ntsa::Data> dataContainer =
+        d_dataPool_sp->createOutgoingData();
+
+    *dataContainer = data;
+
+    d_entryList.resize(d_entryList.size() + 1);
+    ZeroCopyEntry& entry = d_entryList.back();
+
+    entry.setId(d_nextId++);
+    entry.setData(dataContainer);
+}
+
+void ZeroCopyWaitList::addEntry(const ntsa::Data&         data, 
+                                const ntci::SendCallback& callback)
+{
+    bsl::shared_ptr<ntsa::Data> dataContainer =
+        d_dataPool_sp->createOutgoingData();
+
+    *dataContainer = data;
+
+    d_entryList.resize(d_entryList.size() + 1);
+    ZeroCopyEntry& entry = d_entryList.back();
+
+    entry.setId(d_nextId++);
+    entry.setData(dataContainer);
+    entry.addCallback(callback);
+}
+
+void ZeroCopyWaitList::addEntry(const bsl::shared_ptr<ntsa::Data>& data)
+{
+    d_entryList.resize(d_entryList.size() + 1);
+    ZeroCopyEntry& entry = d_entryList.back();
+
+    entry.setId(d_nextId++);
+    entry.setData(data);
+}
+    
+void ZeroCopyWaitList::addEntry(const bsl::shared_ptr<ntsa::Data>& data, 
+                                const ntci::SendCallback&          callback)
+{
+    d_entryList.resize(d_entryList.size() + 1);
+    ZeroCopyEntry& entry = d_entryList.back();
+
+    entry.setId(d_nextId++);
+    entry.setData(data);
+    entry.addCallback(callback);
 }
 
 bool ZeroCopyWaitList::zeroCopyAcknowledge(
@@ -205,7 +287,6 @@ void ZeroCopyWaitList::cancelWait(
         ++it;
     }
     d_entryList.clear();
-    cancelled = true;
 }
 
 }  // close package namespace

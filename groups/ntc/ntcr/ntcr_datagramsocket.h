@@ -283,6 +283,7 @@ class DatagramSocket : public ntci::DatagramSocket,
     /// undefined unless 'd_mutex' is locked.
     ntsa::Error privateEnqueueSendBuffer(
         const bsl::shared_ptr<DatagramSocket>&     self,
+        ntsa::SendContext*                         context,
         const bdlb::NullableValue<ntsa::Endpoint>& endpoint,
         const bdlbb::Blob&                         data);
 
@@ -291,6 +292,7 @@ class DatagramSocket : public ntci::DatagramSocket,
     /// undefined unless 'd_mutex' is locked.
     ntsa::Error privateEnqueueSendBuffer(
         const bsl::shared_ptr<DatagramSocket>&     self,
+        ntsa::SendContext*                         context,
         const bdlb::NullableValue<ntsa::Endpoint>& endpoint,
         const ntsa::Data&                          data);
 

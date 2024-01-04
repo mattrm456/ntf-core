@@ -162,7 +162,7 @@ BSLS_IDENT_RCSID(ntcr_streamsocket_cpp, "$Id$ $CSID$")
                    "has saturated the socket send buffer")
 
 #define NTCR_STREAMSOCKET_LOG_SEND_BUFFER_PAGE_LIMIT()                        \
-    NTCI_LOG_ERROR("Stream socket "                                           \
+    NTCI_LOG_TRACE("Stream socket "                                           \
                    "has saturated the number of pinned pages")
 
 #define NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED()                            \
@@ -4680,7 +4680,7 @@ StreamSocket::StreamSocket(
 , d_openState()
 , d_flowControlState()
 , d_shutdownState()
-, d_zeroCopyList(basicAllocator)
+, d_zeroCopyList(reactor->dataPool(), basicAllocator)
 , d_zeroCopyThreshold(bsl::numeric_limits<bsl::size_t>::max())
 , d_sendOptions()
 , d_sendQueue(basicAllocator)

@@ -22,8 +22,9 @@ BSLS_IDENT("$Id: $")
 #include <bslma_allocator.h>
 #include <bsls_keyword.h>
 #include <bsl_vector.h>
-
+#include <ntci_datapool.h>
 #include <ntci_sendcallback.h>
+#include <ntci_strand.h>
 #include <ntsa_data.h>
 #include <ntsa_zerocopy.h>
 
@@ -104,29 +105,57 @@ class ZeroCopyEntry
     NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyEntry);
 };
 
+/// @internal @brief
+/// Describe a zero-copy queue.
+///
+/// @par Thread Safety
+/// This class is not thread safe.
+///
+/// @ingroup module_ntcq
 class ZeroCopyWaitList
 {
     typedef bsl::list<ZeroCopyEntry> EntryList;
 
-    EntryList                     d_entryList;
-    bsl::shared_ptr<ntci::Strand> d_strand;
-    bsl::uint32_t                 d_nextId;
-
-    bool cancelled = false;
+    EntryList                       d_entryList;
+    bsl::shared_ptr<ntci::DataPool> d_dataPool_sp;
+    bsl::shared_ptr<ntci::Strand>   d_strand;
+    bsl::uint32_t                   d_nextId;
+    bool                            d_cancelled;
 
   private:
     ZeroCopyWaitList(const ZeroCopyWaitList&) BSLS_KEYWORD_DELETED;
     ZeroCopyWaitList& operator=(const ZeroCopyWaitList&) BSLS_KEYWORD_DELETED;
 
   public:
-    explicit ZeroCopyWaitList(bslma::Allocator* basicAllocator = 0);
+    // Create a new zero-copy wait list. Optionally specify a 'basicAllocator'
+    // used to supply memory. If 'basicAllocator' is 0, the currently installed
+    // default allocator is used.
+    explicit ZeroCopyWaitList(
+        const bsl::shared_ptr<ntci::DataPool>& dataPool,
+        bslma::Allocator*                      basicAllocator = 0);
 
     /// Destroy this object.
     ~ZeroCopyWaitList();
 
     void setStrand(const bsl::shared_ptr<ntci::Strand>& strand);
 
-    void addEntry(ZeroCopyEntry& entry);
+    void addEntry(const ZeroCopyEntry& entry);
+
+    void addEntry(const bdlbb::Blob& data);
+    
+    void addEntry(const bdlbb::Blob&         data, 
+                  const ntci::SendCallback& callback);
+
+    void addEntry(const ntsa::Data& data);
+    
+    void addEntry(const ntsa::Data&         data, 
+                  const ntci::SendCallback& callback);
+
+    void addEntry(const bsl::shared_ptr<ntsa::Data>& data);
+
+    void addEntry(const bsl::shared_ptr<ntsa::Data>& data, 
+                  const ntci::SendCallback&          callback);
+
 
     bool zeroCopyAcknowledge(const ntsa::ZeroCopy&                  zc,
                              const bsl::shared_ptr<ntci::Sender>&   sender,
@@ -135,7 +164,7 @@ class ZeroCopyWaitList
     void cancelWait(const bsl::shared_ptr<ntci::Sender>&   sender,
                     const bsl::shared_ptr<ntci::Executor>& executor);
 
-    //    NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyWaitList);
+    NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyWaitList);
 };
 
 }  // close package namespace
