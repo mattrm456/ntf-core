@@ -101,6 +101,7 @@ class DatagramSocket : public ntci::DatagramSocket,
     bsl::shared_ptr<ntci::RateLimiter>           d_sendRateLimiter_sp;
     bsl::shared_ptr<ntci::Timer>                 d_sendRateTimer_sp;
     bool                                         d_sendGreedily;
+    ntci::SendCallback                           d_sendComplete;
     ntsa::ReceiveOptions                         d_receiveOptions;
     ntcq::ReceiveQueue                           d_receiveQueue;
     bsl::shared_ptr<ntci::RateLimiter>           d_receiveRateLimiter_sp;
