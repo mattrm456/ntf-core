@@ -19,17 +19,27 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_data.h>
+#include <ntsa_error.h>
+#include <ntsa_transport.h>
+#include <ntsa_zerocopy.h>
+#include <ntci_datapool.h>
+#include <ntci_sendcallback.h>
+#include <ntcq_send.h>
+#include <bdlbb_blob.h>
 #include <bslma_allocator.h>
 #include <bsls_keyword.h>
 #include <bsl_vector.h>
-#include <ntci_datapool.h>
-#include <ntci_sendcallback.h>
-#include <ntci_strand.h>
-#include <ntsa_data.h>
-#include <ntsa_zerocopy.h>
 
 namespace BloombergLP {
 namespace ntcq {
+
+/// @internal @brief
+/// Describe the 32-bit unsigned integer incremented after each successfully
+/// zero-copy 'sendmsg' system call.
+///
+/// @ingroup module_ntcq
+typedef bsl::uint32_t ZeroCopyCounter;
 
 /// @internal @brief
 /// Describe an entry in a zero-copy queue.
@@ -40,12 +50,14 @@ namespace ntcq {
 /// @ingroup module_ntcq
 class ZeroCopyEntry
 {
-    typedef bsl::vector<ntci::SendCallback> CallbackVector;
-
-    bsl::uint32_t               d_id;
+    ntcq::SendCounter           d_group;
+    ntcq::ZeroCopyCounter       d_minCounter;
+    ntcq::ZeroCopyCounter       d_maxCounter;
+    bool                        d_framed;
+    bool                        d_complete;
     bsl::shared_ptr<ntsa::Data> d_data_sp;
-    ntca::SendEvent             d_event;
-    CallbackVector              d_callbacks;
+    ntsa::Error                 d_error;
+    ntci::SendCallback          d_callback;
     bslma::Allocator*           d_allocator_p;
 
   public:
@@ -64,10 +76,27 @@ class ZeroCopyEntry
     /// Destroy this object.
     ~ZeroCopyEntry();
 
-    /// Set the identifier of the zero-copy entry to the specified 'id'.
-    void setId(const bsl::uint32_t id);
+    /// Set the identifier of the data to the specified 'group'.
+    void setGroup(ntcq::SendCounter group);
 
-    /// Set the data transmitted to the specified 'data'. 
+    /// Set the minimum zero-copy counter needed, inclusive, to the specified
+    /// 'counter'.
+    void setMinCounter(ntcq::ZeroCopyCounter counter);
+
+    /// Set the maximum zero-copy counter needed, inclusive, to the specified
+    /// 'counter'.
+    void setMaxCounter(ntcq::ZeroCopyCounter counter);
+
+    /// Set the flag that indicates all portions of the data have been 
+    /// sent (zero-copied or not), so that no further zero-copy counters are
+    /// expected, to the specified 'framed' value. 
+    void setFramed(bool framed);
+
+    /// Set the flag that indicates all portions of the data that have been
+    /// zero-copied are complete. 
+    void setComplete(bool complete);
+
+    /// Set the data transmitted for the group to the specified 'data'. 
     void setData(const bsl::shared_ptr<ntsa::Data>& data);
 
     /// Set the error encountered during transmission to the specified 'error'. 
@@ -75,26 +104,32 @@ class ZeroCopyEntry
 
     /// Set the callback invoked when the data has been completely transmitted
     /// to the specified 'callback'.
-    void addCallback(const ntci::SendCallback& callback);
+    void setCallback(const ntci::SendCallback& callback);
 
-    /// Invoke all callbacks for the specified 'sender'. If the specified
-    /// 'defer' flag is false and the requirements of the strand of the
-    /// specified 'entry' permits the callback to be invoked immediately by the
-    /// 'strand', unlock the specified 'mutex', invoke the callback, then
-    /// relock the 'mutex'. Otherwise, enqueue the invocation of the callback
-    /// to be executed on the strand of the 'entry', if defined, or by the
-    /// specified 'executor' otherwise.
-    void dispatch(const bsl::shared_ptr<ntci::Sender>&   sender,
-                  const bsl::shared_ptr<ntci::Strand>&   strand,
-                  const bsl::shared_ptr<ntci::Executor>& executor,
-                  bool                                   defer,
-                  bslmt::Mutex*                          mutex);
+    /// Return the identifier of the data. 
+    ntcq::SendCounter group() const;
 
-    /// Return the identifier of the zero-copy entry. 
-    bsl::uint32_t id() const;
+    /// Return the minimum zero-copy counter needed, inclusive.
+    ntcq::ZeroCopyCounter minCounter() const;
 
-    /// Return the send context.
-    const ntca::SendContext& context() const;
+    /// Return the maximum zero-copy counter needed, inclusive.
+    ntcq::ZeroCopyCounter maxCounter() const;
+
+    /// Set the flag that indicates all portions of the data have been 
+    /// sent (zero-copied or not), so that no further zero-copy counters are
+    /// expected, to the specified 'framed' value. 
+    bool framed() const;
+
+    /// Set the flag that indicates all portions of the data that have been
+    /// zero-copied are complete. 
+    bool complete() const;
+
+    /// Return the error encountered during transmission, if any. 
+    ntsa::Error error() const;
+
+    /// Return the callback invoked when the data has been completely 
+    /// transmitted. 
+    const ntci::SendCallback& callback() const;
 
     /// Return the allocator used to supply memory.
     bslma::Allocator* allocator() const;
@@ -112,60 +147,238 @@ class ZeroCopyEntry
 /// This class is not thread safe.
 ///
 /// @ingroup module_ntcq
-class ZeroCopyWaitList
+class ZeroCopyQueue
 {
-    typedef bsl::list<ZeroCopyEntry> EntryList;
+    typedef bsl::vector<ZeroCopyEntry> EntryList;
 
-    EntryList                       d_entryList;
+    ntcq::ZeroCopyCounter           d_counter;
+    EntryList                       d_waitList;
+    EntryList                       d_doneList;
+    ntsa::TransportMode::Value      d_transportMode;
     bsl::shared_ptr<ntci::DataPool> d_dataPool_sp;
-    bsl::shared_ptr<ntci::Strand>   d_strand;
-    bsl::uint32_t                   d_nextId;
-    bool                            d_cancelled;
+    bslma::Allocator*               d_allocator_p;
 
   private:
-    ZeroCopyWaitList(const ZeroCopyWaitList&) BSLS_KEYWORD_DELETED;
-    ZeroCopyWaitList& operator=(const ZeroCopyWaitList&) BSLS_KEYWORD_DELETED;
+    ZeroCopyQueue(const ZeroCopyQueue&) BSLS_KEYWORD_DELETED;
+    ZeroCopyQueue& operator=(const ZeroCopyQueue&) BSLS_KEYWORD_DELETED;
 
   public:
-    // Create a new zero-copy wait list. Optionally specify a 'basicAllocator'
-    // used to supply memory. If 'basicAllocator' is 0, the currently installed
-    // default allocator is used.
-    explicit ZeroCopyWaitList(
+    /// Create a new zero-copy queue. Allocate data containers using the
+    /// specified 'dataPool'. Optionally specify a 'basicAllocator' used to
+    /// supply memory. If 'basicAllocator' is 0, the currently installed
+    /// default allocator is used.
+    explicit ZeroCopyQueue(
+        ntsa::TransportMode::Value             transportMode,
         const bsl::shared_ptr<ntci::DataPool>& dataPool,
         bslma::Allocator*                      basicAllocator = 0);
 
     /// Destroy this object.
-    ~ZeroCopyWaitList();
+    ~ZeroCopyQueue();
 
-    void setStrand(const bsl::shared_ptr<ntci::Strand>& strand);
-
-    void addEntry(const ZeroCopyEntry& entry);
-
-    void addEntry(const bdlbb::Blob& data);
+    /// Append the specified 'data' sent as part of the specified 'group'. 
+    /// Return the zero-copy counter associated with this entry.
+    ntcq::ZeroCopyCounter push(ntcq::SendCounter  group,
+                               const bdlbb::Blob& data);
     
-    void addEntry(const bdlbb::Blob&         data, 
-                  const ntci::SendCallback& callback);
+    /// Append the specified 'data' sent as part of the specified 'group'. 
+    /// When sending the 'data' is complete, the specified 'callback' should
+    /// be invoked. Return the zero-copy counter associated with this entry.
+    ntcq::ZeroCopyCounter push(ntcq::SendCounter         group,
+                               const bdlbb::Blob&        data, 
+                               const ntci::SendCallback& callback);
 
-    void addEntry(const ntsa::Data& data);
+    /// Append the specified 'data' sent as part of the specified 'group'. 
+    /// Return the zero-copy counter associated with this entry.
+    ntcq::ZeroCopyCounter push(ntcq::SendCounter group, 
+                                 const ntsa::Data& data);
     
-    void addEntry(const ntsa::Data&         data, 
-                  const ntci::SendCallback& callback);
+    /// Append the specified 'data' sent as part of the specified 'group'. 
+    /// When sending the 'data' is complete, the specified 'callback' should
+    /// be invoked. Return the zero-copy counter associated with this entry.
+    ntcq::ZeroCopyCounter push(ntcq::SendCounter         group, 
+                               const ntsa::Data&         data, 
+                               const ntci::SendCallback& callback);
 
-    void addEntry(const bsl::shared_ptr<ntsa::Data>& data);
+    /// Append the specified 'data' sent as part of the specified 'group'. 
+    /// Return the zero-copy counter associated with this entry.
+    ntcq::ZeroCopyCounter push(ntcq::SendCounter                  group, 
+                               const bsl::shared_ptr<ntsa::Data>& data);
 
-    void addEntry(const bsl::shared_ptr<ntsa::Data>& data, 
-                  const ntci::SendCallback&          callback);
+    /// Append the specified 'data' sent as part of the specified 'group'. 
+    /// When sending the 'data' is complete, the specified 'callback' should
+    /// be invoked. Return the zero-copy counter associated with this entry.
+    ntcq::ZeroCopyCounter push(ntcq::SendCounter                  group,
+                               const bsl::shared_ptr<ntsa::Data>& data, 
+                               const ntci::SendCallback&          callback);
 
+    /// TODO.
+    ntcq::ZeroCopyCounter push(ntcq::SendCounter group);
 
-    bool zeroCopyAcknowledge(const ntsa::ZeroCopy&                  zc,
-                             const bsl::shared_ptr<ntci::Sender>&   sender,
-                             const bsl::shared_ptr<ntci::Executor>& executor);
+    /// TODO.
+    void frame(ntcq::SendCounter group);
 
-    void cancelWait(const bsl::shared_ptr<ntci::Sender>&   sender,
-                    const bsl::shared_ptr<ntci::Executor>& executor);
+    // Update the queue that the specified 'zeroCopy' range is complete.
+    void update(const ntsa::ZeroCopy& zeroCopy);
 
-    NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyWaitList);
+    /// Pop the oldest, completed entry and load its callback, if any, into the
+    /// specified 'result'. Return true if such and entry and callback exists,
+    /// otherwise return false. 
+    bool pop(ntci::SendCallback* result);
+
+    /// Pop each completed entry and append its callback, if any, into the
+    /// specified 'result'. Return true if such and entry and callback exists,
+    /// otherwise return false. 
+    bool pop(bsl::vector<ntci::SendCallback>* result);
+
+    /// Remove all entries from the queue.
+    void clear();
+
+    /// Remove all entries from the queue and load the callback, if any, for
+    /// each entry into the specified 'result'.
+    void clear(bsl::vector<ntci::SendCallback>* result);
+
+    /// Return the allocator used to supply memory.
+    bslma::Allocator* allocator() const;
+
+    /// Load each entry into the specified 'result'.
+    void load(bsl::vector<ntcq::ZeroCopyEntry>* result) const;
+
+    /// Return true if the queue a completed entry with a callback, otherwise
+    /// return false. 
+    bool ready() const;
+
+    NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyQueue);
 };
+
+NTCCFG_INLINE
+ZeroCopyEntry::ZeroCopyEntry(bslma::Allocator* basicAllocator)
+: d_group(0)
+, d_minCounter(0)
+, d_maxCounter(0)
+, d_framed(false)
+, d_complete(false)
+, d_data_sp()
+, d_error()
+, d_callback(basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
+{
+}
+
+NTCCFG_INLINE
+ZeroCopyEntry::ZeroCopyEntry(const ZeroCopyEntry& original, 
+                             bslma::Allocator*    basicAllocator)
+: d_group(original.d_group)
+, d_minCounter(original.d_minCounter)
+, d_maxCounter(original.d_maxCounter)
+, d_framed(original.d_framed)
+, d_complete(original.d_complete)
+, d_data_sp(original.d_data_sp)
+, d_error(original.d_error)
+, d_callback(original.d_callback, basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
+{
+}
+
+NTCCFG_INLINE
+ZeroCopyEntry::~ZeroCopyEntry()
+{
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setGroup(ntcq::SendCounter group)
+{
+    d_group = group;
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setMinCounter(ntcq::ZeroCopyCounter counter)
+{
+    d_minCounter = counter;
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setMaxCounter(ntcq::ZeroCopyCounter counter)
+{
+    d_maxCounter = counter;
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setFramed(bool framed)
+{
+    d_framed = framed;
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setComplete(bool complete)
+{
+    d_complete = complete;
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setData(const bsl::shared_ptr<ntsa::Data>& data)
+{
+    d_data_sp = data;
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setError(const ntsa::Error& error)
+{
+    d_error = error;
+}
+
+NTCCFG_INLINE
+void ZeroCopyEntry::setCallback(const ntci::SendCallback& callback)
+{
+    d_callback = callback;
+}
+
+NTCCFG_INLINE
+ntcq::SendCounter ZeroCopyEntry::group() const
+{
+    return d_group;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyEntry::minCounter() const
+{
+    return d_minCounter;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyEntry::maxCounter() const
+{
+    return d_maxCounter;
+}
+
+NTCCFG_INLINE
+bool ZeroCopyEntry::framed() const
+{
+    return d_framed;
+}
+
+NTCCFG_INLINE
+bool ZeroCopyEntry::complete() const
+{
+    return d_complete;
+}
+
+NTCCFG_INLINE
+ntsa::Error ZeroCopyEntry::error() const
+{
+    return d_error;
+}
+
+NTCCFG_INLINE
+const ntci::SendCallback& ZeroCopyEntry::callback() const
+{
+    return d_callback;
+}
+
+NTCCFG_INLINE
+bslma::Allocator* ZeroCopyEntry::allocator() const
+{
+    return d_allocator_p;
+}
 
 }  // close package namespace
 }  // close enterprise namespace

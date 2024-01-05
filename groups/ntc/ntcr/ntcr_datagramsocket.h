@@ -95,13 +95,14 @@ class DatagramSocket : public ntci::DatagramSocket,
     bsl::shared_ptr<ntcs::Metrics>               d_metrics_sp;
     ntcs::FlowControlState                       d_flowControlState;
     ntcs::ShutdownState                          d_shutdownState;
-    ntcq::ZeroCopyWaitList                       d_zeroCopyList;
+    ntcq::ZeroCopyQueue                          d_zeroCopyQueue;
     bsl::size_t                                  d_zeroCopyThreshold;
     ntcq::SendQueue                              d_sendQueue;
     bsl::shared_ptr<ntci::RateLimiter>           d_sendRateLimiter_sp;
     bsl::shared_ptr<ntci::Timer>                 d_sendRateTimer_sp;
     bool                                         d_sendGreedily;
     ntci::SendCallback                           d_sendComplete;
+    ntcq::SendCounter                            d_sendCounter;
     ntsa::ReceiveOptions                         d_receiveOptions;
     ntcq::ReceiveQueue                           d_receiveQueue;
     bsl::shared_ptr<ntci::RateLimiter>           d_receiveRateLimiter_sp;

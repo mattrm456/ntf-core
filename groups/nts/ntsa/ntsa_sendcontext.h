@@ -36,7 +36,7 @@ namespace ntsa {
 /// @par Attributes
 /// This class is composed of the following attributes.
 ///
-/// @li @b  bytesSendable:
+/// @li @b bytesSendable:
 /// The number of bytes attempted to copy to the socket send buffer.
 ///
 /// @li @b bytesSent:

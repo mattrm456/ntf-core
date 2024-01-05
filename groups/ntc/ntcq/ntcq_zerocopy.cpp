@@ -23,205 +23,199 @@ BSLS_IDENT_RCSID(ntcq_zerocopy_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntcq {
 
-ZeroCopyEntry::ZeroCopyEntry(bslma::Allocator* basicAllocator)
-: d_id(0)
-, d_data_sp()
-, d_event()
-, d_callbacks(basicAllocator)
-, d_allocator_p(bslma::Default::allocator(basicAllocator))
-{
-    BSLS_ASSERT(d_event.type() == ntca::SendEventType::e_COMPLETE);
-}
-
-ZeroCopyEntry::ZeroCopyEntry(const ZeroCopyEntry& other,
-                             bslma::Allocator*    basicAllocator)
-: d_id(other.d_id)
-, d_data_sp(other.d_data_sp)
-, d_event(other.d_event)
-, d_callbacks(other.d_callbacks, basicAllocator)
-, d_allocator_p(bslma::Default::allocator(basicAllocator))
-{
-}
-
-ZeroCopyEntry::~ZeroCopyEntry()
-{
-}
-
-void ZeroCopyEntry::setId(const bsl::uint32_t id)
-{
-    d_id = id;
-}
-
-void ZeroCopyEntry::setData(const bsl::shared_ptr<ntsa::Data>& data)
-{
-    d_data_sp = data;
-}
-
-void ZeroCopyEntry::setError(const ntsa::Error& error)
-{
-    ntca::SendContext context;
-    context.setError(error);
-
-    d_event.setType(ntca::SendEventType::e_ERROR);
-    d_event.setContext(context);
-}
-
-void ZeroCopyEntry::addCallback(const ntci::SendCallback& callback)
-{
-    if (callback) {
-        d_callbacks.push_back(callback);
-    }
-}
-
-void ZeroCopyEntry::dispatch(const bsl::shared_ptr<ntci::Sender>&   sender,
-                             const bsl::shared_ptr<ntci::Strand>&   strand,
-                             const bsl::shared_ptr<ntci::Executor>& executor,
-                             bool                                   defer,
-                             bslmt::Mutex*                          mutex)
-{
-    typedef CallbackVector::const_iterator CallbackIterator;
-
-    CallbackVector callbacks(d_allocator_p);
-    callbacks.swap(d_callbacks);
-
-    CallbackIterator       it = callbacks.cbegin();
-    const CallbackIterator et = callbacks.cend();
-
-    for (; it != et; ++it) {
-        const ntci::SendCallback& callback = *it;
-
-        if (callback) {
-            callback.dispatch(sender, d_event, strand, executor, defer, mutex);
-        }
-    }
-}
-
-bsl::uint32_t ZeroCopyEntry::id() const
-{
-    return d_id;
-}
-
-const ntca::SendContext& ZeroCopyEntry::context() const
-{
-    return d_event.context();
-}
-
-bslma::Allocator* ZeroCopyEntry::allocator() const
-{
-    return d_allocator_p;
-}
-
-ZeroCopyWaitList::ZeroCopyWaitList(
+ZeroCopyQueue::ZeroCopyQueue(
+    ntsa::TransportMode::Value             transportMode,
     const bsl::shared_ptr<ntci::DataPool>& dataPool,
     bslma::Allocator*                      basicAllocator)
-: d_entryList(basicAllocator)
+: d_counter(0)
+, d_waitList(basicAllocator)
+, d_doneList(basicAllocator)
+, d_transportMode(transportMode)
 , d_dataPool_sp(dataPool)
-, d_strand()
-, d_nextId(0)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
-ZeroCopyWaitList::~ZeroCopyWaitList()
+ZeroCopyQueue::~ZeroCopyQueue()
 {
-    BSLS_ASSERT(d_entryList.empty());
 }
 
-void ZeroCopyWaitList::setStrand(const bsl::shared_ptr<ntci::Strand>& strand)
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter  group,
+                                          const bdlbb::Blob& data)
 {
-    d_strand = strand;
-}
+    ntcq::ZeroCopyCounter counter = d_counter++;
 
-void ZeroCopyWaitList::addEntry(const ZeroCopyEntry& entry)
-{
-    d_entryList.push_back(entry);
-    d_entryList.back().setId(d_nextId++);
-}
-
-void ZeroCopyWaitList::addEntry(const bdlbb::Blob& data)
-{
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
 
     dataContainer->makeBlob(data);
 
-    d_entryList.resize(d_entryList.size() + 1);
-    ZeroCopyEntry& entry = d_entryList.back();
+    d_waitList.resize(d_waitList.size() + 1);
+    ZeroCopyEntry& entry = d_waitList.back();
 
-    entry.setId(d_nextId++);
+    entry.setGroup(group);
+    entry.setMinCounter(counter);
+    entry.setMaxCounter(counter);
     entry.setData(dataContainer);
+
+    if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
+        entry.setFramed(true);
+    }
+
+    return counter;
 }
-    
-void ZeroCopyWaitList::addEntry(const bdlbb::Blob&        data, 
-                                const ntci::SendCallback& callback)
+
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group,
+                                          const bdlbb::Blob&        data, 
+                                          const ntci::SendCallback& callback)
 {
+    ntcq::ZeroCopyCounter counter = d_counter++;
+
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
 
     dataContainer->makeBlob(data);
 
-    d_entryList.resize(d_entryList.size() + 1);
-    ZeroCopyEntry& entry = d_entryList.back();
+    d_waitList.resize(d_waitList.size() + 1);
+    ZeroCopyEntry& entry = d_waitList.back();
 
-    entry.setId(d_nextId++);
+    entry.setGroup(group);
+    entry.setMinCounter(counter);
+    entry.setMaxCounter(counter);
     entry.setData(dataContainer);
-    entry.addCallback(callback);
+    entry.setCallback(callback);
+
+    if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
+        entry.setFramed(true);
+    }
+
+    return counter;
 }
 
-void ZeroCopyWaitList::addEntry(const ntsa::Data& data)
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group, 
+                                          const ntsa::Data& data)
 {
+    ntcq::ZeroCopyCounter counter = d_counter++;
+
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
 
     *dataContainer = data;
 
-    d_entryList.resize(d_entryList.size() + 1);
-    ZeroCopyEntry& entry = d_entryList.back();
+    d_waitList.resize(d_waitList.size() + 1);
+    ZeroCopyEntry& entry = d_waitList.back();
 
-    entry.setId(d_nextId++);
+    entry.setGroup(group);
+    entry.setMinCounter(counter);
+    entry.setMaxCounter(counter);
     entry.setData(dataContainer);
+
+    if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
+        entry.setFramed(true);
+    }
+
+    return counter;
 }
 
-void ZeroCopyWaitList::addEntry(const ntsa::Data&         data, 
-                                const ntci::SendCallback& callback)
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group, 
+                                          const ntsa::Data&         data, 
+                                          const ntci::SendCallback& callback)
 {
+    ntcq::ZeroCopyCounter counter = d_counter++;
+
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
 
     *dataContainer = data;
 
-    d_entryList.resize(d_entryList.size() + 1);
-    ZeroCopyEntry& entry = d_entryList.back();
+    d_waitList.resize(d_waitList.size() + 1);
+    ZeroCopyEntry& entry = d_waitList.back();
 
-    entry.setId(d_nextId++);
+    entry.setGroup(group);
+    entry.setMinCounter(counter);
+    entry.setMaxCounter(counter);
     entry.setData(dataContainer);
-    entry.addCallback(callback);
+    entry.setCallback(callback);
+
+    if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
+        entry.setFramed(true);
+    }
+
+    return counter;
 }
 
-void ZeroCopyWaitList::addEntry(const bsl::shared_ptr<ntsa::Data>& data)
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(
+    ntcq::SendCounter                  group, 
+    const bsl::shared_ptr<ntsa::Data>& data)
 {
-    d_entryList.resize(d_entryList.size() + 1);
-    ZeroCopyEntry& entry = d_entryList.back();
+    ntcq::ZeroCopyCounter counter = d_counter++;
 
-    entry.setId(d_nextId++);
+    d_waitList.resize(d_waitList.size() + 1);
+    ZeroCopyEntry& entry = d_waitList.back();
+
+    entry.setGroup(group);
+    entry.setMinCounter(counter);
+    entry.setMaxCounter(counter);
     entry.setData(data);
-}
-    
-void ZeroCopyWaitList::addEntry(const bsl::shared_ptr<ntsa::Data>& data, 
-                                const ntci::SendCallback&          callback)
-{
-    d_entryList.resize(d_entryList.size() + 1);
-    ZeroCopyEntry& entry = d_entryList.back();
 
-    entry.setId(d_nextId++);
+    if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
+        entry.setFramed(true);
+    }
+
+    return counter;
+}
+
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(
+    ntcq::SendCounter                  group,
+    const bsl::shared_ptr<ntsa::Data>& data, 
+    const ntci::SendCallback&          callback)
+{
+    ntcq::ZeroCopyCounter counter = d_counter++;
+
+    d_waitList.resize(d_waitList.size() + 1);
+    ZeroCopyEntry& entry = d_waitList.back();
+
+    entry.setGroup(group);
+    entry.setMinCounter(counter);
+    entry.setMaxCounter(counter);
     entry.setData(data);
-    entry.addCallback(callback);
+    entry.setCallback(callback);
+
+    if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
+        entry.setFramed(true);
+    }
+
+    return counter;
 }
 
-bool ZeroCopyWaitList::zeroCopyAcknowledge(
-    const ntsa::ZeroCopy&                  zc,
-    const bsl::shared_ptr<ntci::Sender>&   sender,
-    const bsl::shared_ptr<ntci::Executor>& executor)
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group)
 {
+    NTCCFG_WARNING_UNUSED(group);
+
+    ntcq::ZeroCopyCounter counter = d_counter++;
+
+    ZeroCopyEntry& entry = d_waitList.back();
+    entry.setMaxCounter(counter);
+
+    return counter;
+}
+
+void ZeroCopyQueue::frame(ntcq::SendCounter group)
+{
+    NTCCFG_WARNING_UNUSED(group);
+
+    ZeroCopyEntry& entry = d_waitList.back();
+    entry.setFramed(true);
+}
+
+void ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
+{
+    NTCCFG_WARNING_UNUSED(zeroCopy);
+
+    // MRM
+    NTCCFG_NOT_IMPLEMENTED();
+
+#if 0
     const bsl::uint32_t from = zc.from();
     const bsl::uint32_t to   = zc.to();
 
@@ -268,25 +262,93 @@ bool ZeroCopyWaitList::zeroCopyAcknowledge(
     }
     BSLS_ASSERT_OPT(matched == acknowledged);
     return acknowledged > 0;
+#endif
 }
 
-void ZeroCopyWaitList::cancelWait(
-    const bsl::shared_ptr<ntci::Sender>&   sender,
-    const bsl::shared_ptr<ntci::Executor>& executor)
+bool ZeroCopyQueue::pop(ntci::SendCallback* result)
 {
-    const EntryList::const_iterator end = d_entryList.cend();
-    EntryList::iterator             it  = d_entryList.begin();
-    while (it != end) {
-        ntcq::ZeroCopyEntry& entry = *it;
-        entry.setError(ntsa::Error(ntsa::Error::e_CANCELLED));
-        entry.dispatch(sender,
-                       d_strand,
-                       executor,
-                       true,
-                       0);
-        ++it;
+    while (!d_doneList.empty()) {
+        if (d_doneList.front().callback()) {
+            *result = d_doneList.front().callback();
+            d_doneList.erase(d_doneList.begin());
+            return true;
+        }
+        else {
+            d_doneList.erase(d_doneList.begin());
+        }
     }
-    d_entryList.clear();
+
+    return false;
+}
+
+bool ZeroCopyQueue::pop(bsl::vector<ntci::SendCallback>* result)
+{
+    bool found = false;
+
+    while (!d_doneList.empty()) {
+        if (d_doneList.front().callback()) {
+            result->push_back(d_doneList.front().callback());
+            d_doneList.erase(d_doneList.begin());
+            found = true;
+        }
+        else {
+            d_doneList.erase(d_doneList.begin());
+        }
+    }
+
+    return found;
+}
+
+void ZeroCopyQueue::clear()
+{
+    d_waitList.clear();
+    d_doneList.clear();
+}
+
+void ZeroCopyQueue::clear(bsl::vector<ntci::SendCallback>* result)
+{
+    if (!d_doneList.empty()) {
+        EntryList::iterator it = d_doneList.begin();
+        EntryList::iterator et = d_doneList.end();
+
+        for (; it != et; ++it) {
+            const ZeroCopyEntry& entry = *it;
+            if (entry.callback()) {
+                result->push_back(entry.callback());
+            }
+        }
+    }
+
+    if (!d_waitList.empty()) {
+        EntryList::iterator it = d_waitList.begin();
+        EntryList::iterator et = d_waitList.end();
+
+        for (; it != et; ++it) {
+            const ZeroCopyEntry& entry = *it;
+            if (entry.callback()) {
+                result->push_back(entry.callback());
+            }
+        }
+    }
+
+    d_doneList.clear();
+    d_waitList.clear();
+}
+
+bslma::Allocator* ZeroCopyQueue::allocator() const
+{
+    return d_allocator_p;
+}
+
+void ZeroCopyQueue::load(bsl::vector<ntcq::ZeroCopyEntry>* result) const
+{
+    result->insert(result->end(), d_doneList.begin(), d_doneList.end());
+    result->insert(result->end(), d_waitList.begin(), d_waitList.end());
+}
+
+bool ZeroCopyQueue::ready() const
+{
+    return !d_doneList.empty();
 }
 
 }  // close package namespace

@@ -278,6 +278,14 @@ BSLS_IDENT_RCSID(ntcr_streamsocket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntcr {
 
+namespace {
+
+// The zero-copy threshold value that results in no transmission ever attempted
+// to be zero-copied.
+const bsl::size_t k_ZERO_COPY_NEVER = (bsl::size_t)(-1);
+
+} // close unnamed namespace
+
 void StreamSocket::processSocketReadable(const ntca::ReactorEvent& event)
 {
     NTCCFG_WARNING_UNUSED(event);
@@ -640,8 +648,8 @@ void StreamSocket::processSendDeadlineTimer(
     NTCI_LOG_CONTEXT_GUARD_REMOTE_ENDPOINT(d_remoteEndpoint);
 
     if (event.type() == ntca::TimerEventType::e_DEADLINE) {
-        bsl::shared_ptr<ntcq::SendCallbackQueueEntry> callbackEntry;
-        bool becameEmpty = d_sendQueue.removeEntryId(&callbackEntry, entryId);
+        ntci::SendCallback callback;
+        bool becameEmpty = d_sendQueue.removeEntryId(&callback, entryId);
         if (becameEmpty) {
             this->privateApplyFlowControl(self,
                                           ntca::FlowControlType::e_SEND,
@@ -650,7 +658,7 @@ void StreamSocket::processSendDeadlineTimer(
                                           false);
         }
 
-        if (callbackEntry) {
+        if (callback) {
             ntca::SendContext sendContext;
             sendContext.setError(ntsa::Error(ntsa::Error::e_WOULD_BLOCK));
 
@@ -658,13 +666,12 @@ void StreamSocket::processSendDeadlineTimer(
             sendEvent.setType(ntca::SendEventType::e_ERROR);
             sendEvent.setContext(sendContext);
 
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                                   self,
-                                                   sendEvent,
-                                                   d_reactorStrand_sp,
-                                                   self,
-                                                   false,
-                                                   &d_mutex);
+            callback.dispatch(self,
+                                               sendEvent,
+                                               d_reactorStrand_sp,
+                                               self,
+                                               false,
+                                               &d_mutex);
         }
     }
 }
@@ -1164,57 +1171,21 @@ ntsa::Error StreamSocket::privateSocketWritableIterationBatch(
 {
     NTCI_LOG_CONTEXT();
 
-    ntsa::Error error;
-
+    ntsa::Error       error;
     ntsa::SendContext context;
-
-    bool zeroCopyIsUsed = (d_sendData_sp->size() >= d_zeroCopyThreshold);
 
     error = this->privateEnqueueSendBuffer(self, &context, *d_sendData_sp);
     if (NTCCFG_UNLIKELY(error)) {
-        if (zeroCopyIsUsed) {
-            if (error == ntsa::Error::e_LIMIT) {
-                d_zeroCopyThreshold =
-                    bsl::numeric_limits<bsl::size_t>::max();
-                zeroCopyIsUsed = false;
-                context.reset();
-                NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
-
-                error = this->privateEnqueueSendBuffer(self,
-                                                       &context,
-                                                       *d_sendData_sp);
-                if (NTCCFG_UNLIKELY(error)) {
-                    return error;
-                }
-            }
-            else {
-                return error;
-            }
-        }
-        else {
-            return error;
-        }
+        return error;
     }
-
-    BSLS_ASSERT(!error);
 
     bsl::size_t numBytesRemaining = context.bytesSent();
 
-    typedef bsl::vector<bsl::shared_ptr<ntcq::SendCallbackQueueEntry> >
-        SendCallbackQueueEntryVector;
+    typedef bsl::vector<ntci::SendCallback>       SendCallbackVector;
+    typedef bdlma::LocalSequentialAllocator<1024> SendCallbackVectorAllocator;
 
-    bdlma::LocalSequentialAllocator<1024> callbackEntryVectorAllocator;
-
-    SendCallbackQueueEntryVector callbackEntryVector(
-        &callbackEntryVectorAllocator);
-
-    ntcq::ZeroCopyEntry zeroCopyEntry;
-    if (zeroCopyIsUsed) {
-        bsl::shared_ptr<ntsa::Data> dataContainer =
-            d_dataPool_sp->createOutgoingData();
-        *dataContainer = *d_sendData_sp;
-        zeroCopyEntry.setData(dataContainer);
-    }
+    SendCallbackVectorAllocator callbackVectorAllocator;
+    SendCallbackVector          callbackVector(&callbackVectorAllocator);
 
     while (true) {
         if (numBytesRemaining == 0) {
@@ -1225,52 +1196,41 @@ ntsa::Error StreamSocket::privateSocketWritableIterationBatch(
 
         const bool hasDeadline = !entry.deadline().isNull();
 
+        if (hasDeadline) {
+            entry.setDeadline(bdlb::NullableValue<bsls::TimeInterval>());
+            entry.closeTimer();
+        }
+
+        if (context.zeroCopy()) {
+            if (entry.zeroCopy()) {
+                d_zeroCopyQueue.push(entry.id());
+            }
+            else {
+                d_zeroCopyQueue.push(
+                    entry.id(), entry.data(), entry.callback());
+                entry.setZeroCopy(true);
+            }
+        }
+
         if (numBytesRemaining >= entry.length()) {
             numBytesRemaining -= entry.length();
 
             NTCS_METRICS_UPDATE_WRITE_QUEUE_DELAY(entry.delay());
 
-            if (zeroCopyIsUsed) {
-                if (entry.callbackEntry()) {
-                    zeroCopyEntry.addCallback(
-                        entry.callbackEntry()->callback());
-                }
-
-                if (hasDeadline) {
-                    entry.setDeadline(
-                        bdlb::NullableValue<bsls::TimeInterval>());
-                    entry.closeTimer();
-                }
+            if (entry.zeroCopy()) {
+                d_zeroCopyQueue.frame(entry.id());
             }
-            else if (entry.callbackEntry()) {
-                callbackEntryVector.push_back(entry.callbackEntry());
+            else if (entry.callback()) {
+                callbackVector.push_back(entry.callback());
             }
 
             d_sendQueue.popEntry();
         }
         else {
-            //            if (zeroCopyIsUsed && (numBytesRemaining > 0)) {
-            //                ntcq::ZeroCopyEntry         zeroCopyEntry;
-            //                bsl::shared_ptr<ntsa::Data> dataContainer =
-            //                    d_dataPool_sp->createOutgoingData();
-            //                *dataContainer = *d_sendData_sp;
-            //                zeroCopyEntry.setData(dataContainer);
-            //                d_zeroCopyList.addEntry(zeroCopyEntry);
-            //            }
-
-            if (hasDeadline) {
-                entry.setDeadline(bdlb::NullableValue<bsls::TimeInterval>());
-                entry.closeTimer();
-            }
             d_sendQueue.popSize(numBytesRemaining);
             numBytesRemaining = 0;
-
             break;
         }
-    }
-
-    if (zeroCopyIsUsed) {
-        d_zeroCopyList.addEntry(zeroCopyEntry);
     }
 
     NTCR_STREAMSOCKET_LOG_WRITE_QUEUE_DRAINED(d_sendQueue.size(),
@@ -1278,28 +1238,22 @@ ntsa::Error StreamSocket::privateSocketWritableIterationBatch(
 
     NTCS_METRICS_UPDATE_WRITE_QUEUE_SIZE(d_sendQueue.size());
 
-    if (!callbackEntryVector.empty()) {
-        for (SendCallbackQueueEntryVector::iterator it =
-                 callbackEntryVector.begin();
-             it != callbackEntryVector.end();
-             ++it)
-        {
-            const bsl::shared_ptr<ntcq::SendCallbackQueueEntry>&
-                callbackEntry = *it;
+    if (!callbackVector.empty()) {
+        SendCallbackVector::iterator it = callbackVector.begin();
+        SendCallbackVector::iterator et = callbackVector.end();
 
-            ntca::SendContext sendContext;
+        for (; it != et; ++it) {
+            const ntci::SendCallback& callback = *it;
 
             ntca::SendEvent sendEvent;
             sendEvent.setType(ntca::SendEventType::e_COMPLETE);
-            sendEvent.setContext(sendContext);
 
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                                   self,
-                                                   sendEvent,
-                                                   d_reactorStrand_sp,
-                                                   self,
-                                                   false,
-                                                   &d_mutex);
+            callback.dispatch(self,
+                              sendEvent,
+                              d_reactorStrand_sp,
+                              self,
+                              false,
+                              &d_mutex);
         }
     }
 
@@ -1340,86 +1294,50 @@ ntsa::Error StreamSocket::privateSocketWritableIterationFront(
 {
     NTCI_LOG_CONTEXT();
 
-    ntsa::Error error;
+    ntsa::Error       error;
+    ntsa::SendContext context;
 
     ntcq::SendQueueEntry& entry = d_sendQueue.frontEntry();
 
     if (NTCCFG_LIKELY(entry.data())) {
-        const bool hasDeadline = !entry.deadline().isNull();
-
-        ntsa::SendContext context;
-
-        bool zeroCopyIsUsed = 
-            (entry.data()->size() >= d_zeroCopyThreshold) && 
-            (!entry.data()->isFile());
-
         error = this->privateEnqueueSendBuffer(self, &context, *entry.data());
         if (NTCCFG_UNLIKELY(error)) {
-            if (zeroCopyIsUsed) {
-                if (error == ntsa::Error::e_LIMIT) {
-                    d_zeroCopyThreshold =
-                        bsl::numeric_limits<bsl::size_t>::max();
-                    zeroCopyIsUsed = false;
-                    context.reset();
-                    NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+            return error;
+        }
 
-                    error = this->privateEnqueueSendBuffer(self,
-                                                           &context,
-                                                           *entry.data());
-                    if (NTCCFG_UNLIKELY(error)) {
-                        return error;
-                    }
-                }
-                else {
-                    return error;
-                }
+        const bool hasDeadline = !entry.deadline().isNull();
+
+        if (hasDeadline) {
+            entry.setDeadline(bdlb::NullableValue<bsls::TimeInterval>());
+            entry.closeTimer();
+        }
+
+        if (context.zeroCopy()) {
+            if (entry.zeroCopy()) {
+                d_zeroCopyQueue.push(entry.id());
             }
             else {
-                return error;
+                d_zeroCopyQueue.push(
+                    entry.id(), entry.data(), entry.callback());
+                entry.setZeroCopy(true);
             }
         }
 
-        BSLS_ASSERT(!error);
-
-        bsl::shared_ptr<ntcq::SendCallbackQueueEntry> callbackEntry;
+        ntci::SendCallback callback;
 
         if (context.bytesSent() == entry.length()) {
             NTCS_METRICS_UPDATE_WRITE_QUEUE_DELAY(entry.delay());
-            callbackEntry = entry.callbackEntry();
-            if (zeroCopyIsUsed) {
-                ntcq::ZeroCopyEntry zeroCopyEntry;
-                if (callbackEntry) {
-                    zeroCopyEntry.addCallback(callbackEntry->callback());
-                }
-                zeroCopyEntry.setData(entry.data());
-                d_zeroCopyList.addEntry(zeroCopyEntry);
 
-                if (hasDeadline) {
-                    entry.setDeadline(
-                        bdlb::NullableValue<bsls::TimeInterval>());
-                    entry.closeTimer();
-                }
+            if (entry.zeroCopy()) {
+                d_zeroCopyQueue.frame(entry.id());
+            }
+            else if (entry.callback()) {
+                callback = entry.callback();
             }
 
             d_sendQueue.popEntry();
         }
         else {
-            if (hasDeadline) {
-                entry.setDeadline(bdlb::NullableValue<bsls::TimeInterval>());
-                entry.closeTimer();
-            }
-            if (zeroCopyIsUsed) {
-                ntcq::ZeroCopyEntry zeroCopyEntry;
-                //no callback as data is not processed completely
-                bsl::shared_ptr<ntsa::Data> dataContainer =
-                    d_dataPool_sp->createOutgoingData();
-                *dataContainer = *entry.data();
-
-                zeroCopyEntry.setData(dataContainer);
-
-                d_zeroCopyList.addEntry(zeroCopyEntry);
-            }
-
             d_sendQueue.popSize(context.bytesSent());
         }
 
@@ -1428,20 +1346,16 @@ ntsa::Error StreamSocket::privateSocketWritableIterationFront(
 
         NTCS_METRICS_UPDATE_WRITE_QUEUE_SIZE(d_sendQueue.size());
 
-        if (callbackEntry && !zeroCopyIsUsed) {
-            ntca::SendContext sendContext;
-
+        if (callback) {
             ntca::SendEvent sendEvent;
             sendEvent.setType(ntca::SendEventType::e_COMPLETE);
-            sendEvent.setContext(sendContext);
 
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                                   self,
-                                                   sendEvent,
-                                                   d_reactorStrand_sp,
-                                                   self,
-                                                   false,
-                                                   &d_mutex);
+            callback.dispatch(self,
+                              sendEvent,
+                              d_reactorStrand_sp,
+                              self,
+                              false,
+                              &d_mutex);
         }
 
         if (d_sendQueue.authorizeLowWatermarkEvent()) {
@@ -1964,7 +1878,8 @@ void StreamSocket::privateShutdownSequence(
 
     defer = true;
 
-    // First handle flow control and detachment from the reactor, if necessary.
+    // First, handle flow control and detachment from the reactor, if
+    // necessary.
 
     bool asyncDetachmentStarted = false;
 
@@ -2021,7 +1936,8 @@ void StreamSocket::privateShutdownSequencePart2(
         BSLS_ASSERT(d_detachState.get() !=
                     ntcs::DetachState::e_DETACH_INITIATED);
     }
-    // Second handle socket shutdown.
+
+    // Second, handle socket shutdown.
 
     if (context.shutdownSend()) {
         if (!d_options.abortiveClose()) {
@@ -2039,7 +1955,7 @@ void StreamSocket::privateShutdownSequencePart2(
         }
     }
 
-    // Third handle internal data structures and announce events.
+    // Third, handle internal data structures and announce events.
 
     if (context.shutdownInitiated()) {
         if (d_session_sp) {
@@ -2065,8 +1981,7 @@ void StreamSocket::privateShutdownSequencePart2(
 
         NTCR_STREAMSOCKET_LOG_SHUTDOWN_SEND();
 
-        bsl::vector<bsl::shared_ptr<ntcq::SendCallbackQueueEntry> >
-            callbackEntryVector;
+        bsl::vector<ntci::SendCallback> callbackVector;
 
         bool announceWriteQueueDiscarded = false;
         {
@@ -2075,8 +1990,12 @@ void StreamSocket::privateShutdownSequencePart2(
                 d_sendRateTimer_sp.reset();
             }
 
+            d_zeroCopyQueue.clear(&callbackVector);
+
             announceWriteQueueDiscarded =
-                d_sendQueue.removeAll(&callbackEntryVector);
+                d_sendQueue.removeAll(&callbackVector);
+
+            // TODO: De-duplicate 'callbackVector' but preserve the order.
         }
 
         if (d_upgradeInProgress) {
@@ -2108,7 +2027,7 @@ void StreamSocket::privateShutdownSequencePart2(
             }
         }
 
-        for (bsl::size_t i = 0; i < callbackEntryVector.size(); ++i) {
+        for (bsl::size_t i = 0; i < callbackVector.size(); ++i) {
             ntca::SendContext sendContext;
             sendContext.setError(ntsa::Error(ntsa::Error::e_CANCELLED));
 
@@ -2116,16 +2035,16 @@ void StreamSocket::privateShutdownSequencePart2(
             sendEvent.setType(ntca::SendEventType::e_ERROR);
             sendEvent.setContext(sendContext);
 
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntryVector[i],
-                                                   self,
-                                                   sendEvent,
-                                                   d_reactorStrand_sp,
-                                                   self,
-                                                   defer,
-                                                   &d_mutex);
+            callbackVector[i].dispatch(
+                self,
+                sendEvent,
+                d_reactorStrand_sp,
+                self,
+                defer,
+                &d_mutex);
         }
 
-        callbackEntryVector.clear();
+        callbackVector.clear();
 
         if (announceWriteQueueDiscarded) {
             if (d_session_sp) {
@@ -2270,7 +2189,6 @@ void StreamSocket::privateShutdownSequencePart2(
             }
             d_socket_sp->close();
         }
-        d_zeroCopyList.cancelWait(self, self);
 
         d_systemHandle = ntsa::k_INVALID_HANDLE;
 
@@ -2712,7 +2630,8 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
     }
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
-    if (d_sendCount++ == NTCR_STREAMSOCKET_SEND_BUFFER_REFRESH_INTERVAL) {
+    if ((d_sendCounter % NTCR_STREAMSOCKET_SEND_BUFFER_REFRESH_INTERVAL) == 0)
+    {
         if (data.length() >=
             NTCR_STREAMSOCKET_SEND_BUFFER_REFRESH_SIZE_THRESHOLD)
         {
@@ -2733,18 +2652,13 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
                 d_sendOptions.setMaxBytes(sendBufferSize * 2);
             }
         }
-
-        d_sendCount = 0;
     }
 #endif
 
-    ntsa::SendOptions sendOptions = d_sendOptions;
+    ntsa::SendOptions options = d_sendOptions;
 
-    const bool zeroCopyIsUsed =
-        (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold);
-
-    if (zeroCopyIsUsed) {
-        sendOptions.setZeroCopy(true);
+    if (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold) {
+        options.setZeroCopy(true);
     }
 
     bsls::TimeInterval timestamp;
@@ -2752,24 +2666,10 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
         timestamp = this->currentTime();
     }
 
-    error = d_socket_sp->send(context, data, sendOptions);
-
-    d_totalBytesSent += context->bytesSent();
-
-    if (d_timestampOutgoingData) {
-        d_timestampCounter += static_cast<bsl::uint32_t>(context->bytesSent());
-        d_timestampCorrelator.saveTimestampBeforeSend(
-            timestamp,
-            d_timestampCounter - 1);
-    }
-
+    error = d_socket_sp->send(context, data, options);
     if (NTCCFG_UNLIKELY(error)) {
         if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
             NTCR_STREAMSOCKET_LOG_SEND_BUFFER_OVERFLOW();
-            return error;
-        }
-        else if (zeroCopyIsUsed && (error == ntsa::Error::e_LIMIT)) {
-            NTCR_STREAMSOCKET_LOG_SEND_BUFFER_PAGE_LIMIT();
             return error;
         }
         else {
@@ -2778,9 +2678,23 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
         }
     }
 
+    if (options.zeroCopy() != context->zeroCopy() && 
+        d_zeroCopyThreshold != k_ZERO_COPY_NEVER) 
+    {
+        NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+        d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+    }
+
     if (NTCCFG_UNLIKELY(context->bytesSent() == 0)) {
         NTCR_STREAMSOCKET_LOG_SEND_BUFFER_OVERFLOW();
         return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    if (d_timestampOutgoingData) {
+        d_timestampCounter += static_cast<bsl::uint32_t>(context->bytesSent());
+        d_timestampCorrelator.saveTimestampBeforeSend(
+            timestamp,
+            d_timestampCounter - 1);
     }
 
     if (NTCCFG_UNLIKELY(d_sendRateLimiter_sp)) {
@@ -2789,6 +2703,8 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
 
     NTCR_STREAMSOCKET_LOG_SEND_RESULT(*context);
     NTCS_METRICS_UPDATE_SEND_COMPLETE(*context);
+
+    d_totalBytesSent += context->bytesSent();
 
     return ntsa::Error();
 }
@@ -2814,7 +2730,8 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
     }
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
-    if (d_sendCount++ == NTCR_STREAMSOCKET_SEND_BUFFER_REFRESH_INTERVAL) {
+    if ((d_sendCounter % NTCR_STREAMSOCKET_SEND_BUFFER_REFRESH_INTERVAL) == 0) 
+    {
         if (data.size() >=
             NTCR_STREAMSOCKET_SEND_BUFFER_REFRESH_SIZE_THRESHOLD)
         {
@@ -2835,18 +2752,13 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
                 d_sendOptions.setMaxBytes(sendBufferSize * 2);
             }
         }
-
-        d_sendCount = 0;
     }
 #endif
 
-    ntsa::SendOptions sendOptions = d_sendOptions;
+    ntsa::SendOptions options = d_sendOptions;
 
-    const bool zeroCopyIsUsed = 
-        (data.size() >= d_zeroCopyThreshold) && (!data.isFile());
-
-    if (zeroCopyIsUsed) {
-        sendOptions.setZeroCopy(true);
+    if ((data.size() >= d_zeroCopyThreshold) && (!data.isFile())) {
+        options.setZeroCopy(true);
     }
 
     bsls::TimeInterval timestamp;
@@ -2854,24 +2766,10 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
         timestamp = this->currentTime();
     }
 
-    error = d_socket_sp->send(context, data, sendOptions);
-
-    d_totalBytesSent += context->bytesSent();
-
-    if (d_timestampOutgoingData) {
-        d_timestampCounter += static_cast<bsl::uint32_t>(context->bytesSent());
-        d_timestampCorrelator.saveTimestampBeforeSend(
-            timestamp,
-            d_timestampCounter - 1);
-    }
-
+    error = d_socket_sp->send(context, data, options);
     if (NTCCFG_UNLIKELY(error)) {
         if (NTCCFG_LIKELY(error == ntsa::Error::e_WOULD_BLOCK)) {
             NTCR_STREAMSOCKET_LOG_SEND_BUFFER_OVERFLOW();
-            return error;
-        }
-        else if (zeroCopyIsUsed && (error == ntsa::Error::e_LIMIT)) {
-            NTCR_STREAMSOCKET_LOG_SEND_BUFFER_PAGE_LIMIT();
             return error;
         }
         else {
@@ -2880,9 +2778,23 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
         }
     }
 
+    if (options.zeroCopy() != context->zeroCopy() && 
+        d_zeroCopyThreshold != k_ZERO_COPY_NEVER) 
+    {
+        NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+        d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+    }
+
     if (NTCCFG_UNLIKELY(context->bytesSent() == 0)) {
         NTCR_STREAMSOCKET_LOG_SEND_BUFFER_OVERFLOW();
         return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    if (d_timestampOutgoingData) {
+        d_timestampCounter += static_cast<bsl::uint32_t>(context->bytesSent());
+        d_timestampCorrelator.saveTimestampBeforeSend(
+            timestamp,
+            d_timestampCounter - 1);
     }
 
     if (NTCCFG_UNLIKELY(d_sendRateLimiter_sp)) {
@@ -2891,6 +2803,8 @@ ntsa::Error StreamSocket::privateEnqueueSendBuffer(
 
     NTCR_STREAMSOCKET_LOG_SEND_RESULT(*context);
     NTCS_METRICS_UPDATE_SEND_COMPLETE(*context);
+
+    d_totalBytesSent += context->bytesSent();
 
     return ntsa::Error();
 }
@@ -3015,9 +2929,14 @@ ntsa::Error StreamSocket::privateDequeueReceiveBuffer(
             }
 
             if (NTCCFG_UNLIKELY(cipherData.length() > 0)) {
+                ntcq::SendState state;
+                state.setCounter(d_sendCounter++);
+
                 error = this->privateSendRaw(self,
                                              cipherData,
-                                             ntca::SendOptions());
+                                             state,
+                                             ntca::SendOptions(),
+                                             d_sendComplete);
                 if (error) {
                     return error;
                 }
@@ -3197,79 +3116,49 @@ void StreamSocket::privateRearmAfterNotification(
 ntsa::Error StreamSocket::privateSendRaw(
     const bsl::shared_ptr<StreamSocket>& self,
     const bdlbb::Blob&                   data,
-    const ntca::SendOptions&             options)
+    const ntcq::SendState&               state,
+    const ntca::SendOptions&             options,
+    const ntci::SendCallback&            callback)
 {
     NTCI_LOG_CONTEXT();
 
-    ntsa::Error error;
-
+    ntsa::Error       error;
     ntsa::SendContext context;
-
-    bool zeroCopyIsUsed =
-        (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold);
 
     if (NTCCFG_LIKELY(!d_sendQueue.hasEntry())) {
         error = this->privateEnqueueSendBuffer(self, &context, data);
         if (NTCCFG_UNLIKELY(error)) {
-            if (zeroCopyIsUsed) {
-                if (error == ntsa::Error::e_LIMIT) {
-                    d_zeroCopyThreshold =
-                        bsl::numeric_limits<bsl::size_t>::max();
-                    zeroCopyIsUsed = false;
-                    context.reset();
-                    NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
-
-                    error =
-                        this->privateEnqueueSendBuffer(self, &context, data);
-                    if (NTCCFG_UNLIKELY(error) &&
-                        (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)))
-                    {
-                        return error;
-                    }
-                }
-                else if (error != ntsa::Error::e_WOULD_BLOCK) {
-                    return error;
-                }
-            }
-            else if (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)) {
+            if (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)) {
                 return error;
             }
         }
     }
 
-    BSLS_ASSERT(!error || error == ntsa::Error::e_WOULD_BLOCK);
+    BSLS_ASSERT((!error && context.bytesSent() > 0) || 
+                 (error == ntsa::Error::e_WOULD_BLOCK));
 
-    if (context.bytesSent() ==
-        NTCCFG_WARNING_PROMOTE(bsl::size_t, data.length()))
-    {
-        if (zeroCopyIsUsed) {
-            ntcq::ZeroCopyEntry zeroCopyEntry;
-            //no callback
-            //            zeroCopyEntry.context() = context;
+    if (context.bytesSent() == static_cast<bsl::size_t>(data.length())) {
+        if (context.zeroCopy()) {
+            d_zeroCopyQueue.push(state.counter(), data, callback);
+        }
+        else if (callback) {
+            ntca::SendEvent sendEvent;
+            sendEvent.setType(ntca::SendEventType::e_COMPLETE);
 
-            bsl::shared_ptr<ntsa::Data> dataContainer =
-                d_dataPool_sp->createOutgoingData();
+            const bool defer = !options.recurse();
 
-            dataContainer->makeBlob(data);
-            zeroCopyEntry.setData(dataContainer);
-
-            d_zeroCopyList.addEntry(zeroCopyEntry);
+            callback.dispatch(self,
+                              sendEvent,
+                              ntci::Strand::unknown(),
+                              self,
+                              defer,
+                              &d_mutex);
         }
 
         return ntsa::Error();
     }
-    else if (zeroCopyIsUsed && (context.bytesSent() > 0)) {
-        ntcq::ZeroCopyEntry zeroCopyEntry;
 
-        bsl::shared_ptr<ntsa::Data> dataContainer =
-            d_dataPool_sp->createOutgoingData();
-
-        dataContainer->makeBlob(data);
-
-        zeroCopyEntry.setData(dataContainer);
-
-        d_zeroCopyList.addEntry(zeroCopyEntry);
-    }
+    BSLS_ASSERT(context.bytesSent() < static_cast<bsl::size_t>(data.length()));
 
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
@@ -3279,12 +3168,21 @@ ntsa::Error StreamSocket::privateSendRaw(
 
     BSLS_ASSERT(dataContainer->blob().length() != 0);
 
+    if (context.zeroCopy()) {
+        d_zeroCopyQueue.push(state.counter(), dataContainer, callback);
+    }
+
     ntcq::SendQueueEntry entry;
-    entry.setId(d_sendQueue.generateEntryId());
+    entry.setId(state.counter());
     entry.setToken(options.token());
     entry.setData(dataContainer);
     entry.setLength(dataContainer->blob().length());
     entry.setTimestamp(bsls::TimeUtil::getTimer());
+    entry.setZeroCopy(context.zeroCopy());
+
+    if (callback) {
+        entry.setCallback(callback);
+    }
 
     if (NTCCFG_UNLIKELY(!options.deadline().isNull())) {
         if (context.bytesSent() == 0) {
@@ -3332,74 +3230,49 @@ ntsa::Error StreamSocket::privateSendRaw(
 ntsa::Error StreamSocket::privateSendRaw(
     const bsl::shared_ptr<StreamSocket>& self,
     const ntsa::Data&                    data,
-    const ntca::SendOptions&             options)
+    const ntcq::SendState&               state,
+    const ntca::SendOptions&             options,
+    const ntci::SendCallback&            callback)
 {
     NTCI_LOG_CONTEXT();
 
-    ntsa::Error error;
-
+    ntsa::Error       error;
     ntsa::SendContext context;
-
-    bool zeroCopyIsUsed = 
-        (data.size() >= d_zeroCopyThreshold) && (!data.isFile());
 
     if (NTCCFG_LIKELY(!d_sendQueue.hasEntry())) {
         error = this->privateEnqueueSendBuffer(self, &context, data);
         if (NTCCFG_UNLIKELY(error)) {
-            if (zeroCopyIsUsed) {
-                if (error == ntsa::Error::e_LIMIT) {
-                    d_zeroCopyThreshold =
-                        bsl::numeric_limits<bsl::size_t>::max();
-                    zeroCopyIsUsed = false;
-                    context.reset();
-                    NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
-
-                    error =
-                        this->privateEnqueueSendBuffer(self, &context, data);
-                    if (NTCCFG_UNLIKELY(error) &&
-                        (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)))
-                    {
-                        return error;
-                    }
-                }
-                else if (error != ntsa::Error::e_WOULD_BLOCK) {
-                    return error;
-                }
-            }
-            else if (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)) {
+            if (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)) {
                 return error;
             }
         }
     }
 
-    BSLS_ASSERT(!error || error == ntsa::Error::e_WOULD_BLOCK);
+    BSLS_ASSERT((!error && context.bytesSent() > 0) || 
+                 (error == ntsa::Error::e_WOULD_BLOCK));
 
     if (context.bytesSent() == data.size()) {
-        if (zeroCopyIsUsed) {
-            ntcq::ZeroCopyEntry zeroCopyEntry;
-            //no callback
-
-            bsl::shared_ptr<ntsa::Data> dataContainer =
-                d_dataPool_sp->createOutgoingData();
-
-            *dataContainer = data;
-            zeroCopyEntry.setData(dataContainer);
-
-            d_zeroCopyList.addEntry(zeroCopyEntry);
+        if (context.zeroCopy()) {
+            d_zeroCopyQueue.push(state.counter(), data, callback);
         }
+        else if (callback) {
+            ntca::SendEvent sendEvent;
+            sendEvent.setType(ntca::SendEventType::e_COMPLETE);
+
+            const bool defer = !options.recurse();
+
+            callback.dispatch(self,
+                              sendEvent,
+                              ntci::Strand::unknown(),
+                              self,
+                              defer,
+                              &d_mutex);
+        }
+
         return ntsa::Error();
     }
-    else if (zeroCopyIsUsed && (context.bytesSent() > 0)) {
-        ntcq::ZeroCopyEntry zeroCopyEntry;
 
-        bsl::shared_ptr<ntsa::Data> dataContainer =
-            d_dataPool_sp->createOutgoingData();
-
-        *dataContainer = data;
-        zeroCopyEntry.setData(dataContainer);
-
-        d_zeroCopyList.addEntry(zeroCopyEntry);
-    }
+    BSLS_ASSERT(context.bytesSent() < data.size());
 
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
@@ -3409,12 +3282,21 @@ ntsa::Error StreamSocket::privateSendRaw(
 
     BSLS_ASSERT(dataContainer->size() != 0);
 
+    if (context.zeroCopy()) {
+        d_zeroCopyQueue.push(state.counter(), dataContainer, callback);
+    }
+
     ntcq::SendQueueEntry entry;
-    entry.setId(d_sendQueue.generateEntryId());
+    entry.setId(state.counter());
     entry.setToken(options.token());
     entry.setData(dataContainer);
     entry.setLength(dataContainer->size());
     entry.setTimestamp(bsls::TimeUtil::getTimer());
+    entry.setZeroCopy(context.zeroCopy());
+    
+    if (callback) {
+        entry.setCallback(callback);
+    }
 
     if (NTCCFG_UNLIKELY(!options.deadline().isNull())) {
         if (context.bytesSent() == 0) {
@@ -3459,313 +3341,97 @@ ntsa::Error StreamSocket::privateSendRaw(
     return ntsa::Error();
 }
 
-ntsa::Error StreamSocket::privateSendRaw(
-    const bsl::shared_ptr<StreamSocket>& self,
-    const bdlbb::Blob&                   data,
-    const ntca::SendOptions&             options,
-    const ntci::SendCallback&            callback)
-{
-    NTCI_LOG_CONTEXT();
 
+ntsa::Error StreamSocket::privateSendEncrypted(
+        const bsl::shared_ptr<StreamSocket>& self,
+        const bdlbb::Blob&                   data,
+        const ntcq::SendState&               state,
+        const ntca::SendOptions&             options,
+        const ntci::SendCallback&            callback)
+{
     ntsa::Error error;
 
-    ntsa::SendContext context;
+    bdlbb::Blob cipherData(d_outgoingBufferFactory_sp.get());
 
-    bool zeroCopyIsUsed =
-        (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold);
+    error = d_encryption_sp->pushOutgoingPlainText(data);
+    if (error) {
+        return error;
+    }
 
-    if (NTCCFG_LIKELY(!d_sendQueue.hasEntry())) {
-        error = this->privateEnqueueSendBuffer(self, &context, data);
-        if (NTCCFG_UNLIKELY(error)) {
-            if (zeroCopyIsUsed) {
-                if (error == ntsa::Error::e_LIMIT) {
-                    d_zeroCopyThreshold =
-                        bsl::numeric_limits<bsl::size_t>::max();
-                    zeroCopyIsUsed = false;
-                    context.reset();
-                    NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
-
-                    error =
-                        this->privateEnqueueSendBuffer(self, &context, data);
-                    if (NTCCFG_UNLIKELY(error) &&
-                        (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)))
-                    {
-                        return error;
-                    }
-                }
-                else if (error != ntsa::Error::e_WOULD_BLOCK) {
-                    return error;
-                }
-            }
-            else if (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)) {
-                return error;
-            }
+    while (d_encryption_sp->hasOutgoingCipherText()) {
+        error = d_encryption_sp->popOutgoingCipherText(&cipherData);
+        if (error) {
+            return error;
         }
     }
 
-    BSLS_ASSERT(!error || error == ntsa::Error::e_WOULD_BLOCK);
-
-    bsl::shared_ptr<ntcq::SendCallbackQueueEntry> callbackEntry =
-        d_sendQueue.createCallbackEntry();
-    callbackEntry->assign(callback, options);
-
-    if (context.bytesSent() ==
-        NTCCFG_WARNING_PROMOTE(bsl::size_t, data.length()))
-    {
-        if (zeroCopyIsUsed) {
-            ntcq::ZeroCopyEntry zeroCopyEntry;
-            zeroCopyEntry.addCallback(callback);
-
-            bsl::shared_ptr<ntsa::Data> dataContainer =
-                d_dataPool_sp->createOutgoingData();
-
-            dataContainer->makeBlob(data);
-            zeroCopyEntry.setData(dataContainer);
-
-            d_zeroCopyList.addEntry(zeroCopyEntry);
-        }
-        else {
-            ntca::SendContext sendContext;
-
-            ntca::SendEvent sendEvent;
-            sendEvent.setType(ntca::SendEventType::e_COMPLETE);
-            sendEvent.setContext(sendContext);
-
-            const bool defer = !options.recurse();
-
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                                   self,
-                                                   sendEvent,
-                                                   ntci::Strand::unknown(),
-                                                   self,
-                                                   defer,
-                                                   &d_mutex);
-        }
-
-        return ntsa::Error();
-    }
-    else if (zeroCopyIsUsed && (context.bytesSent() > 0)) {
-        ntcq::ZeroCopyEntry zeroCopyEntry;
-        zeroCopyEntry.addCallback(callback);
-
-        bsl::shared_ptr<ntsa::Data> dataContainer =
-            d_dataPool_sp->createOutgoingData();
-
-        dataContainer->makeBlob(data);
-        zeroCopyEntry.setData(dataContainer);
-
-        d_zeroCopyList.addEntry(zeroCopyEntry);
-    }
-
-    bsl::shared_ptr<ntsa::Data> dataContainer =
-        d_dataPool_sp->createOutgoingData();
-
-    dataContainer->makeBlob(data);
-    ntcs::BlobUtil::pop(&dataContainer->blob(), context.bytesSent());
-
-    BSLS_ASSERT(dataContainer->blob().length() != 0);
-
-    ntcq::SendQueueEntry entry;
-    entry.setId(d_sendQueue.generateEntryId());
-    entry.setToken(options.token());
-    entry.setData(dataContainer);
-    entry.setLength(dataContainer->blob().length());
-    entry.setTimestamp(bsls::TimeUtil::getTimer());
-    entry.setCallbackEntry(callbackEntry);
-
-    if (NTCCFG_UNLIKELY(!options.deadline().isNull())) {
-        if (context.bytesSent() == 0) {
-            ntca::TimerOptions timerOptions;
-            timerOptions.setOneShot(true);
-            timerOptions.showEvent(ntca::TimerEventType::e_DEADLINE);
-            timerOptions.hideEvent(ntca::TimerEventType::e_CANCELED);
-            timerOptions.hideEvent(ntca::TimerEventType::e_CLOSED);
-
-            ntci::TimerCallback timerCallback = this->createTimerCallback(
-                bdlf::BindUtil::bind(&StreamSocket::processSendDeadlineTimer,
-                                     self,
-                                     bdlf::PlaceHolders::_1,
-                                     bdlf::PlaceHolders::_2,
-                                     entry.id()),
-                d_allocator_p);
-
-            bsl::shared_ptr<ntci::Timer> timer =
-                this->createTimer(timerOptions, timerCallback, d_allocator_p);
-
-            entry.setDeadline(options.deadline().value());
-            entry.setTimer(timer);
-
-            timer->schedule(options.deadline().value());
+    if (cipherData.length() > 0) {
+        error = this->privateSendRaw(
+            self, cipherData, state, options, callback);
+        if (error) {
+            return error;
         }
     }
+    else if (callback) {
+        ntca::SendEvent sendEvent;
+        sendEvent.setType(ntca::SendEventType::e_COMPLETE);
 
-    bool becameNonEmpty = d_sendQueue.pushEntry(entry);
+        const bool defer = !options.recurse();
 
-    NTCR_STREAMSOCKET_LOG_WRITE_QUEUE_FILLED(d_sendQueue.size(),
-                                             d_sendQueue.highWatermark());
-
-    NTCS_METRICS_UPDATE_WRITE_QUEUE_SIZE(d_sendQueue.size());
-
-    if (becameNonEmpty) {
-        this->privateRelaxFlowControl(self,
-                                      ntca::FlowControlType::e_SEND,
-                                      true,
-                                      false);
+        callback.dispatch(self,
+                            sendEvent,
+                            ntci::Strand::unknown(),
+                            self,
+                            defer,
+                            &d_mutex);
     }
 
     return ntsa::Error();
 }
 
-ntsa::Error StreamSocket::privateSendRaw(
-    const bsl::shared_ptr<StreamSocket>& self,
-    const ntsa::Data&                    data,
-    const ntca::SendOptions&             options,
-    const ntci::SendCallback&            callback)
-{
-    NTCI_LOG_CONTEXT();
 
+ntsa::Error StreamSocket::privateSendEncrypted(
+        const bsl::shared_ptr<StreamSocket>& self,
+        const ntsa::Data&                    data,
+        const ntcq::SendState&               state,
+        const ntca::SendOptions&             options,
+        const ntci::SendCallback&            callback)
+{
     ntsa::Error error;
 
-    ntsa::SendContext context;
+    error = d_encryption_sp->pushOutgoingPlainText(data);
+    if (error) {
+        return error;
+    }
 
-    bool zeroCopyIsUsed = 
-        (data.size() >= d_zeroCopyThreshold) && (!data.isFile());
+    bdlbb::Blob cipherData(d_outgoingBufferFactory_sp.get());
 
-    if (NTCCFG_LIKELY(!d_sendQueue.hasEntry())) {
-        error = this->privateEnqueueSendBuffer(self, &context, data);
-        if (NTCCFG_UNLIKELY(error)) {
-            if (zeroCopyIsUsed) {
-                if (error == ntsa::Error::e_LIMIT) {
-                    d_zeroCopyThreshold =
-                        bsl::numeric_limits<bsl::size_t>::max();
-                    zeroCopyIsUsed = false;
-                    context.reset();
-                    NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
-
-                    error =
-                        this->privateEnqueueSendBuffer(self, &context, data);
-                    if (NTCCFG_UNLIKELY(error) &&
-                        (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)))
-                    {
-                        return error;
-                    }
-                }
-                else if (error != ntsa::Error::e_WOULD_BLOCK) {
-                    return error;
-                }
-            }
-            else if (NTCCFG_UNLIKELY(error != ntsa::Error::e_WOULD_BLOCK)) {
-                return error;
-            }
+    while (d_encryption_sp->hasOutgoingCipherText()) {
+        error = d_encryption_sp->popOutgoingCipherText(&cipherData);
+        if (error) {
+            return error;
         }
     }
 
-    BSLS_ASSERT(!error || error == ntsa::Error::e_WOULD_BLOCK);
-
-    bsl::shared_ptr<ntcq::SendCallbackQueueEntry> callbackEntry =
-        d_sendQueue.createCallbackEntry();
-    callbackEntry->assign(callback, options);
-
-    if (context.bytesSent() == data.size()) {
-        if (!zeroCopyIsUsed) {
-            ntca::SendContext sendContext;
-
-            ntca::SendEvent sendEvent;
-            sendEvent.setType(ntca::SendEventType::e_COMPLETE);
-            sendEvent.setContext(sendContext);
-
-            const bool defer = !options.recurse();
-
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                                   self,
-                                                   sendEvent,
-                                                   ntci::Strand::unknown(),
-                                                   self,
-                                                   defer,
-                                                   &d_mutex);
-        }
-        else {
-            ntcq::ZeroCopyEntry zeroCopyEntry;
-            zeroCopyEntry.addCallback(callback);
-
-            bsl::shared_ptr<ntsa::Data> dataContainer =
-                d_dataPool_sp->createOutgoingData();
-
-            *dataContainer = data;
-            zeroCopyEntry.setData(dataContainer);
-
-            d_zeroCopyList.addEntry(zeroCopyEntry);
-        }
-
-        return ntsa::Error();
-    }
-    else if (zeroCopyIsUsed && (context.bytesSent() > 0)) {
-        ntcq::ZeroCopyEntry zeroCopyEntry;
-        zeroCopyEntry.addCallback(callback);
-
-        bsl::shared_ptr<ntsa::Data> dataContainer =
-            d_dataPool_sp->createOutgoingData();
-
-        *dataContainer = data;
-        zeroCopyEntry.setData(dataContainer);
-
-        d_zeroCopyList.addEntry(zeroCopyEntry);
-    }
-
-    bsl::shared_ptr<ntsa::Data> dataContainer =
-        d_dataPool_sp->createOutgoingData();
-
-    *dataContainer = data;
-    ntsa::DataUtil::pop(dataContainer.get(), context.bytesSent());
-
-    BSLS_ASSERT(dataContainer->size() != 0);
-
-    ntcq::SendQueueEntry entry;
-    entry.setId(d_sendQueue.generateEntryId());
-    entry.setToken(options.token());
-    entry.setData(dataContainer);
-    entry.setLength(dataContainer->size());
-    entry.setTimestamp(bsls::TimeUtil::getTimer());
-    entry.setCallbackEntry(callbackEntry);
-
-    if (NTCCFG_UNLIKELY(!options.deadline().isNull())) {
-        if (context.bytesSent() == 0) {
-            ntca::TimerOptions timerOptions;
-            timerOptions.setOneShot(true);
-            timerOptions.showEvent(ntca::TimerEventType::e_DEADLINE);
-            timerOptions.hideEvent(ntca::TimerEventType::e_CANCELED);
-            timerOptions.hideEvent(ntca::TimerEventType::e_CLOSED);
-
-            ntci::TimerCallback timerCallback = this->createTimerCallback(
-                bdlf::BindUtil::bind(&StreamSocket::processSendDeadlineTimer,
-                                     self,
-                                     bdlf::PlaceHolders::_1,
-                                     bdlf::PlaceHolders::_2,
-                                     entry.id()),
-                d_allocator_p);
-
-            bsl::shared_ptr<ntci::Timer> timer =
-                this->createTimer(timerOptions, timerCallback, d_allocator_p);
-
-            entry.setDeadline(options.deadline().value());
-            entry.setTimer(timer);
-
-            timer->schedule(options.deadline().value());
+    if (cipherData.length() > 0) {
+        error = this->privateSendRaw(
+            self, cipherData, state, options, callback);
+        if (error) {
+            return error;
         }
     }
+    else if (callback) {
+        ntca::SendEvent sendEvent;
+        sendEvent.setType(ntca::SendEventType::e_COMPLETE);
 
-    bool becameNonEmpty = d_sendQueue.pushEntry(entry);
+        const bool defer = !options.recurse();
 
-    NTCR_STREAMSOCKET_LOG_WRITE_QUEUE_FILLED(d_sendQueue.size(),
-                                             d_sendQueue.highWatermark());
-
-    NTCS_METRICS_UPDATE_WRITE_QUEUE_SIZE(d_sendQueue.size());
-
-    if (becameNonEmpty) {
-        this->privateRelaxFlowControl(self,
-                                      ntca::FlowControlType::e_SEND,
-                                      true,
-                                      false);
+        callback.dispatch(self,
+                          sendEvent,
+                          ntci::Strand::unknown(),
+                          self,
+                          defer,
+                          &d_mutex);
     }
 
     return ntsa::Error();
@@ -3995,14 +3661,14 @@ ntsa::Error StreamSocket::privateOpen(
             if (error) {
                 NTCI_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
                                error.text().c_str());
-                d_zeroCopyThreshold = bsl::numeric_limits<bsl::size_t>::max();
+                d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
             }
             else {
                 d_zeroCopyThreshold = d_options.zeroCopyThreshold().value();
             }
         }
         else {
-            d_zeroCopyThreshold = bsl::numeric_limits<bsl::size_t>::max();
+            d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
         }
     }
 
@@ -4345,7 +4011,11 @@ ntsa::Error StreamSocket::privateUpgrade(
     // Send the outgoing cipher text, if any.
 
     if (cipherData.length() > 0) {
-        error = this->privateSendRaw(self, cipherData, ntca::SendOptions());
+        ntcq::SendState state;
+        state.setCounter(d_sendCounter++);
+
+        error = this->privateSendRaw(
+            self, cipherData, state, ntca::SendOptions(), d_sendComplete);
         if (error) {
             return error;
         }
@@ -4639,7 +4309,25 @@ void StreamSocket::privateZeroCopyUpdate(
             const bsl::shared_ptr<StreamSocket>& self,
             const ntsa::ZeroCopy&                zeroCopy)
 {
-    d_zeroCopyList.zeroCopyAcknowledge(zeroCopy, self, self);
+    d_zeroCopyQueue.update(zeroCopy);
+
+    if (d_zeroCopyQueue.ready()) {
+        while (true) {
+            ntci::SendCallback callback;
+            bool found = d_zeroCopyQueue.pop(&callback);
+            if (!found) {
+                break;
+            }
+
+            if (callback) {
+                ntca::SendEvent event;
+                event.setType(ntca::SendEventType::e_COMPLETE);
+
+                callback.dispatch(
+                    self, event, d_reactorStrand_sp, self, false, &d_mutex);
+            }
+        }
+    }
 }
 
 StreamSocket::StreamSocket(
@@ -4680,14 +4368,16 @@ StreamSocket::StreamSocket(
 , d_openState()
 , d_flowControlState()
 , d_shutdownState()
-, d_zeroCopyList(reactor->dataPool(), basicAllocator)
-, d_zeroCopyThreshold(bsl::numeric_limits<bsl::size_t>::max())
+, d_zeroCopyQueue(
+    ntsa::TransportMode::e_STREAM, reactor->dataPool(), basicAllocator)
+, d_zeroCopyThreshold(k_ZERO_COPY_NEVER)
 , d_sendOptions()
 , d_sendQueue(basicAllocator)
 , d_sendRateLimiter_sp()
 , d_sendRateTimer_sp()
 , d_sendGreedily(NTCCFG_DEFAULT_STREAM_SOCKET_WRITE_GREEDILY)
-, d_sendCount(0)
+, d_sendComplete(basicAllocator)
+, d_sendCounter(0)
 , d_sendData_sp()
 , d_receiveOptions()
 , d_receiveQueue(basicAllocator)
@@ -4781,7 +4471,6 @@ StreamSocket::StreamSocket(
 
     if (reactor->maxThreads() > 1) {
         d_reactorStrand_sp = reactor->createStrand(d_allocator_p);
-        d_zeroCopyList.setStrand(d_reactorStrand_sp);
     }
 
     if (!d_managerStrand_sp) {
@@ -5406,163 +5095,13 @@ ntsa::Error StreamSocket::upgrade(
 ntsa::Error StreamSocket::send(const bdlbb::Blob&       data,
                                const ntca::SendOptions& options)
 {
-    bsl::shared_ptr<StreamSocket> self = this->getSelf(this);
-
-    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
-
-    NTCI_LOG_CONTEXT();
-
-    NTCI_LOG_CONTEXT_GUARD_DESCRIPTOR(d_publicHandle);
-    NTCI_LOG_CONTEXT_GUARD_SOURCE_ENDPOINT(d_sourceEndpoint);
-    NTCI_LOG_CONTEXT_GUARD_REMOTE_ENDPOINT(d_remoteEndpoint);
-
-    ntsa::Error error;
-
-    if (NTCCFG_UNLIKELY(!d_openState.canSend())) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    bsl::size_t effectiveHighWatermark = d_sendQueue.highWatermark();
-    if (!options.highWatermark().isNull()) {
-        effectiveHighWatermark = options.highWatermark().value();
-    }
-
-    if (NTCCFG_UNLIKELY(
-            d_sendQueue.isHighWatermarkViolated(effectiveHighWatermark)))
-    {
-        if (d_sendQueue.authorizeHighWatermarkEvent(effectiveHighWatermark)) {
-            NTCR_STREAMSOCKET_LOG_WRITE_QUEUE_HIGH_WATERMARK(
-                effectiveHighWatermark,
-                d_sendQueue.size());
-
-            if (d_session_sp) {
-                ntca::WriteQueueEvent event;
-                event.setType(ntca::WriteQueueEventType::e_HIGH_WATERMARK);
-                event.setContext(d_sendQueue.context());
-
-                ntcs::Dispatch::announceWriteQueueHighWatermark(
-                    d_session_sp,
-                    self,
-                    event,
-                    d_sessionStrand_sp,
-                    ntci::Strand::unknown(),
-                    self,
-                    true,
-                    &d_mutex);
-            }
-        }
-
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
-    }
-
-    if (NTCCFG_LIKELY(!d_encryption_sp)) {
-        return this->privateSendRaw(self, data, options);
-    }
-    else {
-        error = d_encryption_sp->pushOutgoingPlainText(data);
-        if (error) {
-            return error;
-        }
-
-        bdlbb::Blob cipherData(d_outgoingBufferFactory_sp.get());
-
-        while (d_encryption_sp->hasOutgoingCipherText()) {
-            error = d_encryption_sp->popOutgoingCipherText(&cipherData);
-            if (error) {
-                return error;
-            }
-        }
-
-        if (cipherData.length() > 0) {
-            error = this->privateSendRaw(self, cipherData, options);
-            if (error) {
-                return error;
-            }
-        }
-
-        return ntsa::Error();
-    }
+    return this->send(data, options, d_sendComplete);
 }
 
 ntsa::Error StreamSocket::send(const ntsa::Data&        data,
                                const ntca::SendOptions& options)
 {
-    bsl::shared_ptr<StreamSocket> self = this->getSelf(this);
-
-    bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
-
-    NTCI_LOG_CONTEXT();
-
-    NTCI_LOG_CONTEXT_GUARD_DESCRIPTOR(d_publicHandle);
-    NTCI_LOG_CONTEXT_GUARD_SOURCE_ENDPOINT(d_sourceEndpoint);
-    NTCI_LOG_CONTEXT_GUARD_REMOTE_ENDPOINT(d_remoteEndpoint);
-
-    ntsa::Error error;
-
-    if (NTCCFG_UNLIKELY(!d_openState.canSend())) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    bsl::size_t effectiveHighWatermark = d_sendQueue.highWatermark();
-    if (!options.highWatermark().isNull()) {
-        effectiveHighWatermark = options.highWatermark().value();
-    }
-
-    if (NTCCFG_UNLIKELY(
-            d_sendQueue.isHighWatermarkViolated(effectiveHighWatermark)))
-    {
-        if (d_sendQueue.authorizeHighWatermarkEvent(effectiveHighWatermark)) {
-            NTCR_STREAMSOCKET_LOG_WRITE_QUEUE_HIGH_WATERMARK(
-                effectiveHighWatermark,
-                d_sendQueue.size());
-
-            if (d_session_sp) {
-                ntca::WriteQueueEvent event;
-                event.setType(ntca::WriteQueueEventType::e_HIGH_WATERMARK);
-                event.setContext(d_sendQueue.context());
-
-                ntcs::Dispatch::announceWriteQueueHighWatermark(
-                    d_session_sp,
-                    self,
-                    event,
-                    d_sessionStrand_sp,
-                    ntci::Strand::unknown(),
-                    self,
-                    true,
-                    &d_mutex);
-            }
-        }
-
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
-    }
-
-    if (NTCCFG_LIKELY(!d_encryption_sp)) {
-        return this->privateSendRaw(self, data, options);
-    }
-    else {
-        error = d_encryption_sp->pushOutgoingPlainText(data);
-        if (error) {
-            return error;
-        }
-
-        bdlbb::Blob cipherData(d_outgoingBufferFactory_sp.get());
-
-        while (d_encryption_sp->hasOutgoingCipherText()) {
-            error = d_encryption_sp->popOutgoingCipherText(&cipherData);
-            if (error) {
-                return error;
-            }
-        }
-
-        if (cipherData.length() > 0) {
-            error = this->privateSendRaw(self, cipherData, options);
-            if (error) {
-                return error;
-            }
-        }
-
-        return ntsa::Error();
-    }
+    return this->send(data, options, d_sendComplete);
 }
 
 ntsa::Error StreamSocket::send(const bdlbb::Blob&        data,
@@ -5590,6 +5129,9 @@ ntsa::Error StreamSocket::send(const bdlbb::Blob&        data,
 
     ntsa::Error error;
 
+    ntcq::SendState state;
+    state.setCounter(d_sendCounter++);
+
     if (NTCCFG_UNLIKELY(!d_openState.canSend())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
@@ -5628,52 +5170,11 @@ ntsa::Error StreamSocket::send(const bdlbb::Blob&        data,
     }
 
     if (NTCCFG_LIKELY(!d_encryption_sp)) {
-        return this->privateSendRaw(self, data, options, callback);
+        return this->privateSendRaw(self, data, state, options, callback);
     }
     else {
-        bdlbb::Blob cipherData(d_outgoingBufferFactory_sp.get());
-
-        error = d_encryption_sp->pushOutgoingPlainText(data);
-        if (error) {
-            return error;
-        }
-
-        while (d_encryption_sp->hasOutgoingCipherText()) {
-            error = d_encryption_sp->popOutgoingCipherText(&cipherData);
-            if (error) {
-                return error;
-            }
-        }
-
-        if (cipherData.length() > 0) {
-            error = this->privateSendRaw(self, cipherData, options, callback);
-            if (error) {
-                return error;
-            }
-        }
-        else {
-            bsl::shared_ptr<ntcq::SendCallbackQueueEntry> callbackEntry =
-                d_sendQueue.createCallbackEntry();
-            callbackEntry->assign(callback, options);
-
-            ntca::SendContext sendContext;
-
-            ntca::SendEvent sendEvent;
-            sendEvent.setType(ntca::SendEventType::e_COMPLETE);
-            sendEvent.setContext(sendContext);
-
-            const bool defer = !options.recurse();
-
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                                   self,
-                                                   sendEvent,
-                                                   ntci::Strand::unknown(),
-                                                   self,
-                                                   defer,
-                                                   &d_mutex);
-        }
-
-        return ntsa::Error();
+        return this->privateSendEncrypted(
+            self, data, state, options, callback);
     }
 }
 
@@ -5702,6 +5203,9 @@ ntsa::Error StreamSocket::send(const ntsa::Data&         data,
 
     ntsa::Error error;
 
+    ntcq::SendState state;
+    state.setCounter(d_sendCounter++);
+
     if (NTCCFG_UNLIKELY(!d_openState.canSend())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
@@ -5740,52 +5244,11 @@ ntsa::Error StreamSocket::send(const ntsa::Data&         data,
     }
 
     if (NTCCFG_LIKELY(!d_encryption_sp)) {
-        return this->privateSendRaw(self, data, options, callback);
+        return this->privateSendRaw(self, data, state, options, callback);
     }
     else {
-        error = d_encryption_sp->pushOutgoingPlainText(data);
-        if (error) {
-            return error;
-        }
-
-        bdlbb::Blob cipherData(d_outgoingBufferFactory_sp.get());
-
-        while (d_encryption_sp->hasOutgoingCipherText()) {
-            error = d_encryption_sp->popOutgoingCipherText(&cipherData);
-            if (error) {
-                return error;
-            }
-        }
-
-        if (cipherData.length() > 0) {
-            error = this->privateSendRaw(self, cipherData, options, callback);
-            if (error) {
-                return error;
-            }
-        }
-        else {
-            bsl::shared_ptr<ntcq::SendCallbackQueueEntry> callbackEntry =
-                d_sendQueue.createCallbackEntry();
-            callbackEntry->assign(callback, options);
-
-            ntca::SendContext sendContext;
-
-            ntca::SendEvent sendEvent;
-            sendEvent.setType(ntca::SendEventType::e_COMPLETE);
-            sendEvent.setContext(sendContext);
-
-            const bool defer = !options.recurse();
-
-            ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                                   self,
-                                                   sendEvent,
-                                                   ntci::Strand::unknown(),
-                                                   self,
-                                                   defer,
-                                                   &d_mutex);
-        }
-
-        return ntsa::Error();
+        return this->privateSendEncrypted(
+            self, data, state, options, callback);
     }
 }
 
@@ -6718,8 +6181,8 @@ ntsa::Error StreamSocket::cancel(const ntca::SendToken& token)
     NTCI_LOG_CONTEXT_GUARD_SOURCE_ENDPOINT(d_sourceEndpoint);
     NTCI_LOG_CONTEXT_GUARD_REMOTE_ENDPOINT(d_remoteEndpoint);
 
-    bsl::shared_ptr<ntcq::SendCallbackQueueEntry> callbackEntry;
-    bool becameEmpty = d_sendQueue.removeEntryToken(&callbackEntry, token);
+    ntci::SendCallback callback;
+    bool becameEmpty = d_sendQueue.removeEntryToken(&callback, token);
 
     if (becameEmpty) {
         this->privateApplyFlowControl(self,
@@ -6729,7 +6192,7 @@ ntsa::Error StreamSocket::cancel(const ntca::SendToken& token)
                                       false);
     }
 
-    if (callbackEntry) {
+    if (callback) {
         ntca::SendContext sendContext;
         sendContext.setError(ntsa::Error(ntsa::Error::e_CANCELLED));
 
@@ -6737,13 +6200,12 @@ ntsa::Error StreamSocket::cancel(const ntca::SendToken& token)
         sendEvent.setType(ntca::SendEventType::e_ERROR);
         sendEvent.setContext(sendContext);
 
-        ntcq::SendCallbackQueueEntry::dispatch(callbackEntry,
-                                               self,
-                                               sendEvent,
-                                               d_reactorStrand_sp,
-                                               self,
-                                               true,
-                                               &d_mutex);
+        callback.dispatch(self,
+                                           sendEvent,
+                                           d_reactorStrand_sp,
+                                           self,
+                                           true,
+                                           &d_mutex);
 
         return ntsa::Error();
     }
@@ -6848,7 +6310,11 @@ ntsa::Error StreamSocket::downgrade()
     }
 
     if (cipherData.length() > 0) {
-        error = this->privateSendRaw(self, cipherData, ntca::SendOptions());
+        ntcq::SendState state;
+        state.setCounter(d_sendCounter++);
+
+        error = this->privateSendRaw(
+            self, cipherData, state, ntca::SendOptions(), d_sendComplete);
         if (error) {
             return error;
         }

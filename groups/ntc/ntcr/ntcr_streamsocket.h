@@ -108,14 +108,15 @@ class StreamSocket : public ntci::StreamSocket,
     ntcs::OpenState                            d_openState;
     ntcs::FlowControlState                     d_flowControlState;
     ntcs::ShutdownState                        d_shutdownState;
-    ntcq::ZeroCopyWaitList                     d_zeroCopyList;
+    ntcq::ZeroCopyQueue                        d_zeroCopyQueue;
     bsl::size_t                                d_zeroCopyThreshold;
     ntsa::SendOptions                          d_sendOptions;
     ntcq::SendQueue                            d_sendQueue;
     bsl::shared_ptr<ntci::RateLimiter>         d_sendRateLimiter_sp;
     bsl::shared_ptr<ntci::Timer>               d_sendRateTimer_sp;
     bool                                       d_sendGreedily;
-    bsl::uint64_t                              d_sendCount;
+    ntci::SendCallback                         d_sendComplete;
+    ntcq::SendCounter                          d_sendCounter;
     bsl::shared_ptr<ntsa::Data>                d_sendData_sp;
     ntsa::ReceiveOptions                       d_receiveOptions;
     ntcq::ReceiveQueue                         d_receiveQueue;
@@ -406,21 +407,9 @@ class StreamSocket : public ntci::StreamSocket,
     /// if necessary.
     void privateRearmAfterReceive(const bsl::shared_ptr<StreamSocket>& self);
 
-    void privateRearmAfterNotification(const bsl::shared_ptr<StreamSocket>& self);
-
-    /// Send the specified raw or already encrypted 'data' according to the
-    /// specified 'options'. Return the error. The behavior is undefined
-    /// unless 'd_sendMutex' is locked.
-    ntsa::Error privateSendRaw(const bsl::shared_ptr<StreamSocket>& self,
-                               const bdlbb::Blob&                   data,
-                               const ntca::SendOptions&             options);
-
-    /// Send the specified raw or already encrypted 'data' according to the
-    /// specified 'options'. Return the error. The behavior is undefined
-    /// unless 'd_sendMutex' is locked.
-    ntsa::Error privateSendRaw(const bsl::shared_ptr<StreamSocket>& self,
-                               const ntsa::Data&                    data,
-                               const ntca::SendOptions&             options);
+    /// Rearm the interest in notifications from the socket in the reactor. 
+    void privateRearmAfterNotification(
+        const bsl::shared_ptr<StreamSocket>& self);
 
     /// Send the specified raw or already encrypted 'data' according to the
     /// specified 'options'. When the 'data' is entirely copied to the
@@ -428,6 +417,7 @@ class StreamSocket : public ntci::StreamSocket,
     /// strand, if any.  Return the error.
     ntsa::Error privateSendRaw(const bsl::shared_ptr<StreamSocket>& self,
                                const bdlbb::Blob&                   data,
+                               const ntcq::SendState&               state,
                                const ntca::SendOptions&             options,
                                const ntci::SendCallback&            callback);
 
@@ -437,6 +427,29 @@ class StreamSocket : public ntci::StreamSocket,
     /// strand, if any. Return the error.
     ntsa::Error privateSendRaw(const bsl::shared_ptr<StreamSocket>& self,
                                const ntsa::Data&                    data,
+                               const ntcq::SendState&               state,
+                               const ntca::SendOptions&             options,
+                               const ntci::SendCallback&            callback);
+
+    /// Send the specified encrypted 'data' according to the specified
+    /// 'options'. When the 'data' is entirely copied to the send buffer,
+    /// invoke the specified 'callback' on the callback's strand, if any.
+    /// Return the error.
+    ntsa::Error privateSendEncrypted(
+                               const bsl::shared_ptr<StreamSocket>& self,
+                               const bdlbb::Blob&                   data,
+                               const ntcq::SendState&               state,
+                               const ntca::SendOptions&             options,
+                               const ntci::SendCallback&            callback);
+
+    /// Send the specified encrypted 'data' according to the specified
+    /// 'options'. When the 'data' is entirely copied to the send buffer,
+    /// invoke the specified 'callback' on the callback's strand, if any.
+    /// Return the error.
+    ntsa::Error privateSendEncrypted(
+                               const bsl::shared_ptr<StreamSocket>& self,
+                               const ntsa::Data&                    data,
+                               const ntcq::SendState&               state,
                                const ntca::SendOptions&             options,
                                const ntci::SendCallback&            callback);
 
