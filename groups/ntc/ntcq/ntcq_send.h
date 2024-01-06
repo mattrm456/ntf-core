@@ -245,6 +245,9 @@ class SendQueueEntry
     /// Set the callback to the specified 'callback'.
     void setCallback(const ntci::SendCallback& callback);
 
+    /// Set the callback to the empty callback.
+    void setCallback(bsl::nullptr_t);
+
     /// Set the flag to indicate that the entry is now in-progress, i.e. its
     /// data has been at least partially copied to the send buffer, to the
     /// specified 'inProgress' flag.
@@ -610,6 +613,12 @@ void SendQueueEntry::setCallback(
     const ntci::SendCallback& callback)
 {
     d_callback = callback;
+}
+
+NTCCFG_INLINE
+void SendQueueEntry::setCallback(bsl::nullptr_t)
+{
+    d_callback.reset();
 }
 
 NTCCFG_INLINE

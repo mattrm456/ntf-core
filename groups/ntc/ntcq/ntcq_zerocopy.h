@@ -35,11 +35,113 @@ namespace BloombergLP {
 namespace ntcq {
 
 /// @internal @brief
-/// Describe the 32-bit unsigned integer incremented after each successfully
-/// zero-copy 'sendmsg' system call.
+/// Describe the 64-bit unsigned integer incremented after each successfully
+/// zero-copy 'sendmsg' system call. 
+///
+/// @details
+/// Some operating system implementations may internally use 32-bit unsigned
+/// integers to identify a zero-copy 'sendmsg' system call. This library's
+/// implementation detects 32-bit wraparound and converts to 64-bit unsigned
+/// integers automatically when interpreting 'ntsa::ZeroCopy'.
 ///
 /// @ingroup module_ntcq
-typedef bsl::uint32_t ZeroCopyCounter;
+typedef bsl::uint64_t ZeroCopyCounter;
+
+/// @internal @brief
+/// Describe a half-open range of zero-copy counters.
+///
+/// @par Thread Safety
+/// This class is not thread safe.
+///
+/// @ingroup module_ntcq
+class ZeroCopyRange
+{
+    ntcq::ZeroCopyCounter d_minCounter;
+    ntcq::ZeroCopyCounter d_maxCounter;
+
+public:
+    /// Create a new zero-copy range.
+    ZeroCopyRange();
+
+    /// Create a new zero-copy range from the specified 'minCounter', 
+    /// inclusive, to the specified 'maxCounter', exclusive.
+    ZeroCopyRange(ntcq::ZeroCopyCounter minCounter, 
+                  ntcq::ZeroCopyCounter maxCounter);
+
+    /// Create a new zero-copy range having the same value as the specified
+    /// 'original' object.
+    ZeroCopyRange(const ZeroCopyRange& original);
+
+    /// Destroy this object.
+    ~ZeroCopyRange();
+
+    /// Assign the value of the specified 'other' object to this object. Return
+    /// a reference to this modifiable object. 
+    ZeroCopyRange& operator=(const ZeroCopyRange& other);
+
+    /// Set the minimum zero-copy counter of the range, inclusive, to the
+    /// specified 'counter'.
+    void setMinCounter(ntcq::ZeroCopyCounter counter);
+
+    /// Set the maximum zero-copy counter of range, exclusive, to the specified
+    /// 'counter'.
+    void setMaxCounter(ntcq::ZeroCopyCounter counter);
+
+    /// Return the minimum zero-copy counter of the range, inclusive.
+    ntcq::ZeroCopyCounter minCounter() const;
+
+    /// Return the maximum zero-copy counter of the range, exclusive.
+    ntcq::ZeroCopyCounter maxCounter() const;
+
+    /// Return the number of contiguous counter represented by this range. 
+    bsl::size_t size() const;
+    
+    /// Return true if the range is empty, otherwise return false. 
+    bool empty() const;
+
+    /// Format this object to the specified output 'stream' at the
+    /// optionally specified indentation 'level' and return a reference to
+    /// the modifiable 'stream'.  If 'level' is specified, optionally
+    /// specify 'spacesPerLevel', the number of spaces per indentation level
+    /// for this and all of its nested objects.  Each line is indented by
+    /// the absolute value of 'level * spacesPerLevel'.  If 'level' is
+    /// negative, suppress indentation of the first line.  If
+    /// 'spacesPerLevel' is negative, suppress line breaks and format the
+    /// entire output on one line.  If 'stream' is initially invalid, this
+    /// operation has no effect.  Note that a trailing newline is provided
+    /// in multiline mode only.
+    bsl::ostream& print(bsl::ostream& stream,
+                        int           level          = 0,
+                        int           spacesPerLevel = 4) const;
+
+    /// Return the range that is the intersection of the specified 'lhs' and
+    /// 'rhs' ranges. 
+    static ZeroCopyRange intersect(const ZeroCopyRange& lhs, 
+                                   const ZeroCopyRange& rhs);
+
+    /// Defines the traits of this type. These traits can be used to select,
+    /// at compile-time, the most efficient algorithm to manipulate objects
+    /// of this type.
+    NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyRange);
+};
+
+/// Write the specified 'object' to the specified 'stream'. Return a modifiable
+/// reference to the 'stream'.
+///
+/// @related ntcq::ZeroCopyRange
+bsl::ostream& operator<<(bsl::ostream& stream, const ZeroCopyRange& object);
+
+/// Return true if the specified 'lhs' has the same value as the specified
+/// 'rhs', otherwise return false.
+///
+/// @related ntcq::ZeroCopyRange
+bool operator==(const ZeroCopyRange& lhs, const ZeroCopyRange& rhs);
+
+/// Return true if the specified 'lhs' does not have the same value as the
+/// specified 'rhs', otherwise return false.
+///
+/// @related ntcq::ZeroCopyRange
+bool operator!=(const ZeroCopyRange& lhs, const ZeroCopyRange& rhs);
 
 /// @internal @brief
 /// Describe an entry in a zero-copy queue.
@@ -51,10 +153,8 @@ typedef bsl::uint32_t ZeroCopyCounter;
 class ZeroCopyEntry
 {
     ntcq::SendCounter           d_group;
-    ntcq::ZeroCopyCounter       d_minCounter;
-    ntcq::ZeroCopyCounter       d_maxCounter;
+    ntcq::ZeroCopyRange         d_range;
     bool                        d_framed;
-    bool                        d_complete;
     bsl::shared_ptr<ntsa::Data> d_data_sp;
     ntsa::Error                 d_error;
     ntci::SendCallback          d_callback;
@@ -76,6 +176,10 @@ class ZeroCopyEntry
     /// Destroy this object.
     ~ZeroCopyEntry();
 
+    /// Assign the value of the specified 'other' object to this object. Return
+    /// a reference to this modifiable object. 
+    ZeroCopyEntry& operator=(const ZeroCopyEntry& other);
+
     /// Set the identifier of the data to the specified 'group'.
     void setGroup(ntcq::SendCounter group);
 
@@ -92,10 +196,6 @@ class ZeroCopyEntry
     /// expected, to the specified 'framed' value. 
     void setFramed(bool framed);
 
-    /// Set the flag that indicates all portions of the data that have been
-    /// zero-copied are complete. 
-    void setComplete(bool complete);
-
     /// Set the data transmitted for the group to the specified 'data'. 
     void setData(const bsl::shared_ptr<ntsa::Data>& data);
 
@@ -106,6 +206,9 @@ class ZeroCopyEntry
     /// to the specified 'callback'.
     void setCallback(const ntci::SendCallback& callback);
 
+    /// TODO. 
+    bool match(ntcq::ZeroCopyRange* input);
+
     /// Return the identifier of the data. 
     ntcq::SendCounter group() const;
 
@@ -115,13 +218,13 @@ class ZeroCopyEntry
     /// Return the maximum zero-copy counter needed, inclusive.
     ntcq::ZeroCopyCounter maxCounter() const;
 
-    /// Set the flag that indicates all portions of the data have been 
+    /// Return the flag that indicates all portions of the data have been 
     /// sent (zero-copied or not), so that no further zero-copy counters are
-    /// expected, to the specified 'framed' value. 
+    /// expected. 
     bool framed() const;
 
-    /// Set the flag that indicates all portions of the data that have been
-    /// zero-copied are complete. 
+    /// Return the flag that indicates all portions of the data that have been
+    /// (or will be) zero-copied are complete. 
     bool complete() const;
 
     /// Return the error encountered during transmission, if any. 
@@ -134,11 +237,32 @@ class ZeroCopyEntry
     /// Return the allocator used to supply memory.
     bslma::Allocator* allocator() const;
 
+    /// Format this object to the specified output 'stream' at the
+    /// optionally specified indentation 'level' and return a reference to
+    /// the modifiable 'stream'.  If 'level' is specified, optionally
+    /// specify 'spacesPerLevel', the number of spaces per indentation level
+    /// for this and all of its nested objects.  Each line is indented by
+    /// the absolute value of 'level * spacesPerLevel'.  If 'level' is
+    /// negative, suppress indentation of the first line.  If
+    /// 'spacesPerLevel' is negative, suppress line breaks and format the
+    /// entire output on one line.  If 'stream' is initially invalid, this
+    /// operation has no effect.  Note that a trailing newline is provided
+    /// in multiline mode only.
+    bsl::ostream& print(bsl::ostream& stream,
+                        int           level          = 0,
+                        int           spacesPerLevel = 4) const;
+
     /// Defines the traits of this type. These traits can be used to select,
     /// at compile-time, the most efficient algorithm to manipulate objects
     /// of this type.
     NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyEntry);
 };
+
+/// Write the specified 'object' to the specified 'stream'. Return a modifiable
+/// reference to the 'stream'.
+///
+/// @related ntcq::ZeroCopyEntry
+bsl::ostream& operator<<(bsl::ostream& stream, const ZeroCopyEntry& object);
 
 /// @internal @brief
 /// Describe a zero-copy queue.
@@ -154,8 +278,8 @@ class ZeroCopyQueue
     ntcq::ZeroCopyCounter           d_counter;
     EntryList                       d_waitList;
     EntryList                       d_doneList;
-    ntsa::TransportMode::Value      d_transportMode;
     bsl::shared_ptr<ntci::DataPool> d_dataPool_sp;
+    bsl::size_t                     d_wraparoundCounter;
     bslma::Allocator*               d_allocator_p;
 
   private:
@@ -168,57 +292,65 @@ class ZeroCopyQueue
     /// supply memory. If 'basicAllocator' is 0, the currently installed
     /// default allocator is used.
     explicit ZeroCopyQueue(
-        ntsa::TransportMode::Value             transportMode,
         const bsl::shared_ptr<ntci::DataPool>& dataPool,
         bslma::Allocator*                      basicAllocator = 0);
 
     /// Destroy this object.
     ~ZeroCopyQueue();
 
-    /// Append the specified 'data' sent as part of the specified 'group'. 
-    /// Return the zero-copy counter associated with this entry.
+    /// Append a new zero-copy entry for the specified 'data' sent as part of
+    /// the specified 'group'. Return the first zero-copy counter associated
+    /// with this entry.
     ntcq::ZeroCopyCounter push(ntcq::SendCounter  group,
                                const bdlbb::Blob& data);
     
-    /// Append the specified 'data' sent as part of the specified 'group'. 
-    /// When sending the 'data' is complete, the specified 'callback' should
-    /// be invoked. Return the zero-copy counter associated with this entry.
+    /// Append a new zero-copy entry for the specified 'data' sent as part of
+    /// the specified 'group'. When sending the 'data' is complete, the
+    /// specified 'callback' should be invoked. Return the first zero-copy
+    /// counter associated with this entry.
     ntcq::ZeroCopyCounter push(ntcq::SendCounter         group,
                                const bdlbb::Blob&        data, 
                                const ntci::SendCallback& callback);
 
-    /// Append the specified 'data' sent as part of the specified 'group'. 
-    /// Return the zero-copy counter associated with this entry.
+    /// Append a new zero-copy entry for the specified 'data' sent as part of
+    /// the specified 'group'. Return the first zero-copy counter associated
+    /// with this entry.
     ntcq::ZeroCopyCounter push(ntcq::SendCounter group, 
-                                 const ntsa::Data& data);
+                               const ntsa::Data& data);
     
-    /// Append the specified 'data' sent as part of the specified 'group'. 
-    /// When sending the 'data' is complete, the specified 'callback' should
-    /// be invoked. Return the zero-copy counter associated with this entry.
+    /// Append a new zero-copy entry for the specified 'data' sent as part of
+    /// the specified 'group'. When sending the 'data' is complete, the
+    /// specified 'callback' should be invoked. Return the first zero-copy
+    /// counter associated with this entry.
     ntcq::ZeroCopyCounter push(ntcq::SendCounter         group, 
                                const ntsa::Data&         data, 
                                const ntci::SendCallback& callback);
 
-    /// Append the specified 'data' sent as part of the specified 'group'. 
-    /// Return the zero-copy counter associated with this entry.
+    /// Append a new zero-copy entry for the specified 'data' sent as part of
+    /// the specified 'group'. Return the first zero-copy counter associated
+    /// with this entry.
     ntcq::ZeroCopyCounter push(ntcq::SendCounter                  group, 
                                const bsl::shared_ptr<ntsa::Data>& data);
 
-    /// Append the specified 'data' sent as part of the specified 'group'. 
-    /// When sending the 'data' is complete, the specified 'callback' should
-    /// be invoked. Return the zero-copy counter associated with this entry.
+    /// Append a new zero-copy entry the specified 'data' sent as part of the
+    /// specified 'group'. When sending the 'data' is complete, the specified
+    /// 'callback' should be invoked. Return the first zero-copy counter
+    /// associated with this entry.
     ntcq::ZeroCopyCounter push(ntcq::SendCounter                  group,
                                const bsl::shared_ptr<ntsa::Data>& data, 
                                const ntci::SendCallback&          callback);
 
-    /// TODO.
+    /// Extend the last zero-copy entry sent as part of the specified 'group'.
+    /// Return the next zero-copy counter associated with this entry.
     ntcq::ZeroCopyCounter push(ntcq::SendCounter group);
 
-    /// TODO.
+    /// Indicate zero copy entry sent as part of the specified 'group' will
+    /// have no subsequent system calls performed to send its data.
     void frame(ntcq::SendCounter group);
 
-    // Update the queue that the specified 'zeroCopy' range is complete.
-    void update(const ntsa::ZeroCopy& zeroCopy);
+    /// Update the queue that the specified 'zeroCopy' range is complete.
+    /// Return the error.
+    ntsa::Error update(const ntsa::ZeroCopy& zeroCopy);
 
     /// Pop the oldest, completed entry and load its callback, if any, into the
     /// specified 'result'. Return true if such and entry and callback exists,
@@ -247,16 +379,135 @@ class ZeroCopyQueue
     /// return false. 
     bool ready() const;
 
+    /// Defines the traits of this type. These traits can be used to select,
+    /// at compile-time, the most efficient algorithm to manipulate objects
+    /// of this type.
     NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyQueue);
 };
 
 NTCCFG_INLINE
+ZeroCopyRange::ZeroCopyRange()
+: d_minCounter(0)
+, d_maxCounter(0)
+{
+}
+
+NTCCFG_INLINE
+ZeroCopyRange::ZeroCopyRange(ntcq::ZeroCopyCounter minCounter, 
+                             ntcq::ZeroCopyCounter maxCounter)
+: d_minCounter(minCounter)
+, d_maxCounter(maxCounter)
+{
+}                        
+
+NTCCFG_INLINE
+ZeroCopyRange::ZeroCopyRange(const ZeroCopyRange& original)
+: d_minCounter(original.d_minCounter)
+, d_maxCounter(original.d_maxCounter)
+{
+}
+
+NTCCFG_INLINE
+ZeroCopyRange::~ZeroCopyRange()
+{
+}
+
+NTCCFG_INLINE
+ZeroCopyRange& ZeroCopyRange::operator=(const ZeroCopyRange& other)
+{
+    d_minCounter = other.d_minCounter;
+    d_maxCounter = other.d_maxCounter;
+    return *this;
+}
+
+NTCCFG_INLINE
+void ZeroCopyRange::setMinCounter(ntcq::ZeroCopyCounter counter)
+{
+    d_minCounter = counter;
+}
+
+NTCCFG_INLINE
+void ZeroCopyRange::setMaxCounter(ntcq::ZeroCopyCounter counter)
+{
+    d_maxCounter = counter;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyRange::minCounter() const
+{
+    return d_minCounter;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyRange::maxCounter() const
+{
+    return d_maxCounter;
+}
+
+NTCCFG_INLINE
+bsl::size_t ZeroCopyRange::size() const
+{
+    return static_cast<bsl::size_t>(d_maxCounter - d_minCounter);
+}
+
+NTCCFG_INLINE 
+bool ZeroCopyRange::empty() const
+{
+    return d_minCounter == d_maxCounter;
+}
+
+NTCCFG_INLINE
+ZeroCopyRange ZeroCopyRange::intersect(const ZeroCopyRange& lhs, 
+                                       const ZeroCopyRange& rhs)
+{
+    ZeroCopyRange result;
+
+    ntcq::ZeroCopyCounter a = lhs.minCounter();
+    if (a < rhs.minCounter()) {
+        a = rhs.minCounter();
+    }
+
+    ntcq::ZeroCopyCounter b = lhs.maxCounter();
+    if (b > rhs.maxCounter()) {
+        b = rhs.maxCounter();
+    }
+
+    if (b >= a) {
+        result.setMinCounter(a);
+        result.setMaxCounter(b);
+    }
+    else {
+        result.setMinCounter(0);
+        result.setMaxCounter(0);
+    }
+
+    return result;
+}
+
+NTCCFG_INLINE
+bsl::ostream& operator<<(bsl::ostream& stream, const ZeroCopyRange& object)
+{
+    return object.print(stream, 0, -1);
+}
+
+NTCCFG_INLINE
+bool operator==(const ZeroCopyRange& lhs, const ZeroCopyRange& rhs)
+{
+    return lhs.minCounter() == rhs.minCounter() && 
+           lhs.maxCounter() == rhs.maxCounter();
+}
+
+NTCCFG_INLINE
+bool operator!=(const ZeroCopyRange& lhs, const ZeroCopyRange& rhs)
+{
+    return !operator==(lhs, rhs);
+}
+
+NTCCFG_INLINE
 ZeroCopyEntry::ZeroCopyEntry(bslma::Allocator* basicAllocator)
 : d_group(0)
-, d_minCounter(0)
-, d_maxCounter(0)
+, d_range()
 , d_framed(false)
-, d_complete(false)
 , d_data_sp()
 , d_error()
 , d_callback(basicAllocator)
@@ -268,10 +519,8 @@ NTCCFG_INLINE
 ZeroCopyEntry::ZeroCopyEntry(const ZeroCopyEntry& original, 
                              bslma::Allocator*    basicAllocator)
 : d_group(original.d_group)
-, d_minCounter(original.d_minCounter)
-, d_maxCounter(original.d_maxCounter)
+, d_range(original.d_range)
 , d_framed(original.d_framed)
-, d_complete(original.d_complete)
 , d_data_sp(original.d_data_sp)
 , d_error(original.d_error)
 , d_callback(original.d_callback, basicAllocator)
@@ -285,6 +534,20 @@ ZeroCopyEntry::~ZeroCopyEntry()
 }
 
 NTCCFG_INLINE
+ZeroCopyEntry& ZeroCopyEntry::operator=(const ZeroCopyEntry& other)
+{
+    if (this != &other) {
+        d_group      = other.d_group;
+        d_range      = other.d_range;
+        d_framed     = other.d_framed;
+        d_data_sp    = other.d_data_sp;
+        d_callback   = other.d_callback;
+    }
+
+    return *this;
+}
+
+NTCCFG_INLINE
 void ZeroCopyEntry::setGroup(ntcq::SendCounter group)
 {
     d_group = group;
@@ -293,25 +556,19 @@ void ZeroCopyEntry::setGroup(ntcq::SendCounter group)
 NTCCFG_INLINE
 void ZeroCopyEntry::setMinCounter(ntcq::ZeroCopyCounter counter)
 {
-    d_minCounter = counter;
+    d_range.setMinCounter(counter);
 }
 
 NTCCFG_INLINE
 void ZeroCopyEntry::setMaxCounter(ntcq::ZeroCopyCounter counter)
 {
-    d_maxCounter = counter;
+    d_range.setMaxCounter(counter);
 }
 
 NTCCFG_INLINE
 void ZeroCopyEntry::setFramed(bool framed)
 {
     d_framed = framed;
-}
-
-NTCCFG_INLINE
-void ZeroCopyEntry::setComplete(bool complete)
-{
-    d_complete = complete;
 }
 
 NTCCFG_INLINE
@@ -333,6 +590,40 @@ void ZeroCopyEntry::setCallback(const ntci::SendCallback& callback)
 }
 
 NTCCFG_INLINE
+bool ZeroCopyEntry::match(ntcq::ZeroCopyRange* input)
+{
+    ntcq::ZeroCopyRange required = d_range;
+    ntcq::ZeroCopyRange complete = *input;
+
+    ntcq::ZeroCopyRange intersection = 
+        ntcq::ZeroCopyRange::intersect(required, complete);
+
+    if (intersection.empty()) {
+        return false;
+    }
+
+// MRM
+#if 0
+    if (complete.maxCounter() <= required.minCounter()) {
+        return false;
+    }
+
+    if (complete.minCounter() >= required.maxCounter()) {
+        return false;
+    }
+#endif
+
+
+    // TODO
+
+    
+    d_range = required;
+    *input  = complete;
+
+    return true;
+}
+
+NTCCFG_INLINE
 ntcq::SendCounter ZeroCopyEntry::group() const
 {
     return d_group;
@@ -341,13 +632,13 @@ ntcq::SendCounter ZeroCopyEntry::group() const
 NTCCFG_INLINE
 ntcq::ZeroCopyCounter ZeroCopyEntry::minCounter() const
 {
-    return d_minCounter;
+    return d_range.minCounter();
 }
 
 NTCCFG_INLINE
 ntcq::ZeroCopyCounter ZeroCopyEntry::maxCounter() const
 {
-    return d_maxCounter;
+    return d_range.maxCounter();
 }
 
 NTCCFG_INLINE
@@ -359,7 +650,7 @@ bool ZeroCopyEntry::framed() const
 NTCCFG_INLINE
 bool ZeroCopyEntry::complete() const
 {
-    return d_complete;
+    return d_range.empty() && d_framed;
 }
 
 NTCCFG_INLINE
@@ -378,6 +669,12 @@ NTCCFG_INLINE
 bslma::Allocator* ZeroCopyEntry::allocator() const
 {
     return d_allocator_p;
+}
+
+NTCCFG_INLINE
+bsl::ostream& operator<<(bsl::ostream& stream, const ZeroCopyEntry& object)
+{
+    return object.print(stream, 0, -1);
 }
 
 }  // close package namespace

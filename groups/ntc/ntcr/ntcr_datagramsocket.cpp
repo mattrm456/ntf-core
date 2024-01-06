@@ -879,8 +879,6 @@ ntsa::Error DatagramSocket::privateSocketWritableIteration(
     ntcq::SendQueueEntry& entry = d_sendQueue.frontEntry();
 
     if (NTCCFG_LIKELY(entry.data())) {
-        const bool hasDeadline = !entry.deadline().isNull();
-
         ntsa::SendContext sendContext;
         error = this->privateEnqueueSendBuffer(self,
                                                &sendContext,
@@ -891,6 +889,8 @@ ntsa::Error DatagramSocket::privateSocketWritableIteration(
         }
 
         NTCS_METRICS_UPDATE_WRITE_QUEUE_DELAY(entry.delay());
+
+        const bool hasDeadline = !entry.deadline().isNull();
 
         if (hasDeadline) {
             entry.setDeadline(bdlb::NullableValue<bsls::TimeInterval>());
@@ -909,6 +909,7 @@ ntsa::Error DatagramSocket::privateSocketWritableIteration(
 
         if (sendContext.zeroCopy()) {
             d_zeroCopyQueue.push(group, data, callback);
+            d_zeroCopyQueue.frame(group);
         }
         else if (callback) {
             ntca::SendEvent sendEvent;
@@ -1234,8 +1235,6 @@ void DatagramSocket::privateShutdownSequencePart2(
 
             announceWriteQueueDiscarded =
                 d_sendQueue.removeAll(&callbackVector);
-
-            // TODO: De-duplicate 'callbackVector' but preserve the order.
         }
 
         for (bsl::size_t i = 0; i < callbackVector.size(); ++i) {
@@ -2312,17 +2311,7 @@ ntsa::Error DatagramSocket::privateOpen(
         if (d_options.zeroCopyThreshold().has_value() && reactorRef &&
             reactorRef->supportsNotifications())
         {
-            ntsa::SocketOption option;
-            option.makeZeroCopy(true);
-            error = datagramSocket->setOption(option);
-            if (error) {
-                NTCI_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
-                                error.text().c_str());
-                d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
-            }
-            else {
-                d_zeroCopyThreshold = d_options.zeroCopyThreshold().value();
-            }
+            d_zeroCopyThreshold = d_options.zeroCopyThreshold().value();
         }
         else {
             d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
@@ -2587,8 +2576,7 @@ DatagramSocket::DatagramSocket(
 , d_metrics_sp()
 , d_flowControlState()
 , d_shutdownState()
-, d_zeroCopyQueue(
-    ntsa::TransportMode::e_DATAGRAM, reactor->dataPool(), basicAllocator)
+, d_zeroCopyQueue(reactor->dataPool(), basicAllocator)
 , d_zeroCopyThreshold(k_ZERO_COPY_NEVER)
 , d_sendQueue(basicAllocator)
 , d_sendRateLimiter_sp()
@@ -3065,6 +3053,7 @@ ntsa::Error DatagramSocket::send(const bdlbb::Blob&        data,
         else {
             if (sendContext.zeroCopy()) {
                 d_zeroCopyQueue.push(state.counter(), data, callback);
+                d_zeroCopyQueue.frame(state.counter());
             }
             else if (callback) {
                 ntca::SendEvent sendEvent;
@@ -3219,6 +3208,7 @@ ntsa::Error DatagramSocket::send(const ntsa::Data&         data,
         else {
             if (sendContext.zeroCopy()) {
                 d_zeroCopyQueue.push(state.counter(), data, callback);
+                d_zeroCopyQueue.frame(state.counter());
             }
             else if (callback) {
                 ntca::SendEvent sendEvent;
@@ -3750,11 +3740,8 @@ ntsa::Error DatagramSocket::deregisterSession()
     return ntsa::Error();
 }
 
-
 ntsa::Error DatagramSocket::setZeroCopyThreshold(bsl::size_t value)
 {
-    NTCI_LOG_CONTEXT();
-
     ntsa::Error error;
 
     bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
@@ -3771,15 +3758,6 @@ ntsa::Error DatagramSocket::setZeroCopyThreshold(bsl::size_t value)
 
     if (!reactorRef->supportsNotifications()) {
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-    }
-
-    ntsa::SocketOption option;
-    option.makeZeroCopy(true);
-    error = d_socket_sp->setOption(option);
-    if (error) {
-        NTCI_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
-                       error.text().c_str());
-        return error;
     }
 
     d_options.setZeroCopyThreshold(value);

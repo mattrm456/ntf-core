@@ -1098,16 +1098,34 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
 #endif
 
     if (domain == AF_INET6) {
-        int value = 1;
-        rc        = ::setsockopt(*result,
+        int optionValue = 1;
+        rc = ::setsockopt(*result,
                           IPPROTO_IPV6,
                           IPV6_V6ONLY,
-                          &value,
-                          sizeof value);
-        if (rc == -1) {
+                          &optionValue,
+                          sizeof optionValue);
+        if (rc != 0) {
             return ntsa::Error(errno);
         }
     }
+
+#if defined(BSLS_PLATFORM_OS_LINUX)
+    // To cause 'sendmsg' to honor the MSG_ZEROCOPY flag we must set a 
+    // socket option when the socket is in its initial state.
+
+    {
+        int optionValue = 1;
+        rc = ::setsockopt(*result,
+                          SOL_SOCKET,
+                          ntsu::ZeroCopyUtil::e_SO_ZEROCOPY,
+                          &optionValue,
+                          sizeof optionValue);
+
+        if (rc != 0) {
+            return ntsa::Error(errno);
+        }
+    }
+#endif
 
 #if NTSU_SOCKETUTIL_DEBUG_LIFETIME
     NTSU_SOCKETUTIL_DEBUG_LIFETIME_LOG("Socket handle %d created", *result);

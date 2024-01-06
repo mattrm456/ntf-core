@@ -1209,6 +1209,7 @@ ntsa::Error StreamSocket::privateSocketWritableIterationBatch(
                 d_zeroCopyQueue.push(
                     entry.id(), entry.data(), entry.callback());
                 entry.setZeroCopy(true);
+                entry.setCallback(bsl::nullptr_t());
             }
         }
 
@@ -1320,6 +1321,7 @@ ntsa::Error StreamSocket::privateSocketWritableIterationFront(
                 d_zeroCopyQueue.push(
                     entry.id(), entry.data(), entry.callback());
                 entry.setZeroCopy(true);
+                entry.setCallback(bsl::nullptr_t());
             }
         }
 
@@ -1486,7 +1488,6 @@ void StreamSocket::privateFailConnect(
                 }
             }
 
-            //TODO: should I wait for detachment to finish before releasing reactor reference?
             ntcs::ObserverRef<ntci::ReactorPool> reactorPoolRef(
                 &d_reactorPool);
             if (reactorPoolRef) {
@@ -1625,7 +1626,8 @@ void StreamSocket::privateFailUpgrade(
     const ntsa::Error&                   error,
     const bsl::string&                   errorDescription)
 {
-    // TODO: NTCS_METRICS_UPDATE_UPGRADE_FAILURE();
+    // TODO: Implement and record failure to upgrade to TLS, e.g.
+    // NTCS_METRICS_UPDATE_UPGRADE_FAILURE();
 
     if (!d_upgradeInProgress) {
         return;
@@ -1994,8 +1996,6 @@ void StreamSocket::privateShutdownSequencePart2(
 
             announceWriteQueueDiscarded =
                 d_sendQueue.removeAll(&callbackVector);
-
-            // TODO: De-duplicate 'callbackVector' but preserve the order.
         }
 
         if (d_upgradeInProgress) {
@@ -3180,7 +3180,7 @@ ntsa::Error StreamSocket::privateSendRaw(
     entry.setTimestamp(bsls::TimeUtil::getTimer());
     entry.setZeroCopy(context.zeroCopy());
 
-    if (callback) {
+    if (callback && !context.zeroCopy()) {
         entry.setCallback(callback);
     }
 
@@ -3655,17 +3655,7 @@ ntsa::Error StreamSocket::privateOpen(
         if (d_options.zeroCopyThreshold().has_value() && reactorRef &&
             reactorRef->supportsNotifications())
         {
-            ntsa::SocketOption option;
-            option.makeZeroCopy(true);
-            error = streamSocket->setOption(option);
-            if (error) {
-                NTCI_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
-                               error.text().c_str());
-                d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
-            }
-            else {
-                d_zeroCopyThreshold = d_options.zeroCopyThreshold().value();
-            }
+            d_zeroCopyThreshold = d_options.zeroCopyThreshold().value();
         }
         else {
             d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
@@ -3993,7 +3983,7 @@ ntsa::Error StreamSocket::privateUpgrade(
                     NTCCFG_WARNING_PROMOTE(bsl::size_t,
                                            d_receiveQueue.data()->length()));
 
-        // MRM: Announce watermarks if neccessary?
+        // TODO: Announce watermarks if neccessary?
     }
 
     // Pop any outgoing cipher text generated as a result of initiating the
@@ -4368,8 +4358,7 @@ StreamSocket::StreamSocket(
 , d_openState()
 , d_flowControlState()
 , d_shutdownState()
-, d_zeroCopyQueue(
-    ntsa::TransportMode::e_STREAM, reactor->dataPool(), basicAllocator)
+, d_zeroCopyQueue(reactor->dataPool(), basicAllocator)
 , d_zeroCopyThreshold(k_ZERO_COPY_NEVER)
 , d_sendOptions()
 , d_sendQueue(basicAllocator)
@@ -5680,8 +5669,6 @@ ntsa::Error StreamSocket::deregisterSession()
 
 ntsa::Error StreamSocket::setZeroCopyThreshold(bsl::size_t value)
 {
-    NTCI_LOG_CONTEXT();
-
     ntsa::Error error;
 
     bslmt::LockGuard<bslmt::Mutex> lock(&d_mutex);
@@ -5698,15 +5685,6 @@ ntsa::Error StreamSocket::setZeroCopyThreshold(bsl::size_t value)
 
     if (!reactorRef->supportsNotifications()) {
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-    }
-
-    ntsa::SocketOption option;
-    option.makeZeroCopy(true);
-    error = d_socket_sp->setOption(option);
-    if (error) {
-        NTCI_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
-                       error.text().c_str());
-        return error;
     }
 
     d_options.setZeroCopyThreshold(value);
@@ -6416,7 +6394,7 @@ void StreamSocket::close(const ntci::CloseCallback& callback)
                                  true);
     }
     else {
-        // MRM: Announce discarded.
+        // TODO: Announce discarded.
 
         this->privateShutdown(self,
                               ntsa::ShutdownType::e_BOTH,
