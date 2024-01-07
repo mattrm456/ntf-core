@@ -68,6 +68,7 @@ ZeroCopyQueue::ZeroCopyQueue(
     const bsl::shared_ptr<ntci::DataPool>& dataPool,
     bslma::Allocator*                      basicAllocator)
 : d_counter(0)
+, d_bias(0)
 , d_waitList(basicAllocator)
 , d_doneList(basicAllocator)
 , d_dataPool_sp(dataPool)
@@ -255,68 +256,54 @@ void ZeroCopyQueue::frame(ntcq::SendCounter group)
 
 ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
 {
-    // MRM
-#if 0
-    NTCCFG_WARNING_UNUSED(zeroCopy);
-    NTCCFG_NOT_IMPLEMENTED();
-#else
-
-    NTCCFG_WARNING_UNUSED(zeroCopy);
-
     ntcq::ZeroCopyRange zeroCopyRange;
 
     if (zeroCopy.from() > zeroCopy.to()) {
-        // TODO: Handle 32-bit unsigned integer wraparound and convert to
-        // 64-bit unsigned integers with a help of a wraparound counter.
+        // Handle 32-bit unsigned integer wraparound and convert to 64-bit
+        // unsigned integers.
 
         bsl::ptrdiff_t distance = 
             (bsl::numeric_limits<bsl::uint32_t>::max() - zeroCopy.from()) + 
             zeroCopy.to();
 
+        zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
 
-        bsl::ptrdiff_t bias = 
-            (d_wraparoundCounter * bsl::numeric_limits<bsl::uint32_t>::max()) +
-            distance;
+        d_bias += bsl::numeric_limits<bsl::uint32_t>::max();
 
-        // Wrong.
-        // zeroCopyRange.setMinCounter(zeroCopyRange.minCounter() + bias);
-        // zeroCopyRange.setMaxCounter(zeroCopyRange.maxCounter() + bias);
-
-        zeroCopyRange.setMinCounter(bias);
-        zeroCopyRange.setMaxCounter(bias + distance);
-
-        ++d_wraparoundCounter;
+        zeroCopyRange.setMaxCounter(d_bias + zeroCopy.from() + distance);
     }
     else {
-        zeroCopyRange.setMinCounter(zeroCopy.from());
-        zeroCopyRange.setMaxCounter(zeroCopy.to() + 1);
+        zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
+        zeroCopyRange.setMaxCounter(d_bias + zeroCopy.to() + 1);
     }
+
+    // For each zero-copy entry waiting to be completed...
 
     EntryList::iterator it = d_waitList.begin();
     EntryList::iterator et = d_waitList.end();
 
-    // For each zero-copy entry waiting to be completed...
-
     for (; it != et; ++it) {
         ZeroCopyEntry& entry = *it;
-        if (entry.match(&zeroCopyRange)) {
-            if (entry.complete()) {
+
+        if (zeroCopyRange.maxCounter() < entry.minCounter()) {
+            break;
+        }
+
+        entry.match(zeroCopyRange);
+         
+        if (entry.complete()) {
+            if (entry.callback()) {
                 d_doneList.push_back(entry);
-                d_waitList.erase(d_waitList.begin());
             }
+            d_waitList.erase(d_waitList.begin());
+        }
+
+        if (zeroCopyRange.empty()) {
+            break;
         }
     }
 
-    // If we didn't match the entirety of the zero-copied range the parameters
-    // are invalid.
-
-    if (!zeroCopyRange.empty()) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
     return ntsa::Error();
-
-#endif
 
 #if 0
     const bsl::uint32_t from = zc.from();

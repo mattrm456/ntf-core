@@ -34,13 +34,13 @@ NTCCFG_TEST_CASE(1)
     //
     // Case 2: (invalid: we can't complete that which we haven't started)
     //
-    // WQ:    -----
-    // ZC:  -----
+    // WQ:    XXX--
+    // ZC:  --XXX
     //
     // Case 3:
     //
-    // WQ:  ----- 
-    // ZC:  -- 
+    // WQ:  XX--- 
+    // ZC:  XX 
     //
     // Case 4:
     //
@@ -49,18 +49,23 @@ NTCCFG_TEST_CASE(1)
     //
     // Case 5:
     //
-    // WQ:  ----- 
-    // ZC:     -- 
+    // WQ:  ---XX 
+    // ZC:     XX 
     //
     // Case 6: (invalid: we can't complete that which we haven't started)
     //
-    // WQ:  ----- 
-    // ZC:    ----- 
+    // WQ:  --XXX 
+    // ZC:    XXX-- 
     //
     // Case 7: (invalid: we can't complete that which we haven't started)
     //
     // WQ:  ----- 
     // ZC:        ------
+
+    // Case 8: split
+    //
+    // WQ:  ---------- 
+    // ZC:    ------
 
     NTCI_LOG_CONTEXT();
     NTCI_LOG_CONTEXT_GUARD_OWNER("test");

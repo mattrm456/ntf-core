@@ -29,6 +29,7 @@ BSLS_IDENT("$Id: $")
 #include <bdlbb_blob.h>
 #include <bslma_allocator.h>
 #include <bsls_keyword.h>
+#include <bsl_algorithm.h>
 #include <bsl_vector.h>
 
 namespace BloombergLP {
@@ -79,6 +80,9 @@ public:
     /// a reference to this modifiable object. 
     ZeroCopyRange& operator=(const ZeroCopyRange& other);
 
+    /// Reset the value of this object to its value upon default construction.
+    void reset();
+
     /// Set the minimum zero-copy counter of the range, inclusive, to the
     /// specified 'counter'.
     void setMinCounter(ntcq::ZeroCopyCounter counter);
@@ -119,10 +123,20 @@ public:
     static ZeroCopyRange intersect(const ZeroCopyRange& lhs, 
                                    const ZeroCopyRange& rhs);
 
+    /// Calculate the range that is the difference between the specified 'lhs'
+    /// and 'rhs' ranges. If the difference is contiguous, load it into the
+    /// specified 'result' and load the empty range into the specified
+    /// 'overflow'. Otherwise, load the lesser difference into 'result' and the
+    /// greater difference into the specified 'overflow'.
+    static void difference(ZeroCopyRange*       result, 
+                           ZeroCopyRange*       overflow,
+                           const ZeroCopyRange& lhs, 
+                           const ZeroCopyRange& rhs);
+
     /// Defines the traits of this type. These traits can be used to select,
     /// at compile-time, the most efficient algorithm to manipulate objects
     /// of this type.
-    NTCCFG_DECLARE_NESTED_USES_ALLOCATOR_TRAITS(ZeroCopyRange);
+    NTCCFG_DECLARE_NESTED_BITWISE_MOVABLE_TRAITS(ZeroCopyRange);
 };
 
 /// Write the specified 'object' to the specified 'stream'. Return a modifiable
@@ -152,8 +166,11 @@ bool operator!=(const ZeroCopyRange& lhs, const ZeroCopyRange& rhs);
 /// @ingroup module_ntcq
 class ZeroCopyEntry
 {
+    typedef bsl::vector<ntcq::ZeroCopyRange> RangeSet;
+
     ntcq::SendCounter           d_group;
     ntcq::ZeroCopyRange         d_range;
+    RangeSet                    d_rangeSet;
     bool                        d_framed;
     bsl::shared_ptr<ntsa::Data> d_data_sp;
     ntsa::Error                 d_error;
@@ -207,7 +224,7 @@ class ZeroCopyEntry
     void setCallback(const ntci::SendCallback& callback);
 
     /// TODO. 
-    bool match(ntcq::ZeroCopyRange* input);
+    void match(const ntcq::ZeroCopyRange& complete);
 
     /// Return the identifier of the data. 
     ntcq::SendCounter group() const;
@@ -276,10 +293,10 @@ class ZeroCopyQueue
     typedef bsl::vector<ZeroCopyEntry> EntryList;
 
     ntcq::ZeroCopyCounter           d_counter;
+    ntcq::ZeroCopyCounter           d_bias;
     EntryList                       d_waitList;
     EntryList                       d_doneList;
     bsl::shared_ptr<ntci::DataPool> d_dataPool_sp;
-    bsl::size_t                     d_wraparoundCounter;
     bslma::Allocator*               d_allocator_p;
 
   private:
@@ -421,6 +438,13 @@ ZeroCopyRange& ZeroCopyRange::operator=(const ZeroCopyRange& other)
 }
 
 NTCCFG_INLINE
+void ZeroCopyRange::reset()
+{
+    d_minCounter = 0;
+    d_maxCounter = 0;
+}
+
+NTCCFG_INLINE
 void ZeroCopyRange::setMinCounter(ntcq::ZeroCopyCounter counter)
 {
     d_minCounter = counter;
@@ -462,19 +486,18 @@ ZeroCopyRange ZeroCopyRange::intersect(const ZeroCopyRange& lhs,
 {
     ZeroCopyRange result;
 
-    ntcq::ZeroCopyCounter a = lhs.minCounter();
-    if (a < rhs.minCounter()) {
-        a = rhs.minCounter();
-    }
+    const ntcq::ZeroCopyCounter lhsMin = lhs.minCounter();
+    const ntcq::ZeroCopyCounter lhsMax = lhs.maxCounter();
 
-    ntcq::ZeroCopyCounter b = lhs.maxCounter();
-    if (b > rhs.maxCounter()) {
-        b = rhs.maxCounter();
-    }
+    const ntcq::ZeroCopyCounter rhsMin = rhs.minCounter();
+    const ntcq::ZeroCopyCounter rhsMax = rhs.maxCounter();
 
-    if (b >= a) {
-        result.setMinCounter(a);
-        result.setMaxCounter(b);
+    const ntcq::ZeroCopyCounter resultMin = bsl::max(lhsMin, rhsMin);
+    const ntcq::ZeroCopyCounter resultMax = bsl::min(lhsMax, rhsMax);
+
+    if (resultMax >= resultMin) {
+        result.setMinCounter(resultMin);
+        result.setMaxCounter(resultMax);
     }
     else {
         result.setMinCounter(0);
@@ -482,6 +505,51 @@ ZeroCopyRange ZeroCopyRange::intersect(const ZeroCopyRange& lhs,
     }
 
     return result;
+}
+
+NTCCFG_INLINE
+void ZeroCopyRange::difference(ZeroCopyRange*       result, 
+                               ZeroCopyRange*       overflow,
+                               const ZeroCopyRange& lhs, // MRM: required (or complete)
+                               const ZeroCopyRange& rhs) // MRM: intersection
+{
+    result->reset();
+    overflow->reset();
+
+    // LHS:     ----- 
+    // RHS: --------------
+
+    if (rhs.minCounter() <= lhs.minCounter() && 
+        rhs.maxCounter() >= rhs.maxCounter()) 
+    {
+        return;
+    }
+
+    // LHS: RRR----
+    // RHS:    ----
+
+    if (lhs.minCounter() < rhs.minCounter()) { // MRM: case 6
+        result->setMinCounter(lhs.minCounter());
+        result->setMaxCounter(bsl::min(lhs.maxCounter(), rhs.minCounter()));
+    }
+
+    // LHS: ----OOO
+    // RHS: ----
+
+    if (lhs.maxCounter() > rhs.maxCounter()) { // MRM: case 2
+        overflow->setMinCounter(bsl::max(lhs.minCounter(), rhs.maxCounter()));
+        overflow->setMaxCounter(lhs.maxCounter());
+    }
+
+    // Aggregate
+
+    if (overflow->minCounter() == result->maxCounter()) {
+        result->setMaxCounter(overflow->maxCounter());
+        overflow->reset();
+    }
+
+    // LHS: RRR----OOO
+    // RHS:    ----
 }
 
 NTCCFG_INLINE
@@ -507,6 +575,7 @@ NTCCFG_INLINE
 ZeroCopyEntry::ZeroCopyEntry(bslma::Allocator* basicAllocator)
 : d_group(0)
 , d_range()
+, d_rangeSet(basicAllocator)
 , d_framed(false)
 , d_data_sp()
 , d_error()
@@ -520,6 +589,7 @@ ZeroCopyEntry::ZeroCopyEntry(const ZeroCopyEntry& original,
                              bslma::Allocator*    basicAllocator)
 : d_group(original.d_group)
 , d_range(original.d_range)
+, d_rangeSet(original.d_rangeSet, basicAllocator)
 , d_framed(original.d_framed)
 , d_data_sp(original.d_data_sp)
 , d_error(original.d_error)
@@ -539,8 +609,10 @@ ZeroCopyEntry& ZeroCopyEntry::operator=(const ZeroCopyEntry& other)
     if (this != &other) {
         d_group      = other.d_group;
         d_range      = other.d_range;
+        d_rangeSet   = other.d_rangeSet;
         d_framed     = other.d_framed;
         d_data_sp    = other.d_data_sp;
+        d_error      = other.d_error;
         d_callback   = other.d_callback;
     }
 
@@ -556,13 +628,23 @@ void ZeroCopyEntry::setGroup(ntcq::SendCounter group)
 NTCCFG_INLINE
 void ZeroCopyEntry::setMinCounter(ntcq::ZeroCopyCounter counter)
 {
-    d_range.setMinCounter(counter);
+    if (d_rangeSet.empty()) {
+        d_range.setMinCounter(counter);
+    }
+    else {
+        d_rangeSet.front().setMinCounter(counter);
+    }
 }
 
 NTCCFG_INLINE
 void ZeroCopyEntry::setMaxCounter(ntcq::ZeroCopyCounter counter)
 {
-    d_range.setMaxCounter(counter);
+    if (d_rangeSet.empty()) {
+        d_range.setMaxCounter(counter);
+    }
+    else {
+        d_rangeSet.back().setMaxCounter(counter);
+    }
 }
 
 NTCCFG_INLINE
@@ -590,37 +672,63 @@ void ZeroCopyEntry::setCallback(const ntci::SendCallback& callback)
 }
 
 NTCCFG_INLINE
-bool ZeroCopyEntry::match(ntcq::ZeroCopyRange* input)
+void ZeroCopyEntry::match(const ntcq::ZeroCopyRange& complete)
 {
-    ntcq::ZeroCopyRange required = d_range;
-    ntcq::ZeroCopyRange complete = *input;
+    if (d_rangeSet.empty()) {
+        ntcq::ZeroCopyRange required = d_range;
 
-    ntcq::ZeroCopyRange intersection = 
-        ntcq::ZeroCopyRange::intersect(required, complete);
+        ntcq::ZeroCopyRange intersection = 
+            ntcq::ZeroCopyRange::intersect(required, complete);
 
-    if (intersection.empty()) {
-        return false;
+        if (intersection.empty()) {
+            return;
+        }
+
+        ntcq::ZeroCopyRange pending;
+        ntcq::ZeroCopyRange overflow;
+
+        ntcq::ZeroCopyRange::difference(
+            &pending, &overflow, required, intersection);
+
+        if (overflow.empty()) {
+            d_range = pending;
+        }
+        else {
+            d_rangeSet.push_back(pending);
+            d_rangeSet.push_back(overflow);
+        }
+
+        return;
     }
-
-// MRM
-#if 0
-    if (complete.maxCounter() <= required.minCounter()) {
-        return false;
-    }
-
-    if (complete.minCounter() >= required.maxCounter()) {
-        return false;
-    }
-#endif
-
-
-    // TODO
-
     
-    d_range = required;
-    *input  = complete;
+    RangeSet rangeSet(d_allocator_p);
+    rangeSet.swap(d_rangeSet);
 
-    return true;
+    RangeSet::const_iterator it = rangeSet.begin();
+    RangeSet::const_iterator et = rangeSet.end();
+
+    for (; it != et; ++it) {
+        ntcq::ZeroCopyRange required = *it;
+
+        ntcq::ZeroCopyRange intersection = 
+            ntcq::ZeroCopyRange::intersect(required, complete);
+
+        if (intersection.empty()) {
+            return;
+        }
+
+        ntcq::ZeroCopyRange pending;
+        ntcq::ZeroCopyRange overflow;
+
+        ntcq::ZeroCopyRange::difference(
+            &pending, &overflow, required, intersection);
+
+        d_rangeSet.push_back(pending);
+
+        if (!overflow.empty()) {
+            d_rangeSet.push_back(overflow);
+        }
+    }
 }
 
 NTCCFG_INLINE
@@ -632,13 +740,23 @@ ntcq::SendCounter ZeroCopyEntry::group() const
 NTCCFG_INLINE
 ntcq::ZeroCopyCounter ZeroCopyEntry::minCounter() const
 {
-    return d_range.minCounter();
+    if (d_rangeSet.empty()) {
+        return d_range.minCounter();
+    }
+    else {
+        return d_rangeSet.front().minCounter();
+    }
 }
 
 NTCCFG_INLINE
 ntcq::ZeroCopyCounter ZeroCopyEntry::maxCounter() const
 {
-    return d_range.maxCounter();
+    if (d_rangeSet.empty()) {
+        return d_range.maxCounter();
+    }
+    else {
+        return d_rangeSet.back().maxCounter();
+    }
 }
 
 NTCCFG_INLINE
