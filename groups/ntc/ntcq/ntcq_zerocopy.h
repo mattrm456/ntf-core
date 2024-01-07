@@ -290,7 +290,8 @@ bsl::ostream& operator<<(bsl::ostream& stream, const ZeroCopyEntry& object);
 /// @ingroup module_ntcq
 class ZeroCopyQueue
 {
-    typedef bsl::vector<ZeroCopyEntry> EntryList;
+    typedef bsl::list<ZeroCopyEntry>   EntryList;
+    typedef bsl::vector<ZeroCopyEntry> EntryVector;
 
     ntcq::ZeroCopyCounter           d_counter;
     ntcq::ZeroCopyCounter           d_bias;

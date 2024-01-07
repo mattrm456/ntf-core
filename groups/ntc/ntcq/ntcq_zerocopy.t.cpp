@@ -575,6 +575,60 @@ NTCCFG_TEST_CASE(6)
 
 NTCCFG_TEST_CASE(7)
 {
+    // Concern: Test ntcq::ZeroCopyQueue sanity check: numOps = 1, depth 3, batch
+    // Plan:
+
+    NTCI_LOG_CONTEXT();
+    NTCI_LOG_CONTEXT_GUARD_OWNER("test");
+
+    ntccfg::TestAllocator ta;
+    {
+        bsl::shared_ptr<ntci::Sender> s;
+
+        bsl::shared_ptr<ntcs::DataPool> dp;
+        dp.createInplace(&ta, &ta);
+
+        ntcq::ZeroCopyQueue zq(dp, &ta);
+
+        test::TransferHandle t0 = test::Transfer::create(s, 0, 1, dp, &ta);
+        test::TransferHandle t1 = test::Transfer::create(s, 1, 1, dp, &ta);
+        test::TransferHandle t2 = test::Transfer::create(s, 2, 1, dp, &ta);
+        
+        test::ZeroCopyUtil::submit(&zq, t0);
+        test::ZeroCopyUtil::submit(&zq, t1);
+        test::ZeroCopyUtil::submit(&zq, t2);
+
+        test::ZeroCopyUtil::invoke(&zq, s, false);
+
+        NTCCFG_TEST_TRUE(t0->pending());
+        NTCCFG_TEST_TRUE(t1->pending());
+        NTCCFG_TEST_TRUE(t2->pending());
+
+        test::ZeroCopyUtil::update(&zq, 0, 2);
+
+        test::ZeroCopyUtil::invoke(&zq, s, true);
+
+        NTCCFG_TEST_TRUE(t0->complete());
+        NTCCFG_TEST_TRUE(t1->pending());
+        NTCCFG_TEST_TRUE(t2->pending());
+        
+        test::ZeroCopyUtil::invoke(&zq, s, true);
+        
+        NTCCFG_TEST_TRUE(t0->complete());
+        NTCCFG_TEST_TRUE(t1->complete());
+        NTCCFG_TEST_TRUE(t2->pending());
+
+        test::ZeroCopyUtil::invoke(&zq, s, true);
+
+        NTCCFG_TEST_TRUE(t0->complete());
+        NTCCFG_TEST_TRUE(t1->complete());
+        NTCCFG_TEST_TRUE(t2->complete());
+    }
+    NTCCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+}
+
+NTCCFG_TEST_CASE(8)
+{
     // Concern: Test ntcq::ZeroCopyQueue exhaustive test
     // Plan:
 
@@ -602,5 +656,6 @@ NTCCFG_TEST_DRIVER
     NTCCFG_TEST_REGISTER(5);
     NTCCFG_TEST_REGISTER(6);
     NTCCFG_TEST_REGISTER(7);
+    NTCCFG_TEST_REGISTER(8);
 }
 NTCCFG_TEST_DRIVER_END;

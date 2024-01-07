@@ -279,11 +279,14 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
 
     // For each zero-copy entry waiting to be completed...
 
-    EntryList::iterator it = d_waitList.begin();
-    EntryList::iterator et = d_waitList.end();
+    EntryList::iterator current = d_waitList.begin();
+    
+    while (true) {
+        if (current == d_waitList.end()) {
+            break;
+        }
 
-    for (; it != et; ++it) {
-        ZeroCopyEntry& entry = *it;
+        ZeroCopyEntry& entry = *current;
 
         if (zeroCopyRange.maxCounter() < entry.minCounter()) {
             break;
@@ -295,11 +298,12 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
             if (entry.callback()) {
                 d_doneList.push_back(entry);
             }
-            d_waitList.erase(d_waitList.begin());
+            
+            EntryList::iterator target = current++;
+            d_waitList.erase(target);
         }
-
-        if (zeroCopyRange.empty()) {
-            break;
+        else {
+            ++current;
         }
     }
 
@@ -360,11 +364,11 @@ bool ZeroCopyQueue::pop(ntci::SendCallback* result)
     while (!d_doneList.empty()) {
         if (d_doneList.front().callback()) {
             *result = d_doneList.front().callback();
-            d_doneList.erase(d_doneList.begin());
+            d_doneList.pop_front();
             return true;
         }
         else {
-            d_doneList.erase(d_doneList.begin());
+            d_doneList.pop_front();
         }
     }
 
@@ -378,11 +382,11 @@ bool ZeroCopyQueue::pop(bsl::vector<ntci::SendCallback>* result)
     while (!d_doneList.empty()) {
         if (d_doneList.front().callback()) {
             result->push_back(d_doneList.front().callback());
-            d_doneList.erase(d_doneList.begin());
+            d_doneList.pop_front();
             found = true;
         }
         else {
-            d_doneList.erase(d_doneList.begin());
+            d_doneList.pop_front();
         }
     }
 
