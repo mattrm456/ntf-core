@@ -520,7 +520,7 @@ void ZeroCopyRange::difference(ZeroCopyRange*       result,
     // RHS: --------------
 
     if (rhs.minCounter() <= lhs.minCounter() && 
-        rhs.maxCounter() >= rhs.maxCounter()) 
+        rhs.maxCounter() >= lhs.maxCounter()) 
     {
         return;
     }
@@ -543,7 +543,12 @@ void ZeroCopyRange::difference(ZeroCopyRange*       result,
 
     // Aggregate
 
-    if (overflow->minCounter() == result->maxCounter()) {
+    if (result->empty()) {
+        result->setMinCounter(overflow->minCounter());
+        result->setMaxCounter(overflow->maxCounter());
+        overflow->reset();
+    }
+    else if (overflow->minCounter() == result->maxCounter()) {
         result->setMaxCounter(overflow->maxCounter());
         overflow->reset();
     }
