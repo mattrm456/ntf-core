@@ -30,6 +30,7 @@ BSLS_IDENT("$Id: $")
 #include <bslma_allocator.h>
 #include <bsls_keyword.h>
 #include <bsl_algorithm.h>
+#include <bsl_limits.h>
 #include <bsl_vector.h>
 
 namespace BloombergLP {
@@ -282,7 +283,62 @@ class ZeroCopyEntry
 bsl::ostream& operator<<(bsl::ostream& stream, const ZeroCopyEntry& object);
 
 /// @internal @brief
-/// Describe a zero-copy queue.
+/// Provide a zero-copy counter generator.
+///
+/// @par Thread Safety
+/// This class is not thread safe.
+///
+/// @ingroup module_ntcq
+class ZeroCopyCounterGenerator
+{
+    ntcq::ZeroCopyCounter d_epoch;
+    ntcq::ZeroCopyCounter d_next;
+    ntcq::ZeroCopyCounter d_bias;
+    
+private:
+    ZeroCopyCounterGenerator(
+        const ZeroCopyCounterGenerator&) BSLS_KEYWORD_DELETED;
+    ZeroCopyCounterGenerator& operator=(
+        const ZeroCopyCounterGenerator&) BSLS_KEYWORD_DELETED;
+
+public:
+    /// Create a new zero copy counter generator from the default epoch of 
+    /// zero.
+    ZeroCopyCounterGenerator();
+
+    /// Destroy this object.
+    ~ZeroCopyCounterGenerator();
+
+    /// Set the first zero-copy-counter to the specified 'value'. 
+    void setEpoch(ntcq::ZeroCopyCounter value);
+
+    /// Set the next zero-copy counter to the specified 'value'.
+    void setNext(ntcq::ZeroCopyCounter value);
+
+    /// Set the 64-bit bias to the specified 'value'. 
+    void setBias(ntcq::ZeroCopyCounter value);
+
+    // Return the next zero-copy counter.
+    ntcq::ZeroCopyCounter generate();
+
+    /// Return the 64-bit half-open range that is equivalent to the specified
+    /// 'zeroCopy' update.
+    ntcq::ZeroCopyRange convert(const ntsa::ZeroCopy& zeroCopy);
+
+    /// Return the first zero-copy counter. 
+    ntcq::ZeroCopyCounter epoch() const;
+
+    /// Return the next zero-copy counter. 
+    ntcq::ZeroCopyCounter next() const;
+
+    /// Return the 64-bit bias. 
+    ntcq::ZeroCopyCounter bias() const;
+};
+
+
+/// @internal @brief
+/// Provide a queue of operations requested to be zero-copied, and a 
+/// correlation mechanism to learn when they are complete.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -678,66 +734,6 @@ void ZeroCopyEntry::setCallback(const ntci::SendCallback& callback)
 }
 
 NTCCFG_INLINE
-void ZeroCopyEntry::match(const ntcq::ZeroCopyRange& complete)
-{
-    if (d_rangeSet.empty()) {
-        ntcq::ZeroCopyRange required = d_range;
-
-        ntcq::ZeroCopyRange intersection = 
-            ntcq::ZeroCopyRange::intersect(required, complete);
-
-        if (intersection.empty()) {
-            return;
-        }
-
-        ntcq::ZeroCopyRange pending;
-        ntcq::ZeroCopyRange overflow;
-
-        ntcq::ZeroCopyRange::difference(
-            &pending, &overflow, required, intersection);
-
-        if (overflow.empty()) {
-            d_range = pending;
-        }
-        else {
-            d_rangeSet.push_back(pending);
-            d_rangeSet.push_back(overflow);
-        }
-
-        return;
-    }
-    
-    RangeSet rangeSet(d_allocator_p);
-    rangeSet.swap(d_rangeSet);
-
-    RangeSet::const_iterator it = rangeSet.begin();
-    RangeSet::const_iterator et = rangeSet.end();
-
-    for (; it != et; ++it) {
-        ntcq::ZeroCopyRange required = *it;
-
-        ntcq::ZeroCopyRange intersection = 
-            ntcq::ZeroCopyRange::intersect(required, complete);
-
-        if (intersection.empty()) {
-            return;
-        }
-
-        ntcq::ZeroCopyRange pending;
-        ntcq::ZeroCopyRange overflow;
-
-        ntcq::ZeroCopyRange::difference(
-            &pending, &overflow, required, intersection);
-
-        d_rangeSet.push_back(pending);
-
-        if (!overflow.empty()) {
-            d_rangeSet.push_back(overflow);
-        }
-    }
-}
-
-NTCCFG_INLINE
 ntcq::SendCounter ZeroCopyEntry::group() const
 {
     return d_group;
@@ -772,12 +768,6 @@ bool ZeroCopyEntry::framed() const
 }
 
 NTCCFG_INLINE
-bool ZeroCopyEntry::complete() const
-{
-    return d_range.empty() && d_framed;
-}
-
-NTCCFG_INLINE
 ntsa::Error ZeroCopyEntry::error() const
 {
     return d_error;
@@ -799,6 +789,87 @@ NTCCFG_INLINE
 bsl::ostream& operator<<(bsl::ostream& stream, const ZeroCopyEntry& object)
 {
     return object.print(stream, 0, -1);
+}
+
+NTCCFG_INLINE
+ZeroCopyCounterGenerator::ZeroCopyCounterGenerator()
+: d_epoch(0)
+, d_next(0)
+, d_bias(0)
+{
+}
+
+NTCCFG_INLINE
+ZeroCopyCounterGenerator::~ZeroCopyCounterGenerator()
+{
+}
+
+NTCCFG_INLINE
+void ZeroCopyCounterGenerator::setEpoch(ntcq::ZeroCopyCounter value)
+{
+    d_epoch = value;
+}
+
+NTCCFG_INLINE
+void ZeroCopyCounterGenerator::setNext(ntcq::ZeroCopyCounter value)
+{
+    d_next = value;
+}
+
+NTCCFG_INLINE
+void ZeroCopyCounterGenerator::setBias(ntcq::ZeroCopyCounter value)
+{
+    d_bias = value;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyCounterGenerator::generate()
+{
+    return d_next++;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyRange ZeroCopyCounterGenerator::convert(
+    const ntsa::ZeroCopy& zeroCopy)
+{
+    ntcq::ZeroCopyRange zeroCopyRange;
+
+    if (zeroCopy.from() > zeroCopy.to()) {
+        bsl::uint32_t distance = 
+            static_cast<bsl::uint32_t>(
+                (bsl::numeric_limits<bsl::uint32_t>::max() - zeroCopy.from()) +
+                zeroCopy.to());
+
+        zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
+
+        d_bias += bsl::numeric_limits<bsl::uint32_t>::max();
+
+        zeroCopyRange.setMaxCounter(d_bias + zeroCopy.from() + distance);
+    }
+    else {
+        zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
+        zeroCopyRange.setMaxCounter(d_bias + zeroCopy.to() + 1);
+    }
+
+    return zeroCopyRange;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyCounterGenerator::epoch() const
+{
+    return d_epoch;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyCounterGenerator::next() const
+{
+    return d_next;
+}
+
+NTCCFG_INLINE
+ntcq::ZeroCopyCounter ZeroCopyCounterGenerator::bias() const
+{
+    return d_bias;
 }
 
 }  // close package namespace

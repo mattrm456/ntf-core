@@ -24,6 +24,12 @@ BSLS_IDENT_RCSID(ntcq_zerocopy_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntcq {
 
+namespace {
+
+const bsl::uint32_t k_UINT32_MAX = bsl::numeric_limits<bsl::uint32_t>::max();
+
+} // close unnamed namespace
+
 bsl::ostream& ZeroCopyRange::print(bsl::ostream& stream,
                                    int           level,
                                    int           spacesPerLevel) const
@@ -43,6 +49,93 @@ bsl::ostream& ZeroCopyRange::print(bsl::ostream& stream,
     return stream;
 }
 
+void ZeroCopyEntry::match(const ntcq::ZeroCopyRange& complete)
+{
+    if (d_rangeSet.empty()) {
+        ntcq::ZeroCopyRange required = d_range;
+
+        ntcq::ZeroCopyRange intersection = 
+            ntcq::ZeroCopyRange::intersect(required, complete);
+
+        if (intersection.empty()) {
+            return;
+        }
+
+        ntcq::ZeroCopyRange pending;
+        ntcq::ZeroCopyRange overflow;
+
+        ntcq::ZeroCopyRange::difference(
+            &pending, &overflow, required, intersection);
+
+        if (overflow.empty()) {
+            d_range = pending;
+        }
+        else {
+            d_rangeSet.push_back(pending);
+            d_rangeSet.push_back(overflow);
+            d_range.reset();
+        }
+
+        return;
+    }
+    
+    RangeSet rangeSet(d_allocator_p);
+    rangeSet.swap(d_rangeSet);
+
+    RangeSet::const_iterator it = rangeSet.begin();
+    RangeSet::const_iterator et = rangeSet.end();
+
+    for (; it != et; ++it) {
+        ntcq::ZeroCopyRange required = *it;
+
+        ntcq::ZeroCopyRange intersection = 
+            ntcq::ZeroCopyRange::intersect(required, complete);
+
+        if (intersection.empty()) {
+            d_rangeSet.push_back(required);
+            continue;
+        }
+
+        ntcq::ZeroCopyRange pending;
+        ntcq::ZeroCopyRange overflow;
+
+        ntcq::ZeroCopyRange::difference(
+            &pending, &overflow, required, intersection);
+
+        if (!pending.empty()) {
+            d_rangeSet.push_back(pending);
+        }
+
+        if (!overflow.empty()) {
+            d_rangeSet.push_back(overflow);
+        }
+    }
+}
+
+bool ZeroCopyEntry::complete() const
+{
+    if (d_framed) {
+        if (d_rangeSet.empty()) {
+            return d_range.empty();
+        }
+        else {
+            RangeSet::const_iterator it = d_rangeSet.begin();
+            RangeSet::const_iterator et = d_rangeSet.end();
+
+            for (; it != et; ++it) {
+                const ntcq::ZeroCopyRange& range = *it;
+                if (!range.empty()) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bsl::ostream& ZeroCopyEntry::print(bsl::ostream& stream,
                                    int           level,
                                    int           spacesPerLevel) const
@@ -51,13 +144,19 @@ bsl::ostream& ZeroCopyEntry::print(bsl::ostream& stream,
     printer.start();
 
     printer.printAttribute("group", d_group);
-    printer.printAttribute("range", d_range);
+
+    if (d_rangeSet.empty()) {
+        printer.printAttribute("range", d_range);
+    }
+    else {
+        printer.printAttribute("range", d_rangeSet);
+    }
 
     if (this->complete()) {
         printer.printAttribute("state", "COMPLETE");
     }
     else {
-        printer.printAttribute("state", "WAITING");
+        printer.printAttribute("state", "PENDING");
     }
 
     printer.end();
@@ -259,12 +358,8 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
     ntcq::ZeroCopyRange zeroCopyRange;
 
     if (zeroCopy.from() > zeroCopy.to()) {
-        // Handle 32-bit unsigned integer wraparound and convert to 64-bit
-        // unsigned integers.
-
-        bsl::ptrdiff_t distance = 
-            (bsl::numeric_limits<bsl::uint32_t>::max() - zeroCopy.from()) + 
-            zeroCopy.to();
+        bsl::uint32_t distance = 
+            static_cast<bsl::uint32_t>((k_UINT32_MAX - zeroCopy.from()) + zeroCopy.to());
 
         zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
 
@@ -276,8 +371,6 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
         zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
         zeroCopyRange.setMaxCounter(d_bias + zeroCopy.to() + 1);
     }
-
-    // For each zero-copy entry waiting to be completed...
 
     EntryList::iterator current = d_waitList.begin();
     
@@ -298,9 +391,8 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
             if (entry.callback()) {
                 d_doneList.push_back(entry);
             }
-            
-            EntryList::iterator target = current++;
-            d_waitList.erase(target);
+
+            current = d_waitList.erase(current);
         }
         else {
             ++current;
@@ -308,55 +400,6 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
     }
 
     return ntsa::Error();
-
-#if 0
-    const bsl::uint32_t from = zc.from();
-    const bsl::uint32_t to   = zc.to();
-
-    const bool overflow = from > to;
-
-    const bsl::uint32_t acknowledged =
-        (!overflow ? (to - from)
-                   : (bsl::numeric_limits<bsl::uint32_t>::max() - from + to)) +
-        1;
-
-    BSLS_ASSERT_OPT(acknowledged > 0);
-
-    bsl::uint32_t                   matched = 0;
-    const EntryList::const_iterator end     = d_entryList.cend();
-    EntryList::iterator             it      = d_entryList.begin();
-    while ((matched < acknowledged) && (it != end)) {
-        ntcq::ZeroCopyEntry& entry = *it;
-
-        bool match = false;
-        if (!overflow) {
-            if (entry.id() >= from && entry.id() <= to) {
-                match = true;
-            }
-        }
-        else {
-            if (entry.id() >= from || entry.id() <= to) {
-                match = true;
-            }
-        }
-
-        matched += static_cast<bsl::uint32_t>(match);
-
-        if (match) {
-            entry.dispatch(sender,
-                           d_strand,
-                           executor,
-                           true,
-                           0);
-            it = d_entryList.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-    BSLS_ASSERT_OPT(matched == acknowledged);
-    return acknowledged > 0;
-#endif
 }
 
 bool ZeroCopyQueue::pop(ntci::SendCallback* result)
