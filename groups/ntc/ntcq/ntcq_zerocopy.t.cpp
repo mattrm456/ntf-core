@@ -478,6 +478,7 @@ NTCCFG_TEST_CASE(4)
         test::TransferHandle t0 = test::Transfer::create(s, 0, 1, dp, &ta);
 
         test::ZeroCopyUtil::submit(&zq, t0);
+        test::ZeroCopyUtil::invoke(&zq, s, false);
         test::ZeroCopyUtil::update(&zq, 0, 0);
         test::ZeroCopyUtil::invoke(&zq, s, true);
 
@@ -508,6 +509,8 @@ NTCCFG_TEST_CASE(5)
         
         test::ZeroCopyUtil::submit(&zq, t0);
         test::ZeroCopyUtil::submit(&zq, t1);
+
+        test::ZeroCopyUtil::invoke(&zq, s, false);
 
         test::ZeroCopyUtil::update(&zq, 0, 0);
         test::ZeroCopyUtil::invoke(&zq, s, true);
@@ -548,6 +551,8 @@ NTCCFG_TEST_CASE(6)
         test::ZeroCopyUtil::submit(&zq, t0);
         test::ZeroCopyUtil::submit(&zq, t1);
         test::ZeroCopyUtil::submit(&zq, t2);
+
+        test::ZeroCopyUtil::invoke(&zq, s, false);
 
         test::ZeroCopyUtil::update(&zq, 0, 0);
         test::ZeroCopyUtil::invoke(&zq, s, true);
@@ -626,6 +631,13 @@ NTCCFG_TEST_CASE(7)
     }
     NTCCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
 }
+
+
+
+
+
+
+
 
 NTCCFG_TEST_CASE(8)
 {
