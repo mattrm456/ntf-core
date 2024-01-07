@@ -24,12 +24,6 @@ BSLS_IDENT_RCSID(ntcq_zerocopy_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntcq {
 
-namespace {
-
-const bsl::uint32_t k_UINT32_MAX = bsl::numeric_limits<bsl::uint32_t>::max();
-
-} // close unnamed namespace
-
 bsl::ostream& ZeroCopyRange::print(bsl::ostream& stream,
                                    int           level,
                                    int           spacesPerLevel) const
@@ -166,8 +160,7 @@ bsl::ostream& ZeroCopyEntry::print(bsl::ostream& stream,
 ZeroCopyQueue::ZeroCopyQueue(
     const bsl::shared_ptr<ntci::DataPool>& dataPool,
     bslma::Allocator*                      basicAllocator)
-: d_counter(0)
-, d_bias(0)
+: d_generator()
 , d_waitList(basicAllocator)
 , d_doneList(basicAllocator)
 , d_dataPool_sp(dataPool)
@@ -184,7 +177,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter  group,
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
 
-    ntcq::ZeroCopyCounter counter = d_counter++;
+    ntcq::ZeroCopyCounter counter = d_generator.next();
 
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
@@ -208,7 +201,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group,
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
 
-    ntcq::ZeroCopyCounter counter = d_counter++;
+    ntcq::ZeroCopyCounter counter = d_generator.next();
 
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
@@ -235,7 +228,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group,
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
 
-    ntcq::ZeroCopyCounter counter = d_counter++;
+    ntcq::ZeroCopyCounter counter = d_generator.next();
 
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
@@ -259,7 +252,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group,
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
 
-    ntcq::ZeroCopyCounter counter = d_counter++;
+    ntcq::ZeroCopyCounter counter = d_generator.next();
 
     bsl::shared_ptr<ntsa::Data> dataContainer =
         d_dataPool_sp->createOutgoingData();
@@ -287,7 +280,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
 
-    ntcq::ZeroCopyCounter counter = d_counter++;
+    ntcq::ZeroCopyCounter counter = d_generator.next();
 
     d_waitList.resize(d_waitList.size() + 1);
     ZeroCopyEntry& entry = d_waitList.back();
@@ -307,7 +300,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
 
-    ntcq::ZeroCopyCounter counter = d_counter++;
+    ntcq::ZeroCopyCounter counter = d_generator.next();
 
     d_waitList.resize(d_waitList.size() + 1);
     ZeroCopyEntry& entry = d_waitList.back();
@@ -328,7 +321,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group)
 {
     NTCCFG_WARNING_UNUSED(group);
 
-    ntcq::ZeroCopyCounter counter = d_counter++;
+    ntcq::ZeroCopyCounter counter = d_generator.next();
 
     ZeroCopyEntry& entry = d_waitList.back();
     BSLS_ASSERT(entry.group() == group);
@@ -355,22 +348,7 @@ void ZeroCopyQueue::frame(ntcq::SendCounter group)
 
 ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
 {
-    ntcq::ZeroCopyRange zeroCopyRange;
-
-    if (zeroCopy.from() > zeroCopy.to()) {
-        bsl::uint32_t distance = 
-            static_cast<bsl::uint32_t>((k_UINT32_MAX - zeroCopy.from()) + zeroCopy.to());
-
-        zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
-
-        d_bias += bsl::numeric_limits<bsl::uint32_t>::max();
-
-        zeroCopyRange.setMaxCounter(d_bias + zeroCopy.from() + distance);
-    }
-    else {
-        zeroCopyRange.setMinCounter(d_bias + zeroCopy.from());
-        zeroCopyRange.setMaxCounter(d_bias + zeroCopy.to() + 1);
-    }
+    ntcq::ZeroCopyRange zeroCopyRange = d_generator.update(zeroCopy);
 
     EntryList::iterator current = d_waitList.begin();
     
