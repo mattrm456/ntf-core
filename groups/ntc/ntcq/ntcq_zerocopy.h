@@ -782,9 +782,12 @@ NTCCFG_INLINE
 void ZeroCopyCounterGenerator::configure(ntcq::ZeroCopyCounter next,
                                          bsl::size_t           generation)
 {
+    const ntcq::ZeroCopyCounter k_UINT32_MAX = 
+        static_cast<ntcq::ZeroCopyCounter>(
+            bsl::numeric_limits<bsl::uint32_t>::max());
+
     d_next = next;
-    d_bias = static_cast<ntcq::ZeroCopyCounter>(
-        generation * bsl::numeric_limits<bsl::uint32_t>::max());
+    d_bias = static_cast<ntcq::ZeroCopyCounter>(generation * k_UINT32_MAX);
     d_generation = generation;
 }
 
@@ -798,29 +801,38 @@ NTCCFG_INLINE
 ntcq::ZeroCopyRange ZeroCopyCounterGenerator::update(
     const ntsa::ZeroCopy& zeroCopy)
 {
+    const ntcq::ZeroCopyCounter k_UINT32_MAX = 
+        static_cast<ntcq::ZeroCopyCounter>(
+            bsl::numeric_limits<bsl::uint32_t>::max());
+
+    const ntcq::ZeroCopyCounter zeroCopyFrom = 
+        static_cast<ntcq::ZeroCopyCounter>(zeroCopy.from());
+
+    const ntcq::ZeroCopyCounter zeroCopyThru = 
+        static_cast<ntcq::ZeroCopyCounter>(zeroCopy.to());
+
+    const ntcq::ZeroCopyCounter offset = d_bias + d_generation;
+
     ntcq::ZeroCopyRange zeroCopyRange;
 
-    if (zeroCopy.from() > zeroCopy.to()) {
-        bsl::uint32_t distance = 
-            static_cast<bsl::uint32_t>(
-                (bsl::numeric_limits<bsl::uint32_t>::max() - zeroCopy.from()) +
-                zeroCopy.to());
+    if (zeroCopyFrom > zeroCopyThru) {
+        const ntcq::ZeroCopyCounter size = 
+            static_cast<ntcq::ZeroCopyCounter>(
+                (k_UINT32_MAX - zeroCopyFrom) + zeroCopyThru + 2);
 
-        zeroCopyRange.setMinCounter(d_bias + d_generation + zeroCopy.from());
+        zeroCopyRange.setMinCounter(offset + zeroCopyFrom);
+        zeroCopyRange.setMaxCounter(zeroCopyRange.minCounter() + size);
 
-        d_bias += bsl::numeric_limits<bsl::uint32_t>::max();
-        ++d_generation;
-
-        zeroCopyRange.setMaxCounter(
-            d_bias + d_generation + zeroCopy.from() + distance);
+        d_bias       += k_UINT32_MAX;
+        d_generation += 1;
     }
     else {
-        zeroCopyRange.setMinCounter(d_bias + d_generation + zeroCopy.from());
-        zeroCopyRange.setMaxCounter(d_bias + d_generation + zeroCopy.to() + 1);
+        zeroCopyRange.setMinCounter(offset + zeroCopyFrom);
+        zeroCopyRange.setMaxCounter(offset + zeroCopyThru + 1);
 
-        if (zeroCopy.to() == bsl::numeric_limits<bsl::uint32_t>::max()) {
-            d_bias += bsl::numeric_limits<bsl::uint32_t>::max();
-            ++d_generation;
+        if (zeroCopyThru == k_UINT32_MAX) {
+            d_bias       += k_UINT32_MAX;
+            d_generation += 1;
         }
     }
 

@@ -458,6 +458,8 @@ NTCCFG_TEST_CASE(3)
         const bsl::uint64_t k_U64_UINT32_MAX = 
             bsl::numeric_limits<bsl::uint32_t>::max();
 
+        // Test basic operation.
+
         {
             ntcq::ZeroCopyCounterGenerator generator;
             ntcq::ZeroCopyCounter          counter = 0;
@@ -477,6 +479,8 @@ NTCCFG_TEST_CASE(3)
             NTCCFG_TEST_EQ(range.minCounter(), 0);
             NTCCFG_TEST_EQ(range.maxCounter(), 4);
         }
+
+        // Test 32-bit wraparound incrementing by intervals of size 1.
 
         {
             ntcq::ZeroCopyCounterGenerator generator;
@@ -547,6 +551,141 @@ NTCCFG_TEST_CASE(3)
 
                 NTCCFG_TEST_EQ(range.minCounter(), k_U64_UINT32_MAX + 2);
                 NTCCFG_TEST_EQ(range.maxCounter(), k_U64_UINT32_MAX + 2 + 1);
+            }
+        }
+
+        // Test 32-bit wraparound incrementing an intervals of size 2, ending
+        // on UINT_MAX.
+
+        {
+            ntcq::ZeroCopyCounterGenerator generator;
+            ntcq::ZeroCopyCounter          counter = 0;
+
+            generator.configure(k_U64_UINT32_MAX - 2, 0);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX - 2);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX - 1);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX + 1);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX + 2);
+
+            {
+                ntcq::ZeroCopyRange range = generator.update(
+                    ntsa::ZeroCopy(k_U32_UINT32_MAX - 1, 
+                                   k_U32_UINT32_MAX, 
+                                   1));
+
+                NTCCFG_TEST_EQ(range.minCounter(), k_U64_UINT32_MAX - 1);
+                NTCCFG_TEST_EQ(range.maxCounter(), k_U64_UINT32_MAX + 1);
+            }
+
+            {
+                ntcq::ZeroCopyRange range = generator.update(
+                    ntsa::ZeroCopy(0, 
+                                   1, 
+                                   1));
+
+                NTCCFG_TEST_EQ(range.minCounter(), k_U64_UINT32_MAX + 1);
+                NTCCFG_TEST_EQ(range.maxCounter(), k_U64_UINT32_MAX + 3);
+            }
+        }
+
+        // Test 32-bit wraparound incrementing an intervals of size 2, starting
+        // on UINT_MAX.
+
+        {
+            ntcq::ZeroCopyCounterGenerator generator;
+            ntcq::ZeroCopyCounter          counter = 0;
+
+            generator.configure(k_U64_UINT32_MAX - 2, 0);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX - 2);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX - 1);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX + 1);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX + 2);
+
+            {
+                ntcq::ZeroCopyRange range = generator.update(
+                    ntsa::ZeroCopy(k_U32_UINT32_MAX, 
+                                   0, 
+                                   1));
+
+                NTCCFG_TEST_EQ(range.minCounter(), k_U64_UINT32_MAX);
+                NTCCFG_TEST_EQ(range.maxCounter(), k_U64_UINT32_MAX + 2);
+            }
+
+            {
+                ntcq::ZeroCopyRange range = generator.update(
+                    ntsa::ZeroCopy(1, 
+                                   2, 
+                                   1));
+
+                NTCCFG_TEST_EQ(range.minCounter(), k_U64_UINT32_MAX + 2);
+                NTCCFG_TEST_EQ(range.maxCounter(), k_U64_UINT32_MAX + 4);
+            }
+        }
+
+        // Test 32-bit wraparound incrementing an intervals of size 3, spanning
+        // UINT_MAX.
+
+        {
+            ntcq::ZeroCopyCounterGenerator generator;
+            ntcq::ZeroCopyCounter          counter = 0;
+
+            generator.configure(k_U64_UINT32_MAX - 2, 0);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX - 2);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX - 1);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX + 1);
+
+            counter = generator.next();
+            NTCCFG_TEST_EQ(counter, k_U64_UINT32_MAX + 2);
+
+            {
+                ntcq::ZeroCopyRange range = generator.update(
+                    ntsa::ZeroCopy(k_U32_UINT32_MAX - 1, 
+                                   0, 
+                                   1));
+
+                NTCCFG_TEST_EQ(range.minCounter(), k_U64_UINT32_MAX - 1);
+                NTCCFG_TEST_EQ(range.maxCounter(), k_U64_UINT32_MAX + 2);
+            }
+
+            {
+                ntcq::ZeroCopyRange range = generator.update(
+                    ntsa::ZeroCopy(1, 
+                                   2, 
+                                   1));
+
+                NTCCFG_TEST_EQ(range.minCounter(), k_U64_UINT32_MAX + 2);
+                NTCCFG_TEST_EQ(range.maxCounter(), k_U64_UINT32_MAX + 4);
             }
         }
     }
