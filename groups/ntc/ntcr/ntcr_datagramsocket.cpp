@@ -118,8 +118,14 @@ BSLS_IDENT_RCSID(ntcr_datagramsocket_cpp, "$Id$ $CSID$")
     NTCI_LOG_TRACE("Datagram socket "                                         \
                    "has saturated the number of pinned pages")
 
+#define NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy)                    \
+    NTCI_LOG_TRACE("Datagram socket zero copy %s [ %u, %u ]", \
+                  ntsa::ZeroCopyType::toString((zeroCopy).type()), \
+                  (zeroCopy).from(), \
+                  (zeroCopy).thru())
+
 #define NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_DISABLED()                          \
-    NTCI_LOG_WARN("Zero copy is disabled due to ENOBUFS")
+    NTCI_LOG_DEBUG("Datagram socket zero copy is disabled")
 
 #define NTCR_DATAGRAMSOCKET_LOG_SEND_RESULT(context)                          \
     NTCI_LOG_TRACE("Datagram socket "                                         \
@@ -542,6 +548,15 @@ void DatagramSocket::privateZeroCopyUpdate(
         const bsl::shared_ptr<DatagramSocket>& self,
         const ntsa::ZeroCopy&                  zeroCopy)
 {
+    NTCI_LOG_CONTEXT();
+
+    NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy);
+
+    if (zeroCopy.type() != ntsa::ZeroCopyType::e_AVOIDED) {
+        NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_DISABLED();
+        d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+    }
+
     d_zeroCopyQueue.update(zeroCopy);
 
     if (d_zeroCopyQueue.ready()) {

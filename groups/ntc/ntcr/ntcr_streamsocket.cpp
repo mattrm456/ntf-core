@@ -165,8 +165,14 @@ BSLS_IDENT_RCSID(ntcr_streamsocket_cpp, "$Id$ $CSID$")
     NTCI_LOG_TRACE("Stream socket "                                           \
                    "has saturated the number of pinned pages")
 
+#define NTCR_STREAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy)                      \
+    NTCI_LOG_TRACE("Stream socket zero copy %s [ %u, %u ]", \
+                  ntsa::ZeroCopyType::toString((zeroCopy).type()), \
+                  (zeroCopy).from(), \
+                  (zeroCopy).thru())
+
 #define NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED()                            \
-    NTCI_LOG_WARN("Zero copy is disabled due to ENOBUFS")
+    NTCI_LOG_DEBUG("Stream socket zero copy is disabled")
 
 #define NTCR_STREAMSOCKET_LOG_SEND_RESULT(context)                            \
     NTCI_LOG_TRACE("Stream socket "                                           \
@@ -4299,6 +4305,15 @@ void StreamSocket::privateZeroCopyUpdate(
             const bsl::shared_ptr<StreamSocket>& self,
             const ntsa::ZeroCopy&                zeroCopy)
 {
+    NTCI_LOG_CONTEXT();
+
+    NTCR_STREAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy);
+
+    if (zeroCopy.type() != ntsa::ZeroCopyType::e_AVOIDED) {
+        NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+        d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+    }
+
     d_zeroCopyQueue.update(zeroCopy);
 
     if (d_zeroCopyQueue.ready()) {

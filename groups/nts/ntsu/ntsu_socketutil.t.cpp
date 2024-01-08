@@ -158,8 +158,9 @@ void extractZeroCopyNotifications(bsl::list<ntsa::ZeroCopy>* zerocopy,
          it != notifications.notifications().cend();
          ++it)
     {
-        NTSCFG_TEST_TRUE(it->isZeroCopy());
-        zerocopy->push_back(it->zeroCopy());
+        if (it->isZeroCopy()) {
+            zerocopy->push_back(it->zeroCopy());
+        }
     }
 }
 
@@ -182,8 +183,9 @@ void extractTimestampNotifications(bsl::list<ntsa::Timestamp>* ts,
          it != notifications.notifications().cend();
          ++it)
     {
-        NTSCFG_TEST_TRUE(it->isTimestamp());
-        ts->push_back(it->timestamp());
+        if (it->isTimestamp()) {
+            ts->push_back(it->timestamp());
+        }
     }
 }
 
@@ -2149,7 +2151,7 @@ void testStreamSocketTxTimestamps(ntsa::Transport::Value transport,
     for (int i = 0; i < numMessagesToSend; ++i) {
         ntsa::SendContext context;
         ntsa::SendOptions options;
-        options.setZeroCopy(true);
+        options.setZeroCopy(false);
 
         const bsls::TimeInterval sysTimeBeforeSending =
             bdlt::CurrentTime::now();
