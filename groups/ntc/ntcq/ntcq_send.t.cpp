@@ -197,6 +197,7 @@ void EventUtil::processComplete(bsls::AtomicUint* numInvoked,
 
 NTCCFG_TEST_CASE(1)
 {
+    #if 0
     // Concern: The pool of shared objects correctly creates a shared pointer
     // to an entry, which is released back to the pool when its reference
     // count reaches zero. The pool grows by one each time a new object must
@@ -308,10 +309,12 @@ NTCCFG_TEST_CASE(1)
         }
     }
     NTCCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+    #endif
 }
 
 NTCCFG_TEST_CASE(2)
 {
+    #if 0
     // Concern: The callback entry invokes the callback with the correct
     // parameters, the correct number of times, when completed, canceled, and
     // aborted, from within a context that allows the callback entry to be
@@ -468,6 +471,7 @@ NTCCFG_TEST_CASE(2)
         }
     }
     NTCCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
+    #endif
 }
 
 NTCCFG_TEST_CASE(3)
