@@ -809,7 +809,7 @@ ntcq::ZeroCopyRange ZeroCopyCounterGenerator::update(
         static_cast<ntcq::ZeroCopyCounter>(zeroCopy.from());
 
     const ntcq::ZeroCopyCounter zeroCopyThru = 
-        static_cast<ntcq::ZeroCopyCounter>(zeroCopy.to());
+        static_cast<ntcq::ZeroCopyCounter>(zeroCopy.thru());
 
     const ntcq::ZeroCopyCounter offset = d_bias + d_generation;
 

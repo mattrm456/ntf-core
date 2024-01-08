@@ -3545,8 +3545,21 @@ ntsa::Error SocketUtil::receiveNotifications(
                 else if (ser.ee_origin ==
                          ntsu::ZeroCopyUtil::e_SO_EE_ORIGIN_ZEROCOPY)
                 {
-                    ntsa::ZeroCopy zc(ser.ee_info, ser.ee_data, ser.ee_code);
-                    notification.makeZeroCopy(zc);
+                    ntsa::ZeroCopy zeroCopy;
+
+                    zeroCopy.setFrom(ser.ee_info);
+                    zeroCopy.setThru(ser.ee_data);
+                    
+                    if (ser.ee_code == 
+                        ntsu::ZeroCopyUtil::e_SO_EE_CODE_ZEROCOPY_COPIED) 
+                    {
+                        zeroCopy.setType(ntsa::ZeroCopyType::e_DEFERRED);
+                    }
+                    else {
+                        zeroCopy.setType(ntsa::ZeroCopyType::e_AVOIDED);
+                    }
+
+                    notification.makeZeroCopy(zeroCopy);
                     notifications->addNotification(notification);
                 }
             }
