@@ -1144,7 +1144,7 @@ void DatagramSocket::privateShutdownSequence(
     bool asyncDetachmentStarted = false;
     if (context.shutdownCompleted()) {
         ntci::SocketDetachedCallback detachCallback(
-            NTCCFG_BIND(&DatagramSocket::privateShutdownSequencePart2,
+            NTCCFG_BIND(&DatagramSocket::privateShutdownSequenceComplete,
                         this,
                         self,
                         context,
@@ -1175,11 +1175,11 @@ void DatagramSocket::privateShutdownSequence(
     }
 
     if (!asyncDetachmentStarted) {
-        this->privateShutdownSequencePart2(self, context, defer, false);
+        this->privateShutdownSequenceComplete(self, context, defer, false);
     }
 }
 
-void DatagramSocket::privateShutdownSequencePart2(
+void DatagramSocket::privateShutdownSequenceComplete(
     const bsl::shared_ptr<DatagramSocket>& self,
     const ntcs::ShutdownContext&           context,
     bool                                   defer,

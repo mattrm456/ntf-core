@@ -764,6 +764,8 @@ bool SendQueue::popEntry()
     {
         SendQueueEntry& entry = d_entryList.front();
 
+        entry.closeTimer();
+
         if (entry.data()) {
             BSLS_ASSERT(entry.length() > 0);
             BSLS_ASSERT(entry.length() == entry.data()->size());
@@ -801,14 +803,14 @@ void SendQueue::popSize(bsl::size_t numBytes)
 NTCCFG_INLINE
 bool SendQueue::removeEntryId(
     ntci::SendCallback* result,
-    bsl::uint64_t                                  id)
+    bsl::uint64_t       id)
 {
     result->reset();
 
     for (EntryList::iterator it = d_entryList.begin(); it != d_entryList.end();
          ++it)
     {
-        const ntcq::SendQueueEntry& entry = *it;
+        ntcq::SendQueueEntry& entry = *it;
 
         if (entry.id() == id) {
             if (!entry.deadline().isNull()) {
@@ -819,6 +821,8 @@ bool SendQueue::removeEntryId(
                         BSLS_ASSERT(d_size >= entry.length());
                         d_size -= entry.length();
                     }
+
+                    entry.closeTimer();
 
                     if (entry.callback()) {
                         *result = entry.callback();
@@ -836,15 +840,15 @@ bool SendQueue::removeEntryId(
 
 NTCCFG_INLINE
 bool SendQueue::removeEntryToken(
-    ntci::SendCallback* result,
-    const ntca::SendToken&                         token)
+    ntci::SendCallback*    result,
+    const ntca::SendToken& token)
 {
     result->reset();
 
     for (EntryList::iterator it = d_entryList.begin(); it != d_entryList.end();
          ++it)
     {
-        const ntcq::SendQueueEntry& entry = *it;
+        ntcq::SendQueueEntry& entry = *it;
 
         if (!entry.token().isNull()) {
             if (entry.token().value() == token) {
@@ -855,6 +859,8 @@ bool SendQueue::removeEntryToken(
                         BSLS_ASSERT(d_size >= entry.length());
                         d_size -= entry.length();
                     }
+
+                    entry.closeTimer();
 
                     if (entry.callback()) {
                         *result = entry.callback();
@@ -879,7 +885,10 @@ bool SendQueue::removeAll(
     for (EntryList::iterator it = d_entryList.begin(); it != d_entryList.end();
          ++it)
     {
-        const ntcq::SendQueueEntry& entry = *it;
+        ntcq::SendQueueEntry& entry = *it;
+
+        entry.closeTimer();
+
         if (entry.callback()) {
             result->push_back(entry.callback());
         }

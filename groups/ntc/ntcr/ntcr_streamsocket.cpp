@@ -1893,7 +1893,7 @@ void StreamSocket::privateShutdownSequence(
 
     if (context.shutdownCompleted()) {
         ntci::SocketDetachedCallback detachCallback(
-            NTCCFG_BIND(&StreamSocket::privateShutdownSequencePart2,
+            NTCCFG_BIND(&StreamSocket::privateShutdownSequenceComplete,
                         this,
                         self,
                         context,
@@ -1923,17 +1923,18 @@ void StreamSocket::privateShutdownSequence(
     }
 
     if (!asyncDetachmentStarted) {
-        privateShutdownSequencePart2(self, context, defer, false);
+        privateShutdownSequenceComplete(self, context, defer, false);
     }
 }
 
-void StreamSocket::privateShutdownSequencePart2(
+void StreamSocket::privateShutdownSequenceComplete(
     const bsl::shared_ptr<StreamSocket>& self,
     const ntcs::ShutdownContext&         context,
     bool                                 defer,
     bool                                 lock)
 {
     NTCI_LOG_CONTEXT();
+
     if (lock) {
         d_mutex.lock();
         BSLS_ASSERT(d_detachState.get() ==

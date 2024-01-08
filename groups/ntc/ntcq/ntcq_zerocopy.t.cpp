@@ -1222,7 +1222,6 @@ NTCCFG_TEST_CASE(13)
         // [ 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 ]
         // [ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 ]
         // [ X X X X X X X Y Y Y Y Y Y Y Z Z Z Z Z Z Z ]
-
     }
     NTCCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
 }
@@ -1242,7 +1241,9 @@ NTCCFG_TEST_CASE(14)
 
         ntcq::ZeroCopyQueue zeroCopyQueue(dataPool, &ta);
 
+        NTCCFG_WARNING_UNUSED(zeroCopyQueue);
 
+        // TODO
     }
     NTCCFG_TEST_ASSERT(ta.numBlocksInUse() == 0);
 }
