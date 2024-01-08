@@ -3140,9 +3140,6 @@ ntsa::Error StreamSocket::privateSendRaw(
         }
     }
 
-    BSLS_ASSERT((!error && context.bytesSent() > 0) || 
-                 (error == ntsa::Error::e_WOULD_BLOCK));
-
     if (context.bytesSent() == static_cast<bsl::size_t>(data.length())) {
         if (context.zeroCopy()) {
             d_zeroCopyQueue.push(state.counter(), data, callback);
