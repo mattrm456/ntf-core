@@ -1832,17 +1832,16 @@ ntsa::Error DatagramSocket::privateEnqueueSendBuffer(
 
     ntsa::SendOptions options;
 
-    if (!endpoint.isNull()) {
-        if (endpoint.value() != d_remoteEndpoint) {
+    if (d_remoteEndpoint.isUndefined()) {
+        if (!endpoint.isNull()) {
+            options.setEndpoint(endpoint.value());
+        }
+        else {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
-
-        options.setEndpoint(endpoint.value());
     }
-    else {
-        if (d_remoteEndpoint.isUndefined()) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
+    else if (!endpoint.isNull() && endpoint.value() != d_remoteEndpoint) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     if (static_cast<bsl::size_t>(data.length()) >= d_zeroCopyThreshold) {
