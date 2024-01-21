@@ -118,11 +118,24 @@ BSLS_IDENT_RCSID(ntcr_datagramsocket_cpp, "$Id$ $CSID$")
     NTCI_LOG_TRACE("Datagram socket "                                         \
                    "has saturated the number of pinned pages")
 
-#define NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy)                    \
-    NTCI_LOG_TRACE("Datagram socket zero copy %s [ %u, %u ]", \
-                  ntsa::ZeroCopyType::toString((zeroCopy).type()), \
-                  (zeroCopy).from(), \
-                  (zeroCopy).thru())
+#define NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter)           \
+    NTCI_LOG_TRACE("Datagram socket zero copy STARTING: %llu",                \
+                   static_cast<bsl::uint64_t>(zeroCopyCounter))
+
+#define NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_COMPLETE(zeroCopy)                  \
+    do {                                                                      \
+        if ((zeroCopy).from() == (zeroCopy).thru()) {                         \
+            NTCI_LOG_TRACE("Datagram socket zero copy %s: %u",                \
+                           ntsa::ZeroCopyType::toString((zeroCopy).type()),   \
+                           (zeroCopy).from());                                \
+        }                                                                     \
+        else {                                                                \
+            NTCI_LOG_TRACE("Datagram socket zero copy %s: %u - %u",           \
+                           ntsa::ZeroCopyType::toString((zeroCopy).type()),   \
+                           (zeroCopy).from(),                                 \
+                           (zeroCopy).thru());                                \
+        }                                                                     \
+    } while (false)
 
 #define NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_DISABLED()                          \
     NTCI_LOG_DEBUG("Datagram socket zero copy is disabled")
@@ -550,11 +563,13 @@ void DatagramSocket::privateZeroCopyUpdate(
 {
     NTCI_LOG_CONTEXT();
 
-    NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy);
+    NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_COMPLETE(zeroCopy);
 
     if (zeroCopy.type() != ntsa::ZeroCopyType::e_AVOIDED) {
-        NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_DISABLED();
-        d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+        if (d_zeroCopyThreshold != k_ZERO_COPY_NEVER) {
+            NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_DISABLED();
+            d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+        }
     }
 
     d_zeroCopyQueue.update(zeroCopy);
@@ -923,7 +938,12 @@ ntsa::Error DatagramSocket::privateSocketWritableIteration(
         NTCS_METRICS_UPDATE_WRITE_QUEUE_SIZE(d_sendQueue.size());
 
         if (sendContext.zeroCopy()) {
-            d_zeroCopyQueue.push(group, data, callback);
+            ntcq::ZeroCopyCounter zeroCopyCounter = 
+                d_zeroCopyQueue.push(group, data, callback);
+
+            NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+            NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
+
             d_zeroCopyQueue.frame(group);
         }
         else if (callback) {
@@ -3066,7 +3086,12 @@ ntsa::Error DatagramSocket::send(const bdlbb::Blob&        data,
         }
         else {
             if (sendContext.zeroCopy()) {
-                d_zeroCopyQueue.push(state.counter(), data, callback);
+                ntcq::ZeroCopyCounter zeroCopyCounter = 
+                    d_zeroCopyQueue.push(state.counter(), data, callback);
+
+                NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+                NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
+
                 d_zeroCopyQueue.frame(state.counter());
             }
             else if (callback) {
@@ -3221,7 +3246,12 @@ ntsa::Error DatagramSocket::send(const ntsa::Data&         data,
         }
         else {
             if (sendContext.zeroCopy()) {
-                d_zeroCopyQueue.push(state.counter(), data, callback);
+                ntcq::ZeroCopyCounter zeroCopyCounter = 
+                    d_zeroCopyQueue.push(state.counter(), data, callback);
+
+                NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+                NTCR_DATAGRAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
+
                 d_zeroCopyQueue.frame(state.counter());
             }
             else if (callback) {

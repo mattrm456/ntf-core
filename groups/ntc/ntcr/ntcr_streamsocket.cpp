@@ -165,11 +165,24 @@ BSLS_IDENT_RCSID(ntcr_streamsocket_cpp, "$Id$ $CSID$")
     NTCI_LOG_TRACE("Stream socket "                                           \
                    "has saturated the number of pinned pages")
 
-#define NTCR_STREAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy)                      \
-    NTCI_LOG_TRACE("Stream socket zero copy %s [ %u, %u ]", \
-                  ntsa::ZeroCopyType::toString((zeroCopy).type()), \
-                  (zeroCopy).from(), \
-                  (zeroCopy).thru())
+#define NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter)             \
+    NTCI_LOG_TRACE("Stream socket zero copy STARTING: %llu",                  \
+                   static_cast<bsl::uint64_t>(zeroCopyCounter))
+
+#define NTCR_STREAMSOCKET_LOG_ZERO_COPY_COMPLETE(zeroCopy)                    \
+    do {                                                                      \
+        if ((zeroCopy).from() == (zeroCopy).thru()) {                         \
+            NTCI_LOG_TRACE("Stream socket zero copy %s: %u",                  \
+                           ntsa::ZeroCopyType::toString((zeroCopy).type()),   \
+                           (zeroCopy).from());                                \
+        }                                                                     \
+        else {                                                                \
+            NTCI_LOG_TRACE("Stream socket zero copy %s: %u - %u",             \
+                           ntsa::ZeroCopyType::toString((zeroCopy).type()),   \
+                           (zeroCopy).from(),                                 \
+                           (zeroCopy).thru());                                \
+        }                                                                     \
+    } while (false)
 
 #define NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED()                            \
     NTCI_LOG_DEBUG("Stream socket zero copy is disabled")
@@ -1209,11 +1222,20 @@ ntsa::Error StreamSocket::privateSocketWritableIterationBatch(
 
         if (context.zeroCopy()) {
             if (entry.zeroCopy()) {
-                d_zeroCopyQueue.push(entry.id());
+                ntcq::ZeroCopyCounter zeroCopyCounter = 
+                    d_zeroCopyQueue.push(entry.id());
+
+                NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+                NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
             }
             else {
-                d_zeroCopyQueue.push(
-                    entry.id(), entry.data(), entry.callback());
+                ntcq::ZeroCopyCounter zeroCopyCounter = 
+                    d_zeroCopyQueue.push(
+                        entry.id(), entry.data(), entry.callback());
+
+                NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+                NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
+
                 entry.setZeroCopy(true);
                 entry.setCallback(bsl::nullptr_t());
             }
@@ -1226,6 +1248,14 @@ ntsa::Error StreamSocket::privateSocketWritableIterationBatch(
 
             if (entry.zeroCopy()) {
                 d_zeroCopyQueue.frame(entry.id());
+                if (d_zeroCopyQueue.ready()) {
+                    ntci::SendCallback callback;
+                    d_zeroCopyQueue.pop(&callback);
+
+                    if (callback) {
+                        callbackVector.push_back(callback);
+                    }
+                }
             }
             else if (entry.callback()) {
                 callbackVector.push_back(entry.callback());
@@ -1321,11 +1351,20 @@ ntsa::Error StreamSocket::privateSocketWritableIterationFront(
 
         if (context.zeroCopy()) {
             if (entry.zeroCopy()) {
-                d_zeroCopyQueue.push(entry.id());
+                ntcq::ZeroCopyCounter zeroCopyCounter = 
+                    d_zeroCopyQueue.push(entry.id());
+
+                NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+                NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
             }
             else {
-                d_zeroCopyQueue.push(
-                    entry.id(), entry.data(), entry.callback());
+                ntcq::ZeroCopyCounter zeroCopyCounter = 
+                    d_zeroCopyQueue.push(
+                        entry.id(), entry.data(), entry.callback());
+
+                NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+                NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
+
                 entry.setZeroCopy(true);
                 entry.setCallback(bsl::nullptr_t());
             }
@@ -1338,6 +1377,9 @@ ntsa::Error StreamSocket::privateSocketWritableIterationFront(
 
             if (entry.zeroCopy()) {
                 d_zeroCopyQueue.frame(entry.id());
+                if (d_zeroCopyQueue.ready()) {
+                    d_zeroCopyQueue.pop(&callback);
+                }
             }
             else if (entry.callback()) {
                 callback = entry.callback();
@@ -3143,7 +3185,13 @@ ntsa::Error StreamSocket::privateSendRaw(
 
     if (context.bytesSent() == static_cast<bsl::size_t>(data.length())) {
         if (context.zeroCopy()) {
-            d_zeroCopyQueue.push(state.counter(), data, callback);
+            ntcq::ZeroCopyCounter zeroCopyCounter = 
+                d_zeroCopyQueue.push(state.counter(), data, callback);
+
+            NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+            NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
+
+            d_zeroCopyQueue.frame(state.counter());
         }
         else if (callback) {
             ntca::SendEvent sendEvent;
@@ -3173,7 +3221,11 @@ ntsa::Error StreamSocket::privateSendRaw(
     BSLS_ASSERT(dataContainer->blob().length() != 0);
 
     if (context.zeroCopy()) {
-        d_zeroCopyQueue.push(state.counter(), dataContainer, callback);
+        ntcq::ZeroCopyCounter zeroCopyCounter = 
+            d_zeroCopyQueue.push(state.counter(), dataContainer, callback);
+
+        NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+        NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
     }
 
     ntcq::SendQueueEntry entry;
@@ -3257,7 +3309,13 @@ ntsa::Error StreamSocket::privateSendRaw(
 
     if (context.bytesSent() == data.size()) {
         if (context.zeroCopy()) {
-            d_zeroCopyQueue.push(state.counter(), data, callback);
+            ntcq::ZeroCopyCounter zeroCopyCounter = 
+                d_zeroCopyQueue.push(state.counter(), data, callback);
+
+            NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+            NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
+
+            d_zeroCopyQueue.frame(state.counter());
         }
         else if (callback) {
             ntca::SendEvent sendEvent;
@@ -3287,7 +3345,11 @@ ntsa::Error StreamSocket::privateSendRaw(
     BSLS_ASSERT(dataContainer->size() != 0);
 
     if (context.zeroCopy()) {
-        d_zeroCopyQueue.push(state.counter(), dataContainer, callback);
+        ntcq::ZeroCopyCounter zeroCopyCounter = 
+            d_zeroCopyQueue.push(state.counter(), dataContainer, callback);
+
+        NTCCFG_WARNING_UNUSED(zeroCopyCounter);
+        NTCR_STREAMSOCKET_LOG_ZERO_COPY_STARTING(zeroCopyCounter);
     }
 
     ntcq::SendQueueEntry entry;
@@ -4305,11 +4367,13 @@ void StreamSocket::privateZeroCopyUpdate(
 {
     NTCI_LOG_CONTEXT();
 
-    NTCR_STREAMSOCKET_LOG_ZERO_COPY_UPDATE(zeroCopy);
+    NTCR_STREAMSOCKET_LOG_ZERO_COPY_COMPLETE(zeroCopy);
 
     if (zeroCopy.type() != ntsa::ZeroCopyType::e_AVOIDED) {
-        NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
-        d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+        if (d_zeroCopyThreshold != k_ZERO_COPY_NEVER) {
+            NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+            d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+        }
     }
 
     d_zeroCopyQueue.update(zeroCopy);
