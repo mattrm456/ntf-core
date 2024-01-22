@@ -24,6 +24,10 @@ BSLS_IDENT_RCSID(ntcs_compat_cpp, "$Id$ $CSID$")
 #include <ntsu_socketoptionutil.h>
 #include <bsls_atomic.h>
 
+#if defined(BSLS_PLATFORM_OS_LINUX)
+#include <errno.h>
+#endif
+
 // Define to 1 to configure send timeouts, or define to 0 to ignore the
 // requested send timeout configuration.
 #define NTCS_COMPAT_CONFIGURE_SEND_TIMEOUT 0
@@ -31,6 +35,14 @@ BSLS_IDENT_RCSID(ntcs_compat_cpp, "$Id$ $CSID$")
 // Define to 1 to configure receive timeouts, or define to 0 to ignore the
 // requested receive timeout configuration.
 #define NTCS_COMPAT_CONFIGURE_RECEIVE_TIMEOUT 0
+
+// Define to 1 to configure zero-copy support, or define to 0 to leave
+// zero-copy support as the default setting.
+#if defined(BSLS_PLATFORM_OS_LINUX)
+#define NTCS_COMPAT_CONFIGURE_ZERO_COPY 1
+#else
+#define NTCS_COMPAT_CONFIGURE_ZERO_COPY 0
+#endif
 
 namespace BloombergLP {
 namespace ntcs {
@@ -1388,6 +1400,26 @@ ntsa::Error Compat::configure(
         }
     }
 
+#if defined(BSLS_PLATFORM_OS_LINUX) && NTCS_COMPAT_CONFIGURE_ZERO_COPY
+
+    // In order for the kernel to respect the MSG_ZEROCOPY flag in ::sendmsg
+    // the SO_ZEROCOPY option must first be set. This option may only be
+    // set when the socket is in the default state, on certain Linux kernel
+    // versions. 
+
+    {
+        ntsa::SocketOption option;
+        option.makeZeroCopy(true);
+
+        error = socket->setOption(option);
+        if (error && error.number() != EBUSY) {
+            BSLS_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
+                           error.text().c_str());
+        }
+    }
+
+#endif
+
     return ntsa::Error();
 }
 
@@ -1629,6 +1661,26 @@ ntsa::Error Compat::configure(
             }
         }
     }
+
+#if defined(BSLS_PLATFORM_OS_LINUX) && NTCS_COMPAT_CONFIGURE_ZERO_COPY
+
+    // In order for the kernel to respect the MSG_ZEROCOPY flag in ::sendmsg
+    // the SO_ZEROCOPY option must first be set. This option may only be
+    // set when the socket is in the default state, on certain Linux kernel
+    // versions. 
+
+    {
+        ntsa::SocketOption option;
+        option.makeZeroCopy(true);
+
+        error = socket->setOption(option);
+        if (error && error.number() != EBUSY) {
+            BSLS_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
+                           error.text().c_str());
+        }
+    }
+
+#endif
 
     return ntsa::Error();
 }
@@ -1903,6 +1955,26 @@ ntsa::Error Compat::configure(
             }
         }
     }
+
+#if defined(BSLS_PLATFORM_OS_LINUX) && NTCS_COMPAT_CONFIGURE_ZERO_COPY
+
+    // In order for the kernel to respect the MSG_ZEROCOPY flag in ::sendmsg
+    // the SO_ZEROCOPY option must first be set. This option may only be
+    // set when the socket is in the default state, on certain Linux kernel
+    // versions. 
+
+    {
+        ntsa::SocketOption option;
+        option.makeZeroCopy(true);
+
+        error = socket->setOption(option);
+        if (error && error.number() != EBUSY) {
+            BSLS_LOG_DEBUG("Failed to set socket option: zero-copy: %s",
+                           error.text().c_str());
+        }
+    }
+
+#endif
 
     return ntsa::Error();
 }

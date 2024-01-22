@@ -1109,28 +1109,6 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
         }
     }
 
-#if defined(BSLS_PLATFORM_OS_LINUX)
-    // To cause 'sendmsg' to honor the MSG_ZEROCOPY flag we must set a 
-    // socket option when the socket is in its initial state.
-
-    if (domain == AF_INET || domain == AF_INET6) {
-        int optionValue = 1;
-        rc = ::setsockopt(*result,
-                          SOL_SOCKET,
-                          ntsu::ZeroCopyUtil::e_SO_ZEROCOPY,
-                          &optionValue,
-                          sizeof optionValue);
-
-        if (rc != 0) {
-            int lastError = errno;
-            if (lastError != ENOTSUP) {
-                BSLS_LOG_WARN("Failed to set socket option: zero-copy: %s", 
-                              ntsa::Error(lastError).text().c_str());
-            }
-        }
-    }
-#endif
-
 #if NTSU_SOCKETUTIL_DEBUG_LIFETIME
     NTSU_SOCKETUTIL_DEBUG_LIFETIME_LOG("Socket handle %d created", *result);
 #endif

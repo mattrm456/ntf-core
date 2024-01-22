@@ -303,6 +303,9 @@ namespace {
 // to be zero-copied.
 const bsl::size_t k_ZERO_COPY_NEVER = (bsl::size_t)(-1);
 
+// The default zero-copy threshold value if none is explicitly specified.
+const bsl::size_t k_ZERO_COPY_DEFAULT = k_ZERO_COPY_NEVER;
+
 } // close unnamed namespace
 
 void StreamSocket::processSocketReadable(const ntca::ReactorEvent& event)
@@ -3649,6 +3652,32 @@ ntsa::Error StreamSocket::privateOpen(
         return error;
     }
 
+    if (d_options.zeroCopyThreshold().has_value()) {
+        d_zeroCopyThreshold = d_options.zeroCopyThreshold().value();
+    }
+
+    if (d_zeroCopyThreshold != k_ZERO_COPY_NEVER) {
+        ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
+        if (!reactorRef || !reactorRef->supportsNotifications()) {
+            NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+            d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+        }
+        else {
+            ntsa::SocketOption socketOption;
+            error = streamSocket->getOption(
+                &socketOption, 
+                ntsa::SocketOptionType::e_ZERO_COPY);
+            if (error) {
+                NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+                d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+            }
+            else if (!socketOption.isZeroCopy() || !socketOption.zeroCopy()) {
+                NTCR_STREAMSOCKET_LOG_ZERO_COPY_DISABLED();
+                d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
+            }
+        }
+    }
+
     error = streamSocket->setBlocking(false);
     if (error) {
         return error;
@@ -3714,19 +3743,6 @@ ntsa::Error StreamSocket::privateOpen(
 
     d_sendOptions.setMaxBuffers(streamSocket->maxBuffersPerSend());
     d_receiveOptions.setMaxBuffers(streamSocket->maxBuffersPerReceive());
-
-    {
-        ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
-
-        if (d_options.zeroCopyThreshold().has_value() && reactorRef &&
-            reactorRef->supportsNotifications())
-        {
-            d_zeroCopyThreshold = d_options.zeroCopyThreshold().value();
-        }
-        else {
-            d_zeroCopyThreshold = k_ZERO_COPY_NEVER;
-        }
-    }
 
     {
         ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
@@ -4436,7 +4452,7 @@ StreamSocket::StreamSocket(
 , d_flowControlState()
 , d_shutdownState()
 , d_zeroCopyQueue(reactor->dataPool(), basicAllocator)
-, d_zeroCopyThreshold(k_ZERO_COPY_NEVER)
+, d_zeroCopyThreshold(k_ZERO_COPY_DEFAULT)
 , d_sendOptions()
 , d_sendQueue(basicAllocator)
 , d_sendRateLimiter_sp()
@@ -5755,16 +5771,24 @@ ntsa::Error StreamSocket::setZeroCopyThreshold(bsl::size_t value)
         return ntsa::Error();
     }
 
-    ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
-    if (!reactorRef) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
+    if (value != k_ZERO_COPY_NEVER) {
+        ntcs::ObserverRef<ntci::Reactor> reactorRef(&d_reactor);
+        if (!reactorRef) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        if (!reactorRef->supportsNotifications()) {
+            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        }
+
+        ntsa::SocketOption socketOption;
+        error = d_socket_sp->getOption(&socketOption, 
+                                       ntsa::SocketOptionType::e_ZERO_COPY);
+        if (error) {
+            return error;
+        }
     }
 
-    if (!reactorRef->supportsNotifications()) {
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-    }
-
-    d_options.setZeroCopyThreshold(value);
     d_zeroCopyThreshold = value;
 
     return ntsa::Error();

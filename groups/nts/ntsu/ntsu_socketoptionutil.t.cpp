@@ -1792,8 +1792,6 @@ NTSCFG_TEST_CASE(9)
             if (!ntsu::AdapterUtil::supportsIpv4()) {
                 continue;
             }
-
-            zeroCopyEnabledByDefault = true;
         }
 
         if (transport == ntsa::Transport::e_TCP_IPV6_STREAM ||
@@ -1802,8 +1800,6 @@ NTSCFG_TEST_CASE(9)
             if (!ntsu::AdapterUtil::supportsIpv6()) {
                 continue;
             }
-
-            zeroCopyEnabledByDefault = true;
         }
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
