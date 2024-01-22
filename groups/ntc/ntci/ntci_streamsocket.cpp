@@ -31,7 +31,7 @@ ntsa::Error StreamSocket::setZeroCopyThreshold(bsl::size_t value)
 {
     NTCCFG_WARNING_UNUSED(value);
 
-    return ntsa::Error();
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 ntsa::Error StreamSocket::timestampOutgoingData(bool enable)
