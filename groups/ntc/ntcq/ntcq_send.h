@@ -47,7 +47,7 @@ namespace BloombergLP {
 namespace ntcq {
 
 /// @internal @brief
-/// Describe the 64-bit unsigned integer incremented each time 
+/// Describe the 64-bit unsigned integer incremented each time
 /// 'ntci::Sender::send(...)' is called.
 ///
 /// @ingroup module_ntcq
@@ -65,7 +65,7 @@ class SendState
     ntcq::SendCounter d_counter;
 
 public:
-    /// Create new send state. 
+    /// Create new send state.
     SendState();
 
     /// Create new send state having the same value as the specified 'other'
@@ -190,7 +190,7 @@ class SendQueueEntry
 
   public:
     /// Create a new send queue entry. Optionally specify a 'basicAllocator'
-    /// used to supply memory. If 'basicAllocator' is 0, the currently 
+    /// used to supply memory. If 'basicAllocator' is 0, the currently
     /// installed default allocator is used.
     explicit SendQueueEntry(bslma::Allocator *basicAllocator = 0);
 
@@ -198,7 +198,7 @@ class SendQueueEntry
     /// 'other' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    SendQueueEntry(const SendQueueEntry& original, 
+    SendQueueEntry(const SendQueueEntry& original,
                    bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
@@ -518,7 +518,7 @@ SendQueueEntry::SendQueueEntry(bslma::Allocator* basicAllocator)
 }
 
 NTCCFG_INLINE
-SendQueueEntry::SendQueueEntry(const SendQueueEntry& original, 
+SendQueueEntry::SendQueueEntry(const SendQueueEntry& original,
                                bslma::Allocator* basicAllocator)
 : d_id(original.d_id)
 , d_token(original.d_token)
@@ -784,6 +784,8 @@ void SendQueue::popSize(bsl::size_t numBytes)
     BSLS_ASSERT(!d_entryList.empty());
 
     SendQueueEntry& entry = d_entryList.front();
+
+    entry.closeTimer();
 
     BSLS_ASSERT(entry.data());
     BSLS_ASSERT(entry.data()->size() == entry.length());

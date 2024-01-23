@@ -152,15 +152,13 @@ void extractZeroCopyNotifications(bsl::list<ntsa::ZeroCopy>* zerocopy,
 
     NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
 
-    // save zerocopy notifications for later validation
     for (bsl::vector<ntsa::Notification>::const_iterator it =
              notifications.notifications().cbegin();
          it != notifications.notifications().cend();
          ++it)
     {
-        if (it->isZeroCopy()) {
-            zerocopy->push_back(it->zeroCopy());
-        }
+        NTSCFG_TEST_TRUE(it->isZeroCopy());
+        zerocopy->push_back(it->zeroCopy());
     }
 }
 
@@ -177,15 +175,13 @@ void extractTimestampNotifications(bsl::list<ntsa::Timestamp>* ts,
 
     NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
 
-    // save zerocopy notifications for later validation
     for (bsl::vector<ntsa::Notification>::const_iterator it =
              notifications.notifications().cbegin();
          it != notifications.notifications().cend();
          ++it)
     {
-        if (it->isTimestamp()) {
-            ts->push_back(it->timestamp());
-        }
+        NTSCFG_TEST_TRUE(it->isTimestamp());
+        ts->push_back(it->timestamp());
     }
 }
 
@@ -202,7 +198,6 @@ void extractNotifications(bsl::list<ntsa::Notification>* nt,
 
     NTSCFG_TEST_LOG_DEBUG << notifications << NTSCFG_TEST_LOG_END;
 
-    // save zerocopy notifications for later validation
     for (bsl::vector<ntsa::Notification>::const_iterator it =
              notifications.notifications().cbegin();
          it != notifications.notifications().cend();

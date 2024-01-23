@@ -124,7 +124,6 @@ class StreamSocket : public ntci::StreamSocket,
     bsl::shared_ptr<ntci::RateLimiter>         d_receiveRateLimiter_sp;
     bsl::shared_ptr<ntci::Timer>               d_receiveRateTimer_sp;
     bool                                       d_receiveGreedily;
-    bsl::uint64_t                              d_receiveCount;
     bsl::shared_ptr<bdlbb::Blob>               d_receiveBlob_sp;
     ntsa::Endpoint                             d_connectEndpoint;
     bsl::string                                d_connectName;
@@ -279,11 +278,6 @@ class StreamSocket : public ntci::StreamSocket,
     void privateFail(const bsl::shared_ptr<StreamSocket>& self,
                      const ntsa::Error&                   error);
 
-    /// Indicate a failure has occurred and detach the socket from its
-    /// monitor.
-    void privateFail(const bsl::shared_ptr<StreamSocket>& self,
-                     const ntca::ErrorEvent&              event);
-
     /// Shutdown the stream socket in the specified 'direction' according
     /// to the specified 'mode' of shutdown. Return the error.
     ntsa::Error privateShutdown(const bsl::shared_ptr<StreamSocket>& self,
@@ -407,7 +401,7 @@ class StreamSocket : public ntci::StreamSocket,
     /// if necessary.
     void privateRearmAfterReceive(const bsl::shared_ptr<StreamSocket>& self);
 
-    /// Rearm the interest in notifications from the socket in the reactor. 
+    /// Rearm the interest in notifications from the socket in the reactor.
     void privateRearmAfterNotification(
         const bsl::shared_ptr<StreamSocket>& self);
 
@@ -535,13 +529,13 @@ class StreamSocket : public ntci::StreamSocket,
     ntsa::Error privateRetryConnectToEndpoint(
         const bsl::shared_ptr<StreamSocket>& self);
 
-    /// Enable or disable timestamping of outgoing data according to the 
+    /// Enable or disable timestamping of outgoing data according to the
     /// specified 'enable' flag. Return the error.
     ntsa::Error privateTimestampOutgoingData(
         const bsl::shared_ptr<StreamSocket>& self,
         bool                                 enable);
 
-    /// Enable or disable timestamping of incoming data according to the 
+    /// Enable or disable timestamping of incoming data according to the
     /// specified 'enable' flag. Return the error.
     ntsa::Error privateTimestampIncomingData(
         const bsl::shared_ptr<StreamSocket>& self,

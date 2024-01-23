@@ -48,7 +48,7 @@ void ZeroCopyEntry::match(const ntcq::ZeroCopyRange& complete)
     if (d_rangeSet.empty()) {
         ntcq::ZeroCopyRange required = d_range;
 
-        ntcq::ZeroCopyRange intersection = 
+        ntcq::ZeroCopyRange intersection =
             ntcq::ZeroCopyRange::intersect(required, complete);
 
         if (intersection.empty()) {
@@ -72,7 +72,7 @@ void ZeroCopyEntry::match(const ntcq::ZeroCopyRange& complete)
 
         return;
     }
-    
+
     RangeSet rangeSet(d_allocator_p);
     rangeSet.swap(d_rangeSet);
 
@@ -82,7 +82,7 @@ void ZeroCopyEntry::match(const ntcq::ZeroCopyRange& complete)
     for (; it != et; ++it) {
         ntcq::ZeroCopyRange required = *it;
 
-        ntcq::ZeroCopyRange intersection = 
+        ntcq::ZeroCopyRange intersection =
             ntcq::ZeroCopyRange::intersect(required, complete);
 
         if (intersection.empty()) {
@@ -196,7 +196,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter  group,
 }
 
 ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group,
-                                          const bdlbb::Blob&        data, 
+                                          const bdlbb::Blob&        data,
                                           const ntci::SendCallback& callback)
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
@@ -223,7 +223,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group,
     return counter;
 }
 
-ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group, 
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group,
                                           const ntsa::Data& data)
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
@@ -246,8 +246,8 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group,
     return counter;
 }
 
-ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group, 
-                                          const ntsa::Data&         data, 
+ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group,
+                                          const ntsa::Data&         data,
                                           const ntci::SendCallback& callback)
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
@@ -275,7 +275,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter         group,
 }
 
 ntcq::ZeroCopyCounter ZeroCopyQueue::push(
-    ntcq::SendCounter                  group, 
+    ntcq::SendCounter                  group,
     const bsl::shared_ptr<ntsa::Data>& data)
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
@@ -295,7 +295,7 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(
 
 ntcq::ZeroCopyCounter ZeroCopyQueue::push(
     ntcq::SendCounter                  group,
-    const bsl::shared_ptr<ntsa::Data>& data, 
+    const bsl::shared_ptr<ntsa::Data>& data,
     const ntci::SendCallback&          callback)
 {
     BSLS_ASSERT(d_waitList.empty() || d_waitList.front().group() < group);
@@ -320,6 +320,8 @@ ntcq::ZeroCopyCounter ZeroCopyQueue::push(
 ntcq::ZeroCopyCounter ZeroCopyQueue::push(ntcq::SendCounter group)
 {
     NTCCFG_WARNING_UNUSED(group);
+
+    BSLS_ASSERT(!d_waitList.empty());
 
     ntcq::ZeroCopyCounter counter = d_generator.next();
 
@@ -351,7 +353,7 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
     ntcq::ZeroCopyRange zeroCopyRange = d_generator.update(zeroCopy);
 
     EntryList::iterator current = d_waitList.begin();
-    
+
     while (true) {
         if (current == d_waitList.end()) {
             break;
@@ -364,7 +366,7 @@ ntsa::Error ZeroCopyQueue::update(const ntsa::ZeroCopy& zeroCopy)
         }
 
         entry.match(zeroCopyRange);
-         
+
         if (entry.complete()) {
             if (entry.callback()) {
                 d_doneList.push_back(entry);
