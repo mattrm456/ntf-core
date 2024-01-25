@@ -337,6 +337,8 @@ void ZeroCopyQueue::frame(ntcq::SendCounter group)
 {
     NTCCFG_WARNING_UNUSED(group);
 
+    BSLS_ASSERT(!d_waitList.empty());
+
     ZeroCopyEntry& entry = d_waitList.back();
     BSLS_ASSERT(entry.group() == group);
 
