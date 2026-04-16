@@ -90,6 +90,9 @@ struct TransportProtocol {
         /// The socket transport protocol is undefined.
         e_UNDEFINED = 0,
 
+        /// The socket transport protocol is user-defined.
+        e_RAW = 4,
+
         /// The socket uses the Transmission Control Protocol.
         e_TCP = 1,
 
@@ -140,6 +143,9 @@ struct TransportDomain {
     enum Value {
         /// The socket transport domain is undefined.
         e_UNDEFINED = 0,
+
+        /// The socket uses Ethernet addressing.
+        e_ETHERNET = 4,
 
         /// The socket uses Internet Protocol version 4 addressing.
         e_IPV4 = 1,
@@ -196,7 +202,10 @@ struct TransportMode {
         e_STREAM = 1,
 
         /// The socket uses unreliable, datagram semantics.
-        e_DATAGRAM = 2
+        e_DATAGRAM = 2,
+
+        /// The socket uses raw packet semantics.
+        e_PACKET = 3
     };
 
     /// Return the string representation exactly matching the enumerator
@@ -240,7 +249,7 @@ struct TransportRole {
         /// The socket transport role is undefined.
         e_UNDEFINED = 0,
 
-        /// The socket is used to actively initiate the establishment the 
+        /// The socket is used to actively initiate the establishment the
         /// transport.
         e_CLIENT = 1,
 
@@ -293,6 +302,18 @@ struct Transport {
     enum Value {
         /// The socket transport is undefined.
         e_UNDEFINED = 0,
+
+        /// The socket uses Ethernet addresses using user-defined Ethernet
+        /// packets.
+        e_RAW_ETHERNET_PACKET = 7,
+
+        /// The socket uses Internet Protocol, version 4 addressing using
+        /// user-defined IPv4 packets.
+        e_RAW_IPV4_PACKET = 8,
+
+        /// The socket uses Internet Protocol, version 6 addressing using
+        /// user-defined IPv6 packets.
+        e_RAW_IPV6_PACKET = 9,
 
         /// The socket uses Internet Protocol, version 4 addressing using
         /// the Transmission Control Protocol using reliable, stream
@@ -370,14 +391,14 @@ bsl::ostream& operator<<(bsl::ostream& stream, Transport::Value rhs);
 /// This class is composed of the following attributes.
 ///
 /// @li @b application:
-/// The application protocol (e.g. "http", or "dns", or some custom proprietary 
+/// The application protocol (e.g. "http", or "dns", or some custom proprietary
 /// protocol).
 ///
 /// @li @b transportSecurity:
 /// The transport security protocol (e.g., TLS or SSH).
 ///
 /// @li @b transportProtocol:
-/// The transport security protocol (e.g., TCP or UDP or the intrinsic 
+/// The transport security protocol (e.g., TCP or UDP or the intrinsic
 /// transport of the local domain).
 ///
 /// @li @b transportDomain:
