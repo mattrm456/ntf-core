@@ -280,6 +280,18 @@ class SocketOptionUtil
     static ntsa::Error getReceiveBufferAvailable(bsl::size_t* size,
                                                  ntsa::Handle socket);
 
+    /// Load into the specified 'domain' the native domain (i.e. address
+    /// family) of the specified 'socket'. Return the error.
+    static ntsa::Error getDomain(int* domain, ntsa::Handle socket);
+
+    /// Load into the specified 'type' the native type (e.g, stream,
+    /// datagram, raw, etc.) of the specified 'socket'. Return the error. 
+    static ntsa::Error getType(int* type, ntsa::Handle socket);
+
+    /// Load into the specified 'protocol' the native protocol (e.g., TCP, UDP,
+    /// etc.) of the specified 'socket'. Return the error.
+    static ntsa::Error getProtocol(int* protocol, ntsa::Handle socket);
+
     /// Load into the specified 'error' the last known error encountered
     /// when connecting the socket. Return the error (retrieving the error).
     static ntsa::Error getLastError(ntsa::Error* error, ntsa::Handle socket);

@@ -108,6 +108,9 @@ BSLS_IDENT_RCSID(ntsu_socketutil_cpp, "$Id$ $CSID$")
 #include <sys/sendfile.h>
 #endif
 #if defined(BSLS_PLATFORM_OS_LINUX)
+#include <netinet/ip.h>
+#include <netpacket/packet.h>
+#include <linux/if_ether.h>
 #include <linux/errqueue.h>
 #endif
 #endif
@@ -1143,6 +1146,23 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
         mode     = SOCK_DGRAM;
         protocol = 0;
     }
+#if defined(BSLS_PLATFORM_OS_LINUX)
+    else if (type == ntsa::Transport::e_RAW_IPV4_PACKET) {
+        domain = AF_INET;
+        mode = SOCK_RAW;
+        protocol = IPPROTO_RAW;
+    }
+    else if (type == ntsa::Transport::e_RAW_IPV6_PACKET) {
+        domain = AF_INET6;
+        mode = SOCK_RAW;
+        protocol = IPPROTO_RAW;
+    }
+    else if (type == ntsa::Transport::e_RAW_ETHERNET_PACKET) {
+        domain = AF_PACKET;
+        mode = SOCK_RAW;
+        protocol = htons(ETH_P_ALL);
+    }
+#endif
     else {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
@@ -1174,6 +1194,38 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
             return ntsa::Error(errno);
         }
     }
+
+#if defined(BSLS_PLATFORM_OS_LINUX)
+    if (mode == SOCK_RAW) {
+        if (domain == AF_INET) {
+            const int optionValue = 1;
+
+            const socklen_t optionLength = 
+                static_cast<socklen_t>(sizeof optionValue);
+
+            rc = ::setsockopt(
+                *result, IPPROTO_IP, IP_HDRINCL, &optionValue, optionLength);
+            if (rc != 0) {
+                return ntsa::Error(errno);
+            }
+        }
+        else if (domain == AF_INET6) {
+            const int optionValue = 1;
+
+            const socklen_t optionLength = 
+                static_cast<socklen_t>(sizeof optionValue);
+
+            rc = ::setsockopt(*result, 
+                              IPPROTO_IPV6, 
+                              IPV6_HDRINCL, 
+                              &optionValue,
+                              optionLength);
+            if (rc != 0) {
+                return ntsa::Error(errno);
+            }
+        }
+    }
+#endif
 
 #if NTSU_SOCKETUTIL_DEBUG_LIFETIME
     NTSU_SOCKETUTIL_DEBUG_LIFETIME_LOG("Socket handle %d created", *result);

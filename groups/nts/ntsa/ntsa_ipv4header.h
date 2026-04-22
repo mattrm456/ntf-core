@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSA_ETHERNETHEADER
-#define INCLUDED_NTSA_ETHERNETHEADER
+#ifndef INCLUDED_NTSA_IPV4HEADER
+#define INCLUDED_NTSA_IPV4HEADER
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
@@ -31,46 +31,43 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide an Ethernet header.
-///
-/// @details
-/// This class is value-semantic type that represents an Ethernet header.
+/// Provide an Internet Protocol version 4 (IPv4) header.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
 /// @ingroup module_ntsa_identity
-class EthernetHeader
+class Ipv4Header
 {
     ntsa::EthernetAddress         d_source;
     ntsa::EthernetAddress         d_destination;
     ntsa::EthernetProtocol::Value d_protocol;
 
   public:
-    /// Create a new Ethernet header having a default value.
-    EthernetHeader();
+    /// Create a new IPv4 header having a default value.
+    Ipv4Header();
 
-    /// Create a new Ethernet header having the same value as the specified
+    /// Create a new IPv4 header having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    EthernetHeader(bslmf::MovableRef<EthernetHeader> original) NTSCFG_NOEXCEPT;
+    Ipv4Header(bslmf::MovableRef<Ipv4Header> original) NTSCFG_NOEXCEPT;
 
-    /// Create a new Ethernet header having the same value as the specified
+    /// Create a new IPv4 header having the same value as the specified
     /// 'original' object.
-    EthernetHeader(const EthernetHeader& original);
+    Ipv4Header(const Ipv4Header& original);
 
     /// Destroy this object.
-    ~EthernetHeader();
+    ~Ipv4Header();
 
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    EthernetHeader& operator=(bslmf::MovableRef<EthernetHeader> other)
+    Ipv4Header& operator=(bslmf::MovableRef<Ipv4Header> other)
         NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
-    EthernetHeader& operator=(const EthernetHeader& other);
+    Ipv4Header& operator=(const Ipv4Header& other);
 
     /// Reset the value of this object to its value upon default
     /// construction.
@@ -96,11 +93,11 @@ class EthernetHeader
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
-    bool equals(const EthernetHeader& other) const;
+    bool equals(const Ipv4Header& other) const;
 
     /// Return true if the value of this object is less than the value of
     /// the specified 'other' object, otherwise return false.
-    bool less(const EthernetHeader& other) const;
+    bool less(const Ipv4Header& other) const;
 
     /// Contribute the values of the salient attributes of this object to the
     /// specified hash 'algorithm'.
@@ -124,53 +121,53 @@ class EthernetHeader
 
     /// This type's default constructor is equivalent to setting each byte of
     /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(EthernetHeader);
+    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(Ipv4Header);
 
     /// This type's copy-constructor and copy-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(EthernetHeader);
+    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(Ipv4Header);
 
     /// This type's move-constructor and move-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(EthernetHeader);
+    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(Ipv4Header);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
 /// into the specified 'stream'. Return a reference to the modifiable
 /// 'stream'.
 ///
-/// @related ntsa::EthernetHeader
-bsl::ostream& operator<<(bsl::ostream& stream, const EthernetHeader& object);
+/// @related ntsa::Ipv4Header
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4Header& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
-/// @related ntsa::EthernetHeader
-bool operator==(const EthernetHeader& lhs, const EthernetHeader& rhs);
+/// @related ntsa::Ipv4Header
+bool operator==(const Ipv4Header& lhs, const Ipv4Header& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
-/// @related ntsa::EthernetHeader
-bool operator!=(const EthernetHeader& lhs, const EthernetHeader& rhs);
+/// @related ntsa::Ipv4Header
+bool operator!=(const Ipv4Header& lhs, const Ipv4Header& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
-/// @related ntsa::EthernetHeader
-bool operator<(const EthernetHeader& lhs, const EthernetHeader& rhs);
+/// @related ntsa::Ipv4Header
+bool operator<(const Ipv4Header& lhs, const Ipv4Header& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.
 ///
-/// @related ntsa::EthernetHeader
+/// @related ntsa::Ipv4Header
 template <typename HASH_ALGORITHM>
-void hashAppend(HASH_ALGORITHM& algorithm, const EthernetHeader& value);
+void hashAppend(HASH_ALGORITHM& algorithm, const Ipv4Header& value);
 
 NTSCFG_INLINE
-EthernetHeader::EthernetHeader()
+Ipv4Header::Ipv4Header()
 : d_source()
 , d_destination()
 , d_protocol(ntsa::EthernetProtocol::e_UNDEFINED)
@@ -178,7 +175,7 @@ EthernetHeader::EthernetHeader()
 }
 
 NTSCFG_INLINE
-EthernetHeader::EthernetHeader(bslmf::MovableRef<EthernetHeader> original)
+Ipv4Header::Ipv4Header(bslmf::MovableRef<Ipv4Header> original)
     NTSCFG_NOEXCEPT : d_source(NTSCFG_MOVE_FROM(original, d_source)),
                       d_destination(NTSCFG_MOVE_FROM(original, d_destination)),
                       d_protocol(NTSCFG_MOVE_FROM(original, d_protocol))
@@ -187,7 +184,7 @@ EthernetHeader::EthernetHeader(bslmf::MovableRef<EthernetHeader> original)
 }
 
 NTSCFG_INLINE
-EthernetHeader::EthernetHeader(const EthernetHeader& original)
+Ipv4Header::Ipv4Header(const Ipv4Header& original)
 : d_source(original.d_source)
 , d_destination(original.d_destination)
 , d_protocol(original.d_protocol)
@@ -195,13 +192,13 @@ EthernetHeader::EthernetHeader(const EthernetHeader& original)
 }
 
 NTSCFG_INLINE
-EthernetHeader::~EthernetHeader()
+Ipv4Header::~Ipv4Header()
 {
 }
 
 NTSCFG_INLINE
-EthernetHeader& EthernetHeader::operator=(
-    bslmf::MovableRef<EthernetHeader> other) NTSCFG_NOEXCEPT
+Ipv4Header& Ipv4Header::operator=(
+    bslmf::MovableRef<Ipv4Header> other) NTSCFG_NOEXCEPT
 {
     d_source      = NTSCFG_MOVE_FROM(other, d_source);
     d_destination = NTSCFG_MOVE_FROM(other, d_destination);
@@ -213,7 +210,7 @@ EthernetHeader& EthernetHeader::operator=(
 }
 
 NTSCFG_INLINE
-EthernetHeader& EthernetHeader::operator=(const EthernetHeader& other)
+Ipv4Header& Ipv4Header::operator=(const Ipv4Header& other)
 {
     d_source      = other.d_source;
     d_destination = other.d_destination;
@@ -222,7 +219,7 @@ EthernetHeader& EthernetHeader::operator=(const EthernetHeader& other)
 }
 
 NTSCFG_INLINE
-void EthernetHeader::reset()
+void Ipv4Header::reset()
 {
     d_source.reset();
     d_destination.reset();
@@ -230,43 +227,43 @@ void EthernetHeader::reset()
 }
 
 NTSCFG_INLINE
-void EthernetHeader::setSource(const ntsa::EthernetAddress& value)
+void Ipv4Header::setSource(const ntsa::EthernetAddress& value)
 {
     d_source = value;
 }
 
 NTSCFG_INLINE
-void EthernetHeader::setDestination(const ntsa::EthernetAddress& value)
+void Ipv4Header::setDestination(const ntsa::EthernetAddress& value)
 {
     d_destination = value;
 }
 
 NTSCFG_INLINE
-void EthernetHeader::setProtocol(ntsa::EthernetProtocol::Value value)
+void Ipv4Header::setProtocol(ntsa::EthernetProtocol::Value value)
 {
     d_protocol = value;
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetAddress& EthernetHeader::source() const
+const ntsa::EthernetAddress& Ipv4Header::source() const
 {
     return d_source;
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetAddress& EthernetHeader::destination() const
+const ntsa::EthernetAddress& Ipv4Header::destination() const
 {
     return d_destination;
 }
 
 NTSCFG_INLINE
-ntsa::EthernetProtocol::Value EthernetHeader::protocol() const
+ntsa::EthernetProtocol::Value Ipv4Header::protocol() const
 {
     return d_protocol;
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void EthernetHeader::hash(HASH_ALGORITHM& algorithm) const
+NTSCFG_INLINE void Ipv4Header::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
     hashAppend(algorithm, d_source);
@@ -275,32 +272,32 @@ NTSCFG_INLINE void EthernetHeader::hash(HASH_ALGORITHM& algorithm) const
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const EthernetHeader& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4Header& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const EthernetHeader& lhs, const EthernetHeader& rhs)
+bool operator==(const Ipv4Header& lhs, const Ipv4Header& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const EthernetHeader& lhs, const EthernetHeader& rhs)
+bool operator!=(const Ipv4Header& lhs, const Ipv4Header& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
 NTSCFG_INLINE
-bool operator<(const EthernetHeader& lhs, const EthernetHeader& rhs)
+bool operator<(const Ipv4Header& lhs, const Ipv4Header& rhs)
 {
     return lhs.less(rhs);
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&       algorithm,
-                              const EthernetHeader& value)
+                              const Ipv4Header& value)
 {
     value.hash(algorithm);
 }

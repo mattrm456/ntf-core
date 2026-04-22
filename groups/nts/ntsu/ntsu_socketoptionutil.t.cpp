@@ -25,6 +25,13 @@ BSLS_IDENT_RCSID(ntsu_socketoptionutil_t_cpp, "$Id$ $CSID$")
 #include <ntsu_socketutil.h>
 #include <ntsu_timestamputil.h>
 
+#if defined(BSLS_PLATFORM_OS_UNIX)
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#endif
+
 #if defined(BSLS_PLATFORM_OS_LINUX)
 #include <linux/net_tstamp.h>
 #include <linux/socket.h>
@@ -71,6 +78,9 @@ class SocketOptionUtilTest
 
     // TODO
     static void verifyCase9();
+
+    // TODO
+    static void verifyCase10();
 };
 
 // Undefine to test all socket types.
@@ -2323,6 +2333,140 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase9)
 #endif
     }
     NTSCFG_TEST_EQ(ta.numBlocksInUse(), 0);
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase10)
+{
+    // Concern: test getDomain/getFamily/getProtocol.
+
+    ntsa::Error error;
+
+    const ntsa::Transport::Value SOCKET_TYPES[] = {
+        ntsa::Transport::e_TCP_IPV4_STREAM,
+        ntsa::Transport::e_TCP_IPV6_STREAM,
+#if !defined(BSLS_PLATFORM_OS_WINDOWS)
+        ntsa::Transport::e_LOCAL_STREAM,
+#endif
+        ntsa::Transport::e_UDP_IPV4_DATAGRAM,
+        ntsa::Transport::e_UDP_IPV6_DATAGRAM,
+#if !defined(BSLS_PLATFORM_OS_WINDOWS)
+        ntsa::Transport::e_LOCAL_DATAGRAM,
+#endif
+    };
+
+    for (bsl::size_t socketTypeIndex = 0;
+         socketTypeIndex < sizeof(SOCKET_TYPES) / sizeof(SOCKET_TYPES[0]);
+         ++socketTypeIndex)
+    {
+        ntsa::Transport::Value transport = SOCKET_TYPES[socketTypeIndex];
+
+        if (transport == ntsa::Transport::e_TCP_IPV4_STREAM ||
+            transport == ntsa::Transport::e_UDP_IPV4_DATAGRAM)
+        {
+            if (!ntsu::AdapterUtil::supportsIpv4Loopback()) {
+                continue;
+            }
+        }
+
+        if (transport == ntsa::Transport::e_TCP_IPV6_STREAM ||
+            transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM)
+        {
+            if (!ntsu::AdapterUtil::supportsIpv6Loopback()) {
+                continue;
+            }
+        }
+
+        NTSCFG_TEST_LOG_WARN << "Testing " << transport << NTSCFG_TEST_LOG_END;
+
+        ntsa::Handle socket = ntsa::k_INVALID_HANDLE;
+
+        error = ntsu::SocketUtil::create(&socket, transport);
+        NTSCFG_TEST_OK(error);
+
+        int domain   = 0;
+        int type     = 0;
+        int protocol = 0;
+
+#if defined(BSLS_PLATFORM_OS_LINUX)
+        error = ntsu::SocketOptionUtil::getDomain(&domain, socket);
+        NTSCFG_TEST_OK(error);
+
+        if (transport == ntsa::Transport::e_TCP_IPV4_STREAM) {
+            NTSCFG_TEST_EQ(domain, AF_INET);
+        }
+        else if (transport == ntsa::Transport::e_TCP_IPV6_STREAM) {
+            NTSCFG_TEST_EQ(domain, AF_INET6);
+        }
+        else if (transport == ntsa::Transport::e_UDP_IPV4_DATAGRAM) {
+            NTSCFG_TEST_EQ(domain, AF_INET);
+        }
+        else if (transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
+            NTSCFG_TEST_EQ(domain, AF_INET6);
+        }
+        else if (transport == ntsa::Transport::e_LOCAL_STREAM) {
+            NTSCFG_TEST_EQ(domain, AF_LOCAL);
+        }
+        else if (transport == ntsa::Transport::e_LOCAL_DATAGRAM) {
+            NTSCFG_TEST_EQ(domain, AF_LOCAL);
+        }
+
+#else
+        error = ntsu::SocketOptionUtil::getDomain(&domain, socket);
+        NTSCFG_TEST_TRUE(error);
+#endif
+
+        error = ntsu::SocketOptionUtil::getType(&type, socket);
+        NTSCFG_TEST_OK(error);
+
+        if (transport == ntsa::Transport::e_TCP_IPV4_STREAM) {
+            NTSCFG_TEST_EQ(type, SOCK_STREAM);
+        }
+        else if (transport == ntsa::Transport::e_TCP_IPV6_STREAM) {
+            NTSCFG_TEST_EQ(type, SOCK_STREAM);
+        }
+        else if (transport == ntsa::Transport::e_UDP_IPV4_DATAGRAM) {
+            NTSCFG_TEST_EQ(type, SOCK_DGRAM);
+        }
+        else if (transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
+            NTSCFG_TEST_EQ(type, SOCK_DGRAM);
+        }
+        else if (transport == ntsa::Transport::e_LOCAL_STREAM) {
+            NTSCFG_TEST_EQ(type, SOCK_STREAM);
+        }
+        else if (transport == ntsa::Transport::e_LOCAL_DATAGRAM) {
+            NTSCFG_TEST_EQ(type, SOCK_DGRAM);
+        }
+
+#if defined(BSLS_PLATFORM_OS_LINUX) || defined(BSLS_PLATFORM_OS_SOLARIS)
+        error = ntsu::SocketOptionUtil::getProtocol(&protocol, socket);
+        NTSCFG_TEST_OK(error);
+
+        if (transport == ntsa::Transport::e_TCP_IPV4_STREAM) {
+            NTSCFG_TEST_EQ(protocol, IPPROTO_TCP);
+        }
+        else if (transport == ntsa::Transport::e_TCP_IPV6_STREAM) {
+            NTSCFG_TEST_EQ(protocol, IPPROTO_TCP);
+        }
+        else if (transport == ntsa::Transport::e_UDP_IPV4_DATAGRAM) {
+            NTSCFG_TEST_EQ(protocol, IPPROTO_UDP);
+        }
+        else if (transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
+            NTSCFG_TEST_EQ(protocol, IPPROTO_UDP);
+        }
+        else if (transport == ntsa::Transport::e_LOCAL_STREAM) {
+            NTSCFG_TEST_EQ(protocol, 0);
+        }
+        else if (transport == ntsa::Transport::e_LOCAL_DATAGRAM) {
+            NTSCFG_TEST_EQ(protocol, 0);
+        }
+#else
+        error = ntsu::SocketOptionUtil::getProtocol(&protocol, socket);
+        NTSCFG_TEST_TRUE(error);
+#endif
+ 
+        error = ntsu::SocketUtil::close(socket);
+        NTSCFG_TEST_OK(error);
+    }
 }
 
 }  // close namespace ntsu

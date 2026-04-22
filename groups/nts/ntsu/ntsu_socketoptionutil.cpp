@@ -1513,6 +1513,121 @@ ntsa::Error SocketOptionUtil::getReceiveBufferAvailable(bsl::size_t* size,
     return ntsa::Error();
 }
 
+ntsa::Error SocketOptionUtil::getDomain(int* domain, ntsa::Handle socket)
+{
+#if defined(BSLS_PLATFORM_OS_LINUX)
+
+    int rc;
+
+    *domain = 0;
+
+    int       optionValue  = 0;
+    socklen_t optionLength = static_cast<socklen_t>(sizeof(optionValue));
+
+    rc = getsockopt(socket,
+                    SOL_SOCKET,
+                    SO_DOMAIN,
+                    &optionValue,
+                    &optionLength);
+
+    if (rc != 0) {
+        return ntsa::Error(errno);
+    }
+
+    *domain = optionValue;
+
+    return ntsa::Error();
+
+#else
+
+    NTSCFG_WARNING_UNUSED(socket);
+    *domain = 0;
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+
+#endif
+}
+
+ntsa::Error SocketOptionUtil::getType(int* type, ntsa::Handle socket)
+{
+    int rc;
+
+    *type = 0;
+
+    int       optionValue  = 0;
+    socklen_t optionLength = static_cast<socklen_t>(sizeof(optionValue));
+
+    rc = getsockopt(socket,
+                    SOL_SOCKET,
+                    SO_TYPE,
+                    &optionValue,
+                    &optionLength);
+
+    if (rc != 0) {
+        return ntsa::Error(errno);
+    }
+
+    *type = optionValue;
+
+    return ntsa::Error();
+}
+
+ntsa::Error SocketOptionUtil::getProtocol(int* protocol, ntsa::Handle socket)
+{
+#if defined(BSLS_PLATFORM_OS_LINUX)
+
+    int rc;
+
+    *protocol = 0;
+
+    int       optionValue  = 0;
+    socklen_t optionLength = static_cast<socklen_t>(sizeof(optionValue));
+
+    rc = getsockopt(socket,
+                    SOL_SOCKET,
+                    SO_PROTOCOL,
+                    &optionValue,
+                    &optionLength);
+
+    if (rc != 0) {
+        return ntsa::Error(errno);
+    }
+
+    *protocol = optionValue;
+
+    return ntsa::Error();
+
+#elif defined(BSLS_PLATFORM_OS_SOLARIS)
+
+    int rc;
+
+    *protocol = 0;
+
+    int       optionValue  = 0;
+    socklen_t optionLength = static_cast<socklen_t>(sizeof(optionValue));
+
+    rc = getsockopt(socket,
+                    SOL_SOCKET,
+                    SO_PROTOTYPE,
+                    &optionValue,
+                    &optionLength);
+
+    if (rc != 0) {
+        return ntsa::Error(errno);
+    }
+
+    *protocol = optionValue;
+
+    return ntsa::Error();
+
+#else
+
+    NTSCFG_WARNING_UNUSED(socket);
+    *protocol = 0;
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+
+#endif
+}
+
 ntsa::Error SocketOptionUtil::getLastError(ntsa::Error* error,
                                            ntsa::Handle socket)
 {
@@ -3008,6 +3123,44 @@ ntsa::Error SocketOptionUtil::getReceiveBufferAvailable(bsl::size_t* size,
     *size = static_cast<bsl::size_t>(value);
 
     return ntsa::Error();
+}
+
+ntsa::Error SocketOptionUtil::getDomain(int* domain, ntsa::Handle socket)
+{
+    NTSCFG_WARNING_UNUSED(socket);
+    *domain = 0;
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error SocketOptionUtil::getType(int* type, ntsa::Handle socket)
+{
+    int rc;
+
+    *type = 0;
+
+    DWORD     optionValue;
+    socklen_t optionSize = sizeof(optionValue);
+
+    int rc = getsockopt(socket,
+                        SOL_SOCKET,
+                        SO_TYPE,
+                        reinterpret_cast<char*>(&optionValue),
+                        &optionSize);
+
+    if (rc != 0) {
+        return ntsa::Error(WSAGetLastError());
+    }
+
+    *type = static_cast<int>(optionValue);
+
+    return ntsa::Error();
+}
+
+ntsa::Error SocketOptionUtil::getProtocol(int* protocol, ntsa::Handle socket)
+{
+    NTSCFG_WARNING_UNUSED(socket);
+    *protocol = 0;
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 ntsa::Error SocketOptionUtil::getLastError(ntsa::Error* error,

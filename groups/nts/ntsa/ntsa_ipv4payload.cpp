@@ -1,0 +1,364 @@
+// Copyright 2020-2023 Bloomberg Finance L.P.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <ntsa_ipv4payload.h>
+
+#include <bsls_ident.h>
+BSLS_IDENT_RCSID(ntsa_ipv4payload_cpp, "$Id$ $CSID$")
+
+#include <bdlb_print.h>
+#include <bslim_printer.h>
+#include <bsls_assert.h>
+
+namespace BloombergLP {
+namespace ntsa {
+
+Ipv4Payload::Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original)
+    NTSCFG_NOEXCEPT : d_type(NTSCFG_MOVE_FROM(original, d_type))
+{
+    if (d_type == e_RAW) {
+        new (d_raw.buffer())
+            bdlbb::BlobBuffer(NTSCFG_MOVE_FROM(original, d_raw.object()));
+    }
+    else if (d_type == e_TCP) {
+        new (d_tcp.buffer())
+            ntsa::TcpSegment(NTSCFG_MOVE_FROM(original, d_tcp.object()));
+    }
+    else if (d_type == e_UDP) {
+        new (d_udp.buffer())
+            ntsa::UdpDatagram(NTSCFG_MOVE_FROM(original, d_udp.object()));
+    }
+    else {
+        BSLS_ASSERT(d_type == e_UNDEFINED);
+    }
+
+    NTSCFG_MOVE_RESET(original);
+}
+
+Ipv4Payload::Ipv4Payload(const Ipv4Payload& original)
+: d_type(original.d_type)
+{
+    if (d_type == e_RAW) {
+        new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
+    }
+    else if (d_type == e_TCP) {
+        new (d_tcp.buffer()) ntsa::TcpSegment(original.d_tcp.object());
+    }
+    else if (d_type == e_UDP) {
+        new (d_udp.buffer()) ntsa::UdpDatagram(original.d_udp.object());
+    }
+    else {
+        BSLS_ASSERT(d_type == e_UNDEFINED);
+    }
+}
+
+Ipv4Payload::~Ipv4Payload()
+{
+    if (d_type == e_RAW) {
+        typedef bdlbb::BlobBuffer Type;
+        d_raw.object().~Type();
+    }
+    else if (d_type == e_TCP) {
+        typedef ntsa::TcpSegment Type;
+        d_tcp.object().~Type();
+    }
+    else if (d_type == e_UDP) {
+        typedef ntsa::UdpDatagram Type;
+        d_udp.object().~Type();
+    }
+}
+
+Ipv4Payload& Ipv4Payload::operator=(bslmf::MovableRef<Ipv4Payload> other)
+    NTSCFG_NOEXCEPT
+{
+    reset();
+
+    d_type = NTSCFG_MOVE_FROM(other, d_type);
+
+    if (d_type == e_RAW) {
+        new (d_raw.buffer())
+            bdlbb::BlobBuffer(NTSCFG_MOVE_FROM(other, d_raw.object()));
+    }
+    else if (d_type == e_TCP) {
+        new (d_tcp.buffer())
+            ntsa::TcpSegment(NTSCFG_MOVE_FROM(other, d_tcp.object()));
+    }
+    else if (d_type == e_UDP) {
+        new (d_udp.buffer())
+            ntsa::UdpDatagram(NTSCFG_MOVE_FROM(other, d_udp.object()));
+    }
+    else {
+        BSLS_ASSERT(d_type == e_UNDEFINED);
+    }
+
+    NTSCFG_MOVE_RESET(other);
+
+    return *this;
+}
+
+Ipv4Payload& Ipv4Payload::operator=(const Ipv4Payload& other)
+{
+    if (this == &other) {
+        return *this;
+    }
+
+    reset();
+
+    d_type = other.d_type;
+
+    if (d_type == e_RAW) {
+        new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
+    }
+    else if (d_type == e_TCP) {
+        new (d_tcp.buffer()) ntsa::TcpSegment(other.d_tcp.object());
+    }
+    else if (d_type == e_UDP) {
+        new (d_udp.buffer()) ntsa::UdpDatagram(other.d_udp.object());
+    }
+    else {
+        BSLS_ASSERT(d_type == e_UNDEFINED);
+    }
+
+    return *this;
+}
+
+void Ipv4Payload::reset()
+{
+    if (d_type == e_RAW) {
+        typedef bdlbb::BlobBuffer Type;
+        d_raw.object().~Type();
+    }
+    else if (d_type == e_TCP) {
+        typedef ntsa::TcpSegment Type;
+        d_tcp.object().~Type();
+    }
+    else if (d_type == e_UDP) {
+        typedef ntsa::UdpDatagram Type;
+        d_udp.object().~Type();
+    }
+
+    d_type = e_UNDEFINED;
+}
+
+bdlbb::BlobBuffer& Ipv4Payload::makeRaw()
+{
+    if (d_type == e_RAW) {
+        d_raw.object().reset();
+    }
+    else {
+        reset();
+        new (d_raw.buffer()) bdlbb::BlobBuffer();
+        d_type = e_RAW;
+    }
+
+    return d_raw.object();
+}
+
+bdlbb::BlobBuffer& Ipv4Payload::makeRaw(const bdlbb::BlobBuffer& value)
+{
+    if (d_type == e_RAW) {
+        d_raw.object() = value;
+    }
+    else {
+        reset();
+        new (d_raw.buffer()) bdlbb::BlobBuffer(value);
+        d_type = e_RAW;
+    }
+
+    return d_raw.object();
+}
+
+bdlbb::BlobBuffer& Ipv4Payload::makeRaw(
+    bslmf::MovableRef<bdlbb::BlobBuffer> value) NTSCFG_NOEXCEPT
+{
+    if (d_type == e_RAW) {
+        d_raw.object() = NTSCFG_MOVE(value);
+    }
+    else {
+        reset();
+        new (d_raw.buffer()) bdlbb::BlobBuffer(NTSCFG_MOVE(value));
+        d_type = e_RAW;
+    }
+
+    NTSCFG_MOVE_RESET(value);
+
+    return d_raw.object();
+}
+
+ntsa::TcpSegment& Ipv4Payload::makeTcp()
+{
+    if (d_type == e_TCP) {
+        d_tcp.object().reset();
+    }
+    else {
+        reset();
+        new (d_tcp.buffer()) ntsa::TcpSegment();
+        d_type = e_TCP;
+    }
+
+    return d_tcp.object();
+}
+
+ntsa::TcpSegment& Ipv4Payload::makeTcp(const ntsa::TcpSegment& value)
+{
+    if (d_type == e_TCP) {
+        d_tcp.object() = value;
+    }
+    else {
+        reset();
+        new (d_tcp.buffer()) ntsa::TcpSegment(value);
+        d_type = e_TCP;
+    }
+
+    return d_tcp.object();
+}
+
+ntsa::TcpSegment& Ipv4Payload::makeTcp(
+    bslmf::MovableRef<ntsa::TcpSegment> value) NTSCFG_NOEXCEPT
+{
+    if (d_type == e_TCP) {
+        d_tcp.object() = NTSCFG_MOVE(value);
+    }
+    else {
+        reset();
+        new (d_tcp.buffer()) ntsa::TcpSegment(NTSCFG_MOVE(value));
+        d_type = e_TCP;
+    }
+
+    NTSCFG_MOVE_RESET(value);
+
+    return d_tcp.object();
+}
+
+ntsa::UdpDatagram& Ipv4Payload::makeUdp()
+{
+    if (d_type == e_UDP) {
+        d_udp.object().reset();
+    }
+    else {
+        reset();
+        new (d_udp.buffer()) ntsa::UdpDatagram();
+        d_type = e_UDP;
+    }
+
+    return d_udp.object();
+}
+
+ntsa::UdpDatagram& Ipv4Payload::makeUdp(const ntsa::UdpDatagram& value)
+{
+    if (d_type == e_UDP) {
+        d_udp.object() = value;
+    }
+    else {
+        reset();
+        new (d_udp.buffer()) ntsa::UdpDatagram(value);
+        d_type = e_UDP;
+    }
+
+    return d_udp.object();
+}
+
+ntsa::UdpDatagram& Ipv4Payload::makeUdp(
+    bslmf::MovableRef<ntsa::UdpDatagram> value) NTSCFG_NOEXCEPT
+{
+    if (d_type == e_UDP) {
+        d_udp.object() = NTSCFG_MOVE(value);
+    }
+    else {
+        reset();
+        new (d_udp.buffer()) ntsa::UdpDatagram(NTSCFG_MOVE(value));
+        d_type = e_UDP;
+    }
+
+    NTSCFG_MOVE_RESET(value);
+
+    return d_udp.object();
+}
+
+bool Ipv4Payload::equals(const Ipv4Payload& other) const
+{
+    if (d_type != other.d_type) {
+        return false;
+    }
+
+    if (d_type == e_RAW) {
+        if (d_raw.object().size() != other.d_raw.object().size()) {
+            return false;
+        }
+
+        const int compare = bsl::memcmp(d_raw.object().data(),
+                                        other.d_raw.object().data(),
+                                        d_raw.object().size());
+
+        if (compare != 0) {
+            return false;
+        }
+    }
+    else if (d_type == e_TCP) {
+        if (!d_tcp.object().equals(other.d_tcp.object())) {
+            return false;
+        }
+    }
+    else if (d_type == e_UDP) {
+        if (!d_udp.object().equals(other.d_udp.object())) {
+            return false;
+        }
+    }
+    else {
+        BSLS_ASSERT(d_type == e_UNDEFINED);
+    }
+
+    return true;
+}
+
+bsl::ostream& Ipv4Payload::print(bsl::ostream& stream,
+                                 int           level,
+                                 int           spacesPerLevel) const
+{
+    if (d_type == e_RAW) {
+        return bdlb::Print::hexDump(stream,
+                                    d_raw.object().data(),
+                                    d_raw.object().size());
+    }
+    else if (d_type == e_TCP) {
+        return d_tcp.object().print(stream, level, spacesPerLevel);
+    }
+    else if (d_type == e_UDP) {
+        return d_udp.object().print(stream, level, spacesPerLevel);
+    }
+    else {
+        BSLS_ASSERT(d_type == e_UNDEFINED);
+        stream << "UNDEFINED";
+        return stream;
+    }
+}
+
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4Payload& object)
+{
+    return object.print(stream, 0, -1);
+}
+
+bool operator==(const Ipv4Payload& lhs, const Ipv4Payload& rhs)
+{
+    return lhs.equals(rhs);
+}
+
+bool operator!=(const Ipv4Payload& lhs, const Ipv4Payload& rhs)
+{
+    return !operator==(lhs, rhs);
+}
+
+}  // close package namespace
+}  // close enterprise namespace

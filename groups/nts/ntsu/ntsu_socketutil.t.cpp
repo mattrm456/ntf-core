@@ -331,6 +331,8 @@ class SocketUtilTest
         const ntsa::Endpoint&  clientEndpoint,
         bslma::Allocator*      allocator);
 
+    BALL_LOG_SET_CLASS_CATEGORY("NTSU.SOCKETUTIL.TEST");
+
   public:
     // Verify basic operations on stream sockets.
     static void verifyStreamSocketBasic();
@@ -459,6 +461,9 @@ class SocketUtilTest
     // Verify how the operating system reports the result of accepting a
     // socket whose peer has already closed the connection.
     static void verifyListenerSocketAcceptingClosedConnections();
+
+    // Verify raw sockets.
+    static void verifyRawSockets();
 };
 
 /// Describe the parameters of the test.
@@ -9089,6 +9094,54 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyIsSocket)
         bool result2 = ntsu::SocketUtil::isSocket(socket);
         NTSCFG_TEST_FALSE(result2);
     }
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawSockets)
+{
+    // Set the IP_HDRINCL socket option to inform the kernel the user data
+    // defines the IP header.
+
+    ntsa::Error error;
+
+    ntsa::Handle clientSocket = ntsa::k_INVALID_HANDLE;
+
+    error = ntsu::SocketUtil::create(&clientSocket,
+                                     ntsa::Transport::e_UDP_IPV4_DATAGRAM);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::SocketUtil::bind(
+        ntsa::Endpoint(ntsa::IpEndpoint(
+            ntsa::Ipv4Address::loopback(), 0)), false, clientSocket);
+    NTSCFG_TEST_OK(error);
+
+    ntsa::Endpoint clientEndpoint;
+    error = ntsu::SocketUtil::sourceEndpoint(&clientEndpoint, clientSocket);
+    NTSCFG_TEST_OK(error);
+
+    BALL_LOG_DEBUG << "Client endpoint = " << clientEndpoint << BALL_LOG_END;
+
+    ntsa::Handle serverSocket = ntsa::k_INVALID_HANDLE;
+
+    error = ntsu::SocketUtil::create(&serverSocket,
+                                     ntsa::Transport::e_RAW_IPV4_PACKET);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::SocketUtil::bind(
+        ntsa::Endpoint(ntsa::IpEndpoint(
+            ntsa::Ipv4Address::loopback(), 0)), false, serverSocket);
+    NTSCFG_TEST_OK(error);
+
+    ntsa::Endpoint serverEndpoint;
+    error = ntsu::SocketUtil::sourceEndpoint(&clientEndpoint, serverSocket);
+    NTSCFG_TEST_OK(error);
+
+    BALL_LOG_DEBUG << "Server endpoint = " << clientEndpoint << BALL_LOG_END;
+
+    error = ntsu::SocketUtil::close(serverSocket);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::SocketUtil::close(clientSocket);
+    NTSCFG_TEST_OK(error);
 }
 
 }  // close namespace ntsu
