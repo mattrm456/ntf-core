@@ -27,30 +27,12 @@ namespace ntsa {
 
 bool Ipv4Header::equals(const Ipv4Header& other) const
 {
-    return d_source == other.d_source &&
-           d_destination == other.d_destination &&
-           d_protocol == other.d_protocol;
+    return bsl::memcmp(reinterpret_cast<const void*>(this), reinterpret_cast<const void*>(&other), sizeof *this) == 0;
 }
 
 bool Ipv4Header::less(const Ipv4Header& other) const
 {
-    if (d_source < other.d_source) {
-        return true;
-    }
-
-    if (other.d_source < d_source) {
-        return false;
-    }
-
-    if (d_destination < other.d_destination) {
-        return true;
-    }
-
-    if (other.d_destination < d_destination) {
-        return false;
-    }
-
-    return d_protocol < other.d_protocol;
+    return bsl::memcmp(reinterpret_cast<const void*>(this), reinterpret_cast<const void*>(&other), sizeof *this) < 0;
 }
 
 bsl::ostream& Ipv4Header::print(bsl::ostream& stream,
@@ -61,7 +43,6 @@ bsl::ostream& Ipv4Header::print(bsl::ostream& stream,
     printer.start();
     printer.printAttribute("source", d_source);
     printer.printAttribute("destination", d_destination);
-    printer.printAttribute("protocol", d_protocol);
     printer.end();
 
     return stream;

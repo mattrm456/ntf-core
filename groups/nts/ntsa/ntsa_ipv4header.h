@@ -19,12 +19,13 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_ethernetaddress.h>
-#include <ntsa_ethernetprotocol.h>
+#include <ntsa_ipv4address.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlb_bigendian.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
+#include <bsls_platform.h>
 #include <bsl_iosfwd.h>
 #include <bsl_string.h>
 
@@ -39,9 +40,95 @@ namespace ntsa {
 /// @ingroup module_ntsa_identity
 class Ipv4Header
 {
-    ntsa::EthernetAddress         d_source;
-    ntsa::EthernetAddress         d_destination;
-    ntsa::EthernetProtocol::Value d_protocol;
+#if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
+
+    /// The Internet header length, in 32-bit words. The minimum value is 5,
+    /// indicating a length of 5 * 32 bits = 160 bits = 20 bytes. The maximum
+    /// value is 15, indicating a length of 15 * 32 bits = 480 bits = 60 bytes.
+    /// Therefore, the maximum size of the options is 60 - 20 = 40 bytes.
+    bsl::uint8_t d_ihl : 4;
+
+    /// The version. The Internet Protocol version 4 always sets this to 4.
+    bsl::uint8_t d_version : 4;
+
+#else
+
+    /// The version. The Internet Protocol version 4 always sets this to 4.
+    bsl::uint8_t d_version : 4;
+
+    /// The Internet header length, in 32-bit words. The minimum value is 5,
+    /// indicating a length of 5 * 32 bits = 160 bits = 20 bytes. The maximum
+    /// value is 15, indicating a length of 15 * 32 bits = 480 bits = 60 bytes.
+    /// Therefore, the maximum size of the options is 60 - 20 = 40 bytes.
+    bsl::uint8_t d_ihl : 4;
+
+#endif
+
+#if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
+
+    /// The Explicit Congestion Notification (ECN).
+    bsl::uint8_t d_ecn : 2;
+
+    /// The Differentiated Services Code Point (DSCP).
+    bsl::uint8_t d_dscp : 6;
+
+#else
+
+    /// The Differentiated Services Code Point (DSCP).
+    bsl::uint8_t d_dscp : 6;
+
+    /// The Explicit Congestion Notification (ECN).
+    bsl::uint8_t d_ecn : 2;
+
+#endif
+
+    /// The total length of the IP datagram, including the header and data.
+    bdlb::BigEndianUint16 d_totalLength;
+
+    /// The unique identifier of the group of fragments of a single IP
+    /// datagram.
+    bdlb::BigEndianUint16 d_id;
+
+#if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
+
+    /// The offset of a particular fragment relative to the beginning of the
+    /// original unfragmented IP datagram.
+    uint16_t d_fragmentOffset : 13;
+
+    /// Flags used to control or identify fragments. From most significat bit
+    /// to least significant bit: bit 0 is reserved, must be zero; bit 1
+    /// indicates the IP datagram must not be fragmented; bit 2 indicates more
+    /// fragments are forthcoming.
+    uint16_t d_fragmentFlags : 3;
+
+#else
+
+    /// Flags used to control or identify fragments. From most significat bit
+    /// to least significant bit: bit 0 is reserved, must be zero; bit 1
+    /// indicates the IP datagram must not be fragmented; bit 2 indicates more
+    /// fragments are forthcoming.
+    uint16_t d_fragmentFlags : 3;
+
+    /// The offset of a particular fragment relative to the beginning of the
+    /// original unfragmented IP datagram.
+    uint16_t d_fragmentOffset : 13;
+
+#endif
+
+    /// The time-to-live of the IP datagram.
+    bsl::uint8_t d_timeToLive;
+
+    /// The protocol used in the data portion of the IP datagram.
+    bsl::uint8_t d_protocol;
+
+    /// The header checksum.
+    bdlb::BigEndianUint16 d_checksum;
+
+    /// The source address.
+    ntsa::Ipv4Address d_source;
+
+    /// The destination IPv4 address.
+    ntsa::Ipv4Address d_destination;
 
   public:
     /// Create a new IPv4 header having a default value.
@@ -62,8 +149,7 @@ class Ipv4Header
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    Ipv4Header& operator=(bslmf::MovableRef<Ipv4Header> other)
-        NTSCFG_NOEXCEPT;
+    Ipv4Header& operator=(bslmf::MovableRef<Ipv4Header> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -72,24 +158,6 @@ class Ipv4Header
     /// Reset the value of this object to its value upon default
     /// construction.
     void reset();
-
-    /// Set the source address to the specified 'value'.
-    void setSource(const ntsa::EthernetAddress& value);
-
-    /// Set the destination address to the specified 'value'.
-    void setDestination(const ntsa::EthernetAddress& value);
-
-    /// Set the protocol to the specified 'value'.
-    void setProtocol(ntsa::EthernetProtocol::Value value);
-
-    /// Return the source address.
-    const ntsa::EthernetAddress& source() const;
-
-    /// Return the destination address.
-    const ntsa::EthernetAddress& destination() const;
-
-    /// Return the protocol.
-    ntsa::EthernetProtocol::Value protocol() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -168,27 +236,27 @@ void hashAppend(HASH_ALGORITHM& algorithm, const Ipv4Header& value);
 
 NTSCFG_INLINE
 Ipv4Header::Ipv4Header()
-: d_source()
-, d_destination()
-, d_protocol(ntsa::EthernetProtocol::e_UNDEFINED)
 {
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
 }
 
 NTSCFG_INLINE
-Ipv4Header::Ipv4Header(bslmf::MovableRef<Ipv4Header> original)
-    NTSCFG_NOEXCEPT : d_source(NTSCFG_MOVE_FROM(original, d_source)),
-                      d_destination(NTSCFG_MOVE_FROM(original, d_destination)),
-                      d_protocol(NTSCFG_MOVE_FROM(original, d_protocol))
+Ipv4Header::Ipv4Header(bslmf::MovableRef<Ipv4Header> original) NTSCFG_NOEXCEPT
 {
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
+                    bslmf::MovableRefUtil::access(original))),
+                sizeof *this);
+
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
 Ipv4Header::Ipv4Header(const Ipv4Header& original)
-: d_source(original.d_source)
-, d_destination(original.d_destination)
-, d_protocol(original.d_protocol)
 {
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&original),
+                sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -197,12 +265,13 @@ Ipv4Header::~Ipv4Header()
 }
 
 NTSCFG_INLINE
-Ipv4Header& Ipv4Header::operator=(
-    bslmf::MovableRef<Ipv4Header> other) NTSCFG_NOEXCEPT
+Ipv4Header& Ipv4Header::operator=(bslmf::MovableRef<Ipv4Header> other)
+    NTSCFG_NOEXCEPT
 {
-    d_source      = NTSCFG_MOVE_FROM(other, d_source);
-    d_destination = NTSCFG_MOVE_FROM(other, d_destination);
-    d_protocol    = NTSCFG_MOVE_FROM(other, d_protocol);
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(
+                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
+                sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -212,63 +281,23 @@ Ipv4Header& Ipv4Header::operator=(
 NTSCFG_INLINE
 Ipv4Header& Ipv4Header::operator=(const Ipv4Header& other)
 {
-    d_source      = other.d_source;
-    d_destination = other.d_destination;
-    d_protocol    = other.d_protocol;
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&other),
+                sizeof *this);
     return *this;
 }
 
 NTSCFG_INLINE
 void Ipv4Header::reset()
 {
-    d_source.reset();
-    d_destination.reset();
-    d_protocol = ntsa::EthernetProtocol::e_UNDEFINED;
-}
-
-NTSCFG_INLINE
-void Ipv4Header::setSource(const ntsa::EthernetAddress& value)
-{
-    d_source = value;
-}
-
-NTSCFG_INLINE
-void Ipv4Header::setDestination(const ntsa::EthernetAddress& value)
-{
-    d_destination = value;
-}
-
-NTSCFG_INLINE
-void Ipv4Header::setProtocol(ntsa::EthernetProtocol::Value value)
-{
-    d_protocol = value;
-}
-
-NTSCFG_INLINE
-const ntsa::EthernetAddress& Ipv4Header::source() const
-{
-    return d_source;
-}
-
-NTSCFG_INLINE
-const ntsa::EthernetAddress& Ipv4Header::destination() const
-{
-    return d_destination;
-}
-
-NTSCFG_INLINE
-ntsa::EthernetProtocol::Value Ipv4Header::protocol() const
-{
-    return d_protocol;
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void Ipv4Header::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    hashAppend(algorithm, d_source);
-    hashAppend(algorithm, d_destination);
-    hashAppend(algorithm, d_protocol);
+    // hashAppend(algorithm, d_source);
 }
 
 NTSCFG_INLINE
@@ -296,7 +325,7 @@ bool operator<(const Ipv4Header& lhs, const Ipv4Header& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&       algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&   algorithm,
                               const Ipv4Header& value)
 {
     value.hash(algorithm);
