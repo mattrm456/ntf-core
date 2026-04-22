@@ -27,22 +27,73 @@ namespace ntsa {
 
 bool Ipv4Header::equals(const Ipv4Header& other) const
 {
-    return bsl::memcmp(reinterpret_cast<const void*>(this), reinterpret_cast<const void*>(&other), sizeof *this) == 0;
+    return bsl::memcmp(reinterpret_cast<const void*>(this),
+                       reinterpret_cast<const void*>(&other),
+                       sizeof *this) == 0;
 }
 
 bool Ipv4Header::less(const Ipv4Header& other) const
 {
-    return bsl::memcmp(reinterpret_cast<const void*>(this), reinterpret_cast<const void*>(&other), sizeof *this) < 0;
+    return bsl::memcmp(reinterpret_cast<const void*>(this),
+                       reinterpret_cast<const void*>(&other),
+                       sizeof *this) < 0;
 }
 
 bsl::ostream& Ipv4Header::print(bsl::ostream& stream,
-                                    int           level,
-                                    int           spacesPerLevel) const
+                                int           level,
+                                int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("source", d_source);
-    printer.printAttribute("destination", d_destination);
+
+    printer.printAttribute("version", static_cast<bsl::size_t>(d_version));
+
+    const bsl::size_t headerLength =
+        static_cast<bsl::size_t>(this->headerLength());
+
+    printer.printAttribute("headerLength", headerLength);
+
+    const bsl::size_t totalLength =
+        static_cast<bsl::size_t>(this->totalLength());
+
+    printer.printAttribute("totalLength", totalLength);
+
+    const bsl::size_t id = static_cast<bsl::size_t>(this->id());
+    if (id != 0) {
+        printer.printAttribute("id", id);
+    }
+
+    const bool preserve = this->preserve();
+    if (preserve) {
+        printer.printAttribute("preserve", 1);
+    }
+
+    const bool more = this->more();
+    if (more) {
+        printer.printAttribute("more", 1);
+    }
+
+    const bsl::size_t fragmentOffset =
+        static_cast<bsl::size_t>(this->fragmentOffset());
+    if (fragmentOffset != 0) {
+        printer.printAttribute("fragmentOffset", fragmentOffset);
+    }
+
+    const bsl::size_t timeToLive =
+        static_cast<bsl::size_t>(this->timeToLive());
+
+    printer.printAttribute("timeToLive", timeToLive);
+
+    const bsl::size_t protocol = static_cast<bsl::size_t>(this->protocol());
+
+    printer.printAttribute("protocol", protocol);
+
+    const bsl::size_t checksum = static_cast<bsl::size_t>(this->checksum());
+
+    printer.printAttribute("checksum", checksum);
+
+    printer.printAttribute("sourceAddress", d_sourceAddress);
+    printer.printAttribute("destinationAddress", d_destinationAddress);
     printer.end();
 
     return stream;

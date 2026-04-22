@@ -56,7 +56,9 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4HeaderTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4HeaderTest::verifyUsage)
 {
-    
+    ntsa::Ipv4Header header;
+
+    NTSCFG_TEST_LOG_DEBUG << "Header = " << header << NTSCFG_TEST_LOG_END;
 }
 
 }  // close namespace ntsa
