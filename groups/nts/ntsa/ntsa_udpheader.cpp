@@ -27,30 +27,16 @@ namespace ntsa {
 
 bool UdpHeader::equals(const UdpHeader& other) const
 {
-    return d_source == other.d_source &&
-           d_destination == other.d_destination &&
-           d_protocol == other.d_protocol;
+    return bsl::memcmp(reinterpret_cast<const void*>(this),
+                       reinterpret_cast<const void*>(&other),
+                       sizeof *this) == 0;
 }
 
 bool UdpHeader::less(const UdpHeader& other) const
 {
-    if (d_source < other.d_source) {
-        return true;
-    }
-
-    if (other.d_source < d_source) {
-        return false;
-    }
-
-    if (d_destination < other.d_destination) {
-        return true;
-    }
-
-    if (other.d_destination < d_destination) {
-        return false;
-    }
-
-    return d_protocol < other.d_protocol;
+    return bsl::memcmp(reinterpret_cast<const void*>(this),
+                       reinterpret_cast<const void*>(&other),
+                       sizeof *this) < 0;
 }
 
 bsl::ostream& UdpHeader::print(bsl::ostream& stream,
@@ -59,9 +45,10 @@ bsl::ostream& UdpHeader::print(bsl::ostream& stream,
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("source", d_source);
-    printer.printAttribute("destination", d_destination);
-    printer.printAttribute("protocol", d_protocol);
+    printer.printAttribute("sourcePort", static_cast<bsl::uint16_t>(d_sourcePort));
+    printer.printAttribute("destinationPort", static_cast<bsl::uint16_t>(d_destinationPort));
+    printer.printAttribute("length", static_cast<bsl::uint16_t>(d_length));
+    printer.printAttribute("length", static_cast<bsl::uint16_t>(d_checksum));
     printer.end();
 
     return stream;

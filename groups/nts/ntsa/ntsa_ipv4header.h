@@ -130,6 +130,9 @@ class Ipv4Header
     /// The destination IPv4 address.
     ntsa::Ipv4Address d_destinationAddress;
 
+    /// The options.
+    bsl::uint8_t d_options[40];
+
   private:
     /// Initialize the header to its default values.
     void initialize();

@@ -19,10 +19,10 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_ethernetaddress.h>
-#include <ntsa_ethernetprotocol.h>
+#include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlb_bigendian.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
 #include <bsl_iosfwd.h>
@@ -39,9 +39,17 @@ namespace ntsa {
 /// @ingroup module_ntsa_identity
 class UdpHeader
 {
-    ntsa::EthernetAddress         d_source;
-    ntsa::EthernetAddress         d_destination;
-    ntsa::EthernetProtocol::Value d_protocol;
+    /// The source port.
+    bdlb::BigEndianUint16 d_sourcePort;
+
+    /// The destination port.
+    bdlb::BigEndianUint16 d_destinationPort;
+
+    /// The length of the datagram, in bytes, including the header.
+    bdlb::BigEndianUint16 d_length;
+
+    /// The checksum.
+    bdlb::BigEndianUint16 d_checksum;
 
   public:
     /// Create a new UDP header having a default value.
@@ -73,23 +81,30 @@ class UdpHeader
     /// construction.
     void reset();
 
-    /// Set the source address to the specified 'value'.
-    void setSource(const ntsa::EthernetAddress& value);
+    /// Set the source port to the specified 'value'.
+    void setSourcePort(ntsa::Port value);
 
-    /// Set the destination address to the specified 'value'.
-    void setDestination(const ntsa::EthernetAddress& value);
+    /// Set the destination port to the specified 'value'.
+    void setDestinationPort(ntsa::Port value);
 
-    /// Set the protocol to the specified 'value'.
-    void setProtocol(ntsa::EthernetProtocol::Value value);
+    /// Set the length of the datagram, in bytes, including the header, to the
+    /// specified 'value'.
+    void setDatagramLength(bsl::size_t value);
 
-    /// Return the source address.
-    const ntsa::EthernetAddress& source() const;
+    /// Set the checksum to the specified 'value'. 
+    void setChecksum(bsl::uint16_t value);
 
-    /// Return the destination address.
-    const ntsa::EthernetAddress& destination() const;
+    /// Return the source port.
+    ntsa::Port sourcePort() const;
 
-    /// Return the protocol.
-    ntsa::EthernetProtocol::Value protocol() const;
+    /// Return the destination port.
+    ntsa::Port destinationPort() const;
+
+    /// Return the length of the datagram, in bytes, including the header.
+    bsl::size_t datagramLength() const;
+
+    /// Return the checksum. 
+    bsl::uint16_t checksum() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -168,27 +183,27 @@ void hashAppend(HASH_ALGORITHM& algorithm, const UdpHeader& value);
 
 NTSCFG_INLINE
 UdpHeader::UdpHeader()
-: d_source()
-, d_destination()
-, d_protocol(ntsa::EthernetProtocol::e_UNDEFINED)
 {
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
 }
 
 NTSCFG_INLINE
-UdpHeader::UdpHeader(bslmf::MovableRef<UdpHeader> original)
-    NTSCFG_NOEXCEPT : d_source(NTSCFG_MOVE_FROM(original, d_source)),
-                      d_destination(NTSCFG_MOVE_FROM(original, d_destination)),
-                      d_protocol(NTSCFG_MOVE_FROM(original, d_protocol))
+UdpHeader::UdpHeader(bslmf::MovableRef<UdpHeader> original) NTSCFG_NOEXCEPT
 {
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
+                    bslmf::MovableRefUtil::access(original))),
+                sizeof *this);
+
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
 UdpHeader::UdpHeader(const UdpHeader& original)
-: d_source(original.d_source)
-, d_destination(original.d_destination)
-, d_protocol(original.d_protocol)
 {
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&original),
+                sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -200,9 +215,10 @@ NTSCFG_INLINE
 UdpHeader& UdpHeader::operator=(
     bslmf::MovableRef<UdpHeader> other) NTSCFG_NOEXCEPT
 {
-    d_source      = NTSCFG_MOVE_FROM(other, d_source);
-    d_destination = NTSCFG_MOVE_FROM(other, d_destination);
-    d_protocol    = NTSCFG_MOVE_FROM(other, d_protocol);
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(
+                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
+                sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -212,63 +228,72 @@ UdpHeader& UdpHeader::operator=(
 NTSCFG_INLINE
 UdpHeader& UdpHeader::operator=(const UdpHeader& other)
 {
-    d_source      = other.d_source;
-    d_destination = other.d_destination;
-    d_protocol    = other.d_protocol;
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&other),
+                sizeof *this);
     return *this;
 }
 
 NTSCFG_INLINE
 void UdpHeader::reset()
 {
-    d_source.reset();
-    d_destination.reset();
-    d_protocol = ntsa::EthernetProtocol::e_UNDEFINED;
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
 }
 
 NTSCFG_INLINE
-void UdpHeader::setSource(const ntsa::EthernetAddress& value)
+void UdpHeader::setSourcePort(ntsa::Port value)
 {
-    d_source = value;
+    d_sourcePort = static_cast<bsl::uint16_t>(value);
 }
 
 NTSCFG_INLINE
-void UdpHeader::setDestination(const ntsa::EthernetAddress& value)
+void UdpHeader::setDestinationPort(ntsa::Port value)
 {
-    d_destination = value;
+    d_destinationPort = static_cast<bsl::uint16_t>(value);
 }
 
 NTSCFG_INLINE
-void UdpHeader::setProtocol(ntsa::EthernetProtocol::Value value)
+void UdpHeader::setDatagramLength(bsl::size_t value)
 {
-    d_protocol = value;
+    d_length = static_cast<bsl::uint16_t>(value);
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetAddress& UdpHeader::source() const
+void UdpHeader::setChecksum(bsl::uint16_t value)
 {
-    return d_source;
+    d_checksum = static_cast<bsl::uint16_t>(value);
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetAddress& UdpHeader::destination() const
+ntsa::Port UdpHeader::sourcePort() const
 {
-    return d_destination;
+    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_sourcePort));
 }
 
 NTSCFG_INLINE
-ntsa::EthernetProtocol::Value UdpHeader::protocol() const
+ntsa::Port UdpHeader::destinationPort() const
 {
-    return d_protocol;
+    return static_cast<ntsa::Port>(
+        static_cast<bsl::uint16_t>(d_destinationPort));
+}
+
+NTSCFG_INLINE
+bsl::size_t UdpHeader::datagramLength() const
+{
+    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_length));
+}
+
+NTSCFG_INLINE
+bsl::uint16_t UdpHeader::checksum() const
+{
+    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_checksum));
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void UdpHeader::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    hashAppend(algorithm, d_source);
-    hashAppend(algorithm, d_destination);
-    hashAppend(algorithm, d_protocol);
+    algorithm(reinterpret_cast<const char*>(this), sizeof *this);
 }
 
 NTSCFG_INLINE

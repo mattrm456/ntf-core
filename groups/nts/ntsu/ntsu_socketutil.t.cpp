@@ -9103,6 +9103,9 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawSockets)
 
     ntsa::Error error;
 
+    bdlbb::PooledBlobBufferFactory blobBufferFactory(
+        1024, NTSCFG_TEST_ALLOCATOR);
+
     ntsa::Handle clientSocket = ntsa::k_INVALID_HANDLE;
 
     error = ntsu::SocketUtil::create(&clientSocket,
@@ -9136,6 +9139,40 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawSockets)
     NTSCFG_TEST_OK(error);
 
     BALL_LOG_DEBUG << "Server endpoint = " << clientEndpoint << BALL_LOG_END;
+
+    const char k_DATA[] = "Hello, world!";
+
+    ntsa::SendContext sendContext;
+    ntsa::SendOptions sendOptions;
+    sendOptions.setEndpoint(
+        ntsa::Endpoint(
+            ntsa::IpEndpoint(ntsa::Ipv4Address::loopback(), 56145)));
+
+    error = ntsu::SocketUtil::send(
+        &sendContext, k_DATA, sizeof k_DATA - 1, sendOptions, clientSocket);
+    NTSCFG_TEST_OK(error);
+
+    bdlbb::BlobBuffer receiveBuffer;
+    blobBufferFactory.allocate(&receiveBuffer);
+
+    ntsa::ReceiveContext receiveContext;
+    ntsa::ReceiveOptions receiveOptions;
+    receiveOptions.showEndpoint();
+
+    error = ntsu::SocketUtil::receive(
+        &receiveContext, &receiveBuffer, receiveOptions, serverSocket);
+    NTSCFG_TEST_OK(error);
+
+    receiveBuffer.setSize(receiveContext.bytesReceived());
+
+    BALL_LOG_DEBUG_BLOCK {
+        BALL_LOG_OUTPUT_STREAM << "Received " 
+                               << receiveBuffer.size() 
+                               << " bytes:\n";
+        bdlb::Print::hexDump(BALL_LOG_OUTPUT_STREAM, 
+                             receiveBuffer.data(), 
+                             receiveBuffer.size());
+    }
 
     error = ntsu::SocketUtil::close(serverSocket);
     NTSCFG_TEST_OK(error);
