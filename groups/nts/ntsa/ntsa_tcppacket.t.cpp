@@ -16,17 +16,17 @@
 #include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_tcpsegment_t_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_tcppacket_t_cpp, "$Id$ $CSID$")
 
-#include <ntsa_tcpsegment.h>
+#include <ntsa_tcppacket.h>
 
 using namespace BloombergLP;
 
 namespace BloombergLP {
 namespace ntsa {
 
-// Provide tests for 'ntsa::TcpSegment'.
-class TcpSegmentTest
+// Provide tests for 'ntsa::TcpPacket'.
+class TcpPacketTest
 {
   public:
     // Test value semantics: type traits.
@@ -36,11 +36,11 @@ class TcpSegmentTest
     static void verifyUsage();
 };
 
-NTSCFG_TEST_FUNCTION(ntsa::TcpSegmentTest::verifyTypeTraits)
+NTSCFG_TEST_FUNCTION(ntsa::TcpPacketTest::verifyTypeTraits)
 {
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::TcpSegmentTest::verifyUsage)
+NTSCFG_TEST_FUNCTION(ntsa::TcpPacketTest::verifyUsage)
 {
 }
 

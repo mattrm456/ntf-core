@@ -25,14 +25,31 @@ BSLS_IDENT_RCSID(ntsa_udpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error UdpHeader::decode(const void* data, const bsl::size_t size)
+{
+    reset();
+
+    if (size < static_cast<bsl::size_t>(k_LENGTH)) {
+        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                data,
+                static_cast<bsl::size_t>(k_LENGTH));
+
+    return ntsa::Error();
+}
+
 ntsa::Error UdpHeader::decode(const bdlbb::BlobBuffer& source)
 {
+    reset();
+    
     if (source.size() < static_cast<int>(k_LENGTH)) {
         return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
     }
 
-    bsl::memcpy(reinterpret_cast<void*>(this), 
-                source.data(), 
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                source.data(),
                 static_cast<bsl::size_t>(k_LENGTH));
 
     return ntsa::Error();
@@ -59,15 +76,16 @@ bool UdpHeader::less(const UdpHeader& other) const
 }
 
 bsl::ostream& UdpHeader::print(bsl::ostream& stream,
-                                    int           level,
-                                    int           spacesPerLevel) const
+                               int           level,
+                               int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("sourcePort", static_cast<bsl::uint16_t>(d_sourcePort));
-    printer.printAttribute("destinationPort", static_cast<bsl::uint16_t>(d_destinationPort));
-    printer.printAttribute("length", static_cast<bsl::uint16_t>(d_length));
-    printer.printAttribute("length", static_cast<bsl::uint16_t>(d_checksum));
+    printer.printAttribute("headerLength", this->headerLength());
+    printer.printAttribute("packetLength", this->packetLength());
+    printer.printAttribute("sourcePort", this->sourcePort());
+    printer.printAttribute("destinationPort", this->destinationPort());
+    printer.printAttribute("checksum", this->checksum());
     printer.end();
 
     return stream;

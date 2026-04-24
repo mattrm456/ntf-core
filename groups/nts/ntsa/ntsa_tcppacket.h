@@ -13,14 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSA_ETHERNETFRAME
-#define INCLUDED_NTSA_ETHERNETFRAME
+#ifndef INCLUDED_NTSA_TCPPACKET
+#define INCLUDED_NTSA_TCPPACKET
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_ethernetheader.h>
-#include <ntsa_ethernetpayload.h>
+#include <ntsa_tcpheader.h>
+#include <ntsa_tcppayload.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bsl_iosfwd.h>
@@ -28,68 +28,77 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide a Ethernet frame.
+/// Provide a Transmission Control Protocol (TCP) packet.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
 /// @ingroup module_ntsa_identity
-class EthernetFrame
+class TcpPacket
 {
-    ntsa::EthernetHeader  d_header;
-    ntsa::EthernetPayload d_payload;
+    ntsa::TcpHeader  d_header;
+    ntsa::TcpPayload d_payload;
 
   public:
-    /// Create a new Ethernet frame having a default value.
-    EthernetFrame();
+    /// Create a new TCP packet having a default value.
+    TcpPacket();
 
-    /// Create a new Ethernet frame having the same value as the specified
+    /// Create a new TCP packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    EthernetFrame(bslmf::MovableRef<EthernetFrame> original) NTSCFG_NOEXCEPT;
+    TcpPacket(bslmf::MovableRef<TcpPacket> original) NTSCFG_NOEXCEPT;
 
-    /// Create a new Ethernet frame having the same value as the specified
+    /// Create a new TCP packet having the same value as the specified
     /// 'original' object.
-    EthernetFrame(const EthernetFrame& original);
+    TcpPacket(const TcpPacket& original);
 
     /// Destroy this object.
-    ~EthernetFrame();
+    ~TcpPacket();
 
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    EthernetFrame& operator=(bslmf::MovableRef<EthernetFrame> other)
-        NTSCFG_NOEXCEPT;
+    TcpPacket& operator=(bslmf::MovableRef<TcpPacket> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object. Return
     /// a reference to this modifiable object.
-    EthernetFrame& operator=(const EthernetFrame& other);
+    TcpPacket& operator=(const TcpPacket& other);
 
     /// Reset the value of this object to its value upon default
     /// construction.
     void reset();
 
     /// Set the header to the specified 'value'.
-    void setHeader(const ntsa::EthernetHeader& value);
+    void setHeader(const ntsa::TcpHeader& value);
 
     /// Set the payload to the specified 'value'.
-    void setPayload(const ntsa::EthernetPayload& value);
+    void setPayload(const ntsa::TcpPayload& value);
 
     /// Return a reference to the modifiable header.
-    ntsa::EthernetHeader& header();
+    ntsa::TcpHeader& header();
 
     /// Return a reference to the modifiable payload.
-    ntsa::EthernetPayload& payload();
+    ntsa::TcpPayload& payload();
+
+    /// Decode the packet from the specified 'source' starting at the specified
+    /// 'offset' inside the framing packet having the specified 'packetSize'.
+    /// Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& source,
+                       bsl::size_t              offset,
+                       bsl::size_t              packetSize);
+
+    /// Encode the packet to the specified 'destination'. Return the error.
+    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
 
     /// Return a reference to the non-modifiable header.
-    const ntsa::EthernetHeader& header() const;
+    const ntsa::TcpHeader& header() const;
 
     /// Return a reference to the non-modifiable payload.
-    const ntsa::EthernetPayload& payload() const;
+    const ntsa::TcpPayload& payload() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
-    bool equals(const EthernetFrame& other) const;
+    bool equals(const TcpPacket& other) const;
 
     /// Format this object to the specified output 'stream' at the optionally
     /// specified indentation 'level' and return a reference to the modifiable
@@ -108,57 +117,57 @@ class EthernetFrame
     /// This type's move-constructor and move-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(EthernetFrame);
+    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(TcpPacket);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
 /// into the specified 'stream'. Return a reference to the modifiable
 /// 'stream'.
 ///
-/// @related ntsa::EthernetFrame
-bsl::ostream& operator<<(bsl::ostream& stream, const EthernetFrame& object);
+/// @related ntsa::TcpPacket
+bsl::ostream& operator<<(bsl::ostream& stream, const TcpPacket& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
-/// @related ntsa::EthernetFrame
-bool operator==(const EthernetFrame& lhs, const EthernetFrame& rhs);
+/// @related ntsa::TcpPacket
+bool operator==(const TcpPacket& lhs, const TcpPacket& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
-/// @related ntsa::EthernetFrame
-bool operator!=(const EthernetFrame& lhs, const EthernetFrame& rhs);
+/// @related ntsa::TcpPacket
+bool operator!=(const TcpPacket& lhs, const TcpPacket& rhs);
 
 NTSCFG_INLINE
-EthernetFrame::EthernetFrame()
+TcpPacket::TcpPacket()
 : d_header()
 , d_payload()
 {
 }
 
 NTSCFG_INLINE
-EthernetFrame::EthernetFrame(bslmf::MovableRef<EthernetFrame> original)
-    NTSCFG_NOEXCEPT : d_header(NTSCFG_MOVE_FROM(original, d_header)),
-                      d_payload(NTSCFG_MOVE_FROM(original, d_payload))
+TcpPacket::TcpPacket(bslmf::MovableRef<TcpPacket> original) NTSCFG_NOEXCEPT
+: d_header(NTSCFG_MOVE_FROM(original, d_header)),
+  d_payload(NTSCFG_MOVE_FROM(original, d_payload))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-EthernetFrame::EthernetFrame(const EthernetFrame& original)
+TcpPacket::TcpPacket(const TcpPacket& original)
 : d_header(original.d_header)
 , d_payload(original.d_payload)
 {
 }
 
 NTSCFG_INLINE
-EthernetFrame::~EthernetFrame()
+TcpPacket::~TcpPacket()
 {
 }
 
 NTSCFG_INLINE
-EthernetFrame& EthernetFrame::operator=(bslmf::MovableRef<EthernetFrame> other)
+TcpPacket& TcpPacket::operator=(bslmf::MovableRef<TcpPacket> other)
     NTSCFG_NOEXCEPT
 {
     d_header  = NTSCFG_MOVE_FROM(other, d_header);
@@ -170,7 +179,7 @@ EthernetFrame& EthernetFrame::operator=(bslmf::MovableRef<EthernetFrame> other)
 }
 
 NTSCFG_INLINE
-EthernetFrame& EthernetFrame::operator=(const EthernetFrame& other)
+TcpPacket& TcpPacket::operator=(const TcpPacket& other)
 {
     d_header  = other.d_header;
     d_payload = other.d_payload;
@@ -178,62 +187,62 @@ EthernetFrame& EthernetFrame::operator=(const EthernetFrame& other)
 }
 
 NTSCFG_INLINE
-void EthernetFrame::reset()
+void TcpPacket::reset()
 {
     d_header.reset();
     d_payload.reset();
 }
 
 NTSCFG_INLINE
-void EthernetFrame::setHeader(const ntsa::EthernetHeader& value)
+void TcpPacket::setHeader(const ntsa::TcpHeader& value)
 {
     d_header = value;
 }
 
 NTSCFG_INLINE
-void EthernetFrame::setPayload(const ntsa::EthernetPayload& value)
+void TcpPacket::setPayload(const ntsa::TcpPayload& value)
 {
     d_payload = value;
 }
 
 NTSCFG_INLINE
-ntsa::EthernetHeader& EthernetFrame::header()
+ntsa::TcpHeader& TcpPacket::header()
 {
     return d_header;
 }
 
 NTSCFG_INLINE
-ntsa::EthernetPayload& EthernetFrame::payload()
+ntsa::TcpPayload& TcpPacket::payload()
 {
     return d_payload;
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetHeader& EthernetFrame::header() const
+const ntsa::TcpHeader& TcpPacket::header() const
 {
     return d_header;
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetPayload& EthernetFrame::payload() const
+const ntsa::TcpPayload& TcpPacket::payload() const
 {
     return d_payload;
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const EthernetFrame& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const TcpPacket& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const EthernetFrame& lhs, const EthernetFrame& rhs)
+bool operator==(const TcpPacket& lhs, const TcpPacket& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const EthernetFrame& lhs, const EthernetFrame& rhs)
+bool operator!=(const TcpPacket& lhs, const TcpPacket& rhs)
 {
     return !operator==(lhs, rhs);
 }

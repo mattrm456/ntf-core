@@ -44,8 +44,16 @@ bsl::ostream& Ipv6Packet::print(bsl::ostream& stream,
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("header", d_header);
-    printer.printAttribute("payload", d_payload);
+
+    printer.printAttribute("ipv6", d_header);
+
+    if (d_payload.isTcp()) {
+        printer.printAttribute("tcp", d_payload.tcp().header());
+    }
+    else if (d_payload.isUdp()) {
+        printer.printAttribute("udp", d_payload.udp().header());
+    }
+
     printer.end();
 
     return stream;

@@ -13,8 +13,8 @@ ntsa_endpointoptions
 ntsa_endpointtype
 ntsa_error
 ntsa_ethernetaddress
-ntsa_ethernetframe
 ntsa_ethernetheader
+ntsa_ethernetpacket
 ntsa_ethernetpayload
 ntsa_ethernetprotocol
 ntsa_event
@@ -66,14 +66,14 @@ ntsa_socketstate
 ntsa_tcpcongestioncontrol
 ntsa_tcpcongestioncontrolalgorithm
 ntsa_tcpheader
-ntsa_tcpsegment
+ntsa_tcppacket
 ntsa_tcppayload
 ntsa_temporary
 ntsa_transport
 ntsa_timestamp
 ntsa_timestamptype
 ntsa_udpheader
-ntsa_udpdatagram
+ntsa_udppacket
 ntsa_udppayload
 ntsa_uri
 ntsa_zerocopy

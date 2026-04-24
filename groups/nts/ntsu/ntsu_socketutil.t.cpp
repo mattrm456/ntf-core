@@ -9106,6 +9106,12 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
 {
     ntsa::Error error;
 
+    if (!ntsu::AdapterUtil::supportsTransport(
+            ntsa::Transport::e_UDP_IPV4_RAW)) 
+    {
+        return;
+    }
+
     bdlbb::PooledBlobBufferFactory blobBufferFactory(
         1024, NTSCFG_TEST_ALLOCATOR);
 
@@ -9113,6 +9119,9 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
 
     error = ntsu::SocketUtil::create(&clientSocket,
                                      ntsa::Transport::e_UDP_IPV4_DATAGRAM);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::SocketOptionUtil::setBlocking(clientSocket, false);
     NTSCFG_TEST_OK(error);
 
     error = ntsu::SocketUtil::bind(
@@ -9134,7 +9143,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
     ntsa::Handle serverSocket = ntsa::k_INVALID_HANDLE;
 
     error = ntsu::SocketUtil::create(&serverSocket,
-                                     ntsa::Transport::e_RAW_IPV4_PACKET);
+                                     ntsa::Transport::e_UDP_IPV4_RAW);
     NTSCFG_TEST_OK(error);
 
     error = ntsu::SocketUtil::bind(
@@ -9201,12 +9210,14 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
 
     BALL_LOG_DEBUG_BLOCK { 
         BALL_LOG_OUTPUT_STREAM 
-            << "Received IPv4 packet " << ipv4Packet << "\n";
+            << "Received packet " << ipv4Packet << "\n";
 
-        BALL_LOG_OUTPUT_STREAM 
-            << bdlb::PrintStringHexDumper(
-                ipv4Packet.payload().udp().payload().data(), 
-                ipv4Packet.payload().udp().payload().size()); 
+        if (ipv4Packet.payload().udp().payload().size() > 0) {
+            BALL_LOG_OUTPUT_STREAM 
+                << bdlb::PrintStringHexDumper(
+                    ipv4Packet.payload().udp().payload().data(), 
+                    ipv4Packet.payload().udp().payload().size());
+        }
     }
 
     error = ntsu::SocketUtil::close(serverSocket);
@@ -9218,8 +9229,13 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
 
 NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
 {
-#if 0
     ntsa::Error error;
+
+    if (!ntsu::AdapterUtil::supportsTransport(
+            ntsa::Transport::e_UDP_IPV4_RAW)) 
+    {
+        return;
+    }
 
     bdlbb::PooledBlobBufferFactory blobBufferFactory(
         1024, NTSCFG_TEST_ALLOCATOR);
@@ -9228,6 +9244,9 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
 
     error = ntsu::SocketUtil::create(&clientSocket,
                                      ntsa::Transport::e_TCP_IPV4_STREAM);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::SocketOptionUtil::setBlocking(clientSocket, false);
     NTSCFG_TEST_OK(error);
 
     error = ntsu::SocketUtil::bind(
@@ -9249,7 +9268,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
     ntsa::Handle serverSocket = ntsa::k_INVALID_HANDLE;
 
     error = ntsu::SocketUtil::create(&serverSocket,
-                                     ntsa::Transport::e_RAW_IPV4_PACKET);
+                                     ntsa::Transport::e_TCP_IPV4_RAW);
     NTSCFG_TEST_OK(error);
 
     error = ntsu::SocketUtil::bind(
@@ -9268,17 +9287,27 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
 
     BALL_LOG_DEBUG << "Server endpoint = " << serverEndpoint << BALL_LOG_END;
 
+    error = ntsu::SocketUtil::connect(
+        ntsa::Endpoint(
+            ntsa::IpEndpoint(ntsa::Ipv4Address::loopback(), 56146)),
+        clientSocket);
+    NTSCFG_TEST_ASSERT(error == ntsa::Error() || 
+                       error == ntsa::Error(ntsa::Error::e_PENDING));
+        
+
+#if 0
     const char k_DATA[] = "Hello, world!";
 
     ntsa::SendContext sendContext;
     ntsa::SendOptions sendOptions;
     sendOptions.setEndpoint(
         ntsa::Endpoint(
-            ntsa::IpEndpoint(ntsa::Ipv4Address::loopback(), 56145)));
+            ntsa::IpEndpoint(ntsa::Ipv4Address::loopback(), 56146)));
 
     error = ntsu::SocketUtil::send(
         &sendContext, k_DATA, sizeof k_DATA - 1, sendOptions, clientSocket);
     NTSCFG_TEST_OK(error);
+#endif
 
     bdlbb::BlobBuffer receiveBuffer;
     blobBufferFactory.allocate(&receiveBuffer);
@@ -9312,16 +9341,18 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
     NTSCFG_TEST_EQ(ipv4Packet.header().destinationAddress(), 
                    serverEndpoint.ip().host().v4());
 
-    NTSCFG_TEST_TRUE(ipv4Packet.payload().isUdp());
+    NTSCFG_TEST_TRUE(ipv4Packet.payload().isTcp());
 
     BALL_LOG_DEBUG_BLOCK { 
         BALL_LOG_OUTPUT_STREAM 
-            << "Received IPv4 packet " << ipv4Packet << "\n";
+            << "Received packet " << ipv4Packet << "\n";
 
-        BALL_LOG_OUTPUT_STREAM 
-            << bdlb::PrintStringHexDumper(
-                ipv4Packet.payload().udp().payload().data(), 
-                ipv4Packet.payload().udp().payload().size()); 
+        if (ipv4Packet.payload().tcp().payload().size() > 0) {
+            BALL_LOG_OUTPUT_STREAM 
+                << bdlb::PrintStringHexDumper(
+                    ipv4Packet.payload().tcp().payload().data(), 
+                    ipv4Packet.payload().tcp().payload().size());
+        }
     }
 
     error = ntsu::SocketUtil::close(serverSocket);
@@ -9329,7 +9360,6 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
 
     error = ntsu::SocketUtil::close(clientSocket);
     NTSCFG_TEST_OK(error);
-#endif
 }
 
 }  // close namespace ntsu

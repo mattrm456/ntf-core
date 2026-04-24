@@ -90,9 +90,6 @@ struct TransportProtocol {
         /// The socket transport protocol is undefined.
         e_UNDEFINED = 0,
 
-        /// The socket transport protocol is user-defined.
-        e_RAW = 4,
-
         /// The socket uses the Transmission Control Protocol.
         e_TCP = 1,
 
@@ -100,7 +97,10 @@ struct TransportProtocol {
         e_UDP = 2,
 
         /// The socket uses local (aka Unix) domain protocol.
-        e_LOCAL = 3
+        e_LOCAL = 3,
+
+        /// The socket transport protocol is user-defined.
+        e_RAW = 4
     };
 
     /// Return the string representation exactly matching the enumerator
@@ -205,7 +205,7 @@ struct TransportMode {
         e_DATAGRAM = 2,
 
         /// The socket uses raw packet semantics.
-        e_PACKET = 3
+        e_RAW = 3
     };
 
     /// Return the string representation exactly matching the enumerator
@@ -305,15 +305,25 @@ struct Transport {
 
         /// The socket uses Ethernet addresses using user-defined Ethernet
         /// packets.
-        e_RAW_ETHERNET_PACKET = 7,
+        e_ETHERNET = 7,
 
         /// The socket uses Internet Protocol, version 4 addressing using
-        /// user-defined IPv4 packets.
-        e_RAW_IPV4_PACKET = 8,
+        /// user-defined IPv4 packets encapsulating UDP packets.
+        e_UDP_IPV4_RAW = 8,
 
         /// The socket uses Internet Protocol, version 6 addressing using
-        /// user-defined IPv6 packets.
-        e_RAW_IPV6_PACKET = 9,
+        /// user-defined IPv6 packets encapsulating UDP packets.
+        e_UDP_IPV6_RAW = 9,
+
+        /// The socket uses Internet Protocol, version 4 addressing using
+        /// user-defined IPv4 packets encapsulating TCP packets.
+        e_TCP_IPV4_RAW = 10,
+
+        /// The socket uses Internet Protocol, version 6 addressing using
+        /// user-defined IPv6 packets encapsulating TCP packets.
+        e_TCP_IPV6_RAW = 11,
+
+
 
         /// The socket uses Internet Protocol, version 4 addressing using
         /// the Transmission Control Protocol using reliable, stream

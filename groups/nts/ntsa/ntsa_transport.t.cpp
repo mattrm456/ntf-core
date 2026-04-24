@@ -404,7 +404,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyFromInt)
         {  0,  0, ntsa::TransportMode::e_UNDEFINED },
         {  0,  1, ntsa::TransportMode::e_STREAM    },
         {  0,  2, ntsa::TransportMode::e_DATAGRAM  },
-        {  0,  3, ntsa::TransportMode::e_PACKET    },
+        {  0,  3, ntsa::TransportMode::e_RAW       },
         { -1, -1, ntsa::TransportMode::e_UNDEFINED }
     };
     // clang-format on
@@ -438,7 +438,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyFromString)
         {  0,  "UNDEFINED", ntsa::TransportMode::e_UNDEFINED },
         {  0,  "STREAM",    ntsa::TransportMode::e_STREAM    },
         {  0,  "DATAGRAM",  ntsa::TransportMode::e_DATAGRAM  },
-        {  0,  "PACKET",    ntsa::TransportMode::e_PACKET    },
+        {  0,  "RAW",       ntsa::TransportMode::e_RAW       },
         { -1,  "!",         ntsa::TransportMode::e_UNDEFINED }
     };
     // clang-format on
@@ -471,7 +471,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyPrint)
         {  "UNDEFINED", 0 },
         {  "STREAM",    1 },
         {  "DATAGRAM",  2 },
-        {  "PACKET",    3 }
+        {  "RAW",       3 }
     };
     // clang-format on
 
@@ -630,17 +630,19 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyFromInt)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  0,  0, ntsa::Transport::e_UNDEFINED           },
-        {  0,  1, ntsa::Transport::e_TCP_IPV4_STREAM     },
-        {  0,  2, ntsa::Transport::e_TCP_IPV6_STREAM     },
-        {  0,  3, ntsa::Transport::e_UDP_IPV4_DATAGRAM   },
-        {  0,  4, ntsa::Transport::e_UDP_IPV6_DATAGRAM   },
-        {  0,  5, ntsa::Transport::e_LOCAL_STREAM        },
-        {  0,  6, ntsa::Transport::e_LOCAL_DATAGRAM      },
-        {  0,  7, ntsa::Transport::e_RAW_ETHERNET_PACKET },
-        {  0,  8, ntsa::Transport::e_RAW_IPV4_PACKET     },
-        {  0,  9, ntsa::Transport::e_RAW_IPV6_PACKET     },
-        { -1, -1, ntsa::Transport::e_UNDEFINED           }
+        {  0,  0, ntsa::Transport::e_UNDEFINED         },
+        {  0,  1, ntsa::Transport::e_TCP_IPV4_STREAM   },
+        {  0,  2, ntsa::Transport::e_TCP_IPV6_STREAM   },
+        {  0,  3, ntsa::Transport::e_UDP_IPV4_DATAGRAM },
+        {  0,  4, ntsa::Transport::e_UDP_IPV6_DATAGRAM },
+        {  0,  5, ntsa::Transport::e_LOCAL_STREAM      },
+        {  0,  6, ntsa::Transport::e_LOCAL_DATAGRAM    },
+        {  0,  7, ntsa::Transport::e_ETHERNET          },
+        {  0,  8, ntsa::Transport::e_UDP_IPV4_RAW      },
+        {  0,  9, ntsa::Transport::e_UDP_IPV6_RAW      },
+        {  0, 10, ntsa::Transport::e_TCP_IPV4_RAW      },
+        {  0, 11, ntsa::Transport::e_TCP_IPV6_RAW      },
+        { -1, -1, ntsa::Transport::e_UNDEFINED         }
     };
     // clang-format on
 
@@ -670,17 +672,19 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyFromString)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  0,  "UNDEFINED",           ntsa::Transport::e_UNDEFINED           },
-        {  0,  "TCP_IPV4_STREAM",     ntsa::Transport::e_TCP_IPV4_STREAM     },
-        {  0,  "TCP_IPV6_STREAM",     ntsa::Transport::e_TCP_IPV6_STREAM     },
-        {  0,  "UDP_IPV4_DATAGRAM",   ntsa::Transport::e_UDP_IPV4_DATAGRAM   },
-        {  0,  "UDP_IPV6_DATAGRAM",   ntsa::Transport::e_UDP_IPV6_DATAGRAM   },
-        {  0,  "LOCAL_STREAM",        ntsa::Transport::e_LOCAL_STREAM        },
-        {  0,  "LOCAL_DATAGRAM",      ntsa::Transport::e_LOCAL_DATAGRAM      },
-        {  0,  "RAW_ETHERNET_PACKET", ntsa::Transport::e_RAW_ETHERNET_PACKET },
-        {  0,  "RAW_IPV4_PACKET",     ntsa::Transport::e_RAW_IPV4_PACKET     },
-        {  0,  "RAW_IPV6_PACKET",     ntsa::Transport::e_RAW_IPV6_PACKET     },
-        { -1,  "!",                   ntsa::Transport::e_UNDEFINED           }
+        {  0,  "UNDEFINED",         ntsa::Transport::e_UNDEFINED         },
+        {  0,  "TCP_IPV4_STREAM",   ntsa::Transport::e_TCP_IPV4_STREAM   },
+        {  0,  "TCP_IPV6_STREAM",   ntsa::Transport::e_TCP_IPV6_STREAM   },
+        {  0,  "UDP_IPV4_DATAGRAM", ntsa::Transport::e_UDP_IPV4_DATAGRAM },
+        {  0,  "UDP_IPV6_DATAGRAM", ntsa::Transport::e_UDP_IPV6_DATAGRAM },
+        {  0,  "LOCAL_STREAM",      ntsa::Transport::e_LOCAL_STREAM      },
+        {  0,  "LOCAL_DATAGRAM",    ntsa::Transport::e_LOCAL_DATAGRAM    },
+        {  0,  "ETHERNET",          ntsa::Transport::e_ETHERNET          },
+        {  0,  "UDP_IPV4_RAW",      ntsa::Transport::e_UDP_IPV4_RAW      },
+        {  0,  "UDP_IPV6_RAW",      ntsa::Transport::e_UDP_IPV6_RAW      },
+        {  0,  "TCP_IPV4_RAW",      ntsa::Transport::e_TCP_IPV4_RAW      },
+        {  0,  "TCP_IPV6_RAW",      ntsa::Transport::e_TCP_IPV6_RAW      },
+        { -1,  "!",                 ntsa::Transport::e_UNDEFINED         }
     };
     // clang-format on
 
@@ -716,9 +720,11 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyPrint)
         {  "UDP_IPV6_DATAGRAM",   4 },
         {  "LOCAL_STREAM",        5 },
         {  "LOCAL_DATAGRAM",      6 },
-        {  "RAW_ETHERNET_PACKET", 7 },
-        {  "RAW_IPV4_PACKET",     8 },
-        {  "RAW_IPV6_PACKET",     9 }
+        {  "ETHERNET",            7 },
+        {  "UDP_IPV4_RAW",        8 },
+        {  "UDP_IPV6_RAW",        9 },
+        {  "TCP_IPV4_RAW",       10 },
+        {  "TCP_IPV6_RAW",       11 }
     };
     // clang-format on
 

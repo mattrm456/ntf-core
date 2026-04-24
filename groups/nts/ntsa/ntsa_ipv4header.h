@@ -180,7 +180,13 @@ class Ipv4Header
         k_DEFAULT_VERSION = 4,
 
         /// The default time-to-live.
-        k_DEFAULT_TIME_TO_LIVE = 64
+        k_DEFAULT_TIME_TO_LIVE = 64,
+
+        /// The protocol number indicating the IPv4 packet carries TCP.
+        k_PROTOCOL_TCP = 6,
+
+        /// The protocol number indicating the IPv4 packet carries UDP.
+        k_PROTOCOL_UDP = 17
     };
 
     /// Create a new IPv4 header having a default value.
@@ -218,8 +224,8 @@ class Ipv4Header
     /// multiple of 4.
     void setHeaderLength(bsl::size_t value);
 
-    /// Set the total length of the IP packet to the specified 'value'.
-    void setTotalLength(bsl::size_t value);
+    /// Set the total length of the packet, in bytes, to the specified 'value'.
+    void setPacketLength(bsl::size_t value);
 
     /// Set the unique identifier of the group of fragments of a single IP
     /// packet to the specified 'value'.
@@ -265,11 +271,11 @@ class Ipv4Header
     /// Encode the packet to the specified 'destination'. Return the error. 
     ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
 
-    /// Return the length of the header including all options.
+    /// Return the length of the header including all options, in bytes.
     bsl::size_t headerLength() const;
 
-    /// Return the total length of the IP packet.
-    bsl::size_t totalLength() const;
+    /// Return the total length of the packet, in bytes.
+    bsl::size_t packetLength() const;
 
     /// Return the unique identifier of the group of fragments of a single IP
     /// packet.
@@ -386,7 +392,7 @@ void Ipv4Header::initialize()
     d_version = static_cast<bsl::uint8_t>(k_DEFAULT_VERSION);
     setTimeToLive(static_cast<bsl::uint8_t>(k_DEFAULT_TIME_TO_LIVE));
     setHeaderLength(static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
-    setTotalLength(static_cast<bsl::size_t>(k_MIN_TOTAL_LENGTH));
+    setPacketLength(static_cast<bsl::size_t>(k_MIN_TOTAL_LENGTH));
 }
 
 NTSCFG_INLINE
@@ -463,7 +469,7 @@ void Ipv4Header::setHeaderLength(bsl::size_t value)
 }
 
 NTSCFG_INLINE
-void Ipv4Header::setTotalLength(bsl::size_t value)
+void Ipv4Header::setPacketLength(bsl::size_t value)
 {
     BSLS_ASSERT(value >= static_cast<bsl::size_t>(k_MIN_TOTAL_LENGTH));
     BSLS_ASSERT(value <= static_cast<bsl::size_t>(k_MAX_TOTAL_LENGTH));
@@ -570,7 +576,7 @@ bsl::size_t Ipv4Header::headerLength() const
 }
 
 NTSCFG_INLINE
-bsl::size_t Ipv4Header::totalLength() const
+bsl::size_t Ipv4Header::packetLength() const
 {
     return static_cast<bsl::size_t>(static_cast<bsl::uint16_t>(d_totalLength));
 }

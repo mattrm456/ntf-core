@@ -97,10 +97,13 @@ bsl::ostream& Ipv4Header::print(bsl::ostream& stream,
 
     printer.printAttribute("headerLength", headerLength);
 
-    const bsl::size_t totalLength =
-        static_cast<bsl::size_t>(this->totalLength());
+    const bsl::size_t packetLength =
+        static_cast<bsl::size_t>(this->packetLength());
 
-    printer.printAttribute("totalLength", totalLength);
+    printer.printAttribute("packetLength", packetLength);
+
+    printer.printAttribute("sourceAddress", d_sourceAddress);
+    printer.printAttribute("destinationAddress", d_destinationAddress);
 
     const bsl::size_t id = static_cast<bsl::size_t>(this->id());
     if (id != 0) {
@@ -136,8 +139,6 @@ bsl::ostream& Ipv4Header::print(bsl::ostream& stream,
 
     printer.printAttribute("checksum", checksum);
 
-    printer.printAttribute("sourceAddress", d_sourceAddress);
-    printer.printAttribute("destinationAddress", d_destinationAddress);
     printer.end();
 
     return stream;

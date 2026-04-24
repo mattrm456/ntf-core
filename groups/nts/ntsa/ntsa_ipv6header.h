@@ -44,6 +44,15 @@ class Ipv6Header
     ntsa::EthernetProtocol::Value d_protocol;
 
   public:
+    /// Enumerate the constants used by this implementation.
+    enum Constants {
+        /// The protocol number indicating the IPv4 packet carries TCP.
+        k_PROTOCOL_TCP = 6,
+
+        /// The protocol number indicating the IPv4 packet carries UDP.
+        k_PROTOCOL_UDP = 17
+    };
+
     /// Create a new IPv6 header having a default value.
     Ipv6Header();
 

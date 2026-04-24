@@ -19,11 +19,10 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_tcpsegment.h>
-#include <ntsa_udpdatagram.h>
+#include <ntsa_tcppacket.h>
+#include <ntsa_udppacket.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
-
 #include <bdlbb_blob.h>
 #include <bsls_assert.h>
 #include <bsls_objectbuffer.h>
@@ -48,22 +47,22 @@ class Ipv4Payload
         /// The payload type is represented as a raw sequence of bytes.
         e_RAW = 1,
 
-        /// The payload type is a TCP segment.
+        /// The payload type is a TCP packet.
         e_TCP = 2,
 
-        /// The payload type is a UDP datagram.
+        /// The payload type is a UDP packet.
         e_UDP = 3
     };
 
     Type d_type;
 
     union {
-        bsls::ObjectBuffer<bdlbb::BlobBuffer>  d_raw;
-        bsls::ObjectBuffer<ntsa::TcpSegment>   d_tcp;
-        bsls::ObjectBuffer<ntsa::UdpDatagram>  d_udp;
+        bsls::ObjectBuffer<bdlbb::BlobBuffer> d_raw;
+        bsls::ObjectBuffer<ntsa::TcpPacket>   d_tcp;
+        bsls::ObjectBuffer<ntsa::UdpPacket>   d_udp;
     };
 
-public:
+  public:
     /// Create a new IPv4 payload having a default value.
     Ipv4Payload();
 
@@ -89,91 +88,90 @@ public:
     /// Return a reference to this modifiable object.
     Ipv4Payload& operator=(const Ipv4Payload& other);
 
-    /// Reset the value of this object to its value upon default
-    /// construction.
+    /// Reset the value of this object to its value upon default construction.
     void reset();
 
     /// Make the representation of the payload a raw sequence of bytes. Return
-    /// a reference to the modifable respresentation.
+    /// a reference to the modifable representation.
     bdlbb::BlobBuffer& makeRaw();
 
     /// Make the representation of the payload a raw sequence of bytes having
     /// the specified 'value'. Return a reference to the modifable
-    /// respresentation.
+    /// representation.
     bdlbb::BlobBuffer& makeRaw(const bdlbb::BlobBuffer& value);
 
     /// Make the representation of the payload a raw sequence of bytes having
     /// the specified 'value'. Assign an unspecified but valid value to the
-    /// 'value'. Return a reference to the modifable respresentation.
-    bdlbb::BlobBuffer& makeRaw(bslmf::MovableRef<bdlbb::BlobBuffer> value) 
+    /// 'value'. Return a reference to the modifable representation.
+    bdlbb::BlobBuffer& makeRaw(bslmf::MovableRef<bdlbb::BlobBuffer> value)
         NTSCFG_NOEXCEPT;
 
-    /// Make the representation of the payload a TCP segment. Return a
-    /// reference to the modifable respresentation.
-    ntsa::TcpSegment& makeTcp();
+    /// Make the representation of the payload a TCP packet. Return a reference
+    /// to the modifable representation.
+    ntsa::TcpPacket& makeTcp();
 
-    /// Make the representation of the payload a TCP segment having the
-    /// specified 'value'. Return a reference to the modifable respresentation.
-    ntsa::TcpSegment& makeTcp(const ntsa::TcpSegment& value);
+    /// Make the representation of the payload a TCP packet having the
+    /// specified 'value'. Return a reference to the modifable representation.
+    ntsa::TcpPacket& makeTcp(const ntsa::TcpPacket& value);
 
-    /// Make the representation of the payload a TCP segment having the
+    /// Make the representation of the payload a TCP packet having the
     /// specified 'value'. Assign an unspecified but valid value to the
-    /// 'value'. Return a reference to the modifable respresentation.
-    ntsa::TcpSegment& makeTcp(bslmf::MovableRef<ntsa::TcpSegment> value) 
+    /// 'value'. Return a reference to the modifable representation.
+    ntsa::TcpPacket& makeTcp(bslmf::MovableRef<ntsa::TcpPacket> value)
         NTSCFG_NOEXCEPT;
 
-    /// Make the representation of the payload a UDP datagram. Return a
-    /// reference to the modifable respresentation.
-    ntsa::UdpDatagram& makeUdp();
+    /// Make the representation of the payload a UDP packet. Return a reference
+    /// to the modifable representation.
+    ntsa::UdpPacket& makeUdp();
 
-    /// Make the representation of the payload a UDP datagram having the
-    /// specified 'value'. Return a reference to the modifable respresentation.
-    ntsa::UdpDatagram& makeUdp(const ntsa::UdpDatagram& value);
+    /// Make the representation of the payload a UDP packet having the
+    /// specified 'value'. Return a reference to the modifable representation.
+    ntsa::UdpPacket& makeUdp(const ntsa::UdpPacket& value);
 
-    /// Make the representation of the payload a UDP datagram having the
+    /// Make the representation of the payload a UDP packet having the
     /// specified 'value'. Assign an unspecified but valid value to the
-    /// 'value'. Return a reference to the modifable respresentation.
-    ntsa::UdpDatagram& makeUdp(bslmf::MovableRef<ntsa::UdpDatagram> value) 
+    /// 'value'. Return a reference to the modifable representation.
+    ntsa::UdpPacket& makeUdp(bslmf::MovableRef<ntsa::UdpPacket> value)
         NTSCFG_NOEXCEPT;
 
     /// Return a reference to the modifiable raw sequence of bytes. The
-    /// behavior is undefined unless 'isRaw()' is true. 
+    /// behavior is undefined unless 'isRaw()' is true.
     bdlbb::BlobBuffer& raw();
 
-    /// Return a reference to the modifiable TCP segment. The behavior is
-    /// undefined unless 'isTcp()' is true. 
-    ntsa::TcpSegment& tcp();
+    /// Return a reference to the modifiable TCP packet. The behavior is
+    /// undefined unless 'isTcp()' is true.
+    ntsa::TcpPacket& tcp();
 
-    /// Return a reference to the modifiable UDP datagram. The behavior is
-    /// undefined unless 'isUdp()' is true. 
-    ntsa::UdpDatagram& udp();
+    /// Return a reference to the modifiable UDP packet. The behavior is
+    /// undefined unless 'isUdp()' is true.
+    ntsa::UdpPacket& udp();
 
     /// Return a reference to the non-modifiable raw sequence of bytes. The
-    /// behavior is undefined unless 'isRaw()' is true. 
+    /// behavior is undefined unless 'isRaw()' is true.
     const bdlbb::BlobBuffer& raw() const;
 
-    /// Return a reference to the non-modifiable TCP segment. The behavior is
-    /// undefined unless 'isTcp()' is true. 
-    const ntsa::TcpSegment& tcp() const;
+    /// Return a reference to the non-modifiable TCP packet. The behavior is
+    /// undefined unless 'isTcp()' is true.
+    const ntsa::TcpPacket& tcp() const;
 
-    /// Return a reference to the non-modifiable UDP datagram. The behavior is
-    /// undefined unless 'isUdp()' is true. 
-    const ntsa::UdpDatagram& udp() const;
+    /// Return a reference to the non-modifiable UDP packet. The behavior is
+    /// undefined unless 'isUdp()' is true.
+    const ntsa::UdpPacket& udp() const;
 
     /// Return true if the representation is not defined, otherwise return
-    /// false. 
+    /// false.
     bool isUndefined() const;
 
     /// Return true if the representation is a raw sequence of bytes, otherwise
-    /// return false. 
+    /// return false.
     bool isRaw() const;
 
-    /// Return true if the representation is a TCP segment, otherwise return
-    /// false. 
+    /// Return true if the representation is a TCP packet, otherwise return
+    /// false.
     bool isTcp() const;
 
-    /// Return true if the representation is a UDP datagram, otherwise return
-    /// false. 
+    /// Return true if the representation is a UDP packet, otherwise return
+    /// false.
     bool isUdp() const;
 
     /// Return true if this object has the same value as the specified
@@ -227,14 +225,14 @@ bdlbb::BlobBuffer& Ipv4Payload::raw()
 }
 
 NTSCFG_INLINE
-ntsa::TcpSegment& Ipv4Payload::tcp()
+ntsa::TcpPacket& Ipv4Payload::tcp()
 {
     BSLS_ASSERT(isTcp());
     return d_tcp.object();
 }
 
 NTSCFG_INLINE
-ntsa::UdpDatagram& Ipv4Payload::udp()
+ntsa::UdpPacket& Ipv4Payload::udp()
 {
     BSLS_ASSERT(isUdp());
     return d_udp.object();
@@ -248,14 +246,14 @@ const bdlbb::BlobBuffer& Ipv4Payload::raw() const
 }
 
 NTSCFG_INLINE
-const ntsa::TcpSegment& Ipv4Payload::tcp() const
+const ntsa::TcpPacket& Ipv4Payload::tcp() const
 {
     BSLS_ASSERT(isTcp());
     return d_tcp.object();
 }
 
 NTSCFG_INLINE
-const ntsa::UdpDatagram& Ipv4Payload::udp() const
+const ntsa::UdpPacket& Ipv4Payload::udp() const
 {
     BSLS_ASSERT(isUdp());
     return d_udp.object();

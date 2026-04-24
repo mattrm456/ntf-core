@@ -97,10 +97,14 @@ class UdpHeader
 
     /// Set the length of the datagram, in bytes, including the header, to the
     /// specified 'value'.
-    void setDatagramLength(bsl::size_t value);
+    void setPacketLength(bsl::size_t value);
 
     /// Set the checksum to the specified 'value'. 
     void setChecksum(bsl::uint16_t value);
+
+    /// Decode the packet from the specified 'data' having the specified 
+    /// 'size'. Return the error.
+    ntsa::Error decode(const void* data, const bsl::size_t size);    
 
     /// Decode the packet from the specified 'source'. Return the error.
     ntsa::Error decode(const bdlbb::BlobBuffer& source);
@@ -114,8 +118,11 @@ class UdpHeader
     /// Return the destination port.
     ntsa::Port destinationPort() const;
 
-    /// Return the length of the datagram, in bytes, including the header.
-    bsl::size_t datagramLength() const;
+    /// Return the length of the header, in bytes.
+    bsl::size_t headerLength() const;
+
+    /// Return the length of the packet, in bytes, including the header.
+    bsl::size_t packetLength() const;
 
     /// Return the checksum. 
     bsl::uint16_t checksum() const;
@@ -270,7 +277,7 @@ void UdpHeader::setDestinationPort(ntsa::Port value)
 }
 
 NTSCFG_INLINE
-void UdpHeader::setDatagramLength(bsl::size_t value)
+void UdpHeader::setPacketLength(bsl::size_t value)
 {
     d_length = static_cast<bsl::uint16_t>(value);
 }
@@ -294,8 +301,15 @@ ntsa::Port UdpHeader::destinationPort() const
         static_cast<bsl::uint16_t>(d_destinationPort));
 }
 
+
 NTSCFG_INLINE
-bsl::size_t UdpHeader::datagramLength() const
+bsl::size_t UdpHeader::headerLength() const
+{
+    return static_cast<bsl::size_t>(k_LENGTH);
+}
+
+NTSCFG_INLINE
+bsl::size_t UdpHeader::packetLength() const
 {
     return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_length));
 }

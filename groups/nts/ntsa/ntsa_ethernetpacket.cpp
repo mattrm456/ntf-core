@@ -13,10 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsa_udpdatagram.h>
+#include <ntsa_ethernetpacket.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_udpdatagram_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_ethernetpacket_cpp, "$Id$ $CSID$")
 
 #include <bslim_printer.h>
 #include <bsl_cstdlib.h>
@@ -25,57 +25,27 @@ BSLS_IDENT_RCSID(ntsa_udpdatagram_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error UdpDatagram::decode(const bdlbb::BlobBuffer& source)
-{
-    ntsa::Error error;
-
-    error = d_header.decode(source);
-    if (error) {
-        return error;
-    }
-
-    d_payload.reset(
-        bsl::shared_ptr<char>(
-            source.buffer(), source.data() + ntsa::UdpHeader::k_LENGTH),
-        static_cast<int>(source.size() - ntsa::UdpHeader::k_LENGTH));
-
-    return ntsa::Error();
-}
-
-ntsa::Error UdpDatagram::encode(bdlbb::BlobBuffer* destination) const
-{
-    NTSCFG_WARNING_UNUSED(destination);
-
-    return ntsa::Error();
-}
-
-bool UdpDatagram::equals(const UdpDatagram& other) const
+bool EthernetPacket::equals(const EthernetPacket& other) const
 {
     if (d_header != other.d_header) {
         return false;
     }
 
-    if (d_payload.size() != other.d_payload.size()) {
-        return false;
-    }
-
-    const int compare = bsl::memcmp(d_payload.data(),
-                                    other.d_payload.data(),
-                                    d_payload.size());
-    if (compare != 0) {
+    if (d_payload != other.d_payload) {
         return false;
     }
 
     return true;
 }
 
-bsl::ostream& UdpDatagram::print(bsl::ostream& stream,
-                                 int           level,
-                                 int           spacesPerLevel) const
+bsl::ostream& EthernetPacket::print(bsl::ostream& stream,
+                                int           level,
+                                int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
     printer.printAttribute("header", d_header);
+    printer.printAttribute("payload", d_payload);
     printer.end();
 
     return stream;

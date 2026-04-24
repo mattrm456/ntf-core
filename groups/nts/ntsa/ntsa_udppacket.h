@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSA_UDPDATAGRAM
-#define INCLUDED_NTSA_UDPDATAGRAM
+#ifndef INCLUDED_NTSA_UDPPACKET
+#define INCLUDED_NTSA_UDPPACKET
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
@@ -29,42 +29,41 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide a User Datagram Protocol (UDP) datagram.
+/// Provide a User Datagram Protocol (UDP) packet.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
 /// @ingroup module_ntsa_identity
-class UdpDatagram
+class UdpPacket
 {
     ntsa::UdpHeader  d_header;
     ntsa::UdpPayload d_payload;
 
   public:
-    /// Create a new UDP datagram having a default value.
-    UdpDatagram();
+    /// Create a new UDP packet having a default value.
+    UdpPacket();
 
-    /// Create a new UDP datagram having the same value as the specified
+    /// Create a new UDP packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    UdpDatagram(bslmf::MovableRef<UdpDatagram> original) NTSCFG_NOEXCEPT;
+    UdpPacket(bslmf::MovableRef<UdpPacket> original) NTSCFG_NOEXCEPT;
 
-    /// Create a new UDP datagram having the same value as the specified
+    /// Create a new UDP packet having the same value as the specified
     /// 'original' object.
-    UdpDatagram(const UdpDatagram& original);
+    UdpPacket(const UdpPacket& original);
 
     /// Destroy this object.
-    ~UdpDatagram();
+    ~UdpPacket();
 
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    UdpDatagram& operator=(bslmf::MovableRef<UdpDatagram> other)
-        NTSCFG_NOEXCEPT;
+    UdpPacket& operator=(bslmf::MovableRef<UdpPacket> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object. Return
     /// a reference to this modifiable object.
-    UdpDatagram& operator=(const UdpDatagram& other);
+    UdpPacket& operator=(const UdpPacket& other);
 
     /// Reset the value of this object to its value upon default
     /// construction.
@@ -82,10 +81,14 @@ class UdpDatagram
     /// Return a reference to the modifiable payload.
     ntsa::UdpPayload& payload();
 
-    /// Decode the packet from the specified 'source'. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+    /// Decode the packet from the specified 'source' starting at the specified
+    /// 'offset' inside the framing packet having the specified 'packetSize'.
+    /// Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& source,
+                       bsl::size_t              offset,
+                       bsl::size_t              packetSize);
 
-    /// Encode the packet to the specified 'destination'. Return the error. 
+    /// Encode the packet to the specified 'destination'. Return the error.
     ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
 
     /// Return a reference to the non-modifiable header.
@@ -96,7 +99,7 @@ class UdpDatagram
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
-    bool equals(const UdpDatagram& other) const;
+    bool equals(const UdpPacket& other) const;
 
     /// Format this object to the specified output 'stream' at the optionally
     /// specified indentation 'level' and return a reference to the modifiable
@@ -115,57 +118,57 @@ class UdpDatagram
     /// This type's move-constructor and move-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(UdpDatagram);
+    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(UdpPacket);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
 /// into the specified 'stream'. Return a reference to the modifiable
 /// 'stream'.
 ///
-/// @related ntsa::UdpDatagram
-bsl::ostream& operator<<(bsl::ostream& stream, const UdpDatagram& object);
+/// @related ntsa::UdpPacket
+bsl::ostream& operator<<(bsl::ostream& stream, const UdpPacket& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
-/// @related ntsa::UdpDatagram
-bool operator==(const UdpDatagram& lhs, const UdpDatagram& rhs);
+/// @related ntsa::UdpPacket
+bool operator==(const UdpPacket& lhs, const UdpPacket& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
-/// @related ntsa::UdpDatagram
-bool operator!=(const UdpDatagram& lhs, const UdpDatagram& rhs);
+/// @related ntsa::UdpPacket
+bool operator!=(const UdpPacket& lhs, const UdpPacket& rhs);
 
 NTSCFG_INLINE
-UdpDatagram::UdpDatagram()
+UdpPacket::UdpPacket()
 : d_header()
 , d_payload()
 {
 }
 
 NTSCFG_INLINE
-UdpDatagram::UdpDatagram(bslmf::MovableRef<UdpDatagram> original)
-    NTSCFG_NOEXCEPT : d_header(NTSCFG_MOVE_FROM(original, d_header)),
-                      d_payload(NTSCFG_MOVE_FROM(original, d_payload))
+UdpPacket::UdpPacket(bslmf::MovableRef<UdpPacket> original) NTSCFG_NOEXCEPT
+: d_header(NTSCFG_MOVE_FROM(original, d_header)),
+  d_payload(NTSCFG_MOVE_FROM(original, d_payload))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-UdpDatagram::UdpDatagram(const UdpDatagram& original)
+UdpPacket::UdpPacket(const UdpPacket& original)
 : d_header(original.d_header)
 , d_payload(original.d_payload)
 {
 }
 
 NTSCFG_INLINE
-UdpDatagram::~UdpDatagram()
+UdpPacket::~UdpPacket()
 {
 }
 
 NTSCFG_INLINE
-UdpDatagram& UdpDatagram::operator=(bslmf::MovableRef<UdpDatagram> other)
+UdpPacket& UdpPacket::operator=(bslmf::MovableRef<UdpPacket> other)
     NTSCFG_NOEXCEPT
 {
     d_header  = NTSCFG_MOVE_FROM(other, d_header);
@@ -177,7 +180,7 @@ UdpDatagram& UdpDatagram::operator=(bslmf::MovableRef<UdpDatagram> other)
 }
 
 NTSCFG_INLINE
-UdpDatagram& UdpDatagram::operator=(const UdpDatagram& other)
+UdpPacket& UdpPacket::operator=(const UdpPacket& other)
 {
     d_header  = other.d_header;
     d_payload = other.d_payload;
@@ -185,62 +188,62 @@ UdpDatagram& UdpDatagram::operator=(const UdpDatagram& other)
 }
 
 NTSCFG_INLINE
-void UdpDatagram::reset()
+void UdpPacket::reset()
 {
     d_header.reset();
     d_payload.reset();
 }
 
 NTSCFG_INLINE
-void UdpDatagram::setHeader(const ntsa::UdpHeader& value)
+void UdpPacket::setHeader(const ntsa::UdpHeader& value)
 {
     d_header = value;
 }
 
 NTSCFG_INLINE
-void UdpDatagram::setPayload(const ntsa::UdpPayload& value)
+void UdpPacket::setPayload(const ntsa::UdpPayload& value)
 {
     d_payload = value;
 }
 
 NTSCFG_INLINE
-ntsa::UdpHeader& UdpDatagram::header()
+ntsa::UdpHeader& UdpPacket::header()
 {
     return d_header;
 }
 
 NTSCFG_INLINE
-ntsa::UdpPayload& UdpDatagram::payload()
+ntsa::UdpPayload& UdpPacket::payload()
 {
     return d_payload;
 }
 
 NTSCFG_INLINE
-const ntsa::UdpHeader& UdpDatagram::header() const
+const ntsa::UdpHeader& UdpPacket::header() const
 {
     return d_header;
 }
 
 NTSCFG_INLINE
-const ntsa::UdpPayload& UdpDatagram::payload() const
+const ntsa::UdpPayload& UdpPacket::payload() const
 {
     return d_payload;
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const UdpDatagram& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const UdpPacket& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const UdpDatagram& lhs, const UdpDatagram& rhs)
+bool operator==(const UdpPacket& lhs, const UdpPacket& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const UdpDatagram& lhs, const UdpDatagram& rhs)
+bool operator!=(const UdpPacket& lhs, const UdpPacket& rhs)
 {
     return !operator==(lhs, rhs);
 }

@@ -34,11 +34,11 @@ Ipv6Payload::Ipv6Payload(bslmf::MovableRef<Ipv6Payload> original)
     }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer())
-            ntsa::TcpSegment(NTSCFG_MOVE_FROM(original, d_tcp.object()));
+            ntsa::TcpPacket(NTSCFG_MOVE_FROM(original, d_tcp.object()));
     }
     else if (d_type == e_UDP) {
         new (d_udp.buffer())
-            ntsa::UdpDatagram(NTSCFG_MOVE_FROM(original, d_udp.object()));
+            ntsa::UdpPacket(NTSCFG_MOVE_FROM(original, d_udp.object()));
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -54,10 +54,10 @@ Ipv6Payload::Ipv6Payload(const Ipv6Payload& original)
         new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpSegment(original.d_tcp.object());
+        new (d_tcp.buffer()) ntsa::TcpPacket(original.d_tcp.object());
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpDatagram(original.d_udp.object());
+        new (d_udp.buffer()) ntsa::UdpPacket(original.d_udp.object());
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -71,11 +71,11 @@ Ipv6Payload::~Ipv6Payload()
         d_raw.object().~Type();
     }
     else if (d_type == e_TCP) {
-        typedef ntsa::TcpSegment Type;
+        typedef ntsa::TcpPacket Type;
         d_tcp.object().~Type();
     }
     else if (d_type == e_UDP) {
-        typedef ntsa::UdpDatagram Type;
+        typedef ntsa::UdpPacket Type;
         d_udp.object().~Type();
     }
 }
@@ -93,11 +93,11 @@ Ipv6Payload& Ipv6Payload::operator=(bslmf::MovableRef<Ipv6Payload> other)
     }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer())
-            ntsa::TcpSegment(NTSCFG_MOVE_FROM(other, d_tcp.object()));
+            ntsa::TcpPacket(NTSCFG_MOVE_FROM(other, d_tcp.object()));
     }
     else if (d_type == e_UDP) {
         new (d_udp.buffer())
-            ntsa::UdpDatagram(NTSCFG_MOVE_FROM(other, d_udp.object()));
+            ntsa::UdpPacket(NTSCFG_MOVE_FROM(other, d_udp.object()));
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -122,10 +122,10 @@ Ipv6Payload& Ipv6Payload::operator=(const Ipv6Payload& other)
         new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpSegment(other.d_tcp.object());
+        new (d_tcp.buffer()) ntsa::TcpPacket(other.d_tcp.object());
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpDatagram(other.d_udp.object());
+        new (d_udp.buffer()) ntsa::UdpPacket(other.d_udp.object());
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -141,11 +141,11 @@ void Ipv6Payload::reset()
         d_raw.object().~Type();
     }
     else if (d_type == e_TCP) {
-        typedef ntsa::TcpSegment Type;
+        typedef ntsa::TcpPacket Type;
         d_tcp.object().~Type();
     }
     else if (d_type == e_UDP) {
-        typedef ntsa::UdpDatagram Type;
+        typedef ntsa::UdpPacket Type;
         d_udp.object().~Type();
     }
 
@@ -197,43 +197,43 @@ bdlbb::BlobBuffer& Ipv6Payload::makeRaw(
     return d_raw.object();
 }
 
-ntsa::TcpSegment& Ipv6Payload::makeTcp()
+ntsa::TcpPacket& Ipv6Payload::makeTcp()
 {
     if (d_type == e_TCP) {
         d_tcp.object().reset();
     }
     else {
         reset();
-        new (d_tcp.buffer()) ntsa::TcpSegment();
+        new (d_tcp.buffer()) ntsa::TcpPacket();
         d_type = e_TCP;
     }
 
     return d_tcp.object();
 }
 
-ntsa::TcpSegment& Ipv6Payload::makeTcp(const ntsa::TcpSegment& value)
+ntsa::TcpPacket& Ipv6Payload::makeTcp(const ntsa::TcpPacket& value)
 {
     if (d_type == e_TCP) {
         d_tcp.object() = value;
     }
     else {
         reset();
-        new (d_tcp.buffer()) ntsa::TcpSegment(value);
+        new (d_tcp.buffer()) ntsa::TcpPacket(value);
         d_type = e_TCP;
     }
 
     return d_tcp.object();
 }
 
-ntsa::TcpSegment& Ipv6Payload::makeTcp(
-    bslmf::MovableRef<ntsa::TcpSegment> value) NTSCFG_NOEXCEPT
+ntsa::TcpPacket& Ipv6Payload::makeTcp(bslmf::MovableRef<ntsa::TcpPacket> value)
+    NTSCFG_NOEXCEPT
 {
     if (d_type == e_TCP) {
         d_tcp.object() = NTSCFG_MOVE(value);
     }
     else {
         reset();
-        new (d_tcp.buffer()) ntsa::TcpSegment(NTSCFG_MOVE(value));
+        new (d_tcp.buffer()) ntsa::TcpPacket(NTSCFG_MOVE(value));
         d_type = e_TCP;
     }
 
@@ -242,43 +242,43 @@ ntsa::TcpSegment& Ipv6Payload::makeTcp(
     return d_tcp.object();
 }
 
-ntsa::UdpDatagram& Ipv6Payload::makeUdp()
+ntsa::UdpPacket& Ipv6Payload::makeUdp()
 {
     if (d_type == e_UDP) {
         d_udp.object().reset();
     }
     else {
         reset();
-        new (d_udp.buffer()) ntsa::UdpDatagram();
+        new (d_udp.buffer()) ntsa::UdpPacket();
         d_type = e_UDP;
     }
 
     return d_udp.object();
 }
 
-ntsa::UdpDatagram& Ipv6Payload::makeUdp(const ntsa::UdpDatagram& value)
+ntsa::UdpPacket& Ipv6Payload::makeUdp(const ntsa::UdpPacket& value)
 {
     if (d_type == e_UDP) {
         d_udp.object() = value;
     }
     else {
         reset();
-        new (d_udp.buffer()) ntsa::UdpDatagram(value);
+        new (d_udp.buffer()) ntsa::UdpPacket(value);
         d_type = e_UDP;
     }
 
     return d_udp.object();
 }
 
-ntsa::UdpDatagram& Ipv6Payload::makeUdp(
-    bslmf::MovableRef<ntsa::UdpDatagram> value) NTSCFG_NOEXCEPT
+ntsa::UdpPacket& Ipv6Payload::makeUdp(bslmf::MovableRef<ntsa::UdpPacket> value)
+    NTSCFG_NOEXCEPT
 {
     if (d_type == e_UDP) {
         d_udp.object() = NTSCFG_MOVE(value);
     }
     else {
         reset();
-        new (d_udp.buffer()) ntsa::UdpDatagram(NTSCFG_MOVE(value));
+        new (d_udp.buffer()) ntsa::UdpPacket(NTSCFG_MOVE(value));
         d_type = e_UDP;
     }
 

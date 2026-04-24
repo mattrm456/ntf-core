@@ -16,17 +16,17 @@
 #include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_ethernetframe_t_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_ethernetpacket_t_cpp, "$Id$ $CSID$")
 
-#include <ntsa_ethernetframe.h>
+#include <ntsa_ethernetpacket.h>
 
 using namespace BloombergLP;
 
 namespace BloombergLP {
 namespace ntsa {
 
-// Provide tests for 'ntsa::EthernetFrame'.
-class EthernetFrameTest
+// Provide tests for 'ntsa::EthernetPacket'.
+class EthernetPacketTest
 {
   public:
     // Test value semantics: type traits.
@@ -36,11 +36,11 @@ class EthernetFrameTest
     static void verifyUsage();
 };
 
-NTSCFG_TEST_FUNCTION(ntsa::EthernetFrameTest::verifyTypeTraits)
+NTSCFG_TEST_FUNCTION(ntsa::EthernetPacketTest::verifyTypeTraits)
 {
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::EthernetFrameTest::verifyUsage)
+NTSCFG_TEST_FUNCTION(ntsa::EthernetPacketTest::verifyUsage)
 {
 }
 

@@ -13,10 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsa_tcpsegment.h>
+#include <ntsa_tcppacket.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_tcpsegment_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_tcppacket_cpp, "$Id$ $CSID$")
 
 #include <bslim_printer.h>
 #include <bsl_cstdlib.h>
@@ -25,31 +25,57 @@ BSLS_IDENT_RCSID(ntsa_tcpsegment_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error TcpSegment::decode(const bdlbb::BlobBuffer& source)
+
+ntsa::Error TcpPacket::decode(const bdlbb::BlobBuffer& source,
+                              bsl::size_t              offset,
+                              bsl::size_t              packetSize)
 {
     ntsa::Error error;
 
-    error = d_header.decode(source);
+    if (source.size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (offset > packetSize) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (offset > static_cast<bsl::size_t>(source.size())) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    error = d_header.decode(source.data() + offset, packetSize - offset);
     if (error) {
         return error;
     }
 
-    d_payload.reset(
-        bsl::shared_ptr<char>(
-            source.buffer(), source.data() + ntsa::UdpHeader::k_LENGTH),
-        static_cast<int>(source.size() - ntsa::UdpHeader::k_LENGTH));
+    const bsl::size_t headerLength = d_header.headerLength();
+
+    if (offset + headerLength >
+        static_cast<bsl::size_t>(source.size()))
+    {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (offset + headerLength != packetSize) {
+        d_payload.reset(
+            bsl::shared_ptr<char>(
+                source.buffer(),
+                source.data() + offset + headerLength),
+            static_cast<int>(source.size() - offset - headerLength));
+    }
 
     return ntsa::Error();
 }
 
-ntsa::Error TcpSegment::encode(bdlbb::BlobBuffer* destination) const
+ntsa::Error TcpPacket::encode(bdlbb::BlobBuffer* destination) const
 {
     NTSCFG_WARNING_UNUSED(destination);
 
     return ntsa::Error();
 }
 
-bool TcpSegment::equals(const TcpSegment& other) const
+bool TcpPacket::equals(const TcpPacket& other) const
 {
     if (d_header != other.d_header) {
         return false;
@@ -69,7 +95,7 @@ bool TcpSegment::equals(const TcpSegment& other) const
     return true;
 }
 
-bsl::ostream& TcpSegment::print(bsl::ostream& stream,
+bsl::ostream& TcpPacket::print(bsl::ostream& stream,
                                 int           level,
                                 int           spacesPerLevel) const
 {

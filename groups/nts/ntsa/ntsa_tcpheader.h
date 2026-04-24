@@ -41,6 +41,18 @@ namespace ntsa {
 /// @ingroup module_ntsa_identity
 class TcpHeader
 {
+    /// Enumerates the flags.
+    enum Flag {
+        k_SYN = 1 << 1,
+        k_ACK = 1 << 2,
+        k_PSH = 1 << 3,
+        k_FIN = 1 << 4,
+        k_RST = 1 << 5,
+        k_ECE = 1 << 6,
+        k_CWR = 1 << 7,
+        k_URG = 1 << 8
+    };
+
     /// The source port.
     bdlb::BigEndianUint16 d_sourcePort;
 
@@ -62,6 +74,11 @@ class TcpHeader
     /// sequence number itself, but no data.
     bdlb::BigEndianUint32 d_acknowledgmentNumber;
 
+#if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
+
+    /// Reserved.
+    bsl::uint8_t d_reserved : 4;
+
     /// The size of the TCP header in 32-bit words. The minimum size header is
     /// 5 words and the maximum is 15 words thus giving the minimum size of 20
     /// bytes and maximum of 60 bytes, allowing for up to 40 bytes of options
@@ -69,7 +86,23 @@ class TcpHeader
     /// the segment header; it can be calculated by subtracting the combined
     /// length of the segment header and IP header from the total IP packet
     /// length specified in the IP header.
-    bsl::uint8_t d_headerLength;
+    bsl::uint8_t d_headerLength : 4;
+
+#else
+
+    /// The size of the TCP header in 32-bit words. The minimum size header is
+    /// 5 words and the maximum is 15 words thus giving the minimum size of 20
+    /// bytes and maximum of 60 bytes, allowing for up to 40 bytes of options
+    /// in the header. Note that the length of the payload is not specified in
+    /// the segment header; it can be calculated by subtracting the combined
+    /// length of the segment header and IP header from the total IP packet
+    /// length specified in the IP header.
+    bsl::uint8_t d_headerLength : 4;
+
+    /// Reserved.
+    bsl::uint8_t d_reserved : 4;
+
+#endif
 
     /// The flags.
     bsl::uint8_t d_flags;
@@ -97,6 +130,13 @@ class TcpHeader
   private:
     /// Initialize the header to its default values.
     void initialize();
+
+    /// Print a human-readable description of the specified 'flags' to the
+    /// specified stream'.
+    static bsl::ostream& printFlags(bsl::ostream& stream,
+                                    bsl::uint8_t  flags,
+                                    int           level,
+                                    int           spacesPerLevel);
 
   public:
     /// Enumerate the constants used by the implementation.
@@ -170,6 +210,10 @@ class TcpHeader
     /// Set the urgent pointer to the specified 'value'.
     void setUrgentPointer(bsl::uint16_t value);
 
+    /// Decode the packet from the specified 'data' having the specified
+    /// 'size'. Return the error.
+    ntsa::Error decode(const void* data, const bsl::size_t size);
+
     /// Decode the packet from the specified 'source'. Return the error.
     ntsa::Error decode(const bdlbb::BlobBuffer& source);
 
@@ -182,25 +226,25 @@ class TcpHeader
     /// Return the destination port.
     ntsa::Port destinationPort() const;
 
-    /// Return the sequence number. 
+    /// Return the sequence number.
     bsl::uint32_t sequenceNumber() const;
 
-    /// Return the acknowledgment number. 
+    /// Return the acknowledgment number.
     bsl::uint32_t acknowledgmentNumber() const;
 
-    /// Return the length of the header including all options, in bytes. 
+    /// Return the length of the header including all options, in bytes.
     bsl::size_t headerLength() const;
 
-    /// Return the flags. 
+    /// Return the flags.
     bsl::uint8_t flags() const;
 
-    /// Return the window size. 
+    /// Return the window size.
     bsl::uint16_t windowSize() const;
 
-    /// Return the checksum. 
+    /// Return the checksum.
     bsl::uint16_t checksum() const;
 
-    /// Return the urgent pointer. 
+    /// Return the urgent pointer.
     bsl::uint16_t urgentPointer() const;
 
     /// Return true if this object has the same value as the specified
@@ -415,7 +459,8 @@ ntsa::Port TcpHeader::sourcePort() const
 NTSCFG_INLINE
 ntsa::Port TcpHeader::destinationPort() const
 {
-    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_destinationPort));
+    return static_cast<ntsa::Port>(
+        static_cast<bsl::uint16_t>(d_destinationPort));
 }
 
 NTSCFG_INLINE

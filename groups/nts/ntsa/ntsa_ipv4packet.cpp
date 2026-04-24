@@ -29,29 +29,54 @@ ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& source)
 {
     ntsa::Error error;
 
+    if (source.size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     error = d_header.decode(source);
     if (error) {
         return error;
     }
 
-    bdlbb::BlobBuffer payload(
-        bsl::shared_ptr<char>(
-            source.buffer(), source.data() + d_header.headerLength()),
-        static_cast<int>(source.size() - d_header.headerLength()));
+    const bsl::size_t offset =
+        static_cast<bsl::size_t>(d_header.headerLength());
 
-    if (d_header.protocol() == 6) {
-        // d_payload.makeTcp();
-        // error = d_payload.tcp().decode(payload);
+    const bsl::size_t packetSize =
+        static_cast<bsl::size_t>(d_header.packetLength());
+
+    if (offset > packetSize) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
-    else if (d_header.protocol() == 17) {
-        d_payload.makeUdp();
-        error = d_payload.udp().decode(payload);
+
+    if (offset > static_cast<bsl::size_t>(source.size())) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (d_header.protocol() ==
+        static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
+    {
+        ntsa::TcpPacket& tcp = d_payload.makeTcp();
+
+        error = tcp.decode(source, offset, packetSize);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_header.protocol() ==
+             static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_UDP))
+    {
+        ntsa::UdpPacket& udp = d_payload.makeUdp();
+
+        error = udp.decode(source, offset, packetSize);
         if (error) {
             return error;
         }
     }
     else {
-        d_payload.makeRaw(payload);
+        bdlbb::BlobBuffer& blobBuffer = d_payload.makeRaw();
+        blobBuffer.reset(
+            bsl::shared_ptr<char>(source.buffer(), source.data() + offset),
+            static_cast<int>(source.size() - offset));
     }
 
     return ntsa::Error();
@@ -85,8 +110,16 @@ bsl::ostream& Ipv4Packet::print(bsl::ostream& stream,
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("header", d_header);
-    printer.printAttribute("payload", d_payload);
+
+    printer.printAttribute("ipv4", d_header);
+
+    if (d_payload.isTcp()) {
+        printer.printAttribute("tcp", d_payload.tcp().header());
+    }
+    else if (d_payload.isUdp()) {
+        printer.printAttribute("udp", d_payload.udp().header());
+    }
+
     printer.end();
 
     return stream;

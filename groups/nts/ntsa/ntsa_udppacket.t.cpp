@@ -16,17 +16,17 @@
 #include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_udpdatagram_t_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_udppacket_t_cpp, "$Id$ $CSID$")
 
-#include <ntsa_udpdatagram.h>
+#include <ntsa_udppacket.h>
 
 using namespace BloombergLP;
 
 namespace BloombergLP {
 namespace ntsa {
 
-// Provide tests for 'ntsa::UdpDatagram'.
-class UdpDatagramTest
+// Provide tests for 'ntsa::UdpPacket'.
+class UdpPacketTest
 {
   public:
     // Test value semantics: type traits.
@@ -36,11 +36,11 @@ class UdpDatagramTest
     static void verifyUsage();
 };
 
-NTSCFG_TEST_FUNCTION(ntsa::UdpDatagramTest::verifyTypeTraits)
+NTSCFG_TEST_FUNCTION(ntsa::UdpPacketTest::verifyTypeTraits)
 {
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::UdpDatagramTest::verifyUsage)
+NTSCFG_TEST_FUNCTION(ntsa::UdpPacketTest::verifyUsage)
 {
 }
 

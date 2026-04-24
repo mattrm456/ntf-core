@@ -94,45 +94,45 @@ public:
     void reset();
 
     /// Make the representation of the payload a raw sequence of bytes. Return
-    /// a reference to the modifable respresentation.
+    /// a reference to the modifable representation.
     bdlbb::BlobBuffer& makeRaw();
 
     /// Make the representation of the payload a raw sequence of bytes having
     /// the specified 'value'. Return a reference to the modifable
-    /// respresentation.
+    /// representation.
     bdlbb::BlobBuffer& makeRaw(const bdlbb::BlobBuffer& value);
 
     /// Make the representation of the payload a raw sequence of bytes having
     /// the specified 'value'. Assign an unspecified but valid value to the
-    /// 'value'. Return a reference to the modifable respresentation.
+    /// 'value'. Return a reference to the modifable representation.
     bdlbb::BlobBuffer& makeRaw(bslmf::MovableRef<bdlbb::BlobBuffer> value) 
         NTSCFG_NOEXCEPT;
 
     /// Make the representation of the payload an IPv4 packet. Return a
-    /// reference to the modifable respresentation.
+    /// reference to the modifable representation.
     ntsa::Ipv4Packet& makeIpv4();
 
     /// Make the representation of the payload an IPv4 packet having the
-    /// specified 'value'. Return a reference to the modifable respresentation.
+    /// specified 'value'. Return a reference to the modifable representation.
     ntsa::Ipv4Packet& makeIpv4(const ntsa::Ipv4Packet& value);
 
     /// Make the representation of the payload an IPv4 packet having the
     /// specified 'value'. Assign an unspecified but valid value to the
-    /// 'value'. Return a reference to the modifable respresentation.
+    /// 'value'. Return a reference to the modifable representation.
     ntsa::Ipv4Packet& makeIpv4(bslmf::MovableRef<ntsa::Ipv4Packet> value) 
         NTSCFG_NOEXCEPT;
 
     /// Make the representation of the payload an IPv6 packet. Return a
-    /// reference to the modifable respresentation.
+    /// reference to the modifable representation.
     ntsa::Ipv6Packet& makeIpv6();
 
     /// Make the representation of the payload an IPv6 packet having the
-    /// specified 'value'. Return a reference to the modifable respresentation.
+    /// specified 'value'. Return a reference to the modifable representation.
     ntsa::Ipv6Packet& makeIpv6(const ntsa::Ipv6Packet& value);
 
     /// Make the representation of the payload an IPv6 packet having the
     /// specified 'value'. Assign an unspecified but valid value to the
-    /// 'value'. Return a reference to the modifable respresentation.
+    /// 'value'. Return a reference to the modifable representation.
     ntsa::Ipv6Packet& makeIpv6(bslmf::MovableRef<ntsa::Ipv6Packet> value) 
         NTSCFG_NOEXCEPT;
 

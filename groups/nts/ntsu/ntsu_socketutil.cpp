@@ -1147,17 +1147,27 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
         protocol = 0;
     }
 #if defined(BSLS_PLATFORM_OS_LINUX)
-    else if (type == ntsa::Transport::e_RAW_IPV4_PACKET) {
+    else if (type == ntsa::Transport::e_TCP_IPV4_RAW) {
+        domain = AF_INET;
+        mode = SOCK_RAW;
+        protocol = IPPROTO_TCP; // IPPROTO_RAW;
+    }
+    else if (type == ntsa::Transport::e_TCP_IPV6_RAW) {
+        domain = AF_INET6;
+        mode = SOCK_RAW;
+        protocol = IPPROTO_TCP; // IPPROTO_RAW
+    }
+    else if (type == ntsa::Transport::e_UDP_IPV4_RAW) {
         domain = AF_INET;
         mode = SOCK_RAW;
         protocol = IPPROTO_UDP; // IPPROTO_RAW;
     }
-    else if (type == ntsa::Transport::e_RAW_IPV6_PACKET) {
+    else if (type == ntsa::Transport::e_UDP_IPV6_RAW) {
         domain = AF_INET6;
         mode = SOCK_RAW;
-        protocol = IPPROTO_RAW;
+        protocol = IPPROTO_UDP; // IPPROTO_RAW
     }
-    else if (type == ntsa::Transport::e_RAW_ETHERNET_PACKET) {
+    else if (type == ntsa::Transport::e_ETHERNET) {
         domain = AF_PACKET;
         mode = SOCK_RAW;
         protocol = htons(ETH_P_ALL);
