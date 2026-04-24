@@ -25,6 +25,47 @@ BSLS_IDENT_RCSID(ntsa_ipv4packet_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& source)
+{
+    ntsa::Error error;
+
+    error = d_header.decode(source);
+    if (error) {
+        return error;
+    }
+
+    bdlbb::BlobBuffer payload(
+        bsl::shared_ptr<char>(
+            source.buffer(), source.data() + d_header.headerLength()),
+        static_cast<int>(source.size() - d_header.headerLength()));
+
+    if (d_header.protocol() == 6) {
+        // d_payload.makeTcp();
+        // error = d_payload.tcp().decode(payload);
+    }
+    else if (d_header.protocol() == 17) {
+        d_payload.makeUdp();
+        error = d_payload.udp().decode(payload);
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        d_payload.makeRaw(payload);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* destination) const
+{
+    NTSCFG_WARNING_UNUSED(destination);
+
+    ntsa::Error error;
+
+    return ntsa::Error();
+}
+
 bool Ipv4Packet::equals(const Ipv4Packet& other) const
 {
     if (d_header != other.d_header) {

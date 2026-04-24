@@ -80,6 +80,12 @@ class TcpSegment
     /// Return a reference to the modifiable payload.
     ntsa::TcpPayload& payload();
 
+    /// Decode the packet from the specified 'source'. Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+
+    /// Encode the packet to the specified 'destination'. Return the error. 
+    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+
     /// Return a reference to the non-modifiable header.
     const ntsa::TcpHeader& header() const;
 

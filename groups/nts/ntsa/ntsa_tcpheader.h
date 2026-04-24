@@ -19,10 +19,12 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_ethernetaddress.h>
-#include <ntsa_ethernetprotocol.h>
+#include <ntsa_error.h>
+#include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlb_bigendian.h>
+#include <bdlbb_blob.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
 #include <bsl_iosfwd.h>
@@ -39,11 +41,76 @@ namespace ntsa {
 /// @ingroup module_ntsa_identity
 class TcpHeader
 {
-    ntsa::EthernetAddress         d_source;
-    ntsa::EthernetAddress         d_destination;
-    ntsa::EthernetProtocol::Value d_protocol;
+    /// The source port.
+    bdlb::BigEndianUint16 d_sourcePort;
+
+    /// The destination port.
+    bdlb::BigEndianUint16 d_destinationPort;
+
+    /// The sequence number. If the SYN flag is set, then this is the initial
+    /// sequence number. The sequence number of the actual first data byte and
+    /// the acknowledged number in the corresponding ACK are then this sequence
+    /// number plus 1. Otherwise, if the SYN flag is clear (0), then this is
+    /// the accumulated sequence number of the first data byte of this segment
+    /// for the current session.
+    bdlb::BigEndianUint32 d_sequenceNumber;
+
+    /// The acknowledgment number. If the ACK flag is set then the value of
+    /// this field is the next sequence number that the sender of the ACK is
+    /// expecting. This acknowledges receipt of all prior bytes (if any). The
+    /// first ACK sent by each end acknowledges the other end's initial
+    /// sequence number itself, but no data.
+    bdlb::BigEndianUint32 d_acknowledgmentNumber;
+
+    /// The size of the TCP header in 32-bit words. The minimum size header is
+    /// 5 words and the maximum is 15 words thus giving the minimum size of 20
+    /// bytes and maximum of 60 bytes, allowing for up to 40 bytes of options
+    /// in the header. Note that the length of the payload is not specified in
+    /// the segment header; it can be calculated by subtracting the combined
+    /// length of the segment header and IP header from the total IP packet
+    /// length specified in the IP header.
+    bsl::uint8_t d_headerLength;
+
+    /// The flags.
+    bsl::uint8_t d_flags;
+
+    /// The size of the receive window, which specifies the number of window
+    /// size units (by default, bytes) (beyond the segment identified by the
+    /// sequence number in the acknowledgment field) that the sender of this
+    /// segment is currently willing to receive.
+    bdlb::BigEndianUint16 d_windowSize;
+
+    // The 16-bit checksum field is used for error-checking of the header, the
+    // Payload and a Pseudo-Header. The Pseudo-Header consists of the Source
+    // IP Address, the Destination IP Address, the protocol number for the
+    // TCP-Protocol (0x0006) and the length of the TCP headers including
+    // Payload (in Bytes).
+    bdlb::BigEndianUint16 d_checksum;
+
+    /// If the URG flag is set, then this 16-bit field is an offset from the
+    /// sequence number indicating the last urgent data byte.
+    bdlb::BigEndianUint16 d_urgentPointer;
+
+    /// The options.
+    bsl::uint8_t d_options[40];
+
+  private:
+    /// Initialize the header to its default values.
+    void initialize();
 
   public:
+    /// Enumerate the constants used by the implementation.
+    enum Constants {
+        /// The minimum header length, in bytes.
+        k_MIN_HEADER_LENGTH = 20,
+
+        /// The maximum header length including all options, in bytes.
+        k_MAX_HEADER_LENGTH = 60,
+
+        /// The maximum length of all options, in bytes.
+        k_MAX_OPTIONS_LENGTH = 40
+    };
+
     /// Create a new TCP header having a default value.
     TcpHeader();
 
@@ -62,8 +129,7 @@ class TcpHeader
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    TcpHeader& operator=(bslmf::MovableRef<TcpHeader> other)
-        NTSCFG_NOEXCEPT;
+    TcpHeader& operator=(bslmf::MovableRef<TcpHeader> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -73,23 +139,69 @@ class TcpHeader
     /// construction.
     void reset();
 
-    /// Set the source address to the specified 'value'.
-    void setSource(const ntsa::EthernetAddress& value);
+    /// Set the source port to the specified 'value'.
+    void setSourcePort(ntsa::Port value);
 
-    /// Set the destination address to the specified 'value'.
-    void setDestination(const ntsa::EthernetAddress& value);
+    /// Set the destination port to the specified 'value'.
+    void setDestinationPort(ntsa::Port value);
 
-    /// Set the protocol to the specified 'value'.
-    void setProtocol(ntsa::EthernetProtocol::Value value);
+    /// Set the sequence number to the specified 'value'.
+    void setSequenceNumber(bsl::uint32_t value);
 
-    /// Return the source address.
-    const ntsa::EthernetAddress& source() const;
+    /// Set the acknowledgement number to the specified 'value'.
+    void setAcknowledgmentNumber(bsl::uint32_t value);
 
-    /// Return the destination address.
-    const ntsa::EthernetAddress& destination() const;
+    /// Set the length of the header including all options, in bytes, to the
+    /// specified 'value'. The behavior is undefined if 'value' is less than
+    /// k_MIN_HEADER_LENGTH. The behavior is undefined if 'value' is greater
+    /// than k_MAX_HEADER_LENGTH. The behavior is undefined if 'value' is not a
+    /// multiple of 4.
+    void setHeaderLength(bsl::size_t value);
 
-    /// Return the protocol.
-    ntsa::EthernetProtocol::Value protocol() const;
+    /// Set the flags to the specified 'value'.
+    void setFlags(bsl::uint8_t value);
+
+    /// Set the window size to the specified 'value'.
+    void setWindowSize(bsl::uint16_t value);
+
+    /// Set the checksum to the specified 'value'.
+    void setChecksum(bsl::uint16_t value);
+
+    /// Set the urgent pointer to the specified 'value'.
+    void setUrgentPointer(bsl::uint16_t value);
+
+    /// Decode the packet from the specified 'source'. Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+
+    /// Encode the packet to the specified 'destination'. Return the error.
+    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+
+    /// Return the source port.
+    ntsa::Port sourcePort() const;
+
+    /// Return the destination port.
+    ntsa::Port destinationPort() const;
+
+    /// Return the sequence number. 
+    bsl::uint32_t sequenceNumber() const;
+
+    /// Return the acknowledgment number. 
+    bsl::uint32_t acknowledgmentNumber() const;
+
+    /// Return the length of the header including all options, in bytes. 
+    bsl::size_t headerLength() const;
+
+    /// Return the flags. 
+    bsl::uint8_t flags() const;
+
+    /// Return the window size. 
+    bsl::uint16_t windowSize() const;
+
+    /// Return the checksum. 
+    bsl::uint16_t checksum() const;
+
+    /// Return the urgent pointer. 
+    bsl::uint16_t urgentPointer() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -167,28 +279,37 @@ template <typename HASH_ALGORITHM>
 void hashAppend(HASH_ALGORITHM& algorithm, const TcpHeader& value);
 
 NTSCFG_INLINE
-TcpHeader::TcpHeader()
-: d_source()
-, d_destination()
-, d_protocol(ntsa::EthernetProtocol::e_UNDEFINED)
+void TcpHeader::initialize()
 {
+    setHeaderLength(static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
 }
 
 NTSCFG_INLINE
-TcpHeader::TcpHeader(bslmf::MovableRef<TcpHeader> original)
-    NTSCFG_NOEXCEPT : d_source(NTSCFG_MOVE_FROM(original, d_source)),
-                      d_destination(NTSCFG_MOVE_FROM(original, d_destination)),
-                      d_protocol(NTSCFG_MOVE_FROM(original, d_protocol))
+TcpHeader::TcpHeader()
 {
+    BSLMF_ASSERT(sizeof(*this) == k_MAX_HEADER_LENGTH);
+
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    initialize();
+}
+
+NTSCFG_INLINE
+TcpHeader::TcpHeader(bslmf::MovableRef<TcpHeader> original) NTSCFG_NOEXCEPT
+{
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
+                    bslmf::MovableRefUtil::access(original))),
+                sizeof *this);
+
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
 TcpHeader::TcpHeader(const TcpHeader& original)
-: d_source(original.d_source)
-, d_destination(original.d_destination)
-, d_protocol(original.d_protocol)
 {
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&original),
+                sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -197,12 +318,13 @@ TcpHeader::~TcpHeader()
 }
 
 NTSCFG_INLINE
-TcpHeader& TcpHeader::operator=(
-    bslmf::MovableRef<TcpHeader> other) NTSCFG_NOEXCEPT
+TcpHeader& TcpHeader::operator=(bslmf::MovableRef<TcpHeader> other)
+    NTSCFG_NOEXCEPT
 {
-    d_source      = NTSCFG_MOVE_FROM(other, d_source);
-    d_destination = NTSCFG_MOVE_FROM(other, d_destination);
-    d_protocol    = NTSCFG_MOVE_FROM(other, d_protocol);
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(
+                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
+                sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -212,63 +334,137 @@ TcpHeader& TcpHeader::operator=(
 NTSCFG_INLINE
 TcpHeader& TcpHeader::operator=(const TcpHeader& other)
 {
-    d_source      = other.d_source;
-    d_destination = other.d_destination;
-    d_protocol    = other.d_protocol;
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&other),
+                sizeof *this);
+
     return *this;
 }
 
 NTSCFG_INLINE
 void TcpHeader::reset()
 {
-    d_source.reset();
-    d_destination.reset();
-    d_protocol = ntsa::EthernetProtocol::e_UNDEFINED;
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    initialize();
 }
 
 NTSCFG_INLINE
-void TcpHeader::setSource(const ntsa::EthernetAddress& value)
+void TcpHeader::setSourcePort(ntsa::Port value)
 {
-    d_source = value;
+    d_sourcePort = static_cast<bsl::uint16_t>(value);
 }
 
 NTSCFG_INLINE
-void TcpHeader::setDestination(const ntsa::EthernetAddress& value)
+void TcpHeader::setDestinationPort(ntsa::Port value)
 {
-    d_destination = value;
+    d_destinationPort = static_cast<bsl::uint16_t>(value);
 }
 
 NTSCFG_INLINE
-void TcpHeader::setProtocol(ntsa::EthernetProtocol::Value value)
+void TcpHeader::setSequenceNumber(bsl::uint32_t value)
 {
-    d_protocol = value;
+    d_sequenceNumber = static_cast<bsl::uint32_t>(value);
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetAddress& TcpHeader::source() const
+void TcpHeader::setAcknowledgmentNumber(bsl::uint32_t value)
 {
-    return d_source;
+    d_acknowledgmentNumber = static_cast<bsl::uint32_t>(value);
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetAddress& TcpHeader::destination() const
+void TcpHeader::setHeaderLength(bsl::size_t value)
 {
-    return d_destination;
+    BSLS_ASSERT(value >= static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
+    BSLS_ASSERT(value <= static_cast<bsl::size_t>(k_MAX_HEADER_LENGTH));
+    BSLS_ASSERT(value % sizeof(bsl::uint32_t) == 0);
+
+    d_headerLength = static_cast<bsl::uint8_t>(value / sizeof(bsl::uint32_t));
 }
 
 NTSCFG_INLINE
-ntsa::EthernetProtocol::Value TcpHeader::protocol() const
+void TcpHeader::setFlags(bsl::uint8_t value)
 {
-    return d_protocol;
+    d_flags = value;
+}
+
+NTSCFG_INLINE
+void TcpHeader::setWindowSize(bsl::uint16_t value)
+{
+    d_windowSize = static_cast<bsl::uint16_t>(value);
+}
+
+NTSCFG_INLINE
+void TcpHeader::setChecksum(bsl::uint16_t value)
+{
+    d_checksum = static_cast<bsl::uint16_t>(value);
+}
+
+NTSCFG_INLINE
+void TcpHeader::setUrgentPointer(bsl::uint16_t value)
+{
+    d_urgentPointer = static_cast<bsl::uint16_t>(value);
+}
+
+NTSCFG_INLINE
+ntsa::Port TcpHeader::sourcePort() const
+{
+    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_sourcePort));
+}
+
+NTSCFG_INLINE
+ntsa::Port TcpHeader::destinationPort() const
+{
+    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_destinationPort));
+}
+
+NTSCFG_INLINE
+bsl::uint32_t TcpHeader::sequenceNumber() const
+{
+    return static_cast<bsl::uint32_t>(d_sequenceNumber);
+}
+
+NTSCFG_INLINE
+bsl::uint32_t TcpHeader::acknowledgmentNumber() const
+{
+    return static_cast<bsl::uint32_t>(d_acknowledgmentNumber);
+}
+
+NTSCFG_INLINE
+bsl::size_t TcpHeader::headerLength() const
+{
+    return static_cast<bsl::size_t>(d_headerLength) * sizeof(bsl::uint32_t);
+}
+
+NTSCFG_INLINE
+bsl::uint8_t TcpHeader::flags() const
+{
+    return d_flags;
+}
+
+NTSCFG_INLINE
+bsl::uint16_t TcpHeader::windowSize() const
+{
+    return static_cast<bsl::uint32_t>(d_windowSize);
+}
+
+NTSCFG_INLINE
+bsl::uint16_t TcpHeader::checksum() const
+{
+    return static_cast<bsl::uint32_t>(d_checksum);
+}
+
+NTSCFG_INLINE
+bsl::uint16_t TcpHeader::urgentPointer() const
+{
+    return static_cast<bsl::uint32_t>(d_urgentPointer);
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void TcpHeader::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    hashAppend(algorithm, d_source);
-    hashAppend(algorithm, d_destination);
-    hashAppend(algorithm, d_protocol);
+    algorithm(reinterpret_cast<const char*>(this), sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -296,7 +492,7 @@ bool operator<(const TcpHeader& lhs, const TcpHeader& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&       algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
                               const TcpHeader& value)
 {
     value.hash(algorithm);

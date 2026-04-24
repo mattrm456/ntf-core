@@ -25,6 +25,25 @@ BSLS_IDENT_RCSID(ntsa_udpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error UdpHeader::decode(const bdlbb::BlobBuffer& source)
+{
+    if (source.size() < static_cast<int>(k_LENGTH)) {
+        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    bsl::memcpy(reinterpret_cast<void*>(this), 
+                source.data(), 
+                static_cast<bsl::size_t>(k_LENGTH));
+
+    return ntsa::Error();
+}
+
+ntsa::Error UdpHeader::encode(bdlbb::BlobBuffer* destination) const
+{
+    NTSCFG_WARNING_UNUSED(destination);
+    return ntsa::Error();
+}
+
 bool UdpHeader::equals(const UdpHeader& other) const
 {
     return bsl::memcmp(reinterpret_cast<const void*>(this),

@@ -25,6 +25,50 @@ BSLS_IDENT_RCSID(ntsa_ipv4header_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& source)
+{
+    ntsa::Error error;
+
+    reset();
+
+    if (source.size() == 0) {
+        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    const bsl::uint8_t control = static_cast<bsl::uint8_t>(source.data()[0]);
+
+    const bsl::uint8_t version = (control & 0xF0) >> 4;
+    const bsl::uint8_t length  = (control & 0x0F) * sizeof(bsl::uint32_t);
+
+    if (version != 4) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (length < k_MIN_HEADER_LENGTH) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (length > k_MAX_HEADER_LENGTH) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    bsl::memcpy(reinterpret_cast<void*>(this), 
+                source.data(), 
+                static_cast<bsl::size_t>(length));
+
+    return ntsa::Error();
+}
+
+ntsa::Error Ipv4Header::encode(bdlbb::BlobBuffer* destination) const
+{
+    NTSCFG_WARNING_UNUSED(destination);
+
+    ntsa::Error error;
+
+
+    return ntsa::Error();
+}
+
 bool Ipv4Header::equals(const Ipv4Header& other) const
 {
     return bsl::memcmp(reinterpret_cast<const void*>(this),

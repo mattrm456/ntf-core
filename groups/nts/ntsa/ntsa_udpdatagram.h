@@ -19,6 +19,7 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_error.h>
 #include <ntsa_udpheader.h>
 #include <ntsa_udppayload.h>
 #include <ntscfg_platform.h>
@@ -80,6 +81,12 @@ class UdpDatagram
 
     /// Return a reference to the modifiable payload.
     ntsa::UdpPayload& payload();
+
+    /// Decode the packet from the specified 'source'. Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+
+    /// Encode the packet to the specified 'destination'. Return the error. 
+    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::UdpHeader& header() const;

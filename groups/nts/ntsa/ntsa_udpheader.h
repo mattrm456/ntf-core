@@ -19,10 +19,12 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_error.h>
 #include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
+#include <bdlbb_blob.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
 #include <bsl_iosfwd.h>
@@ -52,6 +54,12 @@ class UdpHeader
     bdlb::BigEndianUint16 d_checksum;
 
   public:
+    /// Enumerate the constants used by the implementation.
+    enum Constant {
+        /// The fixed UDP header length.
+        k_LENGTH = 8
+    };
+
     /// Create a new UDP header having a default value.
     UdpHeader();
 
@@ -93,6 +101,12 @@ class UdpHeader
 
     /// Set the checksum to the specified 'value'. 
     void setChecksum(bsl::uint16_t value);
+
+    /// Decode the packet from the specified 'source'. Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+
+    /// Encode the packet to the specified 'destination'. Return the error. 
+    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
 
     /// Return the source port.
     ntsa::Port sourcePort() const;
@@ -184,6 +198,8 @@ void hashAppend(HASH_ALGORITHM& algorithm, const UdpHeader& value);
 NTSCFG_INLINE
 UdpHeader::UdpHeader()
 {
+    BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
+
     bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
 }
 
@@ -231,6 +247,7 @@ UdpHeader& UdpHeader::operator=(const UdpHeader& other)
     bsl::memcpy(reinterpret_cast<void*>(this),
                 reinterpret_cast<const void*>(&other),
                 sizeof *this);
+                
     return *this;
 }
 

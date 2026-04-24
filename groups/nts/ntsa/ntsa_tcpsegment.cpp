@@ -25,6 +25,30 @@ BSLS_IDENT_RCSID(ntsa_tcpsegment_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error TcpSegment::decode(const bdlbb::BlobBuffer& source)
+{
+    ntsa::Error error;
+
+    error = d_header.decode(source);
+    if (error) {
+        return error;
+    }
+
+    d_payload.reset(
+        bsl::shared_ptr<char>(
+            source.buffer(), source.data() + ntsa::UdpHeader::k_LENGTH),
+        static_cast<int>(source.size() - ntsa::UdpHeader::k_LENGTH));
+
+    return ntsa::Error();
+}
+
+ntsa::Error TcpSegment::encode(bdlbb::BlobBuffer* destination) const
+{
+    NTSCFG_WARNING_UNUSED(destination);
+
+    return ntsa::Error();
+}
+
 bool TcpSegment::equals(const TcpSegment& other) const
 {
     if (d_header != other.d_header) {

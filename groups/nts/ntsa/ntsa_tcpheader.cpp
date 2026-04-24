@@ -25,43 +25,49 @@ BSLS_IDENT_RCSID(ntsa_tcpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error TcpHeader::decode(const bdlbb::BlobBuffer& source)
+{
+    NTSCFG_WARNING_UNUSED(source);
+    return ntsa::Error();
+}
+
+ntsa::Error TcpHeader::encode(bdlbb::BlobBuffer* destination) const
+{
+    NTSCFG_WARNING_UNUSED(destination);
+    return ntsa::Error();
+}
+
 bool TcpHeader::equals(const TcpHeader& other) const
 {
-    return d_source == other.d_source &&
-           d_destination == other.d_destination &&
-           d_protocol == other.d_protocol;
+    return bsl::memcmp(reinterpret_cast<const void*>(this),
+                       reinterpret_cast<const void*>(&other),
+                       sizeof *this) == 0;
 }
 
 bool TcpHeader::less(const TcpHeader& other) const
 {
-    if (d_source < other.d_source) {
-        return true;
-    }
-
-    if (other.d_source < d_source) {
-        return false;
-    }
-
-    if (d_destination < other.d_destination) {
-        return true;
-    }
-
-    if (other.d_destination < d_destination) {
-        return false;
-    }
-
-    return d_protocol < other.d_protocol;
+    return bsl::memcmp(reinterpret_cast<const void*>(this),
+                       reinterpret_cast<const void*>(&other),
+                       sizeof *this) < 0;
 }
 
 bsl::ostream& TcpHeader::print(bsl::ostream& stream,
-                                    int           level,
-                                    int           spacesPerLevel) const
+                               int           level,
+                               int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("source", d_source);
-    printer.printAttribute("destination", d_destination);
-    printer.printAttribute("protocol", d_protocol);
+
+    printer.printAttribute("sourcePort", this->sourcePort());
+    printer.printAttribute("destinationPort", this->destinationPort());
+    printer.printAttribute("sequenceNumber", this->sequenceNumber());
+    printer.printAttribute("acknowledgmentNumber",
+                           this->acknowledgmentNumber());
+    printer.printAttribute("headerLength", this->headerLength());
+    printer.printAttribute("flags", static_cast<bsl::size_t>(this->flags()));
+    printer.printAttribute("windowSize", this->windowSize());
+    printer.printAttribute("urgentPointer", this->urgentPointer());
+
     printer.end();
 
     return stream;

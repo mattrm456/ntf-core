@@ -1150,7 +1150,7 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
     else if (type == ntsa::Transport::e_RAW_IPV4_PACKET) {
         domain = AF_INET;
         mode = SOCK_RAW;
-        protocol = IPPROTO_RAW;
+        protocol = IPPROTO_UDP; // IPPROTO_RAW;
     }
     else if (type == ntsa::Transport::e_RAW_IPV6_PACKET) {
         domain = AF_INET6;

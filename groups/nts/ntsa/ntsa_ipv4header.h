@@ -19,10 +19,12 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_error.h>
 #include <ntsa_ipv4address.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
+#include <bdlbb_blob.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
 #include <bsls_platform.h>
@@ -209,8 +211,8 @@ class Ipv4Header
     /// construction.
     void reset();
 
-    /// Set the length of the header including all options to the specified
-    /// 'value'. The behavior is undefined if 'value' is less than
+    /// Set the length of the header including all options, in bytes, to the
+    /// specified 'value'. The behavior is undefined if 'value' is less than
     /// k_MIN_HEADER_LENGTH. The behavior is undefined if 'value' is greater
     /// than k_MAX_HEADER_LENGTH. The behavior is undefined if 'value' is not a
     /// multiple of 4.
@@ -238,27 +240,30 @@ class Ipv4Header
     /// 'value'.
     void setDifferentiatedServicesCodePoint(bsl::uint8_t value);
 
-    /// Set the Explicit Congestion Notification (ECN) to
-    /// the specified 'value'.
+    /// Set the Explicit Congestion Notification (ECN) to the specified
+    /// 'value'.
     void setExplicitCongestionNotification(bsl::uint8_t value);
 
-    /// Set the time-to-live of the specified 'header' to the specified
-    /// 'value'.
+    /// Set the time-to-live to the specified 'value'.
     void setTimeToLive(bsl::uint8_t value);
 
-    /// Set the protocol of the specified 'header' to the specified 'value'.
+    /// Set the protocol to the specified 'value'.
     void setProtocol(bsl::uint8_t value);
 
-    /// Set the checksum of the specified 'header' to the specified 'value'.
+    /// Set the checksum to the specified 'value'.
     void setChecksum(bsl::uint16_t value);
 
-    /// Set the source address of the specified 'header' to the specified
-    /// 'value'.
+    /// Set the source address to the specified 'value'.
     void setSourceAddress(const ntsa::Ipv4Address& value);
 
-    /// Set the destination address of the specified 'header' to the specified
-    /// 'value'.
+    /// Set the destination address to the specified 'value'.
     void setDestinationAddress(const ntsa::Ipv4Address& value);
+
+    /// Decode the packet from the specified 'source'. Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+
+    /// Encode the packet to the specified 'destination'. Return the error. 
+    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
 
     /// Return the length of the header including all options.
     bsl::size_t headerLength() const;
@@ -387,6 +392,8 @@ void Ipv4Header::initialize()
 NTSCFG_INLINE
 Ipv4Header::Ipv4Header()
 {
+    BSLMF_ASSERT(sizeof(*this) == k_MAX_HEADER_LENGTH);
+    
     bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
     initialize();
 }
