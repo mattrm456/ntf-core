@@ -88,6 +88,54 @@ ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* destination) const
 
     ntsa::Error error;
 
+    error = d_header.encode(destination, 0);
+    if (error) {
+        return error;
+    }
+
+    if (d_payload.isTcp()) {
+        if (d_header.protocol() !=
+            static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        // TODO
+    }
+    else if (d_payload.isUdp()) {
+        if (d_header.protocol() !=
+            static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_UDP))
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::UdpPacket& udp = d_payload.udp();
+
+        error = udp.encode(destination,
+                           d_header.headerLength(),
+                           d_header.sourceAddress(),
+                           d_header.destinationAddress());
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isRaw()) {
+        if (d_payload.raw().size() > 0) {
+            if (d_header.headerLength() + d_payload.raw().size() >
+                static_cast<bsl::size_t>(destination->size()))
+            {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bsl::memcpy(destination->data() + d_header.headerLength(),
+                        d_payload.raw().data(),
+                        static_cast<bsl::size_t>(d_payload.raw().size()));
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     return ntsa::Error();
 }
 

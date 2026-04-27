@@ -19,11 +19,47 @@
 BSLS_IDENT_RCSID(ntsa_ipv4header_cpp, "$Id$ $CSID$")
 
 #include <bslim_printer.h>
+#include <bsls_byteorder.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
 
 namespace BloombergLP {
 namespace ntsa {
+
+bsl::uint16_t Ipv4Header::calculateChecksum(bsl::uint32_t initializer,
+                                            const void*   data,
+                                            bsl::size_t   size)
+{
+    BSLS_ASSERT(reinterpret_cast<bsl::uintptr_t>(data) % 2 == 0);
+
+    bsl::uint32_t accumulator = initializer;
+
+    const bsl::uint8_t* p = reinterpret_cast<const bsl::uint8_t*>(data);
+    bsl::size_t         n = size;
+
+    while (n > 1) {
+        accumulator += BSLS_BYTEORDER_BE_U16_TO_HOST(
+            *reinterpret_cast<const bsl::uint16_t*>(p));
+
+        p += sizeof(bsl::uint16_t);
+        n -= sizeof(bsl::uint16_t);
+    }
+
+    if (n > 0) {
+        accumulator += *p << 8;
+    }
+
+    while (accumulator >> 16) {
+        accumulator = (accumulator & 0xFFFF) + (accumulator >> 16);
+    }
+
+    return static_cast<bsl::uint16_t>(~accumulator);
+}
+
+bool Ipv4Header::verifyChecksum(bsl::uint16_t checksum)
+{
+    return checksum == 0 || checksum == 0xFFFF;
+}
 
 ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& source)
 {
@@ -52,19 +88,39 @@ ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& source)
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    bsl::memcpy(reinterpret_cast<void*>(this), 
-                source.data(), 
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                source.data(),
                 static_cast<bsl::size_t>(length));
 
     return ntsa::Error();
 }
 
-ntsa::Error Ipv4Header::encode(bdlbb::BlobBuffer* destination) const
+ntsa::Error Ipv4Header::encode(bdlbb::BlobBuffer* destination,
+                               bsl::size_t        offset) const
 {
-    NTSCFG_WARNING_UNUSED(destination);
-
     ntsa::Error error;
 
+    Ipv4Header header = *this;
+
+    const bsl::size_t headerLength = header.headerLength();
+
+    if (offset + headerLength > static_cast<bsl::size_t>(destination->size()))
+    {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    header.setChecksum(0);
+
+    const bsl::uint16_t checksum =
+        Ipv4Header::calculateChecksum(0,
+                                      reinterpret_cast<const void*>(&header),
+                                      header.headerLength());
+
+    header.setChecksum(checksum);
+
+    bsl::memcpy(destination->data() + offset,
+                reinterpret_cast<const void*>(&header),
+                headerLength);
 
     return ntsa::Error();
 }

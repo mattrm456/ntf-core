@@ -139,6 +139,16 @@ class Ipv4Header
     /// Initialize the header to its default values.
     void initialize();
 
+    /// Calculate the checksum for the specified 'data' having the specified
+    /// 'size', in bytes, using the specified 'initializer' for the acumulator.
+    /// The behavior is undefined unless 'data' is 2-byte aligned.
+    static bsl::uint16_t calculateChecksum(bsl::uint32_t initializer,
+                                           const void*   data,
+                                           bsl::size_t   size);
+
+    /// Verify the specified 'checksum' is valid.
+    static bool verifyChecksum(bsl::uint16_t checksum);
+
   public:
     /// Enumerate the constants used by the implementation.
     enum Constants {
@@ -268,8 +278,9 @@ class Ipv4Header
     /// Decode the packet from the specified 'source'. Return the error.
     ntsa::Error decode(const bdlbb::BlobBuffer& source);
 
-    /// Encode the packet to the specified 'destination'. Return the error. 
-    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+    /// Encode the packet to the specified 'destination' starting at the
+    /// specified 'offset' in the 'destination'. Return the error.
+    ntsa::Error encode(bdlbb::BlobBuffer* destination, bsl::size_t offset) const;
 
     /// Return the length of the header including all options, in bytes.
     bsl::size_t headerLength() const;
@@ -399,7 +410,7 @@ NTSCFG_INLINE
 Ipv4Header::Ipv4Header()
 {
     BSLMF_ASSERT(sizeof(*this) == k_MAX_HEADER_LENGTH);
-    
+
     bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
     initialize();
 }
@@ -486,12 +497,10 @@ void Ipv4Header::setId(bsl::uint16_t value)
 NTSCFG_INLINE
 void Ipv4Header::setPreserve(bool value)
 {
-    if (value)
-    {
+    if (value) {
         d_fragmentFlags |= (1 << 1);
     }
-    else
-    {
+    else {
         d_fragmentFlags &= ~(1 << 1);
     }
 }
@@ -499,12 +508,10 @@ void Ipv4Header::setPreserve(bool value)
 NTSCFG_INLINE
 void Ipv4Header::setMore(bool value)
 {
-    if (value)
-    {
+    if (value) {
         d_fragmentFlags |= (1 << 2);
     }
-    else
-    {
+    else {
         d_fragmentFlags &= ~(1 << 2);
     }
 }

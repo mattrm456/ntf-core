@@ -19,10 +19,11 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_ethernetaddress.h>
-#include <ntsa_ethernetprotocol.h>
+#include <ntsa_error.h>
+#include <ntsa_ipv6address.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlb_bigendian.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
 #include <bsl_iosfwd.h>
@@ -39,13 +40,58 @@ namespace ntsa {
 /// @ingroup module_ntsa_identity
 class Ipv6Header
 {
-    ntsa::EthernetAddress         d_source;
-    ntsa::EthernetAddress         d_destination;
-    ntsa::EthernetProtocol::Value d_protocol;
+#if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
+
+    // The priority.
+    bsl::uint8_t d_priority : 4;
+
+    // The version. The Internet Protocol version 4 always sets this to 6.
+    bsl::uint8_t d_version : 4;
+
+#else
+
+    // The version. The Internet Protocol version 4 always sets this to 6.
+    bsl::uint8_t d_version : 4;
+
+    // The priority.
+    bsl::uint8_t d_priority : 4;
+
+#endif
+
+    // The flow label.
+    bsl::uint8_t d_flowLabel[3];
+
+    // The payload length.
+    bdlb::BigEndianUint16 d_payloadLength;
+
+    // The next header.
+    bsl::uint8_t d_nextHeader;
+
+    // The hop limit.
+    bsl::uint8_t d_hopLimit;
+
+    /// The source address.
+    ntsa::Ipv6Address d_sourceAddress;
+
+    /// The destination address.
+    ntsa::Ipv6Address d_destinationAddress;
+
+  private:
+    /// Initialize the header to its default values.
+    void initialize();
 
   public:
     /// Enumerate the constants used by this implementation.
     enum Constants {
+        /// The minimum header length, in bytes.
+        k_MIN_HEADER_LENGTH = 40,
+
+        /// The maximum header length including all options, in bytes.
+        k_MAX_HEADER_LENGTH = 1500,
+
+        /// The default version.
+        k_DEFAULT_VERSION = 4,
+
         /// The protocol number indicating the IPv4 packet carries TCP.
         k_PROTOCOL_TCP = 6,
 
@@ -83,22 +129,16 @@ class Ipv6Header
     void reset();
 
     /// Set the source address to the specified 'value'.
-    void setSource(const ntsa::EthernetAddress& value);
+    void setSourceAddress(const ntsa::Ipv6Address& value);
 
     /// Set the destination address to the specified 'value'.
-    void setDestination(const ntsa::EthernetAddress& value);
-
-    /// Set the protocol to the specified 'value'.
-    void setProtocol(ntsa::EthernetProtocol::Value value);
+    void setDestinationAddress(const ntsa::Ipv6Address& value);
 
     /// Return the source address.
-    const ntsa::EthernetAddress& source() const;
+    const ntsa::Ipv6Address& sourceAddress() const;
 
     /// Return the destination address.
-    const ntsa::EthernetAddress& destination() const;
-
-    /// Return the protocol.
-    ntsa::EthernetProtocol::Value protocol() const;
+    const ntsa::Ipv6Address& destinationAddress() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -176,28 +216,35 @@ template <typename HASH_ALGORITHM>
 void hashAppend(HASH_ALGORITHM& algorithm, const Ipv6Header& value);
 
 NTSCFG_INLINE
-Ipv6Header::Ipv6Header()
-: d_source()
-, d_destination()
-, d_protocol(ntsa::EthernetProtocol::e_UNDEFINED)
+void Ipv6Header::initialize()
 {
+    d_version = static_cast<bsl::uint8_t>(k_DEFAULT_VERSION);
 }
 
 NTSCFG_INLINE
-Ipv6Header::Ipv6Header(bslmf::MovableRef<Ipv6Header> original)
-    NTSCFG_NOEXCEPT : d_source(NTSCFG_MOVE_FROM(original, d_source)),
-                      d_destination(NTSCFG_MOVE_FROM(original, d_destination)),
-                      d_protocol(NTSCFG_MOVE_FROM(original, d_protocol))
+Ipv6Header::Ipv6Header()
 {
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    initialize();
+}
+
+NTSCFG_INLINE
+Ipv6Header::Ipv6Header(bslmf::MovableRef<Ipv6Header> original) NTSCFG_NOEXCEPT
+{
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
+                    bslmf::MovableRefUtil::access(original))),
+                sizeof *this);
+
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
 Ipv6Header::Ipv6Header(const Ipv6Header& original)
-: d_source(original.d_source)
-, d_destination(original.d_destination)
-, d_protocol(original.d_protocol)
 {
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&original),
+                sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -209,9 +256,10 @@ NTSCFG_INLINE
 Ipv6Header& Ipv6Header::operator=(
     bslmf::MovableRef<Ipv6Header> other) NTSCFG_NOEXCEPT
 {
-    d_source      = NTSCFG_MOVE_FROM(other, d_source);
-    d_destination = NTSCFG_MOVE_FROM(other, d_destination);
-    d_protocol    = NTSCFG_MOVE_FROM(other, d_protocol);
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(
+                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
+                sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -221,63 +269,48 @@ Ipv6Header& Ipv6Header::operator=(
 NTSCFG_INLINE
 Ipv6Header& Ipv6Header::operator=(const Ipv6Header& other)
 {
-    d_source      = other.d_source;
-    d_destination = other.d_destination;
-    d_protocol    = other.d_protocol;
+    bsl::memcpy(reinterpret_cast<void*>(this),
+                reinterpret_cast<const void*>(&other),
+                sizeof *this);
     return *this;
 }
 
 NTSCFG_INLINE
 void Ipv6Header::reset()
 {
-    d_source.reset();
-    d_destination.reset();
-    d_protocol = ntsa::EthernetProtocol::e_UNDEFINED;
+    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    initialize();
 }
 
 NTSCFG_INLINE
-void Ipv6Header::setSource(const ntsa::EthernetAddress& value)
+void Ipv6Header::setSourceAddress(const ntsa::Ipv6Address& value)
 {
-    d_source = value;
+    d_sourceAddress = value;
 }
 
 NTSCFG_INLINE
-void Ipv6Header::setDestination(const ntsa::EthernetAddress& value)
+void Ipv6Header::setDestinationAddress(const ntsa::Ipv6Address& value)
 {
-    d_destination = value;
+    d_destinationAddress = value;
 }
 
 NTSCFG_INLINE
-void Ipv6Header::setProtocol(ntsa::EthernetProtocol::Value value)
+const ntsa::Ipv6Address& Ipv6Header::sourceAddress() const
 {
-    d_protocol = value;
+    return d_sourceAddress;
 }
 
 NTSCFG_INLINE
-const ntsa::EthernetAddress& Ipv6Header::source() const
+const ntsa::Ipv6Address& Ipv6Header::destinationAddress() const
 {
-    return d_source;
-}
-
-NTSCFG_INLINE
-const ntsa::EthernetAddress& Ipv6Header::destination() const
-{
-    return d_destination;
-}
-
-NTSCFG_INLINE
-ntsa::EthernetProtocol::Value Ipv6Header::protocol() const
-{
-    return d_protocol;
+    return d_destinationAddress;
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void Ipv6Header::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    hashAppend(algorithm, d_source);
-    hashAppend(algorithm, d_destination);
-    hashAppend(algorithm, d_protocol);
+    algorithm(reinterpret_cast<const char*>(this), sizeof *this);
 }
 
 NTSCFG_INLINE

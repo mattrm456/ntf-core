@@ -20,6 +20,8 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
+#include <ntsa_ipv4address.h>
+#include <ntsa_ipv6address.h>
 #include <ntsa_udpheader.h>
 #include <ntsa_udppayload.h>
 #include <ntscfg_platform.h>
@@ -88,8 +90,23 @@ class UdpPacket
                        bsl::size_t              offset,
                        bsl::size_t              packetSize);
 
-    /// Encode the packet to the specified 'destination'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+    /// Encode the packet to the specified 'buffer' starting at the specified
+    /// 'offset'. Calculate the checksum in terms of the specified
+    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
+    /// error.
+    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
+                       bsl::size_t              offset,
+                       const ntsa::Ipv4Address& sourceAddress,
+                       const ntsa::Ipv4Address& destinationAddress) const;
+
+    /// Encode the packet to the specified 'buffer' starting at the specified
+    /// 'offset'. Calculate the checksum in terms of the specified
+    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
+    /// error.
+    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
+                       bsl::size_t              offset,
+                       const ntsa::Ipv6Address& sourceAddress,
+                       const ntsa::Ipv6Address& destinationAddress) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::UdpHeader& header() const;

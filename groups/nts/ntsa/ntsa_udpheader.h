@@ -20,6 +20,8 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
+#include <ntsa_ipv4address.h>
+#include <ntsa_ipv6address.h>
 #include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
@@ -32,6 +34,40 @@ BSLS_IDENT("$Id: $")
 
 namespace BloombergLP {
 namespace ntsa {
+
+/// Provide a User Datagram Protocol (UDP) checksum.
+class UdpChecksum
+{
+    /// The accumulated value.
+    bsl::uint32_t d_accumulator;
+
+  public:
+    /// Create a new UDP checksum.
+    UdpChecksum();
+
+    /// Create a new UDP checksum having the same value as the specified
+    /// 'original' object.
+    UdpChecksum(const UdpChecksum& original);
+
+    /// Destroy this object.
+    ~UdpChecksum();
+
+    /// Assign the value of the specified 'other' object to this object. Return
+    /// a reference to this modifiable object.
+    UdpChecksum& operator=(const UdpChecksum& other);
+
+    /// Reset the object to its value upon default construction.
+    void reset();
+
+    /// Add the specified 'data' having the specified 'size' to the checksum.
+    void add(const void* data, bsl::size_t size);
+
+    /// Return the accumulator.
+    bsl::uint32_t accumulator() const;
+
+    /// Return the checksum value.
+    bsl::uint16_t value() const;
+};
 
 /// Provide a User Datagram Protocol (UDP) header.
 ///
@@ -53,11 +89,22 @@ class UdpHeader
     /// The checksum.
     bdlb::BigEndianUint16 d_checksum;
 
+  private:
+    /// Calculate the checksum for the specified 'data' having the specified
+    /// 'size', in bytes, using the specified 'initializer' for the acumulator.
+    /// The behavior is undefined unless 'data' is 2-byte aligned.
+    static bsl::uint16_t calculateChecksum(bsl::uint32_t initializer,
+                                           const void*   data,
+                                           bsl::size_t   size);
+
   public:
     /// Enumerate the constants used by the implementation.
     enum Constant {
         /// The fixed UDP header length.
-        k_LENGTH = 8
+        k_LENGTH = 8,
+
+        /// The protocol number indicating the IPv4 packet carries UDP.
+        k_PROTOCOL_UDP = 17
     };
 
     /// Create a new UDP header having a default value.
@@ -78,8 +125,7 @@ class UdpHeader
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    UdpHeader& operator=(bslmf::MovableRef<UdpHeader> other)
-        NTSCFG_NOEXCEPT;
+    UdpHeader& operator=(bslmf::MovableRef<UdpHeader> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -99,18 +145,20 @@ class UdpHeader
     /// specified 'value'.
     void setPacketLength(bsl::size_t value);
 
-    /// Set the checksum to the specified 'value'. 
+    /// Set the checksum to the specified 'value'.
     void setChecksum(bsl::uint16_t value);
 
-    /// Decode the packet from the specified 'data' having the specified 
+    /// Decode the header from the specified 'source' having the specified
     /// 'size'. Return the error.
-    ntsa::Error decode(const void* data, const bsl::size_t size);    
+    ntsa::Error decode(const void* source, const bsl::size_t size);
 
-    /// Decode the packet from the specified 'source'. Return the error.
+    /// Decode the header from the specified 'source'. Return the error.
     ntsa::Error decode(const bdlbb::BlobBuffer& source);
 
-    /// Encode the packet to the specified 'destination'. Return the error. 
-    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+    /// Encode the header to the specified 'buffer' starting at the specified
+    /// 'offset'. Return the
+    /// error.
+    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
 
     /// Return the source port.
     ntsa::Port sourcePort() const;
@@ -124,7 +172,7 @@ class UdpHeader
     /// Return the length of the packet, in bytes, including the header.
     bsl::size_t packetLength() const;
 
-    /// Return the checksum. 
+    /// Return the checksum.
     bsl::uint16_t checksum() const;
 
     /// Return true if this object has the same value as the specified
@@ -235,8 +283,8 @@ UdpHeader::~UdpHeader()
 }
 
 NTSCFG_INLINE
-UdpHeader& UdpHeader::operator=(
-    bslmf::MovableRef<UdpHeader> other) NTSCFG_NOEXCEPT
+UdpHeader& UdpHeader::operator=(bslmf::MovableRef<UdpHeader> other)
+    NTSCFG_NOEXCEPT
 {
     bsl::memcpy(reinterpret_cast<void*>(this),
                 reinterpret_cast<const void*>(
@@ -254,7 +302,7 @@ UdpHeader& UdpHeader::operator=(const UdpHeader& other)
     bsl::memcpy(reinterpret_cast<void*>(this),
                 reinterpret_cast<const void*>(&other),
                 sizeof *this);
-                
+
     return *this;
 }
 
@@ -300,7 +348,6 @@ ntsa::Port UdpHeader::destinationPort() const
     return static_cast<ntsa::Port>(
         static_cast<bsl::uint16_t>(d_destinationPort));
 }
-
 
 NTSCFG_INLINE
 bsl::size_t UdpHeader::headerLength() const
@@ -352,7 +399,7 @@ bool operator<(const UdpHeader& lhs, const UdpHeader& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&       algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
                               const UdpHeader& value)
 {
     value.hash(algorithm);

@@ -25,12 +25,95 @@ BSLS_IDENT_RCSID(ntsa_udpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+UdpChecksum::UdpChecksum()
+: d_accumulator(0)
+{
+}
+
+UdpChecksum::UdpChecksum(const UdpChecksum& original)
+: d_accumulator(original.d_accumulator)
+{
+}
+
+UdpChecksum::~UdpChecksum()
+{
+}
+
+UdpChecksum& UdpChecksum::operator=(const UdpChecksum& other)
+{
+    if (this != &other) {
+        d_accumulator = other.d_accumulator;
+    }
+
+    return *this;
+}
+
+void UdpChecksum::reset()
+{
+    d_accumulator = 0;
+}
+
+void UdpChecksum::add(const void* data, bsl::size_t size)
+{
+    BSLS_ASSERT(reinterpret_cast<bsl::uintptr_t>(data) % 2 == 0);
+
+    const bsl::uint8_t* p = reinterpret_cast<const bsl::uint8_t*>(data);
+    bsl::size_t         n = size;
+
+    while (n > 1) {
+        d_accumulator += BSLS_BYTEORDER_BE_U16_TO_HOST(
+            *reinterpret_cast<const bsl::uint16_t*>(p));
+
+        p += sizeof(bsl::uint16_t);
+        n -= sizeof(bsl::uint16_t);
+    }
+
+    if (n > 0) {
+        d_accumulator += *p << 8;
+    }
+
+#if 0
+    const bsl::uint8_t* p =
+        reinterpret_cast<const bsl::uint8_t*>(data);
+
+    bsl::size_t n = size;
+
+    while (n != 0) {
+        d_accumulator += *p;
+        ++p;
+        --n;
+    }
+#endif
+}
+
+bsl::uint32_t UdpChecksum::accumulator() const
+{
+    return d_accumulator;
+}
+
+bsl::uint16_t UdpChecksum::value() const
+{
+    bsl::uint32_t accumulator = d_accumulator;
+
+    while (accumulator >> 16) {
+        accumulator = (accumulator & 0xFFFF) + (accumulator >> 16);
+    }
+
+    const bsl::uint16_t result = static_cast<bsl::uint16_t>(~accumulator);
+
+    if (result == 0) {
+        return 0xFFFF;
+    }
+
+    return result;
+}
+
 ntsa::Error UdpHeader::decode(const void* data, const bsl::size_t size)
 {
     reset();
 
     if (size < static_cast<bsl::size_t>(k_LENGTH)) {
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     bsl::memcpy(reinterpret_cast<void*>(this),
@@ -43,9 +126,9 @@ ntsa::Error UdpHeader::decode(const void* data, const bsl::size_t size)
 ntsa::Error UdpHeader::decode(const bdlbb::BlobBuffer& source)
 {
     reset();
-    
+
     if (source.size() < static_cast<int>(k_LENGTH)) {
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     bsl::memcpy(reinterpret_cast<void*>(this),
@@ -55,9 +138,34 @@ ntsa::Error UdpHeader::decode(const bdlbb::BlobBuffer& source)
     return ntsa::Error();
 }
 
-ntsa::Error UdpHeader::encode(bdlbb::BlobBuffer* destination) const
+ntsa::Error UdpHeader::encode(bdlbb::BlobBuffer* buffer,
+                              bsl::size_t        offset) const
 {
-    NTSCFG_WARNING_UNUSED(destination);
+    ntsa::Error error;
+
+    if (buffer->data() == 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    char* bufferData = buffer->data();
+
+    if (buffer->size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t bufferCapacity =
+        static_cast<bsl::size_t>(buffer->size());
+
+    const bsl::size_t headerLength = this->headerLength();
+
+    if (offset + headerLength > bufferCapacity) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    bsl::memcpy(reinterpret_cast<void*>(bufferData + offset),
+                reinterpret_cast<const void*>(this),
+                sizeof *this);
+
     return ntsa::Error();
 }
 
