@@ -53,8 +53,60 @@ void UdpChecksum::reset()
     d_accumulator = 0;
 }
 
+#if 0
+static u_int16_t
+in_cksum_phdr(u_int32_t src, u_int32_t dst, u_int32_t lenproto)
+{
+	u_int32_t sum;
+
+	sum = lenproto +
+	      (u_int16_t)(src >> 16) +
+	      (u_int16_t)(src /*& 0xffff*/) +
+	      (u_int16_t)(dst >> 16) +
+	      (u_int16_t)(dst /*& 0xffff*/);
+
+	sum = (u_int16_t)(sum >> 16) + (u_int16_t)(sum /*& 0xffff*/);
+
+	if (sum > 0xffff)
+		sum -= 0xffff;
+
+	return (sum);
+}
+#endif
+
+void UdpChecksum::add(const ntsa::Ipv4Address& sourceAddress,
+                      const ntsa::Ipv4Address& destinationAddress,
+                      bsl::size_t              length)
+{
+    const bsl::uint32_t src = BSLS_BYTEORDER_BE_U32_TO_HOST(sourceAddress.value());
+    const bsl::uint32_t dst = BSLS_BYTEORDER_BE_U32_TO_HOST(destinationAddress.value());
+
+    //d_accumulator += sourceAddress.value();
+    //d_accumulator += destinationAddress.value();
+    d_accumulator += static_cast<bsl::uint16_t>(src >> 16);
+	d_accumulator += static_cast<bsl::uint16_t>(src /*& 0xffff*/);
+	d_accumulator += static_cast<bsl::uint16_t>(dst >> 16);
+	d_accumulator += static_cast<bsl::uint16_t>(dst /*& 0xffff*/);
+    d_accumulator += BSLS_BYTEORDER_HTONS(UdpHeader::k_PROTOCOL_UDP);
+    d_accumulator += BSLS_BYTEORDER_HTONS(length);
+
+    #if 0
+    const bsl::uint32_t src = BSLS_BYTEORDER_BE_U32_TO_HOST(sourceAddress.value());
+    const bsl::uint32_t dst = BSLS_BYTEORDER_BE_U32_TO_HOST(destinationAddress.value());
+
+    d_accumulator += static_cast<bsl::uint32_t>(length);
+    d_accumulator += static_cast<bsl::uint32_t>(UdpHeader::k_PROTOCOL_UDP);
+    d_accumulator += static_cast<bsl::uint16_t>(src >> 16);
+	d_accumulator += static_cast<bsl::uint16_t>(src /*& 0xffff*/);
+	d_accumulator += static_cast<bsl::uint16_t>(dst >> 16);
+	d_accumulator += static_cast<bsl::uint16_t>(dst /*& 0xffff*/);
+    #endif
+}
+
 void UdpChecksum::add(const void* data, bsl::size_t size)
 {
+#if 1
+
     BSLS_ASSERT(reinterpret_cast<bsl::uintptr_t>(data) % 2 == 0);
 
     const bsl::uint8_t* p = reinterpret_cast<const bsl::uint8_t*>(data);
@@ -69,10 +121,14 @@ void UdpChecksum::add(const void* data, bsl::size_t size)
     }
 
     if (n > 0) {
-        d_accumulator += *p << 8;
+        bdlb::BigEndianUint16 leftover;
+        leftover = static_cast<bsl::uint16_t>(*p);
+        d_accumulator += static_cast<bsl::uint16_t>(leftover);
+        // d_accumulator += *p << 8;
     }
 
-#if 0
+#else
+
     const bsl::uint8_t* p =
         reinterpret_cast<const bsl::uint8_t*>(data);
 
@@ -83,6 +139,7 @@ void UdpChecksum::add(const void* data, bsl::size_t size)
         ++p;
         --n;
     }
+
 #endif
 }
 

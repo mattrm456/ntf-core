@@ -67,6 +67,7 @@ ntsa::Error UdpPacket::decode(const bdlbb::BlobBuffer& source,
 ntsa::Error UdpPacket::encode(
     bdlbb::BlobBuffer*       buffer,
     bsl::size_t              offset,
+    bsl::size_t              packetSize,
     const ntsa::Ipv4Address& sourceAddress,
     const ntsa::Ipv4Address& destinationAddress) const
 {
@@ -93,31 +94,45 @@ ntsa::Error UdpPacket::encode(
 
     header.setChecksum(0);
 
+    #if 1
     struct PseudoHeader {
-        bsl::uint32_t         d_sourceAddress;
-        bsl::uint32_t         d_destinationAddress;
-
-        #if 0
-        bsl::uint8_t          d_protocol;
+        bdlb::BigEndianUint32 d_sourceAddress;
+        bdlb::BigEndianUint32 d_destinationAddress;
         bsl::uint8_t          d_placeholder;
-        #endif
-        bdlb::BigEndianUint16 d_protocol;
-        
+        bsl::uint8_t          d_protocol;
         bdlb::BigEndianUint16 d_length;
     };
 
     BSLMF_ASSERT(sizeof(PseudoHeader) == 12);
 
     PseudoHeader psh;
-    psh.d_sourceAddress = sourceAddress.value();
-    psh.d_destinationAddress = destinationAddress.value();
-    // psh.d_placeholder = 0;
+
+    //psh.d_sourceAddress = sourceAddress.value();
+    bsl::memcpy(
+        reinterpret_cast<void*>(&psh.d_sourceAddress), 
+        reinterpret_cast<const void*>(&sourceAddress), 
+        sizeof sourceAddress);
+
+    // psh.d_destinationAddress = destinationAddress.value();
+    bsl::memcpy(
+        reinterpret_cast<void*>(&psh.d_destinationAddress), 
+        reinterpret_cast<const void*>(&destinationAddress),
+        sizeof destinationAddress);
+
+    psh.d_placeholder = 0;
     psh.d_protocol = static_cast<bsl::uint8_t>(UdpHeader::k_PROTOCOL_UDP);
     psh.d_length = static_cast<bsl::uint16_t>(d_header.packetLength());
 
+    NTSCFG_WARNING_UNUSED(packetSize);
+
+    // ui->ui_sum = in_pseudo(ui->ui_src.s_addr, ui->ui_dst.s_addr,
+	// htons((u_short)len + sizeof(struct udphdr) + IPPROTO_UDP));
+    #endif
+
     UdpChecksum checksum;
     checksum.add(&psh, sizeof psh);
-    checksum.add(&header, sizeof header);
+    // checksum.add(sourceAddress, destinationAddress, d_header.packetLength());
+    checksum.add(&header, header.headerLength());
     if (d_payload.size() > 0) {
         checksum.add(d_payload.data(), 
                      static_cast<bsl::size_t>(d_payload.size()));
@@ -152,11 +167,13 @@ ntsa::Error UdpPacket::encode(
 ntsa::Error UdpPacket::encode(
     bdlbb::BlobBuffer*       buffer,
     bsl::size_t              offset,
+    bsl::size_t              packetSize,
     const ntsa::Ipv6Address& sourceAddress,
     const ntsa::Ipv6Address& destinationAddress) const
 {
     NTSCFG_WARNING_UNUSED(buffer);
     NTSCFG_WARNING_UNUSED(offset);
+    NTSCFG_WARNING_UNUSED(packetSize);
     NTSCFG_WARNING_UNUSED(sourceAddress);
     NTSCFG_WARNING_UNUSED(destinationAddress);
 

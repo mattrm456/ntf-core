@@ -59,6 +59,12 @@ class UdpChecksum
     /// Reset the object to its value upon default construction.
     void reset();
 
+    /// Add the pseudo header for a packet from the specified 'sourceAddress'
+    /// to the specified 'destinationAddress' having the specified 'length'. 
+    void add(const ntsa::Ipv4Address& sourceAddress,
+             const ntsa::Ipv4Address& destinationAddress,
+             bsl::size_t              length);
+
     /// Add the specified 'data' having the specified 'size' to the checksum.
     void add(const void* data, bsl::size_t size);
 
@@ -358,13 +364,13 @@ bsl::size_t UdpHeader::headerLength() const
 NTSCFG_INLINE
 bsl::size_t UdpHeader::packetLength() const
 {
-    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_length));
+    return static_cast<bsl::size_t>(static_cast<bsl::uint16_t>(d_length));
 }
 
 NTSCFG_INLINE
 bsl::uint16_t UdpHeader::checksum() const
 {
-    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_checksum));
+    return static_cast<bsl::uint16_t>(d_checksum);
 }
 
 template <typename HASH_ALGORITHM>

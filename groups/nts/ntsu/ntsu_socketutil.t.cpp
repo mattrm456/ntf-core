@@ -9171,7 +9171,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
             ntsa::IpEndpoint(ntsa::Ipv4Address::loopback(), 56145)));
 
     error = ntsu::SocketUtil::send(
-        &sendContext, k_DATA, sizeof k_DATA - 1, sendOptions, clientSocket);
+        &sendContext, (const void*)(0), 0, /* k_DATA, sizeof k_DATA - 1, */ sendOptions, clientSocket);
     NTSCFG_TEST_OK(error);
 
     bdlbb::BlobBuffer receiveBuffer;

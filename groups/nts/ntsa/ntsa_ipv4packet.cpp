@@ -113,6 +113,7 @@ ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* destination) const
 
         error = udp.encode(destination,
                            d_header.headerLength(),
+                           d_header.packetLength(),
                            d_header.sourceAddress(),
                            d_header.destinationAddress());
         if (error) {

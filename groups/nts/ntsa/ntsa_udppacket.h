@@ -96,6 +96,7 @@ class UdpPacket
     /// error.
     ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
                        bsl::size_t              offset,
+                       bsl::size_t              packetSize,
                        const ntsa::Ipv4Address& sourceAddress,
                        const ntsa::Ipv4Address& destinationAddress) const;
 
@@ -105,6 +106,7 @@ class UdpPacket
     /// error.
     ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
                        bsl::size_t              offset,
+                       bsl::size_t              packetSize,
                        const ntsa::Ipv6Address& sourceAddress,
                        const ntsa::Ipv6Address& destinationAddress) const;
 
