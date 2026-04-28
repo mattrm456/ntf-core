@@ -26,6 +26,23 @@ namespace BloombergLP {
 namespace ntsa {
 
 // Provide tests for 'ntsa::Ipv4Packet'.
+//
+// Notes:
+// Initialially, the raw input used to test the correct round-trip decoding
+// and encoding was gathered by a raw sockets reception of a standard sockets
+// transmission. However, for that initial data, both test packets fail with
+// the same pattern. The captured packet's UDP checksum (0xFE1B for ZeroLength,
+// 0xFE28 for the payload test) equals exactly the one's complement sum of the
+// pseudo-header alone.
+//
+// These packets were captured on Linux loopback with UDP checksum offloading:
+// the kernel writes only the pseudo-header partial sum into the checksum
+// field before handing the packet to the NIC for completion. The capture
+// happened before the NIC finished the checksum. So verifying the checksums
+// in the static captured data failed because that captured data only
+// represented the checksum for the IP pseudo header.
+//
+// The fix is to replace the offload-partial checksums with the correct values.
 class Ipv4PacketTest
 {
     BALL_LOG_SET_CLASS_CATEGORY("NTSA.IPV4PACKET.TEST");
@@ -84,7 +101,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdpIpv4ZeroLength)
     static const bsl::uint8_t k_DATA[41] = {
         0x45, 0x00, 0x00, 0x1C, 0xAE, 0xD0, 0x40, 0x00, 0x40, 0x11, 0x8D,
         0xFE, 0x7F, 0x00, 0x00, 0x01, 0x7F, 0x00, 0x00, 0x01, 0xBF, 0x32,
-        0xDB, 0x51, 0x00, 0x08, 0xFE, 0x1B
+        0xDB, 0x51, 0x00, 0x08, 0x67, 0x57
     };
     // clang-format on
 
@@ -131,7 +148,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdpIpv4ZeroLength)
     NTSCFG_TEST_EQ(incomingUdpPacket.header().sourcePort(), 48946);
     NTSCFG_TEST_EQ(incomingUdpPacket.header().destinationPort(), 56145);
     NTSCFG_TEST_EQ(incomingUdpPacket.header().packetLength(), 8);
-    NTSCFG_TEST_EQ(incomingUdpPacket.header().checksum(), 65051);
+    NTSCFG_TEST_EQ(incomingUdpPacket.header().checksum(), 26455);
 
     bdlbb::BlobBuffer outgoingBlobBuffer;
     blobBufferFactory.allocate(&outgoingBlobBuffer);
@@ -169,7 +186,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdpIpv4)
     static const bsl::uint8_t k_DATA[41] = {
         0x45, 0x00, 0x00, 0x29, 0x3F, 0x09, 0x40, 0x00, 0x40, 0x11, 0xFD,
         0xB8, 0x7F, 0x00, 0x00, 0x01, 0x7F, 0x00, 0x00, 0x01, 0xE4, 0x09,
-        0xDB, 0x51, 0x00, 0x15, 0xFE, 0x28, 0x48, 0x65, 0x6C, 0x6C, 0x6F,
+        0xDB, 0x51, 0x00, 0x15, 0x01, 0x1A, 0x48, 0x65, 0x6C, 0x6C, 0x6F,
         0x2C, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x21
     };
     // clang-format on
@@ -217,7 +234,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdpIpv4)
     NTSCFG_TEST_EQ(incomingUdpPacket.header().sourcePort(), 58377);
     NTSCFG_TEST_EQ(incomingUdpPacket.header().destinationPort(), 56145);
     NTSCFG_TEST_EQ(incomingUdpPacket.header().packetLength(), 21);
-    NTSCFG_TEST_EQ(incomingUdpPacket.header().checksum(), 65064);
+    NTSCFG_TEST_EQ(incomingUdpPacket.header().checksum(), 282);
 
     bdlbb::BlobBuffer outgoingBlobBuffer;
     blobBufferFactory.allocate(&outgoingBlobBuffer);

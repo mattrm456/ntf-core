@@ -36,6 +36,106 @@ namespace ntsa {
 
 /// Provide an Internet Protocol version 4 (IPv4) header.
 ///
+/// @details
+/// The Internet Protocol version 4 (IPv4) header is prepended to every IPv4
+/// datagram and carries the information required to route and deliver that
+/// datagram from its source to its destination across an interconnected system
+/// of networks, as described in RFC 791.
+///
+/// The fixed portion of the header is 20 octets (160 bits). An optional
+/// variable-length field may extend the header to at most 60 octets; the
+/// Internet Header Length (IHL) field records the actual size in 32-bit words.
+///
+/// The binary layout of the header in network byte order is:
+///
+///```
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |Version|  IHL  |    DSCP   |ECN|          Total Length         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |         Identification        |Flags|      Fragment Offset    |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |  Time to Live |    Protocol   |         Header Checksum       |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                       Source Address                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                    Destination Address                        |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                    Options                    |    Padding    |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+///```
+///
+/// Version (4 bits): The IP format version; always 4 for IPv4.
+///
+/// IHL — Internet Header Length (4 bits): The length of the header in 32-bit
+/// words. The minimum value is 5, giving a 20-octet header with no options.
+/// The maximum value is 15, giving a 60-octet header. The payload begins
+/// immediately after the last header octet.
+///
+/// DSCP — Differentiated Services Code Point (6 bits): Originally defined as
+/// the upper six bits of the "Type of Service" octet in RFC 791 and
+/// subsequently redefined by RFC 2474. Classifies the packet for
+/// quality-of-service treatment at each hop. All standard DSCP values have
+/// their least-significant bit clear; values whose two least-significant bits
+/// are both set are reserved for local or experimental use.
+///
+/// ECN — Explicit Congestion Notification (2 bits): The two
+/// least-significant bits of the Type of Service octet, defined by RFC 3168.
+/// Allow routers to signal congestion to endpoints without dropping packets,
+/// so that the transport layer can reduce its sending rate before loss occurs.
+///
+/// Total Length (16 bits): The total size of the datagram in octets,
+/// including both the header and the payload. The maximum value is 65,535.
+/// Every host must be able to receive datagrams of at least 576 octets.
+///
+/// Identification (16 bits): A value chosen by the sender to uniquely
+/// identify this datagram among those recently sent. All fragments of the
+/// same original datagram carry the same identification value, allowing a
+/// receiving host to reassemble them.
+///
+/// Flags (3 bits): Three single-bit flags that control fragmentation:
+///   Bit 0 — Reserved; must be zero.
+///   Bit 1 — DF (Don't Fragment): instructs every router not to fragment this
+///            datagram. If the datagram would need to be fragmented to cross a
+///            link, the router discards it and returns an ICMP error.
+///   Bit 2 — MF (More Fragments): set on every fragment except the last,
+///            indicating that more fragments of the same datagram follow.
+///
+/// Fragment Offset (13 bits): The byte offset of this fragment's data within
+/// the original unfragmented datagram, measured in units of 8 octets. The
+/// first (or only) fragment has offset zero.
+///
+/// Time to Live (8 bits): An upper bound on the number of hops the datagram
+/// is permitted to traverse. Each router decrements this field by at least
+/// one; if it reaches zero the datagram is discarded and an ICMP Time
+/// Exceeded message is sent to the source. This prevents datagrams from
+/// circulating indefinitely due to routing loops.
+///
+/// Protocol (8 bits): Identifies the protocol used in the payload, enabling
+/// the destination host to pass the data to the correct upper-layer handler
+/// (e.g., 6 for TCP, 17 for UDP, 1 for ICMP).
+///
+/// Header Checksum (16 bits): The one's complement of the one's complement
+/// sum of all 16-bit words in the header, computed with the checksum field
+/// treated as zero. This covers only the header, not the payload. Because the
+/// TTL field changes at every hop, each router must recompute the checksum
+/// after decrementing it.
+///
+/// Source Address (32 bits): The IPv4 address of the host that originated the
+/// datagram.
+///
+/// Destination Address (32 bits): The IPv4 address of the host to which the
+/// datagram is being sent.
+///
+/// Options (variable, 0–40 octets): An optional sequence of control fields
+/// used for features such as security labeling, loose or strict source
+/// routing, route recording, and timestamps. The IHL field accounts for any
+/// options present.
+///
+/// Padding (variable): Zero bits appended after the options field to ensure
+/// the header ends on a 32-bit boundary.
+///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
