@@ -42,32 +42,50 @@ class Ipv6Header
 {
 #if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
 
-    // The priority.
-    bsl::uint8_t d_priority : 4;
+    /// The high nibble of the traffic class (bits [7:4] of byte 0).
+    bsl::uint8_t d_trafficClassHi : 4;
 
-    // The version. The Internet Protocol version 4 always sets this to 6.
+    /// The version. IPv6 always sets this to 6.
     bsl::uint8_t d_version : 4;
 
 #else
 
-    // The version. The Internet Protocol version 4 always sets this to 6.
+    /// The version. IPv6 always sets this to 6.
     bsl::uint8_t d_version : 4;
 
-    // The priority.
-    bsl::uint8_t d_priority : 4;
+    /// The high nibble of the traffic class (bits [7:4] of byte 0).
+    bsl::uint8_t d_trafficClassHi : 4;
 
 #endif
 
-    // The flow label.
-    bsl::uint8_t d_flowLabel[3];
+#if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
 
-    // The payload length.
+    /// The high nibble of the flow label (bits [19:16]).
+    bsl::uint8_t d_flowLabelHi : 4;
+
+    /// The low nibble of the traffic class (bits [3:0] of byte 1).
+    bsl::uint8_t d_trafficClassLo : 4;
+
+#else
+
+    /// The low nibble of the traffic class (bits [3:0] of byte 1).
+    bsl::uint8_t d_trafficClassLo : 4;
+
+    /// The high nibble of the flow label (bits [19:16]).
+    bsl::uint8_t d_flowLabelHi : 4;
+
+#endif
+
+    /// The low 16 bits of the flow label (bits [15:0]).
+    bdlb::BigEndianUint16 d_flowLabelLo;
+
+    /// The payload length.
     bdlb::BigEndianUint16 d_payloadLength;
 
-    // The next header.
+    /// The next header.
     bsl::uint8_t d_nextHeader;
 
-    // The hop limit.
+    /// The hop limit.
     bsl::uint8_t d_hopLimit;
 
     /// The source address.
@@ -90,7 +108,7 @@ class Ipv6Header
         k_MAX_HEADER_LENGTH = 1500,
 
         /// The default version.
-        k_DEFAULT_VERSION = 4,
+        k_DEFAULT_VERSION = 6,
 
         /// The protocol number indicating the IPv4 packet carries TCP.
         k_PROTOCOL_TCP = 6,
@@ -134,11 +152,67 @@ class Ipv6Header
     /// Set the destination address to the specified 'value'.
     void setDestinationAddress(const ntsa::Ipv6Address& value);
 
+    /// Set the payload length to the specified 'value'.
+    void setPayloadLength(bsl::uint16_t value);
+
+    /// Set the next header type to the specified 'value'.
+    void setNextHeader(bsl::uint8_t value);
+
+    /// Set the hop limit to the specified 'value'.
+    void setHopLimit(bsl::uint8_t value);
+
+    /// Set the Differentiated Services Code Point (DSCP) to the specified
+    /// 'value'. DSCP occupies the six most-significant bits of the traffic
+    /// class field and is used to classify packets for quality-of-service
+    /// handling. All standard DSCP values have their least-significant bit
+    /// clear; values whose two least-significant bits are both set are
+    /// reserved for local or experimental use. Note that only the low 6 bits
+    /// of 'value' are used; the upper 2 bits are ignored.
+    void setDscp(bsl::uint8_t value);
+
+    /// Set the Explicit Congestion Notification (ECN) to the specified
+    /// 'value'. ECN occupies the two least-significant bits of the traffic
+    /// class field. Note that only the low 2 bits of 'value' are used; the
+    /// upper 6 bits are ignored.
+    void setEcn(bsl::uint8_t value);
+
+    /// Set the flow label to the specified 'value'. Note that only the low
+    /// 20 bits of 'value' are used; the upper 12 bits are ignored.
+    void setFlowLabel(bsl::uint32_t value);
+
     /// Return the source address.
     const ntsa::Ipv6Address& sourceAddress() const;
 
     /// Return the destination address.
     const ntsa::Ipv6Address& destinationAddress() const;
+
+    /// Return the payload length.
+    bsl::uint16_t payloadLength() const;
+
+    /// Return the next header type.
+    bsl::uint8_t nextHeader() const;
+
+    /// Return the hop limit.
+    bsl::uint8_t hopLimit() const;
+
+    /// Return the Differentiated Services Code Point (DSCP). DSCP occupies
+    /// the six most-significant bits of the traffic class field and is used
+    /// to classify packets for quality-of-service handling. All standard DSCP
+    /// values have their least-significant bit clear; values whose two
+    /// least-significant bits are both set are reserved for local or
+    /// experimental use. Note that only the low 6 bits of the returned value
+    /// are significant; the upper 2 bits are always zero.
+    bsl::uint8_t dscp() const;
+
+    /// Return the Explicit Congestion Notification (ECN). ECN occupies the
+    /// two least-significant bits of the traffic class field. Note that only
+    /// the low 2 bits of the returned value are significant; the upper 6 bits
+    /// are always zero.
+    bsl::uint8_t ecn() const;
+
+    /// Return the flow label. Note that only the low 20 bits of the returned
+    /// value are significant; the upper 12 bits are always zero.
+    bsl::uint32_t flowLabel() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -304,6 +378,84 @@ NTSCFG_INLINE
 const ntsa::Ipv6Address& Ipv6Header::destinationAddress() const
 {
     return d_destinationAddress;
+}
+
+NTSCFG_INLINE
+void Ipv6Header::setPayloadLength(bsl::uint16_t value)
+{
+    d_payloadLength = value;
+}
+
+NTSCFG_INLINE
+void Ipv6Header::setNextHeader(bsl::uint8_t value)
+{
+    d_nextHeader = value;
+}
+
+NTSCFG_INLINE
+void Ipv6Header::setHopLimit(bsl::uint8_t value)
+{
+    d_hopLimit = value;
+}
+
+NTSCFG_INLINE
+bsl::uint16_t Ipv6Header::payloadLength() const
+{
+    return d_payloadLength;
+}
+
+NTSCFG_INLINE
+bsl::uint8_t Ipv6Header::nextHeader() const
+{
+    return d_nextHeader;
+}
+
+NTSCFG_INLINE
+bsl::uint8_t Ipv6Header::hopLimit() const
+{
+    return d_hopLimit;
+}
+
+NTSCFG_INLINE
+void Ipv6Header::setDscp(bsl::uint8_t value)
+{
+    d_trafficClassHi = static_cast<bsl::uint8_t>(value >> 2);
+    d_trafficClassLo = static_cast<bsl::uint8_t>(((value & 0x03) << 2) |
+                                                  (d_trafficClassLo & 0x03));
+}
+
+NTSCFG_INLINE
+void Ipv6Header::setEcn(bsl::uint8_t value)
+{
+    d_trafficClassLo = static_cast<bsl::uint8_t>((d_trafficClassLo & 0x0C) |
+                                                  (value & 0x03));
+}
+
+NTSCFG_INLINE
+bsl::uint8_t Ipv6Header::dscp() const
+{
+    return static_cast<bsl::uint8_t>((d_trafficClassHi << 2) |
+                                     (d_trafficClassLo >> 2));
+}
+
+NTSCFG_INLINE
+bsl::uint8_t Ipv6Header::ecn() const
+{
+    return static_cast<bsl::uint8_t>(d_trafficClassLo & 0x03);
+}
+
+NTSCFG_INLINE
+void Ipv6Header::setFlowLabel(bsl::uint32_t value)
+{
+    d_flowLabelHi = static_cast<bsl::uint8_t>((value >> 16) & 0x0F);
+    d_flowLabelLo = static_cast<bsl::uint16_t>(value & 0xFFFF);
+}
+
+NTSCFG_INLINE
+bsl::uint32_t Ipv6Header::flowLabel() const
+{
+    return (static_cast<bsl::uint32_t>(d_flowLabelHi) << 16) |
+           static_cast<bsl::uint32_t>(static_cast<bsl::uint16_t>(d_flowLabelLo));
 }
 
 template <typename HASH_ALGORITHM>

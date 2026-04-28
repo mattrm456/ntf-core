@@ -53,94 +53,51 @@ void UdpChecksum::reset()
     d_accumulator = 0;
 }
 
-#if 0
-static u_int16_t
-in_cksum_phdr(u_int32_t src, u_int32_t dst, u_int32_t lenproto)
-{
-	u_int32_t sum;
-
-	sum = lenproto +
-	      (u_int16_t)(src >> 16) +
-	      (u_int16_t)(src /*& 0xffff*/) +
-	      (u_int16_t)(dst >> 16) +
-	      (u_int16_t)(dst /*& 0xffff*/);
-
-	sum = (u_int16_t)(sum >> 16) + (u_int16_t)(sum /*& 0xffff*/);
-
-	if (sum > 0xffff)
-		sum -= 0xffff;
-
-	return (sum);
-}
-#endif
-
 void UdpChecksum::add(const ntsa::Ipv4Address& sourceAddress,
                       const ntsa::Ipv4Address& destinationAddress,
                       bsl::size_t              length)
 {
-    const bsl::uint32_t src = BSLS_BYTEORDER_BE_U32_TO_HOST(sourceAddress.value());
-    const bsl::uint32_t dst = BSLS_BYTEORDER_BE_U32_TO_HOST(destinationAddress.value());
+    // ntsa::Ipv4Address stores its bytes in network byte order, so casting
+    // to uint8_t* gives the wire-order octets directly.
+    const bsl::uint8_t* src =
+        reinterpret_cast<const bsl::uint8_t*>(&sourceAddress);
+    const bsl::uint8_t* dst =
+        reinterpret_cast<const bsl::uint8_t*>(&destinationAddress);
 
-    //d_accumulator += sourceAddress.value();
-    //d_accumulator += destinationAddress.value();
-    d_accumulator += static_cast<bsl::uint16_t>(src >> 16);
-	d_accumulator += static_cast<bsl::uint16_t>(src /*& 0xffff*/);
-	d_accumulator += static_cast<bsl::uint16_t>(dst >> 16);
-	d_accumulator += static_cast<bsl::uint16_t>(dst /*& 0xffff*/);
-    d_accumulator += BSLS_BYTEORDER_HTONS(UdpHeader::k_PROTOCOL_UDP);
-    d_accumulator += BSLS_BYTEORDER_HTONS(length);
+    d_accumulator +=
+        (static_cast<bsl::uint16_t>(src[0]) << 8) | src[1];
+    d_accumulator +=
+        (static_cast<bsl::uint16_t>(src[2]) << 8) | src[3];
 
-    #if 0
-    const bsl::uint32_t src = BSLS_BYTEORDER_BE_U32_TO_HOST(sourceAddress.value());
-    const bsl::uint32_t dst = BSLS_BYTEORDER_BE_U32_TO_HOST(destinationAddress.value());
+    d_accumulator +=
+        (static_cast<bsl::uint16_t>(dst[0]) << 8) | dst[1];
+    d_accumulator +=
+        (static_cast<bsl::uint16_t>(dst[2]) << 8) | dst[3];
 
-    d_accumulator += static_cast<bsl::uint32_t>(length);
-    d_accumulator += static_cast<bsl::uint32_t>(UdpHeader::k_PROTOCOL_UDP);
-    d_accumulator += static_cast<bsl::uint16_t>(src >> 16);
-	d_accumulator += static_cast<bsl::uint16_t>(src /*& 0xffff*/);
-	d_accumulator += static_cast<bsl::uint16_t>(dst >> 16);
-	d_accumulator += static_cast<bsl::uint16_t>(dst /*& 0xffff*/);
-    #endif
+    // Zero byte concatenated with protocol number forms one 16-bit word.
+    d_accumulator += static_cast<bsl::uint16_t>(UdpHeader::k_PROTOCOL_UDP);
+
+    d_accumulator += static_cast<bsl::uint16_t>(length);
 }
 
 void UdpChecksum::add(const void* data, bsl::size_t size)
 {
-#if 1
-
-    BSLS_ASSERT(reinterpret_cast<bsl::uintptr_t>(data) % 2 == 0);
-
-    const bsl::uint8_t* p = reinterpret_cast<const bsl::uint8_t*>(data);
+    const bsl::uint8_t* p = static_cast<const bsl::uint8_t*>(data);
     bsl::size_t         n = size;
 
     while (n > 1) {
-        d_accumulator += BSLS_BYTEORDER_BE_U16_TO_HOST(
-            *reinterpret_cast<const bsl::uint16_t*>(p));
-
-        p += sizeof(bsl::uint16_t);
-        n -= sizeof(bsl::uint16_t);
+        d_accumulator +=
+            (static_cast<bsl::uint16_t>(p[0]) << 8) |
+             static_cast<bsl::uint16_t>(p[1]);
+        p += 2;
+        n -= 2;
     }
 
     if (n > 0) {
-        bdlb::BigEndianUint16 leftover;
-        leftover = static_cast<bsl::uint16_t>(*p);
-        d_accumulator += static_cast<bsl::uint16_t>(leftover);
-        // d_accumulator += *p << 8;
+        // Pad the trailing byte with a zero on the right, as required by
+        // RFC 768: the odd byte occupies the high byte of the 16-bit word.
+        d_accumulator += static_cast<bsl::uint16_t>(p[0]) << 8;
     }
-
-#else
-
-    const bsl::uint8_t* p =
-        reinterpret_cast<const bsl::uint8_t*>(data);
-
-    bsl::size_t n = size;
-
-    while (n != 0) {
-        d_accumulator += *p;
-        ++p;
-        --n;
-    }
-
-#endif
 }
 
 bsl::uint32_t UdpChecksum::accumulator() const

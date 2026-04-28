@@ -333,6 +333,9 @@ TcpHeader::TcpHeader()
 {
     BSLMF_ASSERT(sizeof(*this) == k_MAX_HEADER_LENGTH);
 
+    NTSCFG_WARNING_UNUSED(d_reserved);
+    NTSCFG_WARNING_UNUSED(d_options);
+
     bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
     initialize();
 }

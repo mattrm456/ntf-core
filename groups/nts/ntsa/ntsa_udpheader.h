@@ -60,7 +60,8 @@ class UdpChecksum
     void reset();
 
     /// Add the pseudo header for a packet from the specified 'sourceAddress'
-    /// to the specified 'destinationAddress' having the specified 'length'. 
+    /// to the specified 'destinationAddress' having the specified 'length'
+    /// of the UDP packet, including the UDP header.
     void add(const ntsa::Ipv4Address& sourceAddress,
              const ntsa::Ipv4Address& destinationAddress,
              bsl::size_t              length);
