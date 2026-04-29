@@ -18,6 +18,7 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntsa_ipv4packet_cpp, "$Id$ $CSID$")
 
+#include <ntsa_ipv4checksum.h>
 #include <bslim_printer.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>

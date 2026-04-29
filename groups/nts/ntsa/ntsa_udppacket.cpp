@@ -18,6 +18,7 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntsa_udppacket_cpp, "$Id$ $CSID$")
 
+#include <ntsa_udpchecksum.h>
 #include <bslim_printer.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
@@ -96,7 +97,7 @@ ntsa::Error UdpPacket::encode(
 
     header.setChecksum(0);
 
-    UdpChecksum checksum;
+    ntsa::UdpChecksum checksum;
     checksum.add(sourceAddress, destinationAddress, d_header.packetLength());
     checksum.add(&header, header.headerLength());
     if (d_payload.size() > 0) {

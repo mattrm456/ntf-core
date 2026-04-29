@@ -51,9 +51,6 @@ class Ipv4PacketTest
     // Test value semantics: type traits.
     static void verifyTypeTraits();
 
-    // Verify checksum calculation.
-    static void verifyChecksum();
-
     // Test decoding UDP/IPv4 zero length payload.
     static void verifySerializationUdpIpv4ZeroLength();
 
@@ -70,27 +67,6 @@ class Ipv4PacketTest
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTypeTraits)
 {
 
-}
-
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyChecksum)
-{
-    ntsa::Ipv4Address address = ntsa::Ipv4Address::loopback();
-
-    {
-        ntsa::UdpChecksum checksum;
-        checksum.add(&address, sizeof address);
-        bsl::uint16_t checksumValue = checksum.value();
-        BALL_LOG_DEBUG << "Checksum = " << checksumValue << BALL_LOG_END;
-    }
-
-    {
-        bsl::uint32_t addressValue = address.value();
-
-        ntsa::UdpChecksum checksum;
-        checksum.add(&addressValue, sizeof addressValue);
-        bsl::uint16_t checksumValue = checksum.value();
-        BALL_LOG_DEBUG << "Checksum = " << checksumValue << BALL_LOG_END;
-    }
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdpIpv4ZeroLength)

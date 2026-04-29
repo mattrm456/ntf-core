@@ -303,45 +303,39 @@ struct Transport {
         /// The socket transport is undefined.
         e_UNDEFINED = 0,
 
-        /// The socket uses Ethernet addresses using user-defined Ethernet
-        /// packets.
-        e_ETHERNET = 7,
-
         /// The socket uses Internet Protocol, version 4 addressing using
-        /// user-defined IPv4 packets encapsulating UDP packets.
-        e_UDP_IPV4_RAW = 8,
-
-        /// The socket uses Internet Protocol, version 6 addressing using
-        /// user-defined IPv6 packets encapsulating UDP packets.
-        e_UDP_IPV6_RAW = 9,
+        /// the Transmission Control Protocol using reliable, stream
+        /// semantics.
+        e_TCP_IPV4_STREAM = 1,
 
         /// The socket uses Internet Protocol, version 4 addressing using
         /// user-defined IPv4 packets encapsulating TCP packets.
         e_TCP_IPV4_RAW = 10,
 
         /// The socket uses Internet Protocol, version 6 addressing using
-        /// user-defined IPv6 packets encapsulating TCP packets.
-        e_TCP_IPV6_RAW = 11,
-
-
-
-        /// The socket uses Internet Protocol, version 4 addressing using
-        /// the Transmission Control Protocol using reliable, stream
-        /// semantics.
-        e_TCP_IPV4_STREAM = 1,
-
-        /// The socket uses Internet Protocol, version 6 addressing using
         /// the Transmission Control Protocol using reliable, stream
         /// sementics.
         e_TCP_IPV6_STREAM = 2,
+
+        /// The socket uses Internet Protocol, version 6 addressing using
+        /// user-defined IPv6 packets encapsulating TCP packets.
+        e_TCP_IPV6_RAW = 11,
 
         /// The socket uses Internet Protocol, version 4 addressing using
         /// the User Datagram Protocol using unreliable, datagram semantics.
         e_UDP_IPV4_DATAGRAM = 3,
 
+        /// The socket uses Internet Protocol, version 4 addressing using
+        /// user-defined IPv4 packets encapsulating UDP packets.
+        e_UDP_IPV4_RAW = 8,
+
         /// The socket uses Internet Protocol, version 6 addressing using
         /// the User Datagram Protocol using unreliable, datagram semantics.
         e_UDP_IPV6_DATAGRAM = 4,
+
+        /// The socket uses Internet Protocol, version 6 addressing using
+        /// user-defined IPv6 packets encapsulating UDP packets.
+        e_UDP_IPV6_RAW = 9,
 
         /// The socket uses local (aka Unix) addressing and transfers data
         /// using reliable, stream semantics.
@@ -349,7 +343,11 @@ struct Transport {
 
         /// The socket uses local (aka Unix) addressing and transfers data
         /// using reliable, datagram semantics.
-        e_LOCAL_DATAGRAM = 6
+        e_LOCAL_DATAGRAM = 6,
+
+        /// The socket uses Ethernet addresses using user-defined Ethernet
+        /// packets.
+        e_ETHERNET = 7
     };
 
     /// Return the string representation exactly matching the enumerator

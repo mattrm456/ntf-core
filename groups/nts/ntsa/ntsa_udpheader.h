@@ -35,47 +35,6 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide a User Datagram Protocol (UDP) checksum.
-class UdpChecksum
-{
-    /// The accumulated value.
-    bsl::uint32_t d_accumulator;
-
-  public:
-    /// Create a new UDP checksum.
-    UdpChecksum();
-
-    /// Create a new UDP checksum having the same value as the specified
-    /// 'original' object.
-    UdpChecksum(const UdpChecksum& original);
-
-    /// Destroy this object.
-    ~UdpChecksum();
-
-    /// Assign the value of the specified 'other' object to this object. Return
-    /// a reference to this modifiable object.
-    UdpChecksum& operator=(const UdpChecksum& other);
-
-    /// Reset the object to its value upon default construction.
-    void reset();
-
-    /// Add the pseudo header for a packet from the specified 'sourceAddress'
-    /// to the specified 'destinationAddress' having the specified 'length'
-    /// of the UDP packet, including the UDP header.
-    void add(const ntsa::Ipv4Address& sourceAddress,
-             const ntsa::Ipv4Address& destinationAddress,
-             bsl::size_t              length);
-
-    /// Add the specified 'data' having the specified 'size' to the checksum.
-    void add(const void* data, bsl::size_t size);
-
-    /// Return the accumulator.
-    bsl::uint32_t accumulator() const;
-
-    /// Return the checksum value.
-    bsl::uint16_t value() const;
-};
-
 /// Provide a User Datagram Protocol (UDP) header.
 ///
 /// @par Thread Safety
