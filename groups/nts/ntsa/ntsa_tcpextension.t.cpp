@@ -16,17 +16,17 @@
 #include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_tcpheader_t_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_tcpextension_t_cpp, "$Id$ $CSID$")
 
-#include <ntsa_tcpheader.h>
+#include <ntsa_tcpextension.h>
 
 using namespace BloombergLP;
 
 namespace BloombergLP {
 namespace ntsa {
 
-// Provide tests for 'ntsa::TcpHeader'.
-class TcpHeaderTest
+// Provide tests for 'ntsa::TcpExtension'.
+class TcpExtensionTest
 {
   public:
     // Test value semantics: type traits.
@@ -36,27 +36,26 @@ class TcpHeaderTest
     static void verifyUsage();
 };
 
-NTSCFG_TEST_FUNCTION(ntsa::TcpHeaderTest::verifyTypeTraits)
+NTSCFG_TEST_FUNCTION(ntsa::TcpExtensionTest::verifyTypeTraits)
 {
     const bool isBitwiseInitializable =
-        NTSCFG_TYPE_CHECK_BITWISE_INITIALIZABLE(ntsa::TcpHeader);
+        NTSCFG_TYPE_CHECK_BITWISE_INITIALIZABLE(ntsa::TcpExtension);
 
     NTSCFG_TEST_TRUE(isBitwiseInitializable);
 
     const bool isBitwiseMovable =
-        NTSCFG_TYPE_CHECK_BITWISE_MOVABLE(ntsa::TcpHeader);
+        NTSCFG_TYPE_CHECK_BITWISE_MOVABLE(ntsa::TcpExtension);
 
     NTSCFG_TEST_TRUE(isBitwiseMovable);
 
     const bool isBitwiseCopyable =
-        NTSCFG_TYPE_CHECK_BITWISE_COPYABLE(ntsa::TcpHeader);
+        NTSCFG_TYPE_CHECK_BITWISE_COPYABLE(ntsa::TcpExtension);
 
     NTSCFG_TEST_TRUE(isBitwiseCopyable);
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::TcpHeaderTest::verifyUsage)
+NTSCFG_TEST_FUNCTION(ntsa::TcpExtensionTest::verifyUsage)
 {
-
 }
 
 }  // close namespace ntsa

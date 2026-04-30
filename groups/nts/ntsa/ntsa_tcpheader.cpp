@@ -25,43 +25,64 @@ BSLS_IDENT_RCSID(ntsa_tcpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error TcpHeader::decode(const void* data, const bsl::size_t size)
+ntsa::Error TcpHeader::decode(const bdlbb::BlobBuffer& buffer,
+                              bsl::size_t              offset,
+                              bsl::size_t              packetSize)
 {
+    NTSCFG_WARNING_UNUSED(packetSize);
+
     reset();
 
-    if (size < static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH)) {
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    if (buffer.data() == 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const char* bufferData = buffer.data();
+
+    if (buffer.size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
+
+    if (offset + static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH) > bufferSize) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     bsl::memcpy(reinterpret_cast<void*>(this),
-                data,
+                bufferData + offset,
                 static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
-
-    // TODO: Decode options.
-
-    return ntsa::Error();
-}  
-
-ntsa::Error TcpHeader::decode(const bdlbb::BlobBuffer& source)
-{
-    reset();
-
-    if (source.size() < static_cast<int>(k_MIN_HEADER_LENGTH)) {
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
-    }
-
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                source.data(),
-                static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
-
-    // TODO: Decode options.
 
     return ntsa::Error();
 }
 
-ntsa::Error TcpHeader::encode(bdlbb::BlobBuffer* destination) const
+ntsa::Error TcpHeader::encode(bdlbb::BlobBuffer* buffer,
+                              bsl::size_t        offset) const
 {
-    NTSCFG_WARNING_UNUSED(destination);
+    ntsa::Error error;
+
+    if (buffer->data() == 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    char* bufferData = buffer->data();
+
+    if (buffer->size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t bufferCapacity =
+        static_cast<bsl::size_t>(buffer->size());
+
+    if (offset + static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH) >
+        bufferCapacity)
+    {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    bsl::memcpy(reinterpret_cast<void*>(bufferData + offset),
+                reinterpret_cast<const void*>(this),
+                static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
 
     return ntsa::Error();
 }
@@ -92,22 +113,21 @@ bsl::ostream& TcpHeader::print(bsl::ostream& stream,
     printer.printAttribute("sequenceNumber", this->sequenceNumber());
     printer.printAttribute("acknowledgmentNumber",
                            this->acknowledgmentNumber());
-    printer.printAttribute("headerLength", this->headerLength());
+    printer.printAttribute("dataOffset", this->dataOffset());
     printer.printForeign(this->flags(), &TcpHeader::printFlags, "flags");
     printer.printAttribute("windowSize", this->windowSize());
+    printer.printAttribute("checksum", this->checksum());
     printer.printAttribute("urgentPointer", this->urgentPointer());
-
-    
 
     printer.end();
 
     return stream;
 }
 
-bsl::ostream& TcpHeader::printFlags(bsl::ostream& stream,  
-                             bsl::uint8_t  flags,  
-                             int           level,  
-                             int           spacesPerLevel)
+bsl::ostream& TcpHeader::printFlags(bsl::ostream& stream,
+                                    bsl::uint8_t  flags,
+                                    int           level,
+                                    int           spacesPerLevel)
 {
     NTSCFG_WARNING_UNUSED(level);
     NTSCFG_WARNING_UNUSED(spacesPerLevel);

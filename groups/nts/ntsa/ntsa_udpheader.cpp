@@ -25,31 +25,32 @@ BSLS_IDENT_RCSID(ntsa_udpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error UdpHeader::decode(const void* data, const bsl::size_t size)
+ntsa::Error UdpHeader::decode(const bdlbb::BlobBuffer& buffer,
+                              bsl::size_t              offset,
+                              bsl::size_t              packetSize)
 {
+    NTSCFG_WARNING_UNUSED(packetSize);
+
     reset();
 
-    if (size < static_cast<bsl::size_t>(k_LENGTH)) {
+    if (buffer.data() == 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const char* bufferData = buffer.data();
+
+    if (buffer.size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
+
+    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferSize) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     bsl::memcpy(reinterpret_cast<void*>(this),
-                data,
-                static_cast<bsl::size_t>(k_LENGTH));
-
-    return ntsa::Error();
-}
-
-ntsa::Error UdpHeader::decode(const bdlbb::BlobBuffer& source)
-{
-    reset();
-
-    if (source.size() < static_cast<int>(k_LENGTH)) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                source.data(),
+                bufferData + offset,
                 static_cast<bsl::size_t>(k_LENGTH));
 
     return ntsa::Error();
@@ -73,15 +74,13 @@ ntsa::Error UdpHeader::encode(bdlbb::BlobBuffer* buffer,
     const bsl::size_t bufferCapacity =
         static_cast<bsl::size_t>(buffer->size());
 
-    const bsl::size_t headerLength = this->headerLength();
-
-    if (offset + headerLength > bufferCapacity) {
+    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferCapacity) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     bsl::memcpy(reinterpret_cast<void*>(bufferData + offset),
                 reinterpret_cast<const void*>(this),
-                sizeof *this);
+                static_cast<bsl::size_t>(k_LENGTH));
 
     return ntsa::Error();
 }

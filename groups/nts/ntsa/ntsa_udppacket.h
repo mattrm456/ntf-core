@@ -83,10 +83,10 @@ class UdpPacket
     /// Return a reference to the modifiable payload.
     ntsa::UdpPayload& payload();
 
-    /// Decode the packet from the specified 'source' starting at the specified
+    /// Decode the packet from the specified 'buffer' starting at the specified
     /// 'offset' inside the framing packet having the specified 'packetSize'.
     /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& source,
+    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
                        bsl::size_t              offset,
                        bsl::size_t              packetSize);
 
@@ -96,7 +96,6 @@ class UdpPacket
     /// error.
     ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
                        bsl::size_t              offset,
-                       bsl::size_t              packetSize,
                        const ntsa::Ipv4Address& sourceAddress,
                        const ntsa::Ipv4Address& destinationAddress) const;
 
@@ -106,7 +105,6 @@ class UdpPacket
     /// error.
     ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
                        bsl::size_t              offset,
-                       bsl::size_t              packetSize,
                        const ntsa::Ipv6Address& sourceAddress,
                        const ntsa::Ipv6Address& destinationAddress) const;
 

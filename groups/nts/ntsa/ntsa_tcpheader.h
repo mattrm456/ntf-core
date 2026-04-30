@@ -41,18 +41,6 @@ namespace ntsa {
 /// @ingroup module_ntsa_identity
 class TcpHeader
 {
-    /// Enumerates the flags.
-    enum Flag {
-        k_SYN = 1 << 1,
-        k_ACK = 1 << 2,
-        k_PSH = 1 << 3,
-        k_FIN = 1 << 4,
-        k_RST = 1 << 5,
-        k_ECE = 1 << 6,
-        k_CWR = 1 << 7,
-        k_URG = 1 << 8
-    };
-
     /// The source port.
     bdlb::BigEndianUint16 d_sourcePort;
 
@@ -86,7 +74,7 @@ class TcpHeader
     /// the segment header; it can be calculated by subtracting the combined
     /// length of the segment header and IP header from the total IP packet
     /// length specified in the IP header.
-    bsl::uint8_t d_headerLength : 4;
+    bsl::uint8_t d_dataOffset : 4;
 
 #else
 
@@ -97,7 +85,7 @@ class TcpHeader
     /// the segment header; it can be calculated by subtracting the combined
     /// length of the segment header and IP header from the total IP packet
     /// length specified in the IP header.
-    bsl::uint8_t d_headerLength : 4;
+    bsl::uint8_t d_dataOffset : 4;
 
     /// Reserved.
     bsl::uint8_t d_reserved : 4;
@@ -124,9 +112,6 @@ class TcpHeader
     /// sequence number indicating the last urgent data byte.
     bdlb::BigEndianUint16 d_urgentPointer;
 
-    /// The options.
-    bsl::uint8_t d_options[40];
-
   private:
     /// Initialize the header to its default values.
     void initialize();
@@ -147,8 +132,23 @@ class TcpHeader
         /// The maximum header length including all options, in bytes.
         k_MAX_HEADER_LENGTH = 60,
 
+        /// The minimum length of all options, in bytes.
+        k_MIN_OPTIONS_LENGTH = 0,
+
         /// The maximum length of all options, in bytes.
         k_MAX_OPTIONS_LENGTH = 40
+    };
+
+    /// Enumerates the flags.
+    enum Flag {
+        k_SYN = 1 << 1,
+        k_ACK = 1 << 2,
+        k_PSH = 1 << 3,
+        k_FIN = 1 << 4,
+        k_RST = 1 << 5,
+        k_ECE = 1 << 6,
+        k_CWR = 1 << 7,
+        k_URG = 1 << 8
     };
 
     /// Create a new TCP header having a default value.
@@ -196,10 +196,13 @@ class TcpHeader
     /// k_MIN_HEADER_LENGTH. The behavior is undefined if 'value' is greater
     /// than k_MAX_HEADER_LENGTH. The behavior is undefined if 'value' is not a
     /// multiple of 4.
-    void setHeaderLength(bsl::size_t value);
+    void setDataOffset(bsl::size_t value);
 
     /// Set the flags to the specified 'value'.
     void setFlags(bsl::uint8_t value);
+
+    /// Set the flag having the specified 'value'.
+    void setFlag(Flag value);
 
     /// Set the window size to the specified 'value'.
     void setWindowSize(bsl::uint16_t value);
@@ -210,15 +213,17 @@ class TcpHeader
     /// Set the urgent pointer to the specified 'value'.
     void setUrgentPointer(bsl::uint16_t value);
 
-    /// Decode the packet from the specified 'data' having the specified
-    /// 'size'. Return the error.
-    ntsa::Error decode(const void* data, const bsl::size_t size);
+    /// Decode the header from the specified 'buffer' starting at the specified
+    /// 'offset' inside the framing packet having the specified 'packetSize'.
+    /// Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
+                       bsl::size_t              offset,
+                       bsl::size_t              packetSize);
 
-    /// Decode the packet from the specified 'source'. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& source);
-
-    /// Encode the packet to the specified 'destination'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+    /// Encode the header to the specified 'buffer' starting at the specified
+    /// 'offset'. Return the
+    /// error.
+    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
 
     /// Return the source port.
     ntsa::Port sourcePort() const;
@@ -233,10 +238,14 @@ class TcpHeader
     bsl::uint32_t acknowledgmentNumber() const;
 
     /// Return the length of the header including all options, in bytes.
-    bsl::size_t headerLength() const;
+    bsl::size_t dataOffset() const;
 
     /// Return the flags.
     bsl::uint8_t flags() const;
+
+    /// Return true if the flag having the specified 'value' is set, otherwise
+    /// return false.
+    bool hasFlag(Flag value) const;
 
     /// Return the window size.
     bsl::uint16_t windowSize() const;
@@ -325,16 +334,15 @@ void hashAppend(HASH_ALGORITHM& algorithm, const TcpHeader& value);
 NTSCFG_INLINE
 void TcpHeader::initialize()
 {
-    setHeaderLength(static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
+    setDataOffset(static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
 }
 
 NTSCFG_INLINE
 TcpHeader::TcpHeader()
 {
-    BSLMF_ASSERT(sizeof(*this) == k_MAX_HEADER_LENGTH);
+    BSLMF_ASSERT(sizeof(*this) == k_MIN_HEADER_LENGTH);
 
     NTSCFG_WARNING_UNUSED(d_reserved);
-    NTSCFG_WARNING_UNUSED(d_options);
 
     bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
     initialize();
@@ -420,19 +428,25 @@ void TcpHeader::setAcknowledgmentNumber(bsl::uint32_t value)
 }
 
 NTSCFG_INLINE
-void TcpHeader::setHeaderLength(bsl::size_t value)
+void TcpHeader::setDataOffset(bsl::size_t value)
 {
     BSLS_ASSERT(value >= static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
     BSLS_ASSERT(value <= static_cast<bsl::size_t>(k_MAX_HEADER_LENGTH));
     BSLS_ASSERT(value % sizeof(bsl::uint32_t) == 0);
 
-    d_headerLength = static_cast<bsl::uint8_t>(value / sizeof(bsl::uint32_t));
+    d_dataOffset = static_cast<bsl::uint8_t>(value / sizeof(bsl::uint32_t));
 }
 
 NTSCFG_INLINE
 void TcpHeader::setFlags(bsl::uint8_t value)
 {
     d_flags = value;
+}
+
+NTSCFG_INLINE
+void TcpHeader::setFlag(Flag value)
+{
+    d_flags |= value;
 }
 
 NTSCFG_INLINE
@@ -479,15 +493,21 @@ bsl::uint32_t TcpHeader::acknowledgmentNumber() const
 }
 
 NTSCFG_INLINE
-bsl::size_t TcpHeader::headerLength() const
+bsl::size_t TcpHeader::dataOffset() const
 {
-    return static_cast<bsl::size_t>(d_headerLength) * sizeof(bsl::uint32_t);
+    return static_cast<bsl::size_t>(d_dataOffset) * sizeof(bsl::uint32_t);
 }
 
 NTSCFG_INLINE
 bsl::uint8_t TcpHeader::flags() const
 {
     return d_flags;
+}
+
+NTSCFG_INLINE
+bool TcpHeader::hasFlag(Flag value) const
+{
+    return (d_flags & value) != 0;
 }
 
 NTSCFG_INLINE

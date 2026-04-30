@@ -26,39 +26,28 @@ BSLS_IDENT_RCSID(ntsa_ipv4packet_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& source)
+ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& buffer,
+                               bsl::size_t              offset)
 {
     ntsa::Error error;
 
-    if (source.size() <= 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    error = d_header.decode(source);
+    error = d_header.decode(buffer, offset);
     if (error) {
         return error;
     }
 
-    const bsl::size_t offset =
+    const bsl::size_t headerLength =
         static_cast<bsl::size_t>(d_header.headerLength());
 
     const bsl::size_t packetSize =
         static_cast<bsl::size_t>(d_header.packetLength());
-
-    if (offset > packetSize) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (offset > static_cast<bsl::size_t>(source.size())) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
 
     if (d_header.protocol() ==
         static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
     {
         ntsa::TcpPacket& tcp = d_payload.makeTcp();
 
-        error = tcp.decode(source, offset, packetSize);
+        error = tcp.decode(buffer, offset + headerLength, packetSize);
         if (error) {
             return error;
         }
@@ -68,7 +57,7 @@ ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& source)
     {
         ntsa::UdpPacket& udp = d_payload.makeUdp();
 
-        error = udp.decode(source, offset, packetSize);
+        error = udp.decode(buffer, offset + headerLength, packetSize);
         if (error) {
             return error;
         }
@@ -76,20 +65,29 @@ ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& source)
     else {
         bdlbb::BlobBuffer& blobBuffer = d_payload.makeRaw();
         blobBuffer.reset(
-            bsl::shared_ptr<char>(source.buffer(), source.data() + offset),
-            static_cast<int>(source.size() - offset));
+            bsl::shared_ptr<char>(buffer.buffer(),
+                                  buffer.data() + offset + headerLength),
+            static_cast<int>(buffer.size() - offset - headerLength));
     }
 
     return ntsa::Error();
 }
 
-ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* destination) const
+ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* buffer,
+                               bsl::size_t        offset) const
 {
-    NTSCFG_WARNING_UNUSED(destination);
-
     ntsa::Error error;
 
-    error = d_header.encode(destination, 0);
+    ntsa::Ipv4Header header = d_header;
+
+    header.setChecksum(0);
+
+    ntsa::Ipv4Checksum checksum;
+    checksum.add(&header, header.headerLength());
+
+    header.setChecksum(checksum.value());
+
+    error = d_header.encode(buffer, offset);
     if (error) {
         return error;
     }
@@ -101,7 +99,15 @@ ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* destination) const
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        // TODO
+        const ntsa::TcpPacket& tcp = d_payload.tcp();
+
+        error = tcp.encode(buffer,
+                           offset + d_header.headerLength(),
+                           d_header.sourceAddress(),
+                           d_header.destinationAddress());
+        if (error) {
+            return error;
+        }
     }
     else if (d_payload.isUdp()) {
         if (d_header.protocol() !=
@@ -112,9 +118,8 @@ ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* destination) const
 
         const ntsa::UdpPacket& udp = d_payload.udp();
 
-        error = udp.encode(destination,
-                           d_header.headerLength(),
-                           d_header.packetLength(),
+        error = udp.encode(buffer,
+                           offset + d_header.headerLength(),
                            d_header.sourceAddress(),
                            d_header.destinationAddress());
         if (error) {
@@ -123,13 +128,13 @@ ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* destination) const
     }
     else if (d_payload.isRaw()) {
         if (d_payload.raw().size() > 0) {
-            if (d_header.headerLength() + d_payload.raw().size() >
-                static_cast<bsl::size_t>(destination->size()))
+            if (offset + d_header.headerLength() + d_payload.raw().size() >
+                static_cast<bsl::size_t>(buffer->size()))
             {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            bsl::memcpy(destination->data() + d_header.headerLength(),
+            bsl::memcpy(buffer->data() + offset + d_header.headerLength(),
                         d_payload.raw().data(),
                         static_cast<bsl::size_t>(d_payload.raw().size()));
         }

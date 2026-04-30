@@ -55,14 +55,6 @@ class UdpHeader
     /// The checksum.
     bdlb::BigEndianUint16 d_checksum;
 
-  private:
-    /// Calculate the checksum for the specified 'data' having the specified
-    /// 'size', in bytes, using the specified 'initializer' for the acumulator.
-    /// The behavior is undefined unless 'data' is 2-byte aligned.
-    static bsl::uint16_t calculateChecksum(bsl::uint32_t initializer,
-                                           const void*   data,
-                                           bsl::size_t   size);
-
   public:
     /// Enumerate the constants used by the implementation.
     enum Constant {
@@ -114,12 +106,12 @@ class UdpHeader
     /// Set the checksum to the specified 'value'.
     void setChecksum(bsl::uint16_t value);
 
-    /// Decode the header from the specified 'source' having the specified
-    /// 'size'. Return the error.
-    ntsa::Error decode(const void* source, const bsl::size_t size);
-
-    /// Decode the header from the specified 'source'. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+    /// Decode the header from the specified 'buffer' starting at the specified
+    /// 'offset' inside the framing packet having the specified 'packetSize'.
+    /// Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
+                       bsl::size_t              offset,
+                       bsl::size_t              packetSize);
 
     /// Encode the header to the specified 'buffer' starting at the specified
     /// 'offset'. Return the

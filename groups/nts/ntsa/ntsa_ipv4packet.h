@@ -82,11 +82,13 @@ class Ipv4Packet
     /// Return a reference to the modifiable payload.
     ntsa::Ipv4Payload& payload();
 
-    /// Decode the packet from the specified 'source'. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+    /// Decode the packet from the specified 'buffer' starting at the specified
+    /// 'offset'. Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& buffer, bsl::size_t offset);
 
-    /// Encode the packet to the specified 'destination'. Return the error. 
-    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+    /// Encode the packet to the specified 'buffer' starting at the specified
+    /// 'offset'. Return the error.
+    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::Ipv4Header& header() const;

@@ -26,100 +26,82 @@ BSLS_IDENT_RCSID(ntsa_ipv4header_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-bsl::uint16_t Ipv4Header::calculateChecksum(bsl::uint32_t initializer,
-                                            const void*   data,
-                                            bsl::size_t   size)
-{
-    BSLS_ASSERT(reinterpret_cast<bsl::uintptr_t>(data) % 2 == 0);
-
-    bsl::uint32_t accumulator = initializer;
-
-    const bsl::uint8_t* p = reinterpret_cast<const bsl::uint8_t*>(data);
-    bsl::size_t         n = size;
-
-    while (n > 1) {
-        accumulator += BSLS_BYTEORDER_BE_U16_TO_HOST(
-            *reinterpret_cast<const bsl::uint16_t*>(p));
-
-        p += sizeof(bsl::uint16_t);
-        n -= sizeof(bsl::uint16_t);
-    }
-
-    if (n > 0) {
-        accumulator += *p << 8;
-    }
-
-    while (accumulator >> 16) {
-        accumulator = (accumulator & 0xFFFF) + (accumulator >> 16);
-    }
-
-    return static_cast<bsl::uint16_t>(~accumulator);
-}
-
-bool Ipv4Header::verifyChecksum(bsl::uint16_t checksum)
-{
-    return checksum == 0 || checksum == 0xFFFF;
-}
-
-ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& source)
+ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& buffer,
+                               bsl::size_t              offset)
 {
     ntsa::Error error;
 
     reset();
 
-    if (source.size() == 0) {
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    if (buffer.data() == 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::uint8_t control = static_cast<bsl::uint8_t>(source.data()[0]);
+    const char* bufferData = buffer.data();
+
+    if (buffer.size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t bufferSize =
+        static_cast<bsl::size_t>(buffer.size());
+
+    if (offset + static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH) > bufferSize) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::uint8_t control = static_cast<bsl::uint8_t>(bufferData[offset]);
 
     const bsl::uint8_t version = (control & 0xF0) >> 4;
-    const bsl::uint8_t length  = (control & 0x0F) * sizeof(bsl::uint32_t);
+
+    const bsl::uint8_t headerLength =
+        (control & 0x0F) * sizeof(bsl::uint32_t);
 
     if (version != 4) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    if (length < k_MIN_HEADER_LENGTH) {
+    if (headerLength < k_MIN_HEADER_LENGTH) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    if (length > k_MAX_HEADER_LENGTH) {
+    if (headerLength > k_MAX_HEADER_LENGTH) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     bsl::memcpy(reinterpret_cast<void*>(this),
-                source.data(),
-                static_cast<bsl::size_t>(length));
+                bufferData + offset,
+                static_cast<bsl::size_t>(headerLength));
 
     return ntsa::Error();
 }
 
-ntsa::Error Ipv4Header::encode(bdlbb::BlobBuffer* destination,
+ntsa::Error Ipv4Header::encode(bdlbb::BlobBuffer* buffer,
                                bsl::size_t        offset) const
 {
     ntsa::Error error;
 
-    Ipv4Header header = *this;
-
-    const bsl::size_t headerLength = header.headerLength();
-
-    if (offset + headerLength > static_cast<bsl::size_t>(destination->size()))
-    {
+    if (buffer->data() == 0) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    header.setChecksum(0);
+    char* bufferData = buffer->data();
 
-    const bsl::uint16_t checksum =
-        Ipv4Header::calculateChecksum(0,
-                                      reinterpret_cast<const void*>(&header),
-                                      header.headerLength());
+    if (buffer->size() <= 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
 
-    header.setChecksum(checksum);
+    const bsl::size_t bufferCapacity =
+        static_cast<bsl::size_t>(buffer->size());
 
-    bsl::memcpy(destination->data() + offset,
-                reinterpret_cast<const void*>(&header),
+    const bsl::size_t headerLength = this->headerLength();
+
+    if (offset + headerLength > bufferCapacity - offset) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    bsl::memcpy(bufferData + offset,
+                reinterpret_cast<const void*>(this),
                 headerLength);
 
     return ntsa::Error();

@@ -19,10 +19,14 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_ipv4address.h>
+#include <ntsa_ipv6address.h>
 #include <ntsa_tcpheader.h>
+#include <ntsa_tcpextension.h>
 #include <ntsa_tcppayload.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlb_nullablevalue.h>
 #include <bsl_iosfwd.h>
 
 namespace BloombergLP {
@@ -36,8 +40,9 @@ namespace ntsa {
 /// @ingroup module_ntsa_identity
 class TcpPacket
 {
-    ntsa::TcpHeader  d_header;
-    ntsa::TcpPayload d_payload;
+    ntsa::TcpHeader                         d_header;
+    bdlb::NullableValue<ntsa::TcpExtension> d_extension;
+    ntsa::TcpPayload                        d_payload;
 
   public:
     /// Create a new TCP packet having a default value.
@@ -80,15 +85,30 @@ class TcpPacket
     /// Return a reference to the modifiable payload.
     ntsa::TcpPayload& payload();
 
-    /// Decode the packet from the specified 'source' starting at the specified
+    /// Decode the packet from the specified 'buffer' starting at the specified
     /// 'offset' inside the framing packet having the specified 'packetSize'.
     /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& source,
+    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
                        bsl::size_t              offset,
                        bsl::size_t              packetSize);
 
-    /// Encode the packet to the specified 'destination'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* destination) const;
+    /// Encode the packet to the specified 'buffer' starting at the specified
+    /// 'offset'. Calculate the checksum in terms of the specified
+    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
+    /// error.
+    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
+                       bsl::size_t              offset,
+                       const ntsa::Ipv4Address& sourceAddress,
+                       const ntsa::Ipv4Address& destinationAddress) const;
+
+    /// Encode the packet to the specified 'buffer' starting at the specified
+    /// 'offset'. Calculate the checksum in terms of the specified
+    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
+    /// error.
+    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
+                       bsl::size_t              offset,
+                       const ntsa::Ipv6Address& sourceAddress,
+                       const ntsa::Ipv6Address& destinationAddress) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::TcpHeader& header() const;
@@ -142,6 +162,7 @@ bool operator!=(const TcpPacket& lhs, const TcpPacket& rhs);
 NTSCFG_INLINE
 TcpPacket::TcpPacket()
 : d_header()
+, d_extension()
 , d_payload()
 {
 }
@@ -149,6 +170,7 @@ TcpPacket::TcpPacket()
 NTSCFG_INLINE
 TcpPacket::TcpPacket(bslmf::MovableRef<TcpPacket> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
+  d_extension(NTSCFG_MOVE_FROM(original, d_extension)),
   d_payload(NTSCFG_MOVE_FROM(original, d_payload))
 {
     NTSCFG_MOVE_RESET(original);
@@ -157,6 +179,7 @@ TcpPacket::TcpPacket(bslmf::MovableRef<TcpPacket> original) NTSCFG_NOEXCEPT
 NTSCFG_INLINE
 TcpPacket::TcpPacket(const TcpPacket& original)
 : d_header(original.d_header)
+, d_extension(original.d_extension)
 , d_payload(original.d_payload)
 {
 }
@@ -170,8 +193,9 @@ NTSCFG_INLINE
 TcpPacket& TcpPacket::operator=(bslmf::MovableRef<TcpPacket> other)
     NTSCFG_NOEXCEPT
 {
-    d_header  = NTSCFG_MOVE_FROM(other, d_header);
-    d_payload = NTSCFG_MOVE_FROM(other, d_payload);
+    d_header    = NTSCFG_MOVE_FROM(other, d_header);
+    d_extension = NTSCFG_MOVE_FROM(other, d_extension);
+    d_payload   = NTSCFG_MOVE_FROM(other, d_payload);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -182,7 +206,9 @@ NTSCFG_INLINE
 TcpPacket& TcpPacket::operator=(const TcpPacket& other)
 {
     d_header  = other.d_header;
+    d_extension = other.d_extension;
     d_payload = other.d_payload;
+
     return *this;
 }
 
@@ -190,6 +216,7 @@ NTSCFG_INLINE
 void TcpPacket::reset()
 {
     d_header.reset();
+    d_extension.reset();
     d_payload.reset();
 }
 

@@ -26,13 +26,13 @@ BSLS_IDENT_RCSID(ntsa_udppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error UdpPacket::decode(const bdlbb::BlobBuffer& source,
+ntsa::Error UdpPacket::decode(const bdlbb::BlobBuffer& buffer,
                               bsl::size_t              offset,
                               bsl::size_t              packetSize)
 {
     ntsa::Error error;
 
-    if (source.size() <= 0) {
+    if (buffer.size() <= 0) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
@@ -40,26 +40,26 @@ ntsa::Error UdpPacket::decode(const bdlbb::BlobBuffer& source,
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    if (offset > static_cast<bsl::size_t>(source.size())) {
+    if (offset > static_cast<bsl::size_t>(buffer.size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    error = d_header.decode(source.data() + offset, packetSize - offset);
+    error = d_header.decode(buffer, offset, packetSize);
     if (error) {
         return error;
     }
 
     const bsl::size_t headerLength = d_header.headerLength();
 
-    if (offset + headerLength > static_cast<bsl::size_t>(source.size())) {
+    if (offset + headerLength > static_cast<bsl::size_t>(buffer.size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     if (offset + headerLength != packetSize) {
         d_payload.reset(
-            bsl::shared_ptr<char>(source.buffer(),
-                                  source.data() + offset + headerLength),
-            static_cast<int>(source.size() - offset - headerLength));
+            bsl::shared_ptr<char>(buffer.buffer(),
+                                  buffer.data() + offset + headerLength),
+            static_cast<int>(buffer.size() - offset - headerLength));
     }
 
     return ntsa::Error();
@@ -68,12 +68,9 @@ ntsa::Error UdpPacket::decode(const bdlbb::BlobBuffer& source,
 ntsa::Error UdpPacket::encode(
     bdlbb::BlobBuffer*       buffer,
     bsl::size_t              offset,
-    bsl::size_t              packetSize,
     const ntsa::Ipv4Address& sourceAddress,
     const ntsa::Ipv4Address& destinationAddress) const
 {
-    NTSCFG_WARNING_UNUSED(packetSize);
-
     ntsa::Error error;
 
     if (buffer->data() == 0) {
@@ -93,23 +90,23 @@ ntsa::Error UdpPacket::encode(
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    UdpHeader header = d_header;
+    const bsl::size_t headerLength = d_header.headerLength();
+    const bsl::size_t packetLength =
+        headerLength + static_cast<bsl::size_t>(d_payload.size());
+
+    ntsa::UdpHeader header = d_header;
 
     header.setChecksum(0);
 
     ntsa::UdpChecksum checksum;
-    checksum.add(sourceAddress, destinationAddress, d_header.packetLength());
+    checksum.add(sourceAddress, destinationAddress, packetLength);
     checksum.add(&header, header.headerLength());
     if (d_payload.size() > 0) {
         checksum.add(d_payload.data(),
                      static_cast<bsl::size_t>(d_payload.size()));
     }
 
-    const bsl::uint16_t checksumValue = checksum.value();
-
-    BSLS_LOG_DEBUG("Checksum = %d", (int)(checksumValue));
-
-    header.setChecksum(checksumValue);
+    header.setChecksum(checksum.value());
 
     error = header.encode(buffer, offset);
     if (error) {
@@ -117,8 +114,6 @@ ntsa::Error UdpPacket::encode(
     }
 
     if (d_payload.size() > 0) {
-        const bsl::size_t headerLength = d_header.headerLength();
-
         if (offset + headerLength > bufferCapacity) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
@@ -134,13 +129,11 @@ ntsa::Error UdpPacket::encode(
 ntsa::Error UdpPacket::encode(
     bdlbb::BlobBuffer*       buffer,
     bsl::size_t              offset,
-    bsl::size_t              packetSize,
     const ntsa::Ipv6Address& sourceAddress,
     const ntsa::Ipv6Address& destinationAddress) const
 {
     NTSCFG_WARNING_UNUSED(buffer);
     NTSCFG_WARNING_UNUSED(offset);
-    NTSCFG_WARNING_UNUSED(packetSize);
     NTSCFG_WARNING_UNUSED(sourceAddress);
     NTSCFG_WARNING_UNUSED(destinationAddress);
 

@@ -32,12 +32,14 @@ ntsa_ipendpoint
 ntsa_ipv4address
 ntsa_ipv4checksum
 ntsa_ipv4endpoint
+ntsa_ipv4extension
 ntsa_ipv4header
 ntsa_ipv4packet
 ntsa_ipv4payload
 ntsa_ipv6address
 ntsa_ipv6checksum
 ntsa_ipv6endpoint
+ntsa_ipv6extension
 ntsa_ipv6header
 ntsa_ipv6packet
 ntsa_ipv6payload
@@ -68,6 +70,7 @@ ntsa_socketstate
 ntsa_tcpchecksum
 ntsa_tcpcongestioncontrol
 ntsa_tcpcongestioncontrolalgorithm
+ntsa_tcpextension
 ntsa_tcpheader
 ntsa_tcppacket
 ntsa_tcppayload
@@ -76,6 +79,7 @@ ntsa_transport
 ntsa_timestamp
 ntsa_timestamptype
 ntsa_udpchecksum
+ntsa_udpextension
 ntsa_udpheader
 ntsa_udppacket
 ntsa_udppayload

@@ -239,16 +239,6 @@ class Ipv4Header
     /// Initialize the header to its default values.
     void initialize();
 
-    /// Calculate the checksum for the specified 'data' having the specified
-    /// 'size', in bytes, using the specified 'initializer' for the acumulator.
-    /// The behavior is undefined unless 'data' is 2-byte aligned.
-    static bsl::uint16_t calculateChecksum(bsl::uint32_t initializer,
-                                           const void*   data,
-                                           bsl::size_t   size);
-
-    /// Verify the specified 'checksum' is valid.
-    static bool verifyChecksum(bsl::uint16_t checksum);
-
   public:
     /// Enumerate the constants used by the implementation.
     enum Constants {
@@ -375,12 +365,14 @@ class Ipv4Header
     /// Set the destination address to the specified 'value'.
     void setDestinationAddress(const ntsa::Ipv4Address& value);
 
-    /// Decode the packet from the specified 'source'. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& source);
+    /// Decode the packet from the specified 'buffer' starting at the specified
+    /// 'offset'. Return the error.
+    ntsa::Error decode(const bdlbb::BlobBuffer& buffer, bsl::size_t offset);
 
-    /// Encode the packet to the specified 'destination' starting at the
-    /// specified 'offset' in the 'destination'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* destination, bsl::size_t offset) const;
+    /// Encode the packet to the specified 'buffer' starting at the specified
+    /// 'offset'. Return the error.
+    ntsa::Error encode(bdlbb::BlobBuffer* buffer,
+                       bsl::size_t        offset) const;
 
     /// Return the length of the header including all options, in bytes.
     bsl::size_t headerLength() const;
