@@ -18,7 +18,6 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntsa_tcpextension_cpp, "$Id$ $CSID$")
 
-#include <bslim_printer.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
 
@@ -115,15 +114,15 @@ ntsa::Error TcpExtension::Decoder::decode()
     d_type = d_current[0];
 
     if (d_type == k_END_TYPE || d_type == k_PADDING_TYPE) {
-        d_next    = d_current + 1;
-        d_data    = 0;
-        d_size    = 0;
+        d_next = d_current + 1;
+        d_data = 0;
+        d_size = 0;
     }
     else if (d_current[1] < 2) {
-        d_type    = k_END_TYPE;
-        d_next    = d_end;
-        d_data    = 0;
-        d_size    = 0;
+        d_type = k_END_TYPE;
+        d_next = d_end;
+        d_data = 0;
+        d_size = 0;
 
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
@@ -132,8 +131,6 @@ ntsa::Error TcpExtension::Decoder::decode()
         d_data = d_current + 2;
         d_size = d_current[1] - 2;
     }
-
-
 
     // should be types 2, 4, 8, 1, 3
 
@@ -230,8 +227,7 @@ ntsa::Error TcpExtension::encode(bdlbb::BlobBuffer* buffer,
 
     const bsl::size_t size = this->size();
 
-    if (offset + size > bufferCapacity)
-    {
+    if (offset + size > bufferCapacity) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
@@ -274,7 +270,6 @@ bool TcpExtension::find(const void** payload,
     return false;
 }
 
-
 bsl::size_t TcpExtension::size() const
 {
     ntsa::Error error;
@@ -316,14 +311,39 @@ bsl::ostream& TcpExtension::print(bsl::ostream& stream,
                                   int           level,
                                   int           spacesPerLevel) const
 {
+    ntsa::Error error;
+
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-
-    // printer.printAttribute("mss", this->mss());
-
+    this->print(&printer);
     printer.end();
 
     return stream;
+}
+
+void TcpExtension::print(bslim::Printer* printer) const
+{
+    ntsa::Error error;
+
+    const bsl::uint8_t* current = d_options;
+    const bsl::uint8_t* end     = d_options + k_MAX_OPTIONS_LENGTH;
+
+    while (true) {
+        bsl::size_t size = 0;
+
+        ntsa::ConstBuffer buffer(current,
+                                 static_cast<bsl::size_t>(end - current));
+
+        ntsa::TcpOption option;
+        error = option.decode(buffer, &size);
+        if (error) {
+            break;
+        }
+
+        option.print(printer);
+
+        current += size;
+    }
 }
 
 }  // close package namespace

@@ -3,6 +3,7 @@ ntsa_abstract
 ntsa_allocator
 ntsa_backoff
 ntsa_buffer
+ntsa_circular
 ntsa_coroutine
 ntsa_data
 ntsa_datatype
@@ -72,8 +73,12 @@ ntsa_tcpcongestioncontrol
 ntsa_tcpcongestioncontrolalgorithm
 ntsa_tcpextension
 ntsa_tcpheader
+ntsa_tcpoption
+ntsa_tcpoptiontype
 ntsa_tcppacket
 ntsa_tcppayload
+ntsa_tcpsequencenumber
+ntsa_tcptimepoint
 ntsa_temporary
 ntsa_transport
 ntsa_timestamp

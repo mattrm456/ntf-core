@@ -26,7 +26,6 @@ BSLS_IDENT_RCSID(ntsa_tcppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-
 ntsa::Error TcpPacket::decode(const bdlbb::BlobBuffer& buffer,
                               bsl::size_t              offset,
                               bsl::size_t              packetSize)
@@ -62,7 +61,9 @@ ntsa::Error TcpPacket::decode(const bdlbb::BlobBuffer& buffer,
     if (extensionLength > 0) {
         d_extension.makeValue();
 
-        error = d_extension.value().decode(buffer, offset + headerLength, extensionLength);
+        error = d_extension.value().decode(buffer,
+                                           offset + headerLength,
+                                           extensionLength);
         if (error) {
             return error;
         }
@@ -78,19 +79,17 @@ ntsa::Error TcpPacket::decode(const bdlbb::BlobBuffer& buffer,
         const bsl::size_t payloadOffset =
             offset + headerLength + extensionLength;
 
-        const bsl::size_t payloadSize =
-            static_cast<bsl::size_t>(
-                bufferSize - offset - headerLength - extensionLength);
+        const bsl::size_t payloadSize = static_cast<bsl::size_t>(
+            bufferSize - offset - headerLength - extensionLength);
 
         if (payloadOffset + payloadSize > bufferSize) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        d_payload.reset(
-            bsl::shared_ptr<char>(
-                buffer.buffer(),
-                const_cast<char*>(bufferData + payloadOffset)),
-            static_cast<int>(payloadSize));
+        d_payload.reset(bsl::shared_ptr<char>(
+                            buffer.buffer(),
+                            const_cast<char*>(bufferData + payloadOffset)),
+                        static_cast<int>(payloadSize));
     }
 
     return ntsa::Error();
@@ -166,16 +165,13 @@ ntsa::Error TcpPacket::encode(
             offset + headerLength + extensionLength;
 
         const bsl::size_t payloadSize =
-            static_cast<bsl::size_t>(
-                d_payload.size());
+            static_cast<bsl::size_t>(d_payload.size());
 
         if (payloadOffset + payloadSize > bufferCapacity) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        bsl::memcpy(bufferData + payloadOffset,
-                    d_payload.data(),
-                    payloadSize);
+        bsl::memcpy(bufferData + payloadOffset, d_payload.data(), payloadSize);
     }
 
     return ntsa::Error();
@@ -218,12 +214,17 @@ bool TcpPacket::equals(const TcpPacket& other) const
 }
 
 bsl::ostream& TcpPacket::print(bsl::ostream& stream,
-                                int           level,
-                                int           spacesPerLevel) const
+                               int           level,
+                               int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("header", d_header);
+
+    d_header.print(&printer);
+    if (d_extension.has_value()) {
+        d_extension.value().print(&printer);
+    }
+
     printer.end();
 
     return stream;

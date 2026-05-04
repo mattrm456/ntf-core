@@ -624,6 +624,10 @@ SocketOption::~SocketOption()
 NTSCFG_INLINE
 void SocketOption::reset()
 {
+    if (isTcpCongestionControl()) {
+        d_tcpCongestionControl.object().~TcpCongestionControl();
+    }
+
     d_type = ntsa::SocketOptionType::e_UNDEFINED;
 }
 

@@ -20,8 +20,11 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_tcpheader.h>
+#include <ntsa_tcpoptiontype.h>
+#include <ntsa_tcpoption.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bslim_printer.h>
 #include <bsl_iosfwd.h>
 
 namespace BloombergLP {
@@ -145,6 +148,20 @@ class TcpExtension
     ntsa::Error encode(bdlbb::BlobBuffer* buffer,
                        bsl::size_t        offset) const;
 
+    #if 0
+    ntsa::Error getMaxSegmentSize(bsl::size_t* result) const;
+
+    ntsa::Error getWindowScaling(bsl::size_t* result) const;
+
+    ntsa::Error getSelectiveAckPermitted(bool result) const;
+
+    ntsa::Error getSelectiveAck(bsl::vector< bsl::pair<bsl::uint32_t, bsl::uint32_t> >* result) const;
+
+    ntsa::Error getFastOpen(bdlb::Guid* result) const;
+    #endif
+
+
+
     /// Find the TCP option having the specified 'type' starting at the
     /// specified 'offset'. If such an option is found, load into the specified
     /// 'payload' the start of the  option's payload, load into the specified
@@ -189,6 +206,9 @@ class TcpExtension
     bsl::ostream& print(bsl::ostream& stream,
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
+
+    /// Print this object using the specified 'printer'.
+    void print(bslim::Printer* printer) const;
 
     /// This type's default constructor is equivalent to setting each byte of
     /// the object's footprint to zero.

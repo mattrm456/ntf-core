@@ -168,7 +168,10 @@ bsl::ostream& UdpPacket::print(bsl::ostream& stream,
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("header", d_header);
+
+    d_header.print(&printer);
+    
+
     printer.end();
 
     return stream;

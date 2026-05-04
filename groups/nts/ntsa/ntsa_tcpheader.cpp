@@ -18,7 +18,6 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntsa_tcpheader_cpp, "$Id$ $CSID$")
 
-#include <bslim_printer.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
 
@@ -107,21 +106,24 @@ bsl::ostream& TcpHeader::print(bsl::ostream& stream,
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-
-    printer.printAttribute("sourcePort", this->sourcePort());
-    printer.printAttribute("destinationPort", this->destinationPort());
-    printer.printAttribute("sequenceNumber", this->sequenceNumber());
-    printer.printAttribute("acknowledgmentNumber",
-                           this->acknowledgmentNumber());
-    printer.printAttribute("dataOffset", this->dataOffset());
-    printer.printForeign(this->flags(), &TcpHeader::printFlags, "flags");
-    printer.printAttribute("windowSize", this->windowSize());
-    printer.printAttribute("checksum", this->checksum());
-    printer.printAttribute("urgentPointer", this->urgentPointer());
-
+    this->print(&printer);
     printer.end();
 
     return stream;
+}
+
+void TcpHeader::print(bslim::Printer* printer) const
+{
+    printer->printAttribute("sourcePort", this->sourcePort());
+    printer->printAttribute("destinationPort", this->destinationPort());
+    printer->printAttribute("sequenceNumber", this->sequenceNumber());
+    printer->printAttribute("acknowledgmentNumber",
+                           this->acknowledgmentNumber());
+    printer->printAttribute("dataOffset", this->dataOffset());
+    printer->printForeign(this->flags(), &TcpHeader::printFlags, "flags");
+    printer->printAttribute("windowSize", this->windowSize());
+    printer->printAttribute("checksum", this->checksum());
+    printer->printAttribute("urgentPointer", this->urgentPointer());
 }
 
 bsl::ostream& TcpHeader::printFlags(bsl::ostream& stream,

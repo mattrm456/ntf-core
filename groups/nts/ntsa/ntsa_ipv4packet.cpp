@@ -169,10 +169,10 @@ bsl::ostream& Ipv4Packet::print(bsl::ostream& stream,
     printer.printAttribute("ipv4", d_header);
 
     if (d_payload.isTcp()) {
-        printer.printAttribute("tcp", d_payload.tcp().header());
+        printer.printAttribute("tcp", d_payload.tcp());
     }
     else if (d_payload.isUdp()) {
-        printer.printAttribute("udp", d_payload.udp().header());
+        printer.printAttribute("udp", d_payload.udp());
     }
 
     printer.end();

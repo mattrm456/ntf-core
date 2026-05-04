@@ -18,7 +18,6 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntsa_udpheader_cpp, "$Id$ $CSID$")
 
-#include <bslim_printer.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
 
@@ -105,14 +104,19 @@ bsl::ostream& UdpHeader::print(bsl::ostream& stream,
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
-    printer.printAttribute("headerLength", this->headerLength());
-    printer.printAttribute("packetLength", this->packetLength());
-    printer.printAttribute("sourcePort", this->sourcePort());
-    printer.printAttribute("destinationPort", this->destinationPort());
-    printer.printAttribute("checksum", this->checksum());
+    this->print(&printer);
     printer.end();
 
     return stream;
+}
+
+void UdpHeader::print(bslim::Printer* printer) const
+{
+    printer->printAttribute("headerLength", this->headerLength());
+    printer->printAttribute("packetLength", this->packetLength());
+    printer->printAttribute("sourcePort", this->sourcePort());
+    printer->printAttribute("destinationPort", this->destinationPort());
+    printer->printAttribute("checksum", this->checksum());
 }
 
 }  // close package namespace

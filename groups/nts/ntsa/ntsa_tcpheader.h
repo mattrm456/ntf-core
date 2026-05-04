@@ -26,6 +26,7 @@ BSLS_IDENT("$Id: $")
 #include <bdlb_bigendian.h>
 #include <bdlbb_blob.h>
 #include <bslh_hash.h>
+#include <bslim_printer.h>
 #include <bsls_assert.h>
 #include <bsl_iosfwd.h>
 #include <bsl_string.h>
@@ -283,6 +284,9 @@ class TcpHeader
     bsl::ostream& print(bsl::ostream& stream,
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
+
+    /// Print this object using the specified 'printer'.
+    void print(bslim::Printer* printer) const;
 
     /// This type's default constructor is equivalent to setting each byte of
     /// the object's footprint to zero.

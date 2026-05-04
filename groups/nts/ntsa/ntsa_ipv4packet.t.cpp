@@ -28,21 +28,23 @@ namespace ntsa {
 // Provide tests for 'ntsa::Ipv4Packet'.
 //
 // Notes:
-// Initialially, the raw input used to test the correct round-trip decoding
-// and encoding was gathered by a raw sockets reception of a standard sockets
-// transmission. However, for that initial data, both test packets fail with
-// the same pattern. The captured packet's UDP checksum (0xFE1B for ZeroLength,
-// 0xFE28 for the payload test) equals exactly the one's complement sum of the
-// pseudo-header alone.
+// Initially, the raw input used to test correct round-trip decoding and
+// encoding was gathered by raw socket reception of standard socket
+// transmissions. However, the captured transport-layer checksums equal exactly
+// the one's complement sum of the pseudo-header alone (0xFE1B for the
+// zero-length UDP test, 0xFE28 for the UDP payload test, and 0xFE30 for the
+// TCP SYN test).
 //
-// These packets were captured on Linux loopback with UDP checksum offloading:
-// the kernel writes only the pseudo-header partial sum into the checksum
-// field before handing the packet to the NIC for completion. The capture
-// happened before the NIC finished the checksum. So verifying the checksums
-// in the static captured data failed because that captured data only
-// represented the checksum for the IP pseudo header.
+// All of these packets were captured on Linux loopback with checksum
+// offloading enabled: the kernel writes only the pseudo-header partial sum
+// into the checksum field before handing the packet to the NIC for completion.
+// The capture happened before the NIC finished the checksum. Verifying the
+// checksums in the static captured data therefore failed because the data only
+// represented the partial pseudo-header contribution.
 //
-// The fix is to replace the offload-partial checksums with the correct values.
+// The fix is to replace the offload-partial checksums with the correct
+// RFC-compliant values computed over the full pseudo-header, transport header,
+// and payload.
 class Ipv4PacketTest
 {
     BALL_LOG_SET_CLASS_CATEGORY("NTSA.IPV4PACKET.TEST");
@@ -182,7 +184,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationTcpIpv4)
         0x45, 0x00, 0x00, 0x3C, 0xFB, 0xED, 0x40, 0x00, 0x40, 0x06, 0x40,
         0xCC, 0x7F, 0x00, 0x00, 0x01, 0x7F, 0x00, 0x00, 0x01, 0xBB, 0x63,
         0xDB, 0x52, 0x81, 0x07, 0xEC, 0x9B, 0x00, 0x00, 0x00, 0x00, 0xA0,
-        0x02, 0xFF, 0xFF, 0xFE, 0x30, 0x00, 0x00, 0x02, 0x04, 0xFF, 0xD7,
+        0x02, 0xFF, 0xFF, 0xCF, 0xE9, 0x00, 0x00, 0x02, 0x04, 0xFF, 0xD7,
         0x04, 0x02, 0x08, 0x0A, 0xDD, 0x39, 0x9E, 0x58, 0x00, 0x00, 0x00,
         0x00, 0x01, 0x03, 0x03, 0x0B
     };
@@ -244,7 +246,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationTcpIpv4)
     NTSCFG_TEST_EQ(incomingTcpPacket.header().acknowledgmentNumber(), 0);
     NTSCFG_TEST_EQ(incomingTcpPacket.header().dataOffset(), 40);
     NTSCFG_TEST_EQ(incomingTcpPacket.header().windowSize(), 65535);
-    NTSCFG_TEST_EQ(incomingTcpPacket.header().checksum(), 65072);
+    NTSCFG_TEST_EQ(incomingTcpPacket.header().checksum(), 53225);
     NTSCFG_TEST_EQ(incomingTcpPacket.header().urgentPointer(), 0);
 
     NTSCFG_TEST_TRUE(
