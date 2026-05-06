@@ -23,6 +23,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv6address.h>
 #include <ntsa_tcpheader.h>
 #include <ntsa_tcpextension.h>
+#include <ntsa_tcpoption.h>
 #include <ntsa_tcppayload.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>

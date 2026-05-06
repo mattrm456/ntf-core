@@ -67,6 +67,9 @@ ntsa::Error TcpPacket::decode(const bdlbb::BlobBuffer& buffer,
         if (error) {
             return error;
         }
+
+        ntsa::TcpOptionVector optionVector;
+        d_extension.value().load(&optionVector);
     }
 
     if (offset + headerLength + extensionLength >

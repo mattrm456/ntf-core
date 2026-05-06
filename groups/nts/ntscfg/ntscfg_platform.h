@@ -393,6 +393,26 @@ namespace ntscfg {
 /// @ingroup module_ntscfg
 #define NTSCFG_WARNING_UNUSED(variable) (void)(variable)
 
+/// @internal @brief
+/// Copy the specified 'size' number of bytes from the specified 'source' to
+/// the specified 'destination'.
+///
+/// @ingroup module_ntscfg
+#define NTSCFG_MEMORY_COPY(destination, source, size)                         \
+    bsl::memcpy(reinterpret_cast<void*>(destination),                         \
+                reinterpret_cast<const void*>(source),                        \
+                size)
+
+/// @internal @brief
+/// Compare the specified 'size' number of bytes from the specified 'address1'
+/// to the specified 'address2'.
+///
+/// @ingroup module_ntscfg
+#define NTSCFG_MEMORY_COMPARE(address1, address2, size)                       \
+    bsl::memcmp(reinterpret_cast<const void*>(address1),                      \
+                reinterpret_cast<const void*>(address2),                      \
+                size)
+
 /// Provide an enumeration of the signals on whose behavior can be modified by
 /// this library.
 ///

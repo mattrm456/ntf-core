@@ -272,6 +272,11 @@ class TcpOption
     NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(TcpOption);
 };
 
+/// Defines a type alias for a vector of TCP options.
+///
+/// @ingroup module_ntsa_system
+typedef bsl::vector<ntsa::TcpOption> TcpOptionVector;
+
 /// Write the specified 'object' to the specified 'stream'. Return a modifiable
 /// reference to the 'stream'.
 ///

@@ -312,35 +312,39 @@ bdlb::Guid& TcpOption::fastOpen()
 ntsa::Error TcpOption::decode(const ntsa::ConstBuffer& buffer,
                               bsl::size_t*             size)
 {
-    const bsl::uint8_t* begin =
+    const bsl::uint8_t* cursor =
         static_cast<const bsl::uint8_t*>(buffer.data());
 
-    const bsl::uint8_t* current = begin;
-    const bsl::uint8_t* end     = begin + buffer.size();
+    bsl::size_t available = buffer.size();
+
+    this->reset();
 
     *size = 0;
 
-    if (current == end) {
+    if (available < sizeof(bsl::uint8_t)) {
         return ntsa::Error(ntsa::Error::e_EOF);
     }
 
-    const bsl::uint8_t type = *current++;
+    const bsl::uint8_t type = *cursor;
+
+    cursor    += sizeof(bsl::uint8_t);
+    available -= sizeof(bsl::uint8_t);
 
     if (type == ntsa::TcpOptionType::e_UNDEFINED) {
-        *size = current - begin;
-        return ntsa::Error(ntsa::Error::e_EOF);
+        this->reset();
     }
     else if (type == ntsa::TcpOptionType::e_PADDING) {
         this->makePadding();
-        *size = current - begin;
-        return ntsa::Error();
     }
     else {
-        if (current == end) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_EOF);
         }
 
-        bsl::uint8_t payloadSize = *current++;
+        bsl::uint8_t payloadSize = *cursor;
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
 
         if (payloadSize < 2) {
             return ntsa::Error(ntsa::Error::e_INVALID);
@@ -348,30 +352,39 @@ ntsa::Error TcpOption::decode(const ntsa::ConstBuffer& buffer,
 
         payloadSize -= 2;
 
-        if (payloadSize > static_cast<bsl::size_t>(end - current)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
         if (type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
             if (payloadSize != sizeof(bdlb::BigEndianUint16)) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            bdlb::BigEndianUint16 maxSegmentSize;
-            bsl::memcpy(reinterpret_cast<void*>(&maxSegmentSize),
-                        current,
-                        sizeof maxSegmentSize);
-            current += sizeof maxSegmentSize;
+            if (available < payloadSize) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bdlb::BigEndianUint16 bigEndianMaxSegmentSize;
+            NTSCFG_MEMORY_COPY(&bigEndianMaxSegmentSize,
+                               cursor,
+                               sizeof(bdlb::BigEndianUint16));
+
+            cursor    += sizeof(bdlb::BigEndianUint16);
+            available -= sizeof(bdlb::BigEndianUint16);
 
             this->makeMaxSegmentSize(static_cast<bsl::size_t>(
-                static_cast<bsl::uint16_t>(maxSegmentSize)));
+                static_cast<bsl::uint16_t>(bigEndianMaxSegmentSize)));
         }
         else if (type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
             if (payloadSize != sizeof(bsl::uint8_t)) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            const bsl::uint8_t windowScale = *current++;
+            if (available < payloadSize) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            const bsl::uint8_t windowScale = *cursor;
+
+            cursor    += sizeof(bsl::uint8_t);
+            available -= sizeof(bsl::uint8_t);
 
             this->makeWindowScale(static_cast<bsl::size_t>(windowScale));
         }
@@ -383,72 +396,418 @@ ntsa::Error TcpOption::decode(const ntsa::ConstBuffer& buffer,
             this->makeSelectiveAckPermitted();
         }
         else if (type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
-            payloadSize = payloadSize * (2 * sizeof(bdlb::BigEndianUint32));
-
-            if (current + payloadSize >= end) {
+            if (payloadSize > 4) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            BSLS_LOG_WARN("Unsupported TCP option %d", static_cast<int>(type));
-            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+            ntsa::TcpSequenceRangeVector& selectiveAck =
+                this->makeSelectiveAck();
+
+            selectiveAck.resize(payloadSize);
+
+            for (bsl::size_t i = 0; i < selectiveAck.size(); ++i) {
+                if (available < sizeof(bdlb::BigEndianUint32)) {
+                    return ntsa::Error(ntsa::Error::e_INVALID);
+                }
+
+                bdlb::BigEndianUint32 bigEndianOldest;
+                NTSCFG_MEMORY_COPY(&bigEndianOldest,
+                                   cursor,
+                                   sizeof(bdlb::BigEndianUint16));
+
+                cursor    += sizeof(bdlb::BigEndianUint32);
+                available -= sizeof(bdlb::BigEndianUint32);
+
+                selectiveAck[i].setOldest(ntsa::TcpSequenceNumber(
+                    static_cast<bsl::uint32_t>(bigEndianOldest)));
+
+                if (available < sizeof(bdlb::BigEndianUint32)) {
+                    return ntsa::Error(ntsa::Error::e_INVALID);
+                }
+
+                bdlb::BigEndianUint32 bigEndianNewest;
+                NTSCFG_MEMORY_COPY(&bigEndianNewest,
+                                   cursor,
+                                   sizeof(bdlb::BigEndianUint16));
+
+                cursor    += sizeof(bdlb::BigEndianUint32);
+                available -= sizeof(bdlb::BigEndianUint32);
+
+                selectiveAck[i].setNewest(ntsa::TcpSequenceNumber(
+                    static_cast<bsl::uint32_t>(bigEndianNewest)));
+            }
         }
         else if (type == ntsa::TcpOptionType::e_TIMESTAMP) {
-            if (payloadSize != 2 * sizeof(bsl::uint32_t)) {
+            if (payloadSize !=
+                sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32))
+            {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            bdlb::BigEndianUint32 txTimestamp;
-            bsl::memcpy(reinterpret_cast<void*>(&txTimestamp),
-                        current,
-                        sizeof txTimestamp);
-            current += sizeof txTimestamp;
+            ntsa::TcpTimePointInterval& timestamp = this->makeTimestamp();
 
-            bdlb::BigEndianUint32 rxTimestamp;
-            bsl::memcpy(reinterpret_cast<void*>(&rxTimestamp),
-                        current,
-                        sizeof rxTimestamp);
-            current += sizeof rxTimestamp;
+            if (available < sizeof(bdlb::BigEndianUint32)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
 
-            ntsa::TcpTimePointInterval timestamp;
+            bdlb::BigEndianUint32 bigEndianTx;
+            NTSCFG_MEMORY_COPY(&bigEndianTx,
+                               cursor,
+                               sizeof(bdlb::BigEndianUint32));
+
+            cursor    += sizeof(bdlb::BigEndianUint32);
+            available -= sizeof(bdlb::BigEndianUint32);
 
             timestamp.setTx(
-                ntsa::TcpTimePoint(static_cast<bsl::uint32_t>(txTimestamp)));
+                ntsa::TcpTimePoint(static_cast<bsl::uint32_t>(bigEndianTx)));
+
+            if (available < sizeof(bdlb::BigEndianUint32)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bdlb::BigEndianUint32 bigEndianRx;
+            NTSCFG_MEMORY_COPY(&bigEndianRx,
+                               cursor,
+                               sizeof(bdlb::BigEndianUint32));
+
+            cursor    += sizeof(bdlb::BigEndianUint32);
+            available -= sizeof(bdlb::BigEndianUint32);
 
             timestamp.setRx(
-                ntsa::TcpTimePoint(static_cast<bsl::uint32_t>(rxTimestamp)));
-
-            this->makeTimestamp(timestamp);
+                ntsa::TcpTimePoint(static_cast<bsl::uint32_t>(bigEndianRx)));
         }
         else if (type == ntsa::TcpOptionType::e_FAST_OPEN) {
             if (payloadSize != sizeof(bdlb::Guid)) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            bdlb::Guid guid;
-            bsl::memcpy(reinterpret_cast<void*>(&guid), current, sizeof guid);
-            current += sizeof guid;
+            bdlb::Guid& guid = this->makeFastOpen();
 
-            this->makeFastOpen(guid);
+            if (available < sizeof(bdlb::Guid)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            NTSCFG_MEMORY_COPY(&guid, cursor, sizeof(bdlb::Guid));
+
+            cursor    += sizeof(bdlb::Guid);
+            available -= sizeof(bdlb::Guid);
         }
         else {
             BSLS_LOG_WARN("Unknown TCP option %d", static_cast<int>(type));
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
-
-        *size = current - begin;
-        return ntsa::Error();
     }
+
+    *size = buffer.size() - available;
+
+    return ntsa::Error();
 }
 
 ntsa::Error TcpOption::encode(ntsa::MutableBuffer* buffer,
                               bsl::size_t*         size) const
 {
-    NTSCFG_WARNING_UNUSED(buffer);
-    NTSCFG_WARNING_UNUSED(size);
+#if 0
 
-    NTSCFG_NOT_IMPLEMENTED();
+bsl::size_t remainder = offset % 4;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    if (remainder != 0) {
+        ntsa::TcpOption control;
+        control.makePadding();
+
+        for (bsl::size_t i = 0; i < remainder; ++i) {
+            if (offset > k_MAX_OPTIONS_LENGTH) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            ntsa::MutableBuffer mutableBuffer(
+                d_options + offset, k_MAX_OPTIONS_LENGTH - offset);
+
+            bsl::size_t size = 0;
+
+            error = control.encode(&mutableBuffer, &size);
+            if (error) {
+                return error;
+            }
+
+            offset += size;
+        }
+    }
+#endif
+
+#if 0
+        const bsl::size_t padding =
+            static_cast<bsl::size_t>(
+                reinterpret_cast<bsl::uintptr_t>(cursor)) %
+            sizeof(bdlb::BigEndianUint16);
+
+        for (bsl::size_t i = 0; i < padding; ++i) {
+            if (available < sizeof(bsl::uint8_t)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            *cursor =
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
+
+            cursor    += sizeof(bsl::uint8_t);
+            available -= sizeof(bsl::uint8_t);
+        }
+#endif
+
+
+    bsl::uint8_t* cursor    = static_cast<bsl::uint8_t*>(buffer->data());
+    bsl::size_t   available = buffer->size();
+
+    *size = 0;
+
+    if (d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(d_type);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bdlb::BigEndianUint16));
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bdlb::BigEndianUint16)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        if (d_maxSegmentSize.object() >
+            bsl::numeric_limits<bsl::uint16_t>::max())
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        bdlb::BigEndianUint16 bigEndianMaxSegmentSize;
+        bigEndianMaxSegmentSize =
+            static_cast<bsl::uint16_t>(d_maxSegmentSize.object());
+
+        NTSCFG_MEMORY_COPY(cursor,
+                           &bigEndianMaxSegmentSize,
+                           sizeof(bdlb::BigEndianUint16));
+
+        cursor    += sizeof(bdlb::BigEndianUint16);
+        available -= sizeof(bdlb::BigEndianUint16);
+    }
+    else if (d_type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor =
+            static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(d_type);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bsl::uint8_t));
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        if (d_windowScale.object() > bsl::numeric_limits<bsl::uint8_t>::max())
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(d_windowScale.object());
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+    }
+    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(d_type);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(2);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+    }
+    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+        for (bsl::size_t i = 0; i < 2; ++i) {
+            if (available < sizeof(bsl::uint8_t)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            *cursor =
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
+
+            cursor    += sizeof(bsl::uint8_t);
+            available -= sizeof(bsl::uint8_t);
+        }
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(d_type);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor =
+            static_cast<bsl::uint8_t>(2 + d_selectiveAck.object().size());
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        for (bsl::size_t i = 0; i < d_selectiveAck.object().size(); ++i) {
+            if (available < sizeof(bdlb::BigEndianUint32)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bdlb::BigEndianUint32 bigEndianOldest;
+            bigEndianOldest = d_selectiveAck.object()[i].oldest().value();
+
+            NTSCFG_MEMORY_COPY(cursor,
+                               &bigEndianOldest,
+                               sizeof(bdlb::BigEndianUint32));
+
+            cursor    += sizeof(bdlb::BigEndianUint32);
+            available -= sizeof(bdlb::BigEndianUint32);
+
+            if (available < sizeof(bdlb::BigEndianUint32)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bdlb::BigEndianUint32 bigEndianNewest;
+            bigEndianNewest = d_selectiveAck.object()[i].newest().value();
+
+            NTSCFG_MEMORY_COPY(cursor,
+                               &bigEndianNewest,
+                               sizeof(bdlb::BigEndianUint32));
+
+            cursor    += sizeof(bdlb::BigEndianUint32);
+            available -= sizeof(bdlb::BigEndianUint32);
+        }
+    }
+    else if (d_type == ntsa::TcpOptionType::e_TIMESTAMP) {
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(d_type);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bdlb::BigEndianUint32) +
+                                            sizeof(bdlb::BigEndianUint32));
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bdlb::BigEndianUint32)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        bdlb::BigEndianUint32 bigEndianTx;
+        bigEndianTx = d_timestamp.object().tx().value();
+
+        NTSCFG_MEMORY_COPY(cursor,
+                           &bigEndianTx,
+                           sizeof(bdlb::BigEndianUint32));
+
+        cursor    += sizeof(bdlb::BigEndianUint32);
+        available -= sizeof(bdlb::BigEndianUint32);
+
+        if (available < sizeof(bdlb::BigEndianUint32)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        bdlb::BigEndianUint32 bigEndianRx;
+        bigEndianRx = d_timestamp.object().rx().value();
+
+        NTSCFG_MEMORY_COPY(cursor,
+                           &bigEndianRx,
+                           sizeof(bdlb::BigEndianUint32));
+
+        cursor    += sizeof(bdlb::BigEndianUint32);
+        available -= sizeof(bdlb::BigEndianUint32);
+    }
+    else if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(d_type);
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bsl::uint8_t)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bdlb::Guid));
+
+        cursor    += sizeof(bsl::uint8_t);
+        available -= sizeof(bsl::uint8_t);
+
+        if (available < sizeof(bdlb::Guid)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        NTSCFG_MEMORY_COPY(cursor, &d_fastOpen.object(), sizeof(bdlb::Guid));
+
+        cursor    += sizeof(bdlb::Guid);
+        available -= sizeof(bdlb::Guid);
+    }
+    else if (d_type != ntsa::TcpOptionType::e_PADDING &&
+             d_type != ntsa::TcpOptionType::e_UNDEFINED)
+    {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    *size = buffer->size() - available;
+
+    return ntsa::Error();
 }
 
 bsl::size_t TcpOption::maxSegmentSize() const

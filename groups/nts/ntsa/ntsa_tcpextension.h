@@ -45,58 +45,7 @@ class TcpExtension
         k_MIN_OPTIONS_LENGTH = 0,
 
         /// The maximum length of all options, in bytes.
-        k_MAX_OPTIONS_LENGTH = 40,
-
-        /// The maximum segment size (MSS) option type.
-        k_MSS_TYPE = 2,
-
-        /// The maximum segment size (MSS) option size, in bytes.
-        k_MSS_SIZE = 2,
-
-        /// The window scaling option type.
-        k_WINDOW_SCALING_TYPE = 3,
-
-        /// The window scaling option size, in bytes.
-        k_WINDOW_SCALING_SIZE = 1,
-
-        /// The selective acknowledgement (SACK) permitted option type.
-        k_SACK_PERMITTED_TYPE = 4,
-
-        /// The selective acknowledgement (SACK) permitted option size.
-        k_SACK_PERMITTED_SIZE = 0,
-
-        /// The selective acknowledgement (SACK) option type.
-        k_SACK_TYPE = 5,
-
-        /// The selective acknowledgement (SACK) option size, but note that
-        /// the size indicates the count of 8-byte records.
-        k_SACK_SIZE = 1,
-
-        /// The timestamp option type.
-        k_TIMESTAMP_TYPE = 8,
-
-        /// The timestamp option size.
-        k_TIMESTAMP_SIZE = 8,
-
-        /// The fast open option type.
-        k_FAST_OPEN_TYPE = 34,
-
-        /// The fast open option size.
-        k_FAST_OPEN_SIZE = 16,
-
-        /// The padding option type. This option type indicates padding between
-        /// two options or between an option and the end of the options list.
-        k_PADDING_TYPE = 1,
-
-        /// The padding option size.
-        k_PADDING_SIZE = 0,
-
-        /// The end option type. This option type indicates the end of the
-        /// options list.
-        k_END_TYPE = 0,
-
-        /// The end option size.
-        k_END_SIZE = 0
+        k_MAX_OPTIONS_LENGTH = 40
     };
 
   private:
@@ -136,6 +85,9 @@ class TcpExtension
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
+    /// Add the specified 'option'. Return the error.
+    ntsa::Error add(const ntsa::TcpOption& option);
+
     /// Decode the TCP extension area having the specified 'size' from the
     /// specified 'buffer' starting at the specified 'offset'. Return the
     /// error.
@@ -148,20 +100,6 @@ class TcpExtension
     ntsa::Error encode(bdlbb::BlobBuffer* buffer,
                        bsl::size_t        offset) const;
 
-    #if 0
-    ntsa::Error getMaxSegmentSize(bsl::size_t* result) const;
-
-    ntsa::Error getWindowScaling(bsl::size_t* result) const;
-
-    ntsa::Error getSelectiveAckPermitted(bool result) const;
-
-    ntsa::Error getSelectiveAck(bsl::vector< bsl::pair<bsl::uint32_t, bsl::uint32_t> >* result) const;
-
-    ntsa::Error getFastOpen(bdlb::Guid* result) const;
-    #endif
-
-
-
     /// Find the TCP option having the specified 'type' starting at the
     /// specified 'offset'. If such an option is found, load into the specified
     /// 'payload' the start of the  option's payload, load into the specified
@@ -173,6 +111,9 @@ class TcpExtension
               bsl::size_t* next,
               bsl::uint8_t type,
               bsl::size_t  offset) const;
+
+    /// Load into the specified 'result' each option in the TCP extension area.
+    void load(ntsa::TcpOptionVector* result) const;
 
     /// Return the extension data.
     const void* data() const;
