@@ -65,14 +65,14 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpExtensionTest::verifyUsage)
         ntsa::TcpOption option;
         option.makeMaxSegmentSize(65495);
 
-        extension.add(option);
+        extension.add(option, false);
     }
 
     {
         ntsa::TcpOption option;
         option.makeSelectiveAckPermitted();
 
-        extension.add(option);
+        extension.add(option, false);
     }
 
     {
@@ -83,14 +83,14 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpExtensionTest::verifyUsage)
         ntsa::TcpOption option;
         option.makeTimestamp(timestamp);
 
-        extension.add(option);
+        extension.add(option, false);
     }
 
     {
         ntsa::TcpOption option;
         option.makeWindowScale(11);
 
-        extension.add(option);
+        extension.add(option, true);
     }
 
     NTSCFG_TEST_LOG_TRACE << "Options = " << extension << " length = " << extension.size() << NTSCFG_TEST_LOG_END;

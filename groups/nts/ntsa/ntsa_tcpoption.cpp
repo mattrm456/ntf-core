@@ -21,6 +21,15 @@ BSLS_IDENT_RCSID(ntsa_tcpoption_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+bsl::size_t TcpOption::paddingSize(const bsl::uint8_t* cursor,
+                                   bsl::size_t         optionSize)
+{
+    const bsl::size_t address = static_cast<bsl::size_t>(
+        reinterpret_cast<bsl::uintptr_t>(cursor + optionSize));
+
+    return (4 - (address & 3)) & 3;
+}
+
 TcpOption::TcpOption(bslma::Allocator* basicAllocator)
 : d_type(ntsa::TcpOptionType::e_UNDEFINED)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
@@ -504,89 +513,45 @@ ntsa::Error TcpOption::decode(const ntsa::ConstBuffer& buffer,
 }
 
 ntsa::Error TcpOption::encode(ntsa::MutableBuffer* buffer,
-                              bsl::size_t*         size) const
+                              bsl::size_t*         size,
+                              bool                 final) const
 {
-#if 0
-
-bsl::size_t remainder = offset % 4;
-
-    if (remainder != 0) {
-        ntsa::TcpOption control;
-        control.makePadding();
-
-        for (bsl::size_t i = 0; i < remainder; ++i) {
-            if (offset > k_MAX_OPTIONS_LENGTH) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
-            }
-
-            ntsa::MutableBuffer mutableBuffer(
-                d_options + offset, k_MAX_OPTIONS_LENGTH - offset);
-
-            bsl::size_t size = 0;
-
-            error = control.encode(&mutableBuffer, &size);
-            if (error) {
-                return error;
-            }
-
-            offset += size;
-        }
-    }
-#endif
-
-#if 0
-        const bsl::size_t padding =
-            static_cast<bsl::size_t>(
-                reinterpret_cast<bsl::uintptr_t>(cursor)) %
-            sizeof(bdlb::BigEndianUint16);
-
-        for (bsl::size_t i = 0; i < padding; ++i) {
-            if (available < sizeof(bsl::uint8_t)) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
-            }
-
-            *cursor =
-                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
-
-            cursor    += sizeof(bsl::uint8_t);
-            available -= sizeof(bsl::uint8_t);
-        }
-#endif
-
-
-    bsl::uint8_t* cursor    = static_cast<bsl::uint8_t*>(buffer->data());
+    bsl::uint8_t* begin     = static_cast<bsl::uint8_t*>(buffer->data());
+    bsl::uint8_t* cursor    = begin;
     bsl::size_t   available = buffer->size();
 
     *size = 0;
 
     if (d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        *cursor = static_cast<bsl::uint8_t>(d_type);
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bdlb::BigEndianUint16));
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bdlb::BigEndianUint16)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
         if (d_maxSegmentSize.object() >
             bsl::numeric_limits<bsl::uint16_t>::max())
         {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
+
+        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint16);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+         const bsl::size_t paddingSize =
+            final ? this->paddingSize(cursor, optionSize) : 0;
+
+        const bsl::size_t totalSize = paddingSize + optionSize;
+
+        if (available < totalSize) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *size = totalSize;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            *cursor++ =
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
+        }
+
+        *cursor++ = static_cast<bsl::uint8_t>(d_type);
+        *cursor++ = static_cast<bsl::uint8_t>(optionSize);
 
         bdlb::BigEndianUint16 bigEndianMaxSegmentSize;
         bigEndianMaxSegmentSize =
@@ -596,108 +561,99 @@ bsl::size_t remainder = offset % 4;
                            &bigEndianMaxSegmentSize,
                            sizeof(bdlb::BigEndianUint16));
 
-        cursor    += sizeof(bdlb::BigEndianUint16);
-        available -= sizeof(bdlb::BigEndianUint16);
+        cursor += sizeof(bdlb::BigEndianUint16);
+
+        BSLS_ASSERT(static_cast<bsl::size_t>(cursor - begin) == totalSize);
     }
     else if (d_type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        *cursor =
-            static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        *cursor = static_cast<bsl::uint8_t>(d_type);
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bsl::uint8_t));
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
         if (d_windowScale.object() > bsl::numeric_limits<bsl::uint8_t>::max())
         {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        *cursor = static_cast<bsl::uint8_t>(d_windowScale.object());
+        const bsl::size_t payloadSize = sizeof(bsl::uint8_t);
 
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(cursor, optionSize) : 0;
+
+        const bsl::size_t totalSize = paddingSize + optionSize;
+
+        if (available < totalSize) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *size = totalSize;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            *cursor++ =
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
+        }
+
+        *cursor++ = static_cast<bsl::uint8_t>(d_type);
+        *cursor++ = static_cast<bsl::uint8_t>(optionSize);
+        *cursor++ = static_cast<bsl::uint8_t>(d_windowScale.object());
+
+        BSLS_ASSERT(static_cast<bsl::size_t>(cursor - begin) == totalSize);
     }
     else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
-        if (available < sizeof(bsl::uint8_t)) {
+        const bsl::size_t payloadSize = 0;
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+         const bsl::size_t paddingSize =
+            final ? this->paddingSize(cursor, optionSize) : 0;
+
+        const bsl::size_t totalSize = paddingSize + optionSize;
+
+        if (available < totalSize) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        *cursor = static_cast<bsl::uint8_t>(d_type);
+        *size = totalSize;
 
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            *cursor++ =
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
         }
 
-        *cursor = static_cast<bsl::uint8_t>(2);
+        *cursor++ = static_cast<bsl::uint8_t>(d_type);
+        *cursor++ = static_cast<bsl::uint8_t>(optionSize);
 
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
+        BSLS_ASSERT(static_cast<bsl::size_t>(cursor - begin) == totalSize);
     }
     else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
-        for (bsl::size_t i = 0; i < 2; ++i) {
-            if (available < sizeof(bsl::uint8_t)) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
-            }
+        const bsl::size_t payloadSize =
+            d_selectiveAck.object().size() *
+            (sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32));
 
-            *cursor =
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+         const bsl::size_t paddingSize =
+            final ? this->paddingSize(cursor, optionSize) : 0;
+
+        const bsl::size_t totalSize = paddingSize + optionSize;
+
+        if (available < totalSize) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        *size = totalSize;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            *cursor++ =
                 static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
-
-            cursor    += sizeof(bsl::uint8_t);
-            available -= sizeof(bsl::uint8_t);
         }
 
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        *cursor = static_cast<bsl::uint8_t>(d_type);
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        *cursor =
+        *cursor++ = static_cast<bsl::uint8_t>(d_type);
+        *cursor++ =
             static_cast<bsl::uint8_t>(2 + d_selectiveAck.object().size());
 
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
         for (bsl::size_t i = 0; i < d_selectiveAck.object().size(); ++i) {
-            if (available < sizeof(bdlb::BigEndianUint32)) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
-            }
-
             bdlb::BigEndianUint32 bigEndianOldest;
             bigEndianOldest = d_selectiveAck.object()[i].oldest().value();
 
@@ -705,12 +661,7 @@ bsl::size_t remainder = offset % 4;
                                &bigEndianOldest,
                                sizeof(bdlb::BigEndianUint32));
 
-            cursor    += sizeof(bdlb::BigEndianUint32);
-            available -= sizeof(bdlb::BigEndianUint32);
-
-            if (available < sizeof(bdlb::BigEndianUint32)) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
-            }
+            cursor += sizeof(bdlb::BigEndianUint32);
 
             bdlb::BigEndianUint32 bigEndianNewest;
             bigEndianNewest = d_selectiveAck.object()[i].newest().value();
@@ -719,33 +670,36 @@ bsl::size_t remainder = offset % 4;
                                &bigEndianNewest,
                                sizeof(bdlb::BigEndianUint32));
 
-            cursor    += sizeof(bdlb::BigEndianUint32);
-            available -= sizeof(bdlb::BigEndianUint32);
+            cursor += sizeof(bdlb::BigEndianUint32);
         }
+
+        BSLS_ASSERT(static_cast<bsl::size_t>(cursor - begin) == totalSize);
     }
     else if (d_type == ntsa::TcpOptionType::e_TIMESTAMP) {
-        if (available < sizeof(bsl::uint8_t)) {
+        const bsl::size_t payloadSize =
+            sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+         const bsl::size_t paddingSize =
+            final ? this->paddingSize(cursor, optionSize) : 0;
+
+        const bsl::size_t totalSize = paddingSize + optionSize;
+
+        if (available < totalSize) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        *cursor = static_cast<bsl::uint8_t>(d_type);
+        *size = totalSize;
 
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            *cursor++ =
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
         }
 
-        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bdlb::BigEndianUint32) +
-                                            sizeof(bdlb::BigEndianUint32));
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bdlb::BigEndianUint32)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
+        *cursor++ = static_cast<bsl::uint8_t>(d_type);
+        *cursor++ = static_cast<bsl::uint8_t>(optionSize);
 
         bdlb::BigEndianUint32 bigEndianTx;
         bigEndianTx = d_timestamp.object().tx().value();
@@ -754,12 +708,7 @@ bsl::size_t remainder = offset % 4;
                            &bigEndianTx,
                            sizeof(bdlb::BigEndianUint32));
 
-        cursor    += sizeof(bdlb::BigEndianUint32);
-        available -= sizeof(bdlb::BigEndianUint32);
-
-        if (available < sizeof(bdlb::BigEndianUint32)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
+        cursor += sizeof(bdlb::BigEndianUint32);
 
         bdlb::BigEndianUint32 bigEndianRx;
         bigEndianRx = d_timestamp.object().rx().value();
@@ -768,44 +717,45 @@ bsl::size_t remainder = offset % 4;
                            &bigEndianRx,
                            sizeof(bdlb::BigEndianUint32));
 
-        cursor    += sizeof(bdlb::BigEndianUint32);
-        available -= sizeof(bdlb::BigEndianUint32);
+        cursor += sizeof(bdlb::BigEndianUint32);
+
+        BSLS_ASSERT(static_cast<bsl::size_t>(cursor - begin) == totalSize);
     }
     else if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
-        if (available < sizeof(bsl::uint8_t)) {
+        const bsl::size_t payloadSize = sizeof(bdlb::Guid);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+         const bsl::size_t paddingSize =
+            final ? this->paddingSize(cursor, optionSize) : 0;
+
+        const bsl::size_t totalSize = paddingSize + optionSize;
+
+        if (available < totalSize) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        *cursor = static_cast<bsl::uint8_t>(d_type);
+        *size = totalSize;
 
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bsl::uint8_t)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            *cursor++ =
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING);
         }
 
-        *cursor = static_cast<bsl::uint8_t>(2 + sizeof(bdlb::Guid));
-
-        cursor    += sizeof(bsl::uint8_t);
-        available -= sizeof(bsl::uint8_t);
-
-        if (available < sizeof(bdlb::Guid)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
+        *cursor++ = static_cast<bsl::uint8_t>(d_type);
+        *cursor++ = static_cast<bsl::uint8_t>(optionSize);
 
         NTSCFG_MEMORY_COPY(cursor, &d_fastOpen.object(), sizeof(bdlb::Guid));
+        cursor += sizeof(bdlb::Guid);
 
-        cursor    += sizeof(bdlb::Guid);
-        available -= sizeof(bdlb::Guid);
+        BSLS_ASSERT(static_cast<bsl::size_t>(cursor - begin) == totalSize);
     }
     else if (d_type != ntsa::TcpOptionType::e_PADDING &&
              d_type != ntsa::TcpOptionType::e_UNDEFINED)
     {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
-
-    *size = buffer->size() - available;
 
     return ntsa::Error();
 }

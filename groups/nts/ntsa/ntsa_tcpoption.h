@@ -85,6 +85,13 @@ class TcpOption
     ntsa::TcpOptionType::Value d_type;
     bslma::Allocator*          d_allocator_p;
 
+  private:
+    /// Return the number of padding bytes that should preceed an option having
+    /// the specified 'optionSize' so that after encoding 'cursor' is aligned
+    /// to an address that is a multiple of 4.
+    static bsl::size_t paddingSize(const bsl::uint8_t* cursor,
+                                   bsl::size_t         optionSize);
+
   public:
     /// Create a new TCP option having an undefined type. Optionally specify a
     /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
@@ -181,7 +188,9 @@ class TcpOption
 
     /// Encode the option to the specified 'buffer'. Load into the specified
     /// 'size' the number of bytes decoded. Return the error.
-    ntsa::Error encode(ntsa::MutableBuffer* buffer, bsl::size_t* size) const;
+    ntsa::Error encode(ntsa::MutableBuffer* buffer,
+                       bsl::size_t*         size,
+                       bool                 final) const;
 
     /// Return a reference to the non-modifiable "maxSegmentSize"
     /// representation. The behavior is undefined unless 'isMaxSegmentSize()'

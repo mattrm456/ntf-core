@@ -49,12 +49,15 @@ class TcpExtension
     };
 
   private:
-    /// The options.
-    bsl::uint8_t d_options[k_MAX_OPTIONS_LENGTH];
+    /// Defines a type alias for the arena in which options are stored.
+    typedef bsl::uint8_t Arena[k_MAX_OPTIONS_LENGTH];
 
-  private:
     /// Provide a mechanism to decode the options.
     class Decoder;
+
+  private:
+    /// The options.
+    Arena d_options;
 
   public:
     /// Create a new TCP extension area having a default value.
@@ -86,7 +89,7 @@ class TcpExtension
     void reset();
 
     /// Add the specified 'option'. Return the error.
-    ntsa::Error add(const ntsa::TcpOption& option);
+    ntsa::Error add(const ntsa::TcpOption& option, bool final);
 
     /// Decode the TCP extension area having the specified 'size' from the
     /// specified 'buffer' starting at the specified 'offset'. Return the

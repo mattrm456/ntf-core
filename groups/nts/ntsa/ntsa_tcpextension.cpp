@@ -167,7 +167,7 @@ bool TcpExtension::Decoder::isValid() const
     return d_current < d_end;
 }
 
-ntsa::Error TcpExtension::add(const ntsa::TcpOption& option)
+ntsa::Error TcpExtension::add(const ntsa::TcpOption& option, bool final)
 {
     ntsa::Error error;
 
@@ -182,13 +182,12 @@ ntsa::Error TcpExtension::add(const ntsa::TcpOption& option)
 
     bsl::size_t size = 0;
 
-    error = option.encode(&mutableBuffer, &size);
+    error = option.encode(&mutableBuffer, &size, final);
     if (error) {
         return error;
     }
 
     offset += size;
-
 
     return ntsa::Error();
 }
