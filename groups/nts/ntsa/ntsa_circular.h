@@ -50,6 +50,8 @@ namespace ntsa {
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
+///
+/// @ingroup module_ntsa_data
 class CircularUint16
 {
   public:
@@ -289,6 +291,8 @@ void hashAppend(HASH_ALGORITHM& algorithm, const CircularUint16& value);
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
+///
+/// @ingroup module_ntsa_data
 class CircularUint32
 {
   public:
@@ -528,6 +532,8 @@ void hashAppend(HASH_ALGORITHM& algorithm, const CircularUint32& value);
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
+///
+/// @ingroup module_ntsa_data
 class CircularUint64
 {
   public:

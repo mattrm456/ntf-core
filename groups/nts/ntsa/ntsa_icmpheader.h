@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSA_UDPHEADER
-#define INCLUDED_NTSA_UDPHEADER
+#ifndef INCLUDED_NTSA_ICMPHEADER
+#define INCLUDED_NTSA_ICMPHEADER
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
@@ -36,22 +36,19 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide a User Datagram Protocol (UDP) header.
+/// Provide a Internet Control Message Protocol (ICMP) header.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
-/// @ingroup module_ntsa_protocol
-class UdpHeader
+/// @ingroup module_ntsa_identity
+class IcmpHeader
 {
-    /// The source port.
-    bdlb::BigEndianUint16 d_sourcePort;
+    /// The type.
+    bsl::uint8_t d_type;
 
-    /// The destination port.
-    bdlb::BigEndianUint16 d_destinationPort;
-
-    /// The length of the datagram, in bytes, including the header.
-    bdlb::BigEndianUint16 d_length;
+    /// The code.
+    bsl::uint8_t d_code;
 
     /// The checksum.
     bdlb::BigEndianUint16 d_checksum;
@@ -59,50 +56,46 @@ class UdpHeader
   public:
     /// Enumerate the constants used by the implementation.
     enum Constant {
-        /// The fixed UDP header length.
-        k_LENGTH = 8,
+        /// The fixed ICMP header length.
+        k_LENGTH = 4,
 
-        /// The protocol number indicating the IPv4 packet carries UDP.
-        k_PROTOCOL_UDP = 17
+        /// The protocol number indicating the IPv4 packet carries ICMP.
+        k_PROTOCOL_ICMP = 1
     };
 
-    /// Create a new UDP header having a default value.
-    UdpHeader();
+    /// Create a new ICMP header having a default value.
+    IcmpHeader();
 
-    /// Create a new UDP header having the same value as the specified
+    /// Create a new ICMP header having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    UdpHeader(bslmf::MovableRef<UdpHeader> original) NTSCFG_NOEXCEPT;
+    IcmpHeader(bslmf::MovableRef<IcmpHeader> original) NTSCFG_NOEXCEPT;
 
-    /// Create a new UDP header having the same value as the specified
+    /// Create a new ICMP header having the same value as the specified
     /// 'original' object.
-    UdpHeader(const UdpHeader& original);
+    IcmpHeader(const IcmpHeader& original);
 
     /// Destroy this object.
-    ~UdpHeader();
+    ~IcmpHeader();
 
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    UdpHeader& operator=(bslmf::MovableRef<UdpHeader> other) NTSCFG_NOEXCEPT;
+    IcmpHeader& operator=(bslmf::MovableRef<IcmpHeader> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
-    UdpHeader& operator=(const UdpHeader& other);
+    IcmpHeader& operator=(const IcmpHeader& other);
 
     /// Reset the value of this object to its value upon default
     /// construction.
     void reset();
 
-    /// Set the source port to the specified 'value'.
-    void setSourcePort(ntsa::Port value);
+    /// Set the type of the message to the specified 'value'.
+    void setType(bsl::uint8_t value);
 
-    /// Set the destination port to the specified 'value'.
-    void setDestinationPort(ntsa::Port value);
-
-    /// Set the length of the datagram, in bytes, including the header, to the
-    /// specified 'value'.
-    void setPacketLength(bsl::size_t value);
+    /// Set the sub-type of the message to the specified 'value'.
+    void setCode(bsl::uint8_t value);
 
     /// Set the checksum to the specified 'value'.
     void setChecksum(bsl::uint16_t value);
@@ -119,28 +112,22 @@ class UdpHeader
     /// error.
     ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
 
-    /// Return the source port.
-    ntsa::Port sourcePort() const;
+    /// Return the type of the message.
+    bsl::uint8_t type() const;
 
-    /// Return the destination port.
-    ntsa::Port destinationPort() const;
-
-    /// Return the length of the header, in bytes.
-    bsl::size_t headerLength() const;
-
-    /// Return the length of the packet, in bytes, including the header.
-    bsl::size_t packetLength() const;
+    /// Return the sub-type of the message.
+    bsl::uint8_t code() const;
 
     /// Return the checksum.
     bsl::uint16_t checksum() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
-    bool equals(const UdpHeader& other) const;
+    bool equals(const IcmpHeader& other) const;
 
     /// Return true if the value of this object is less than the value of
     /// the specified 'other' object, otherwise return false.
-    bool less(const UdpHeader& other) const;
+    bool less(const IcmpHeader& other) const;
 
     /// Contribute the values of the salient attributes of this object to the
     /// specified hash 'algorithm'.
@@ -167,53 +154,53 @@ class UdpHeader
 
     /// This type's default constructor is equivalent to setting each byte of
     /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(UdpHeader);
+    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(IcmpHeader);
 
     /// This type's copy-constructor and copy-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(UdpHeader);
+    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(IcmpHeader);
 
     /// This type's move-constructor and move-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(UdpHeader);
+    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(IcmpHeader);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
 /// into the specified 'stream'. Return a reference to the modifiable
 /// 'stream'.
 ///
-/// @related ntsa::UdpHeader
-bsl::ostream& operator<<(bsl::ostream& stream, const UdpHeader& object);
+/// @related ntsa::IcmpHeader
+bsl::ostream& operator<<(bsl::ostream& stream, const IcmpHeader& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
-/// @related ntsa::UdpHeader
-bool operator==(const UdpHeader& lhs, const UdpHeader& rhs);
+/// @related ntsa::IcmpHeader
+bool operator==(const IcmpHeader& lhs, const IcmpHeader& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
-/// @related ntsa::UdpHeader
-bool operator!=(const UdpHeader& lhs, const UdpHeader& rhs);
+/// @related ntsa::IcmpHeader
+bool operator!=(const IcmpHeader& lhs, const IcmpHeader& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
-/// @related ntsa::UdpHeader
-bool operator<(const UdpHeader& lhs, const UdpHeader& rhs);
+/// @related ntsa::IcmpHeader
+bool operator<(const IcmpHeader& lhs, const IcmpHeader& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.
 ///
-/// @related ntsa::UdpHeader
+/// @related ntsa::IcmpHeader
 template <typename HASH_ALGORITHM>
-void hashAppend(HASH_ALGORITHM& algorithm, const UdpHeader& value);
+void hashAppend(HASH_ALGORITHM& algorithm, const IcmpHeader& value);
 
 NTSCFG_INLINE
-UdpHeader::UdpHeader()
+IcmpHeader::IcmpHeader()
 {
     BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
 
@@ -221,7 +208,7 @@ UdpHeader::UdpHeader()
 }
 
 NTSCFG_INLINE
-UdpHeader::UdpHeader(bslmf::MovableRef<UdpHeader> original) NTSCFG_NOEXCEPT
+IcmpHeader::IcmpHeader(bslmf::MovableRef<IcmpHeader> original) NTSCFG_NOEXCEPT
 {
     bsl::memcpy(reinterpret_cast<void*>(this),
                 reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
@@ -232,7 +219,7 @@ UdpHeader::UdpHeader(bslmf::MovableRef<UdpHeader> original) NTSCFG_NOEXCEPT
 }
 
 NTSCFG_INLINE
-UdpHeader::UdpHeader(const UdpHeader& original)
+IcmpHeader::IcmpHeader(const IcmpHeader& original)
 {
     bsl::memcpy(reinterpret_cast<void*>(this),
                 reinterpret_cast<const void*>(&original),
@@ -240,12 +227,12 @@ UdpHeader::UdpHeader(const UdpHeader& original)
 }
 
 NTSCFG_INLINE
-UdpHeader::~UdpHeader()
+IcmpHeader::~IcmpHeader()
 {
 }
 
 NTSCFG_INLINE
-UdpHeader& UdpHeader::operator=(bslmf::MovableRef<UdpHeader> other)
+IcmpHeader& IcmpHeader::operator=(bslmf::MovableRef<IcmpHeader> other)
     NTSCFG_NOEXCEPT
 {
     bsl::memcpy(reinterpret_cast<void*>(this),
@@ -259,7 +246,7 @@ UdpHeader& UdpHeader::operator=(bslmf::MovableRef<UdpHeader> other)
 }
 
 NTSCFG_INLINE
-UdpHeader& UdpHeader::operator=(const UdpHeader& other)
+IcmpHeader& IcmpHeader::operator=(const IcmpHeader& other)
 {
     bsl::memcpy(reinterpret_cast<void*>(this),
                 reinterpret_cast<const void*>(&other),
@@ -269,100 +256,81 @@ UdpHeader& UdpHeader::operator=(const UdpHeader& other)
 }
 
 NTSCFG_INLINE
-void UdpHeader::reset()
+void IcmpHeader::reset()
 {
     bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
 }
 
 NTSCFG_INLINE
-void UdpHeader::setSourcePort(ntsa::Port value)
+void IcmpHeader::setType(bsl::uint8_t value)
 {
-    d_sourcePort = static_cast<bsl::uint16_t>(value);
+    d_type = value;
 }
 
 NTSCFG_INLINE
-void UdpHeader::setDestinationPort(ntsa::Port value)
+void IcmpHeader::setCode(bsl::uint8_t value)
 {
-    d_destinationPort = static_cast<bsl::uint16_t>(value);
+    d_code = value;
 }
 
 NTSCFG_INLINE
-void UdpHeader::setPacketLength(bsl::size_t value)
-{
-    d_length = static_cast<bsl::uint16_t>(value);
-}
-
-NTSCFG_INLINE
-void UdpHeader::setChecksum(bsl::uint16_t value)
+void IcmpHeader::setChecksum(bsl::uint16_t value)
 {
     d_checksum = static_cast<bsl::uint16_t>(value);
 }
 
 NTSCFG_INLINE
-ntsa::Port UdpHeader::sourcePort() const
+bsl::uint8_t IcmpHeader::type() const
 {
-    return static_cast<ntsa::Port>(static_cast<bsl::uint16_t>(d_sourcePort));
+    return d_type;
 }
 
 NTSCFG_INLINE
-ntsa::Port UdpHeader::destinationPort() const
+bsl::uint8_t IcmpHeader::code() const
 {
-    return static_cast<ntsa::Port>(
-        static_cast<bsl::uint16_t>(d_destinationPort));
+    return d_code;
 }
 
 NTSCFG_INLINE
-bsl::size_t UdpHeader::headerLength() const
-{
-    return static_cast<bsl::size_t>(k_LENGTH);
-}
-
-NTSCFG_INLINE
-bsl::size_t UdpHeader::packetLength() const
-{
-    return static_cast<bsl::size_t>(static_cast<bsl::uint16_t>(d_length));
-}
-
-NTSCFG_INLINE
-bsl::uint16_t UdpHeader::checksum() const
+bsl::uint16_t IcmpHeader::checksum() const
 {
     return static_cast<bsl::uint16_t>(d_checksum);
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void UdpHeader::hash(HASH_ALGORITHM& algorithm) const
+NTSCFG_INLINE void IcmpHeader::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
     algorithm(reinterpret_cast<const char*>(this), sizeof *this);
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const UdpHeader& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const IcmpHeader& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const UdpHeader& lhs, const UdpHeader& rhs)
+bool operator==(const IcmpHeader& lhs, const IcmpHeader& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const UdpHeader& lhs, const UdpHeader& rhs)
+bool operator!=(const IcmpHeader& lhs, const IcmpHeader& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
 NTSCFG_INLINE
-bool operator<(const UdpHeader& lhs, const UdpHeader& rhs)
+bool operator<(const IcmpHeader& lhs, const IcmpHeader& rhs)
 {
     return lhs.less(rhs);
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
-                              const UdpHeader& value)
+                              const IcmpHeader& value)
 {
     value.hash(algorithm);
 }

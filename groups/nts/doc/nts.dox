@@ -15,7 +15,7 @@ namespace BloombergLP::ntscfg { }
 namespace BloombergLP::ntsa { }
 
 /// @brief
-/// Provide abstract mechanisms for blocking and non-blocking sockets and 
+/// Provide abstract mechanisms for blocking and non-blocking sockets and
 /// resolvers.
 namespace BloombergLP::ntsi { }
 
@@ -24,7 +24,7 @@ namespace BloombergLP::ntsi { }
 namespace BloombergLP::ntsd { }
 
 /// @internal @brief
-/// Provide low-level utilities for blocking and non-blocking network 
+/// Provide low-level utilities for blocking and non-blocking network
 /// programming.
 namespace BloombergLP::ntsu { }
 
@@ -74,11 +74,19 @@ namespace BloombergLP::ntsf { }
 ///
 /// @ingroup module_ntsa
 
+/// @defgroup module_ntsa_protocol Protocols
+///
+/// @brief
+/// Provide value-semantic types for the vocabulary of standard network and
+/// transport layer protocols.
+///
+/// @ingroup module_ntsa
+
 /// @defgroup module_ntsa_identity Identification
 ///
 /// @brief
 /// Provide value-semantic types for the vocabulary of identifying sockets,
-/// hosts, and services. 
+/// hosts, and services.
 ///
 /// @ingroup module_ntsa
 
@@ -100,7 +108,7 @@ namespace BloombergLP::ntsf { }
 /// @defgroup module_ntsi Mechanisms
 ///
 /// @brief
-/// Provide abstract mechanisms for blocking and non-blocking sockets and 
+/// Provide abstract mechanisms for blocking and non-blocking sockets and
 /// resolvers.
 ///
 /// @ingroup module_nts

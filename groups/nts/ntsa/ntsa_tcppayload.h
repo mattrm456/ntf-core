@@ -25,6 +25,8 @@ namespace BloombergLP {
 namespace ntsa {
 
 /// Defines a type alias for the representation of a TCP segment payload.
+///
+/// @ingroup module_ntsa_protocol
 typedef bdlbb::BlobBuffer TcpPayload;
 
 }  // close namespace ntsa

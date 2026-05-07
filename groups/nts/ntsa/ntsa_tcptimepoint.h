@@ -30,13 +30,13 @@ namespace ntsa {
 /// Define a type alias for a 32-bit unsigned integer with modular arithmetic
 /// that represents a TCP time point.
 ///
-/// @ingroup module_ntsa_identity
+/// @ingroup module_ntsa_protocol
 typedef CircularUint32 TcpTimePoint;
 
 /// Describe pair of TCP timestamps used to calculate round trip time, or
 /// how long a TCP packet took to be acknowledged.
 ///
-/// @ingroup module_ntsa_identity
+/// @ingroup module_ntsa_protocol
 class TcpTimePointInterval
 {
     TcpTimePoint d_tx;

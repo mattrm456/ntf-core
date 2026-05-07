@@ -38,7 +38,7 @@ namespace ntsa {
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
-/// @ingroup module_ntsa_identity
+/// @ingroup module_ntsa_protocol
 class TcpPacket
 {
     ntsa::TcpHeader                         d_header;

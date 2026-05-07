@@ -25,6 +25,8 @@ namespace BloombergLP {
 namespace ntsa {
 
 /// Defines a type alias for the representation of a UDP datagram payload.
+///
+/// @ingroup module_ntsa_protocol
 typedef bdlbb::BlobBuffer UdpPayload;
 
 }  // close namespace ntsa

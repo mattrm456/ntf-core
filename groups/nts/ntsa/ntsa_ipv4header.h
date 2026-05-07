@@ -139,7 +139,7 @@ namespace ntsa {
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
-/// @ingroup module_ntsa_identity
+/// @ingroup module_ntsa_protocol
 class Ipv4Header
 {
 #if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)

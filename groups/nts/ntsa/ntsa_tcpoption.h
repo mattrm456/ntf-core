@@ -71,7 +71,7 @@ namespace ntsa {
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
-/// @ingroup module_ntsa_system
+/// @ingroup module_ntsa_protocol
 class TcpOption
 {
     union {

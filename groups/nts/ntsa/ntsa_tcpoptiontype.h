@@ -30,7 +30,7 @@ namespace ntsa {
 /// @par Thread Safety
 /// This struct is thread safe.
 ///
-/// @ingroup module_ntsa_identity
+/// @ingroup module_ntsa_protocol
 struct TcpOptionType {
   public:
     /// Enumerate the accept event types.
