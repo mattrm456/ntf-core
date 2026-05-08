@@ -16,31 +16,24 @@
 #include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_icmppacket_t_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_icmpchecksum_t_cpp, "$Id$ $CSID$")
 
-#include <ntsa_icmppacket.h>
+#include <ntsa_icmpchecksum.h>
 
 using namespace BloombergLP;
 
 namespace BloombergLP {
 namespace ntsa {
 
-// Provide tests for 'ntsa::IcmpPacket'.
-class IcmpPacketTest
+// Provide tests for 'ntsa::IcmpChecksum'.
+class IcmpChecksumTest
 {
   public:
-    // Test value semantics: type traits.
-    static void verifyTypeTraits();
-
     // Test usage example.
     static void verifyUsage();
 };
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpPacketTest::verifyTypeTraits)
-{
-}
-
-NTSCFG_TEST_FUNCTION(ntsa::IcmpPacketTest::verifyUsage)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpChecksumTest::verifyUsage)
 {
 }
 

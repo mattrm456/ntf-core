@@ -32,6 +32,10 @@ Ipv4Payload::Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original)
         new (d_raw.buffer())
             bdlbb::BlobBuffer(NTSCFG_MOVE_FROM(original, d_raw.object()));
     }
+    else if (d_type == e_ICMP) {
+        new (d_icmp.buffer())
+            ntsa::IcmpPacket(NTSCFG_MOVE_FROM(original, d_icmp.object()));
+    }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer())
             ntsa::TcpPacket(NTSCFG_MOVE_FROM(original, d_tcp.object()));
@@ -53,6 +57,9 @@ Ipv4Payload::Ipv4Payload(const Ipv4Payload& original)
     if (d_type == e_RAW) {
         new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
     }
+    else if (d_type == e_ICMP) {
+        new (d_icmp.buffer()) ntsa::IcmpPacket(original.d_icmp.object());
+    }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer()) ntsa::TcpPacket(original.d_tcp.object());
     }
@@ -69,6 +76,10 @@ Ipv4Payload::~Ipv4Payload()
     if (d_type == e_RAW) {
         typedef bdlbb::BlobBuffer Type;
         d_raw.object().~Type();
+    }
+    else if (d_type == e_ICMP) {
+        typedef ntsa::IcmpPacket Type;
+        d_icmp.object().~Type();
     }
     else if (d_type == e_TCP) {
         typedef ntsa::TcpPacket Type;
@@ -90,6 +101,10 @@ Ipv4Payload& Ipv4Payload::operator=(bslmf::MovableRef<Ipv4Payload> other)
     if (d_type == e_RAW) {
         new (d_raw.buffer())
             bdlbb::BlobBuffer(NTSCFG_MOVE_FROM(other, d_raw.object()));
+    }
+    else if (d_type == e_ICMP) {
+        new (d_icmp.buffer())
+            ntsa::IcmpPacket(NTSCFG_MOVE_FROM(other, d_icmp.object()));
     }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer())
@@ -121,6 +136,9 @@ Ipv4Payload& Ipv4Payload::operator=(const Ipv4Payload& other)
     if (d_type == e_RAW) {
         new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
     }
+    else if (d_type == e_ICMP) {
+        new (d_icmp.buffer()) ntsa::IcmpPacket(other.d_icmp.object());
+    }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer()) ntsa::TcpPacket(other.d_tcp.object());
     }
@@ -139,6 +157,10 @@ void Ipv4Payload::reset()
     if (d_type == e_RAW) {
         typedef bdlbb::BlobBuffer Type;
         d_raw.object().~Type();
+    }
+    else if (d_type == e_ICMP) {
+        typedef ntsa::IcmpPacket Type;
+        d_icmp.object().~Type();
     }
     else if (d_type == e_TCP) {
         typedef ntsa::TcpPacket Type;
@@ -195,6 +217,51 @@ bdlbb::BlobBuffer& Ipv4Payload::makeRaw(
     NTSCFG_MOVE_RESET(value);
 
     return d_raw.object();
+}
+
+ntsa::IcmpPacket& Ipv4Payload::makeIcmp()
+{
+    if (d_type == e_ICMP) {
+        d_icmp.object().reset();
+    }
+    else {
+        reset();
+        new (d_icmp.buffer()) ntsa::IcmpPacket();
+        d_type = e_ICMP;
+    }
+
+    return d_icmp.object();
+}
+
+ntsa::IcmpPacket& Ipv4Payload::makeIcmp(const ntsa::IcmpPacket& value)
+{
+    if (d_type == e_ICMP) {
+        d_icmp.object() = value;
+    }
+    else {
+        reset();
+        new (d_icmp.buffer()) ntsa::IcmpPacket(value);
+        d_type = e_ICMP;
+    }
+
+    return d_icmp.object();
+}
+
+ntsa::IcmpPacket& Ipv4Payload::makeIcmp(bslmf::MovableRef<ntsa::IcmpPacket> value)
+    NTSCFG_NOEXCEPT
+{
+    if (d_type == e_ICMP) {
+        d_icmp.object() = NTSCFG_MOVE(value);
+    }
+    else {
+        reset();
+        new (d_icmp.buffer()) ntsa::IcmpPacket(NTSCFG_MOVE(value));
+        d_type = e_ICMP;
+    }
+
+    NTSCFG_MOVE_RESET(value);
+
+    return d_icmp.object();
 }
 
 ntsa::TcpPacket& Ipv4Payload::makeTcp()
@@ -331,6 +398,9 @@ bsl::ostream& Ipv4Payload::print(bsl::ostream& stream,
         return bdlb::Print::hexDump(stream,
                                     d_raw.object().data(),
                                     d_raw.object().size());
+    }
+    else if (d_type == e_ICMP) {
+        return d_icmp.object().print(stream, level, spacesPerLevel);
     }
     else if (d_type == e_TCP) {
         return d_tcp.object().print(stream, level, spacesPerLevel);

@@ -39,6 +39,7 @@ int TcpOptionType::fromInt(TcpOptionType::Value* result, int number)
         *result = static_cast<TcpOptionType::Value>(number);
         return 0;
     default:
+        *result = TcpOptionType::e_UNDEFINED;
         return -1;
     }
 }
@@ -79,6 +80,7 @@ int TcpOptionType::fromString(TcpOptionType::Value*  result,
         return 0;
     }
 
+    *result = e_UNDEFINED;
     return -1;
 }
 

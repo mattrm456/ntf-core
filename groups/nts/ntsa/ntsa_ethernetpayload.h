@@ -37,7 +37,7 @@ namespace ntsa {
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
-/// @ingroup module_ntsa_identity
+/// @ingroup module_ntsa_protocol
 class EthernetPayload
 {
     /// Enumerates the representations of the payload.
@@ -105,7 +105,7 @@ public:
     /// Make the representation of the payload a raw sequence of bytes having
     /// the specified 'value'. Assign an unspecified but valid value to the
     /// 'value'. Return a reference to the modifable representation.
-    bdlbb::BlobBuffer& makeRaw(bslmf::MovableRef<bdlbb::BlobBuffer> value) 
+    bdlbb::BlobBuffer& makeRaw(bslmf::MovableRef<bdlbb::BlobBuffer> value)
         NTSCFG_NOEXCEPT;
 
     /// Make the representation of the payload an IPv4 packet. Return a
@@ -119,7 +119,7 @@ public:
     /// Make the representation of the payload an IPv4 packet having the
     /// specified 'value'. Assign an unspecified but valid value to the
     /// 'value'. Return a reference to the modifable representation.
-    ntsa::Ipv4Packet& makeIpv4(bslmf::MovableRef<ntsa::Ipv4Packet> value) 
+    ntsa::Ipv4Packet& makeIpv4(bslmf::MovableRef<ntsa::Ipv4Packet> value)
         NTSCFG_NOEXCEPT;
 
     /// Make the representation of the payload an IPv6 packet. Return a
@@ -133,47 +133,47 @@ public:
     /// Make the representation of the payload an IPv6 packet having the
     /// specified 'value'. Assign an unspecified but valid value to the
     /// 'value'. Return a reference to the modifable representation.
-    ntsa::Ipv6Packet& makeIpv6(bslmf::MovableRef<ntsa::Ipv6Packet> value) 
+    ntsa::Ipv6Packet& makeIpv6(bslmf::MovableRef<ntsa::Ipv6Packet> value)
         NTSCFG_NOEXCEPT;
 
     /// Return a reference to the modifiable raw sequence of bytes. The
-    /// behavior is undefined unless 'isRaw()' is true. 
+    /// behavior is undefined unless 'isRaw()' is true.
     bdlbb::BlobBuffer& raw();
 
     /// Return a reference to the modifiable IPv4 packet. The behavior is
-    /// undefined unless 'isIpv4()' is true. 
+    /// undefined unless 'isIpv4()' is true.
     ntsa::Ipv4Packet& ipv4();
 
     /// Return a reference to the modifiable IPv6 packet. The behavior is
-    /// undefined unless 'isIpv6()' is true. 
+    /// undefined unless 'isIpv6()' is true.
     ntsa::Ipv6Packet& ipv6();
 
     /// Return a reference to the non-modifiable raw sequence of bytes. The
-    /// behavior is undefined unless 'isRaw()' is true. 
+    /// behavior is undefined unless 'isRaw()' is true.
     const bdlbb::BlobBuffer& raw() const;
 
     /// Return a reference to the non-modifiable IPv4 packet. The behavior is
-    /// undefined unless 'isTcp()' is true. 
+    /// undefined unless 'isTcp()' is true.
     const ntsa::Ipv4Packet& ipv4() const;
 
     /// Return a reference to the non-modifiable IPv6 packet. The behavior is
-    /// undefined unless 'isUdp()' is true. 
+    /// undefined unless 'isUdp()' is true.
     const ntsa::Ipv6Packet& ipv6() const;
 
     /// Return true if the representation is not defined, otherwise return
-    /// false. 
+    /// false.
     bool isUndefined() const;
 
     /// Return true if the representation is a raw sequence of bytes, otherwise
-    /// return false. 
+    /// return false.
     bool isRaw() const;
 
     /// Return true if the representation is an IPv4 packet, otherwise return
-    /// false. 
+    /// false.
     bool isIpv4() const;
 
     /// Return true if the representation is an IPv6 packet, otherwise return
-    /// false. 
+    /// false.
     bool isIpv6() const;
 
     /// Return true if this object has the same value as the specified

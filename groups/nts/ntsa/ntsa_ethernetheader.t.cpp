@@ -54,6 +54,22 @@ NTSCFG_TEST_FUNCTION(ntsa::EthernetHeaderTest::verifyTypeTraits)
     NTSCFG_TEST_TRUE(isBitwiseCopyable);
 }
 
+NTSCFG_TEST_FUNCTION(ntsa::EthernetHeaderTest::verifyEncoding)
+{
+    // clang-format off
+    static const bsl::uint8_t k_DATA[14] = {
+        0x08, 0x00, 0x20, 0x86, 0x35, 0x4b, 0x00, 0xe0, 0xf7, 0x26, 0x3f,
+        0xe9, 0x08, 0x00
+    }
+    // clang-format on
+
+    ntsa::EthernetHeader header;
+
+    // TODO
+
+    NTSCFG_TEST_LOG_DEBUG << "Ethernet = " << header << NTSCFG_TEST_LOG_END;
+}
+
 NTSCFG_TEST_FUNCTION(ntsa::EthernetHeaderTest::verifyUsage)
 {
     ntsa::EthernetHeader header;

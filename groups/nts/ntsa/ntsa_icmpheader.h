@@ -38,6 +38,51 @@ namespace ntsa {
 
 /// Provide a Internet Control Message Protocol (ICMP) header.
 ///
+/// @details
+/// The Internet Control Message Protocol (ICMP) is an integral part of IP,
+/// used by gateways and hosts to report errors and diagnostic information back
+/// to the source of a datagram, as described in RFC 792. ICMP messages are
+/// carried directly inside IP datagrams using IP protocol number 1.
+///
+/// The fixed portion of the ICMP header is 4 octets (32 bits). The remaining
+/// content of the ICMP message is specific to the message type and code, and
+/// is not represented by this class.
+///
+/// The binary layout of the header in network byte order is:
+///
+///```
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |     Type      |     Code      |          Checksum             |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+///```
+///
+/// Type (8 bits): Identifies the category of ICMP message. The defined types
+/// are:
+///
+///   0  - Echo Reply
+///   3  - Destination Unreachable
+///   4  - Source Quench
+///   5  - Redirect
+///   8  - Echo
+///   11 - Time Exceeded
+///   12 - Parameter Problem
+///   13 - Timestamp
+///   14 - Timestamp Reply
+///   15 - Information Request
+///   16 - Information Reply
+///
+/// Code (8 bits): A sub-type that qualifies the meaning of the Type field.
+/// For example, a Destination Unreachable message (type 3) uses the code to
+/// distinguish between net unreachable (0), host unreachable (1), protocol
+/// unreachable (2), port unreachable (3), fragmentation needed but DF set (4),
+/// and source route failed (5). Types that have no sub-types use code 0.
+///
+/// Checksum (16 bits): The 16-bit one's complement of the one's complement sum
+/// of the entire ICMP message, starting from the Type field. The checksum
+/// field is treated as zero when computing the sum.
+///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///

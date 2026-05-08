@@ -282,6 +282,12 @@ class Ipv4Header
         /// The default time-to-live.
         k_DEFAULT_TIME_TO_LIVE = 64,
 
+        /// The protocol number indicating the IPv4 packet carries ICMP.
+        k_PROTOCOL_ICMP = 1,
+
+        /// The protocol number indicating the IPv4 packet carries IGMP.
+        k_PROTOCOL_IGMP = 2,
+
         /// The protocol number indicating the IPv4 packet carries TCP.
         k_PROTOCOL_TCP = 6,
 

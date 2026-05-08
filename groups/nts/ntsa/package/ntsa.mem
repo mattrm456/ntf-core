@@ -26,9 +26,17 @@ ntsa_id
 ntsa_interest
 ntsa_host
 ntsa_hosttype
+ntsa_icmpchecksum
 ntsa_icmpheader
 ntsa_icmppacket
 ntsa_icmppayload
+ntsa_icmpping
+ntsa_icmppong
+ntsa_icmpproblem
+ntsa_icmpredirect
+ntsa_icmptimeout
+ntsa_icmptype
+ntsa_icmpunreachable
 ntsa_ipaddress
 ntsa_ipaddressoptions
 ntsa_ipaddresstype

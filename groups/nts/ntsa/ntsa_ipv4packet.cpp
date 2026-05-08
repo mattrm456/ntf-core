@@ -43,6 +43,16 @@ ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& buffer,
         static_cast<bsl::size_t>(d_header.packetLength());
 
     if (d_header.protocol() ==
+        static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_ICMP))
+    {
+        ntsa::IcmpPacket& icmp = d_payload.makeIcmp();
+
+        error = icmp.decode(buffer, offset + headerLength, packetSize);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_header.protocol() ==
         static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
     {
         ntsa::TcpPacket& tcp = d_payload.makeTcp();
@@ -92,7 +102,24 @@ ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* buffer,
         return error;
     }
 
-    if (d_payload.isTcp()) {
+    if (d_payload.isIcmp()) {
+        if (d_header.protocol() !=
+            static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_ICMP))
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpPacket& icmp = d_payload.icmp();
+
+        error = icmp.encode(buffer,
+                            offset + d_header.headerLength(),
+                            d_header.sourceAddress(),
+                            d_header.destinationAddress());
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isTcp()) {
         if (d_header.protocol() !=
             static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
         {
@@ -168,7 +195,10 @@ bsl::ostream& Ipv4Packet::print(bsl::ostream& stream,
 
     printer.printAttribute("ipv4", d_header);
 
-    if (d_payload.isTcp()) {
+    if (d_payload.isIcmp()) {
+        printer.printAttribute("icmp", d_payload.icmp());
+    }
+    else if (d_payload.isTcp()) {
         printer.printAttribute("tcp", d_payload.tcp());
     }
     else if (d_payload.isUdp()) {

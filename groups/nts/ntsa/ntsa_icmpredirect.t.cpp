@@ -16,17 +16,17 @@
 #include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_icmpheader_t_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_icmpredirect_t_cpp, "$Id$ $CSID$")
 
-#include <ntsa_icmpheader.h>
+#include <ntsa_icmpredirect.h>
 
 using namespace BloombergLP;
 
 namespace BloombergLP {
 namespace ntsa {
 
-// Provide tests for 'ntsa::IcmpHeader'.
-class IcmpHeaderTest
+// Provide tests for 'ntsa::IcmpRedirect'.
+class IcmpRedirectTest
 {
   public:
     // Test value semantics: type traits.
@@ -63,70 +63,70 @@ class IcmpHeaderTest
     static void verifyHash();
 };
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyTypeTraits)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyTypeTraits)
 {
     const bool isBitwiseInitializable =
-        NTSCFG_TYPE_CHECK_BITWISE_INITIALIZABLE(ntsa::IcmpHeader);
+        NTSCFG_TYPE_CHECK_BITWISE_INITIALIZABLE(ntsa::IcmpRedirect);
 
     NTSCFG_TEST_TRUE(isBitwiseInitializable);
 
     const bool isBitwiseMovable =
-        NTSCFG_TYPE_CHECK_BITWISE_MOVABLE(ntsa::IcmpHeader);
+        NTSCFG_TYPE_CHECK_BITWISE_MOVABLE(ntsa::IcmpRedirect);
 
     NTSCFG_TEST_TRUE(isBitwiseMovable);
 
     const bool isBitwiseCopyable =
-        NTSCFG_TYPE_CHECK_BITWISE_COPYABLE(ntsa::IcmpHeader);
+        NTSCFG_TYPE_CHECK_BITWISE_COPYABLE(ntsa::IcmpRedirect);
 
     NTSCFG_TEST_TRUE(isBitwiseCopyable);
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyDefaultConstructor)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyDefaultConstructor)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyMoveConstructor)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyMoveConstructor)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyCopyConstructor)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyCopyConstructor)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyCopyAssignment)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyCopyAssignment)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyMoveAssignment)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyMoveAssignment)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyReset)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyReset)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyManipulators)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyManipulators)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyEquals)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyEquals)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyLess)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyLess)
 {
 
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::IcmpHeaderTest::verifyHash)
+NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyHash)
 {
 
 }
