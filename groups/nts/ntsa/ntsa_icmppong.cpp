@@ -37,15 +37,16 @@ ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const char* bufferData = buffer.data();
-
-    if (buffer.size() <= 0) {
+    if (buffer.size() < offset) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
+    const char* bufferData = buffer.data() + offset;
 
-    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferSize) {
+    const bsl::size_t bufferSize =
+        static_cast<bsl::size_t>(buffer.size() - offset);
+
+    if (bufferSize < sizeof(bdlb::BigEndianUint16)) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
@@ -53,9 +54,19 @@ ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
                        bufferData + offset,
                        sizeof(bdlb::BigEndianUint16));
 
+    bufferData += sizeof(bdlb::BigEndianUint16);
+    bufferSize -= sizeof(bdlb::BigEndianUint16);
+
+    if (bufferSize < sizeof(bdlb::BigEndianUint16)) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     NTSCFG_MEMORY_COPY(&d_sequenceNumber,
                        bufferData + offset + sizeof(bdlb::BigEndianUint16),
                        sizeof(bdlb::BigEndianUint16));
+
+    bufferData += sizeof(bdlb::BigEndianUint16);
+    bufferSize -= sizeof(bdlb::BigEndianUint16);
 
     if (offset + static_cast<bsl::size_t>(k_LENGTH) < packetSize) {
         const bsl::size_t dataOffset =
