@@ -33,17 +33,13 @@ ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
 
     reset();
 
-    if (buffer.data() == 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (buffer.size() < offset) {
+    if (offset > static_cast<bsl::size_t>(buffer.size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     const char* bufferData = buffer.data() + offset;
 
-    const bsl::size_t bufferSize =
+    bsl::size_t bufferSize =
         static_cast<bsl::size_t>(buffer.size() - offset);
 
     if (bufferSize < sizeof(bdlb::BigEndianUint16)) {
@@ -51,7 +47,7 @@ ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
     }
 
     NTSCFG_MEMORY_COPY(&d_identifier,
-                       bufferData + offset,
+                       bufferData,
                        sizeof(bdlb::BigEndianUint16));
 
     bufferData += sizeof(bdlb::BigEndianUint16);
@@ -62,27 +58,17 @@ ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
     }
 
     NTSCFG_MEMORY_COPY(&d_sequenceNumber,
-                       bufferData + offset + sizeof(bdlb::BigEndianUint16),
+                       bufferData,
                        sizeof(bdlb::BigEndianUint16));
 
     bufferData += sizeof(bdlb::BigEndianUint16);
     bufferSize -= sizeof(bdlb::BigEndianUint16);
 
-    if (offset + static_cast<bsl::size_t>(k_LENGTH) < packetSize) {
-        const bsl::size_t dataOffset =
-            static_cast<bsl::size_t>(offset + k_LENGTH);
-
-        const bsl::size_t dataSize =
-            static_cast<bsl::size_t>(packetSize - offset - k_LENGTH);
-
-        if (dataOffset + dataSize > bufferSize) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
+    if (bufferSize > 0) {
         d_data.reset(
             bsl::shared_ptr<char>(buffer.buffer(),
-                                  const_cast<char*>(bufferData + dataOffset)),
-            static_cast<int>(dataSize));
+                                  const_cast<char*>(bufferData)),
+            static_cast<int>(bufferSize));
     }
 
     return ntsa::Error();
@@ -91,43 +77,43 @@ ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
 ntsa::Error IcmpPong::encode(bdlbb::BlobBuffer* buffer,
                              bsl::size_t        offset) const
 {
-    if (buffer->data() == 0) {
+    if (offset > static_cast<bsl::size_t>(buffer->size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    char* bufferData = buffer->data();
+    char* bufferData = buffer->data() + offset;
 
-    if (buffer->size() <= 0) {
+    bsl::size_t bufferCapacity =
+        static_cast<bsl::size_t>(buffer->size() - offset);
+
+    if (bufferCapacity < sizeof(bdlb::BigEndianUint16)) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::size_t bufferCapacity =
-        static_cast<bsl::size_t>(buffer->size());
-
-    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferCapacity) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    NTSCFG_MEMORY_COPY(bufferData + offset,
+    NTSCFG_MEMORY_COPY(bufferData,
                        &d_identifier,
                        sizeof(bdlb::BigEndianUint16));
 
-    NTSCFG_MEMORY_COPY(bufferData + offset + sizeof(bdlb::BigEndianUint16),
+    bufferData     += sizeof(bdlb::BigEndianUint16);
+    bufferCapacity -= sizeof(bdlb::BigEndianUint16);
+
+    if (bufferCapacity < sizeof(bdlb::BigEndianUint16)) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    NTSCFG_MEMORY_COPY(bufferData,
                        &d_sequenceNumber,
                        sizeof(bdlb::BigEndianUint16));
 
+    bufferData     += sizeof(bdlb::BigEndianUint16);
+    bufferCapacity -= sizeof(bdlb::BigEndianUint16);
+
     if (d_data.size() > 0) {
-        const bsl::size_t dataOffset =
-            static_cast<bsl::size_t>(offset + k_LENGTH);
-
-        const bsl::size_t dataSize =
-            static_cast<bsl::size_t>(d_data.size());
-
-        if (dataOffset + dataSize > bufferCapacity) {
+        if (bufferCapacity < static_cast<bsl::size_t>(d_data.size())) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        NTSCFG_MEMORY_COPY(bufferData + dataOffset, d_data.data(), dataSize);
+        NTSCFG_MEMORY_COPY(bufferData, d_data.data(), d_data.size());
     }
 
     return ntsa::Error();

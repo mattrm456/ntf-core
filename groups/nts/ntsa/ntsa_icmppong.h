@@ -93,12 +93,6 @@ class IcmpPong
                                    int                      spacesPerLevel);
 
   public:
-    /// Enumerate the constants used by the implementation.
-    enum Constant {
-        /// The fixed length of the IcmpPong body in octets.
-        k_LENGTH = 4
-    };
-
     /// Create a new ICMP pong having a default value.
     IcmpPong();
 
@@ -241,7 +235,6 @@ IcmpPong::IcmpPong()
 , d_sequenceNumber()
 , d_data()
 {
-    // MRM: BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
 }
 
 NTSCFG_INLINE

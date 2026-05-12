@@ -401,7 +401,7 @@ namespace ntscfg {
 #define NTSCFG_MEMORY_COPY(destination, source, size)                         \
     bsl::memcpy(reinterpret_cast<void*>(destination),                         \
                 reinterpret_cast<const void*>(source),                        \
-                size)
+                static_cast<bsl::size_t>(size))
 
 /// @internal @brief
 /// Compare the specified 'size' number of bytes from the specified 'address1'
@@ -411,7 +411,7 @@ namespace ntscfg {
 #define NTSCFG_MEMORY_COMPARE(address1, address2, size)                       \
     bsl::memcmp(reinterpret_cast<const void*>(address1),                      \
                 reinterpret_cast<const void*>(address2),                      \
-                size)
+                static_cast<bsl::size_t>(size))
 
 /// Provide an enumeration of the signals on whose behavior can be modified by
 /// this library.
