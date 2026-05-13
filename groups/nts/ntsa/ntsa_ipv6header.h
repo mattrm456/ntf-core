@@ -21,6 +21,8 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
 #include <ntsa_ipv6address.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -180,6 +182,12 @@ class Ipv6Header
     /// 20 bits of 'value' are used; the upper 12 bits are ignored.
     void setFlowLabel(bsl::uint32_t value);
 
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+
     /// Return the source address.
     const ntsa::Ipv6Address& sourceAddress() const;
 
@@ -298,17 +306,17 @@ void Ipv6Header::initialize()
 NTSCFG_INLINE
 Ipv6Header::Ipv6Header()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
     initialize();
 }
 
 NTSCFG_INLINE
 Ipv6Header::Ipv6Header(bslmf::MovableRef<Ipv6Header> original) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
-                    bslmf::MovableRefUtil::access(original))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(original);
 }
@@ -316,9 +324,7 @@ Ipv6Header::Ipv6Header(bslmf::MovableRef<Ipv6Header> original) NTSCFG_NOEXCEPT
 NTSCFG_INLINE
 Ipv6Header::Ipv6Header(const Ipv6Header& original)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&original),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -330,10 +336,10 @@ NTSCFG_INLINE
 Ipv6Header& Ipv6Header::operator=(
     bslmf::MovableRef<Ipv6Header> other) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(
-                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -343,16 +349,15 @@ Ipv6Header& Ipv6Header::operator=(
 NTSCFG_INLINE
 Ipv6Header& Ipv6Header::operator=(const Ipv6Header& other)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&other),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
+
     return *this;
 }
 
 NTSCFG_INLINE
 void Ipv6Header::reset()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
     initialize();
 }
 
@@ -456,6 +461,18 @@ bsl::uint32_t Ipv6Header::flowLabel() const
 {
     return (static_cast<bsl::uint32_t>(d_flowLabelHi) << 16) |
            static_cast<bsl::uint32_t>(static_cast<bsl::uint16_t>(d_flowLabelLo));
+}
+
+NTSCFG_INLINE
+bool Ipv6Header::equals(const Ipv6Header& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
+}
+
+NTSCFG_INLINE
+bool Ipv6Header::less(const Ipv6Header& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>

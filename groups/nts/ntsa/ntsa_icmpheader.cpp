@@ -110,20 +110,6 @@ ntsa::Error IcmpHeader::encode(bdlbb::BlobBuffer* buffer,
     return ntsa::Error();
 }
 
-bool IcmpHeader::equals(const IcmpHeader& other) const
-{
-    return bsl::memcmp(reinterpret_cast<const void*>(this),
-                       reinterpret_cast<const void*>(&other),
-                       sizeof *this) == 0;
-}
-
-bool IcmpHeader::less(const IcmpHeader& other) const
-{
-    return bsl::memcmp(reinterpret_cast<const void*>(this),
-                       reinterpret_cast<const void*>(&other),
-                       sizeof *this) < 0;
-}
-
 bsl::ostream& IcmpHeader::print(bsl::ostream& stream,
                                int           level,
                                int           spacesPerLevel) const

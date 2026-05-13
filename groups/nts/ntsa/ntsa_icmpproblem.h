@@ -94,13 +94,13 @@ class IcmpProblem
     /// header.
     bsl::uint8_t d_pointer[4];
 
-    /// The IPv4 header of the packet for which the problem was encountered.
+    /// The IPv4 header of the original packet.
     ntsa::Ipv4Header d_header;
 
-    /// The leading bytes of the payload.
+    /// The leading bytes of the payload of the original packet.
     bsl::uint8_t d_payloadData[8];
 
-    /// The number of leading bytes of the payload.
+    /// The number of leading bytes of the payload of the original packet.
     bsl::size_t d_payloadSize;
 
   private:
@@ -142,9 +142,12 @@ class IcmpProblem
     /// Set the pointer to the specified 'value'.
     void setPointer(bsl::uint8_t value);
 
-    /// Set the payload to the specified 'payload' having the specified 'size'.
-    /// Note that only the first 8 bytes of the payload are stored, if 'size'
-    /// is greater than 8.
+    /// Set the IPv4 header of the original packet to the specified 'value'.
+    void setHeader(const ntsa::Ipv4Header& header);
+
+    /// Set the payload of the original packet to the specified 'payload'
+    /// having the specified 'size'. Note that only the first 8 bytes of the
+    /// payload are stored, if 'size' is greater than 8.
     void setPayload(const void* payload, bsl::size_t size);
 
     /// Decode the object from the specified 'decoder'. Return the error.
@@ -167,13 +170,14 @@ class IcmpProblem
     /// Return the pointer.
     bsl::uint8_t pointer() const;
 
-    /// Return up to the first 8 bytes of the payload of the packet for which
-    /// the problem was encountered.
+    /// Return the IPv4 header of the original packet.
+    const ntsa::Ipv4Header& header() const;
+
+    /// Return up to the first 8 bytes of the payload of the original packet.
     const bsl::uint8_t* payloadData() const;
 
     /// Return the payload size. Note that the maximum payload size is limited
-    /// to the first 8 bytes of the payload of the packet for which the problem
-    /// was encountered.
+    /// to the first 8 bytes of the payload of the original packet.
     bsl::size_t payloadSize() const;
 
     /// Return true if this object has the same value as the specified 'other'
@@ -257,17 +261,17 @@ IcmpProblem::IcmpProblem()
 {
     BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
 
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
 IcmpProblem::IcmpProblem(bslmf::MovableRef<IcmpProblem> original)
     NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
-                    bslmf::MovableRefUtil::access(original))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(original);
 }
@@ -275,9 +279,7 @@ IcmpProblem::IcmpProblem(bslmf::MovableRef<IcmpProblem> original)
 NTSCFG_INLINE
 IcmpProblem::IcmpProblem(const IcmpProblem& original)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&original),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -289,10 +291,10 @@ NTSCFG_INLINE
 IcmpProblem& IcmpProblem::operator=(bslmf::MovableRef<IcmpProblem> other)
     NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(
-                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -302,9 +304,7 @@ IcmpProblem& IcmpProblem::operator=(bslmf::MovableRef<IcmpProblem> other)
 NTSCFG_INLINE
 IcmpProblem& IcmpProblem::operator=(const IcmpProblem& other)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&other),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
 
     return *this;
 }
@@ -312,7 +312,7 @@ IcmpProblem& IcmpProblem::operator=(const IcmpProblem& other)
 NTSCFG_INLINE
 void IcmpProblem::reset()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -322,13 +322,19 @@ void IcmpProblem::setPointer(bsl::uint8_t value)
 }
 
 NTSCFG_INLINE
+void IcmpProblem::setHeader(const ntsa::Ipv4Header& header)
+{
+    d_header = header;
+}
+
+NTSCFG_INLINE
 void IcmpProblem::setPayload(const void* payload, bsl::size_t size)
 {
-    bsl::memset(d_payloadData, 0, sizeof d_payloadData);
+    NTSCFG_MEMORY_ZERO(d_payloadData, sizeof d_payloadData);
     if (size > 0) {
-        bsl::memcpy(d_payloadData,
-                    payload,
-                    bsl::min(size, sizeof d_payloadData));
+        NTSCFG_MEMORY_COPY(d_payloadData,
+                           payload,
+                           bsl::min(size, sizeof d_payloadData));
     }
 }
 
@@ -336,6 +342,12 @@ NTSCFG_INLINE
 bsl::uint8_t IcmpProblem::pointer() const
 {
     return d_pointer[0];
+}
+
+NTSCFG_INLINE
+const ntsa::Ipv4Header& IcmpProblem::header() const
+{
+    return d_header;
 }
 
 NTSCFG_INLINE

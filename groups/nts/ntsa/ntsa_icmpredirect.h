@@ -21,6 +21,7 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
 #include <ntsa_ipv4address.h>
+#include <ntsa_ipv4header.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
@@ -84,11 +85,28 @@ class IcmpRedirect
     /// The IPv4 address of the gateway to redirect traffic through.
     ntsa::Ipv4Address d_gatewayAddress;
 
+    /// The IPv4 header of the original packet.
+    ntsa::Ipv4Header d_header;
+
+    /// The leading bytes of the payload of the original packet.
+    bsl::uint8_t d_payloadData[8];
+
+    /// The number of leading bytes of the payload of the original packet.
+    bsl::size_t d_payloadSize;
+
+  private:
+    /// Print the specified 'data' to the specified 'stream'.
+    static bsl::ostream& printData(bsl::ostream&            stream,
+                                   const bslstl::StringRef& data,
+                                   int                      level,
+                                   int                      spacesPerLevel);
+
   public:
     /// Enumerate the constants used by the implementation.
     enum Constant {
         /// The fixed length of the IcmpRedirect body in octets.
-        k_LENGTH = 4
+        k_LENGTH = sizeof(ntsa::Ipv4Address) + sizeof(ntsa::Ipv4Header) + 8 +
+                   sizeof(bsl::size_t)
     };
 
     /// Create a new ICMP redirect having a default value.
@@ -109,8 +127,8 @@ class IcmpRedirect
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpRedirect& operator=(
-        bslmf::MovableRef<IcmpRedirect> other) NTSCFG_NOEXCEPT;
+    IcmpRedirect& operator=(bslmf::MovableRef<IcmpRedirect> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -121,6 +139,14 @@ class IcmpRedirect
 
     /// Set the gateway address to the specified 'value'.
     void setGatewayAddress(const ntsa::Ipv4Address& value);
+
+    /// Set the IPv4 header of the original packet to the specified 'value'.
+    void setHeader(const ntsa::Ipv4Header& header);
+
+    /// Set the payload of the original packet to the specified 'payload'
+    /// having the specified 'size'. Note that only the first 8 bytes of the
+    /// payload are stored, if 'size' is greater than 8.
+    void setPayload(const void* payload, bsl::size_t size);
 
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
@@ -141,6 +167,16 @@ class IcmpRedirect
 
     /// Return the gateway address.
     const ntsa::Ipv4Address& gatewayAddress() const;
+
+    /// Return the IPv4 header of the original packet.
+    const ntsa::Ipv4Header& header() const;
+
+    /// Return up to the first 8 bytes of the payload of the original packet.
+    const bsl::uint8_t* payloadData() const;
+
+    /// Return the payload size. Note that the maximum payload size is limited
+    /// to the first 8 bytes of the payload of the original packet.
+    bsl::size_t payloadSize() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -220,23 +256,28 @@ void hashAppend(HASH_ALGORITHM& algorithm, const IcmpRedirect& value);
 
 NTSCFG_INLINE
 IcmpRedirect::IcmpRedirect()
-: d_gatewayAddress()
 {
     BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
+
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
-IcmpRedirect::IcmpRedirect(
-    bslmf::MovableRef<IcmpRedirect> original) NTSCFG_NOEXCEPT
-: d_gatewayAddress(NTSCFG_MOVE_FROM(original, d_gatewayAddress))
+IcmpRedirect::IcmpRedirect(bslmf::MovableRef<IcmpRedirect> original)
+    NTSCFG_NOEXCEPT
 {
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
+
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
 IcmpRedirect::IcmpRedirect(const IcmpRedirect& original)
-: d_gatewayAddress(original.d_gatewayAddress)
 {
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -245,10 +286,13 @@ IcmpRedirect::~IcmpRedirect()
 }
 
 NTSCFG_INLINE
-IcmpRedirect& IcmpRedirect::operator=(
-    bslmf::MovableRef<IcmpRedirect> other) NTSCFG_NOEXCEPT
+IcmpRedirect& IcmpRedirect::operator=(bslmf::MovableRef<IcmpRedirect> other)
+    NTSCFG_NOEXCEPT
 {
-    d_gatewayAddress = NTSCFG_MOVE_FROM(other, d_gatewayAddress);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -258,7 +302,7 @@ IcmpRedirect& IcmpRedirect::operator=(
 NTSCFG_INLINE
 IcmpRedirect& IcmpRedirect::operator=(const IcmpRedirect& other)
 {
-    d_gatewayAddress = other.d_gatewayAddress;
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
 
     return *this;
 }
@@ -266,7 +310,7 @@ IcmpRedirect& IcmpRedirect::operator=(const IcmpRedirect& other)
 NTSCFG_INLINE
 void IcmpRedirect::reset()
 {
-    d_gatewayAddress = ntsa::Ipv4Address();
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -276,21 +320,56 @@ void IcmpRedirect::setGatewayAddress(const ntsa::Ipv4Address& value)
 }
 
 NTSCFG_INLINE
+void IcmpRedirect::setHeader(const ntsa::Ipv4Header& header)
+{
+    d_header = header;
+}
+
+NTSCFG_INLINE
+void IcmpRedirect::setPayload(const void* payload, bsl::size_t size)
+{
+    NTSCFG_MEMORY_ZERO(d_payloadData, sizeof d_payloadData);
+    if (size > 0) {
+        NTSCFG_MEMORY_COPY(d_payloadData,
+                           payload,
+                           bsl::min(size, sizeof d_payloadData));
+    }
+}
+
+NTSCFG_INLINE
 const ntsa::Ipv4Address& IcmpRedirect::gatewayAddress() const
 {
     return d_gatewayAddress;
 }
 
 NTSCFG_INLINE
+const ntsa::Ipv4Header& IcmpRedirect::header() const
+{
+    return d_header;
+}
+
+NTSCFG_INLINE
+const bsl::uint8_t* IcmpRedirect::payloadData() const
+{
+    return d_payloadData;
+}
+
+NTSCFG_INLINE
+bsl::size_t IcmpRedirect::payloadSize() const
+{
+    return d_payloadSize;
+}
+
+NTSCFG_INLINE
 bool IcmpRedirect::equals(const IcmpRedirect& other) const
 {
-    return d_gatewayAddress == other.d_gatewayAddress;
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
 }
 
 NTSCFG_INLINE
 bool IcmpRedirect::less(const IcmpRedirect& other) const
 {
-    return d_gatewayAddress < other.d_gatewayAddress;
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>
@@ -299,6 +378,10 @@ NTSCFG_INLINE void IcmpRedirect::hash(HASH_ALGORITHM& algorithm) const
     using bslh::hashAppend;
 
     hashAppend(algorithm, d_gatewayAddress);
+    hashAppend(algorithm, d_header);
+    if (d_payloadSize > 0) {
+        algorithm(d_payloadData, d_payloadSize);
+    }
 }
 
 NTSCFG_INLINE

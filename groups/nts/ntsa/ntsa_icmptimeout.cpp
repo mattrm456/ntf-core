@@ -26,20 +26,55 @@ namespace ntsa {
 
 ntsa::Error IcmpTimeout::decode(ntsa::PacketDecoder* decoder)
 {
-    NTSCFG_WARNING_UNUSED(decoder);
+    ntsa::Error error;
 
-    NTSCFG_NOT_IMPLEMENTED();
+    reset();
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    error = decoder->decodeRaw(&d_unused, sizeof d_unused);
+    if (error) {
+        return error;
+    }
+
+    error = d_header.decode(decoder);
+    if (error) {
+        return error;
+    }
+
+    const bsl::size_t payloadSize = decoder->size() - decoder->position();
+
+    if (payloadSize > 0) {
+        error = decoder->decodeRaw(
+            d_payloadData, bsl::min(payloadSize, sizeof d_payloadData));
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error IcmpTimeout::encode(ntsa::PacketEncoder* encoder) const
 {
-    NTSCFG_WARNING_UNUSED(encoder);
+    ntsa::Error error;
 
-    NTSCFG_NOT_IMPLEMENTED();
+    error = encoder->encodeRaw(&d_unused, sizeof d_unused);
+    if (error) {
+        return error;
+    }
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    error = d_header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    if (d_payloadSize > 0) {
+        error = encoder->encodeRaw(d_payloadData, d_payloadSize);
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error IcmpTimeout::decode(const bdlbb::BlobBuffer& buffer,
@@ -114,7 +149,32 @@ bsl::ostream& IcmpTimeout::print(bsl::ostream& stream,
 
 void IcmpTimeout::print(bslim::Printer* printer) const
 {
-    NTSCFG_WARNING_UNUSED(printer);
+    printer->printAttribute("header", d_header);
+    if (d_payloadSize > 0) {
+        printer->printForeign(
+            bslstl::StringRef(reinterpret_cast<const char*>(d_payloadData),
+                              d_payloadSize),
+            &IcmpTimeout::printData,
+            "payload");
+    }
+}
+
+bsl::ostream& IcmpTimeout::printData(bsl::ostream&            stream,
+                                     const bslstl::StringRef& data,
+                                     int                      level,
+                                     int                      spacesPerLevel)
+{
+    NTSCFG_WARNING_UNUSED(level);
+    NTSCFG_WARNING_UNUSED(spacesPerLevel);
+
+    if (data.size() > 0) {
+        return bdlb::Print::singleLineHexDump(stream,
+                                              data.data(),
+                                              data.size());
+    }
+    else {
+        return stream;
+    }
 }
 
 }  // close package namespace

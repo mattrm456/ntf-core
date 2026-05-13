@@ -187,19 +187,6 @@ class IcmpPayload
     /// The behavior is undefined unless 'isParameterProblem()' is true.
     ntsa::IcmpProblem& parameterProblem();
 
-    /// Decode the payload from the specified 'buffer' starting at the
-    /// specified 'offset' inside the framing packet having the specified
-    /// 'packetSize'. Use the specified 'type' to select the active
-    /// representation. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              packetSize,
-                       ntsa::IcmpType::Value    type);
-
-    /// Encode the payload to the specified 'buffer' starting at the specified
-    /// 'offset'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
-
     /// Return a reference to the non-modifiable "echoReply" representation.
     /// The behavior is undefined unless 'isEchoReply()' is true.
     const ntsa::IcmpPong& echoReply() const;

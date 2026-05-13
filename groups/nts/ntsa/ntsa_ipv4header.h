@@ -250,6 +250,9 @@ class Ipv4Header
         /// The maximum header length including all options, in bytes.
         k_MAX_HEADER_LENGTH = 60,
 
+        /// The minimum length of all options, in bytes.
+        k_MIN_OPTIONS_LENGTH = 0,
+
         /// The maximum length of all options, in bytes.
         k_MAX_OPTIONS_LENGTH = 40,
 

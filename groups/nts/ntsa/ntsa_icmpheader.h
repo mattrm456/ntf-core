@@ -257,16 +257,16 @@ IcmpHeader::IcmpHeader()
 {
     BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
 
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
 IcmpHeader::IcmpHeader(bslmf::MovableRef<IcmpHeader> original) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
-                    bslmf::MovableRefUtil::access(original))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(original);
 }
@@ -274,9 +274,7 @@ IcmpHeader::IcmpHeader(bslmf::MovableRef<IcmpHeader> original) NTSCFG_NOEXCEPT
 NTSCFG_INLINE
 IcmpHeader::IcmpHeader(const IcmpHeader& original)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&original),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -288,10 +286,10 @@ NTSCFG_INLINE
 IcmpHeader& IcmpHeader::operator=(bslmf::MovableRef<IcmpHeader> other)
     NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(
-                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -301,9 +299,7 @@ IcmpHeader& IcmpHeader::operator=(bslmf::MovableRef<IcmpHeader> other)
 NTSCFG_INLINE
 IcmpHeader& IcmpHeader::operator=(const IcmpHeader& other)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&other),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
 
     return *this;
 }
@@ -311,7 +307,7 @@ IcmpHeader& IcmpHeader::operator=(const IcmpHeader& other)
 NTSCFG_INLINE
 void IcmpHeader::reset()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -348,6 +344,18 @@ NTSCFG_INLINE
 bsl::uint16_t IcmpHeader::checksum() const
 {
     return static_cast<bsl::uint16_t>(d_checksum);
+}
+
+NTSCFG_INLINE
+bool IcmpHeader::equals(const IcmpHeader& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
+}
+
+NTSCFG_INLINE
+bool IcmpHeader::less(const IcmpHeader& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>

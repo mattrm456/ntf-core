@@ -401,53 +401,6 @@ ntsa::IcmpProblem& IcmpPayload::parameterProblem()
     return d_parameterProblem.object();
 }
 
-ntsa::Error IcmpPayload::decode(const bdlbb::BlobBuffer& buffer,
-                                bsl::size_t              offset,
-                                bsl::size_t              packetSize,
-                                ntsa::IcmpType::Value    type)
-{
-    this->reset();
-
-    switch (type) {
-    case ntsa::IcmpType::e_ECHO_REPLY:
-        return this->makeEchoReply().decode(buffer, offset, packetSize);
-    case ntsa::IcmpType::e_DESTINATION_UNREACHABLE:
-        return this->makeDestinationUnreachable().decode(
-            buffer, offset, packetSize);
-    case ntsa::IcmpType::e_REDIRECT:
-        return this->makeRedirect().decode(buffer, offset, packetSize);
-    case ntsa::IcmpType::e_ECHO:
-        return this->makeEcho().decode(buffer, offset, packetSize);
-    case ntsa::IcmpType::e_TIME_EXCEEDED:
-        return this->makeTimeExceeded().decode(buffer, offset, packetSize);
-    case ntsa::IcmpType::e_PARAMETER_PROBLEM:
-        return this->makeParameterProblem().decode(buffer, offset, packetSize);
-    default:
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-}
-
-ntsa::Error IcmpPayload::encode(bdlbb::BlobBuffer* buffer,
-                                bsl::size_t        offset) const
-{
-    switch (d_type) {
-    case ntsa::IcmpType::e_ECHO_REPLY:
-        return d_echoReply.object().encode(buffer, offset);
-    case ntsa::IcmpType::e_DESTINATION_UNREACHABLE:
-        return d_destinationUnreachable.object().encode(buffer, offset);
-    case ntsa::IcmpType::e_REDIRECT:
-        return d_redirect.object().encode(buffer, offset);
-    case ntsa::IcmpType::e_ECHO:
-        return d_echo.object().encode(buffer, offset);
-    case ntsa::IcmpType::e_TIME_EXCEEDED:
-        return d_timeExceeded.object().encode(buffer, offset);
-    case ntsa::IcmpType::e_PARAMETER_PROBLEM:
-        return d_parameterProblem.object().encode(buffer, offset);
-    default:
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-}
-
 const ntsa::IcmpPong& IcmpPayload::echoReply() const
 {
     BSLS_ASSERT(isEchoReply());

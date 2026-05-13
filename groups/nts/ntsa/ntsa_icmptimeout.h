@@ -20,6 +20,7 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
+#include <ntsa_ipv4header.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
@@ -81,11 +82,27 @@ class IcmpTimeout
     /// Reserved field; must be zero.
     bdlb::BigEndianUint32 d_unused;
 
+    /// The IPv4 header of the original packet.
+    ntsa::Ipv4Header d_header;
+
+    /// The leading bytes of the payload of the original packet.
+    bsl::uint8_t d_payloadData[8];
+
+    /// The number of leading bytes of the payload of the original packet.
+    bsl::size_t d_payloadSize;
+
+  private:
+    /// Print the specified 'data' to the specified 'stream'.
+    static bsl::ostream& printData(bsl::ostream&            stream,
+                                   const bslstl::StringRef& data,
+                                   int                      level,
+                                   int                      spacesPerLevel);
+
   public:
     /// Enumerate the constants used by the implementation.
     enum Constant {
         /// The fixed length of the IcmpTimeout body in octets.
-        k_LENGTH = 4
+        k_LENGTH = sizeof(bdlb::BigEndianUint32) + sizeof(ntsa::Ipv4Header) + 8 + sizeof(bsl::size_t)
     };
 
     /// Create a new ICMP timeout having a default value.
@@ -116,6 +133,14 @@ class IcmpTimeout
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
+    /// Set the IPv4 header of the original packet to the specified 'value'.
+    void setHeader(const ntsa::Ipv4Header& header);
+
+    /// Set the payload of the original packet to the specified 'payload'
+    /// having the specified 'size'. Note that only the first 8 bytes of the
+    /// payload are stored, if 'size' is greater than 8.
+    void setPayload(const void* payload, bsl::size_t size);
+
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
 
@@ -132,6 +157,16 @@ class IcmpTimeout
     /// Encode the body to the specified 'buffer' starting at the specified
     /// 'offset'. Return the error.
     ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
+
+    /// Return the IPv4 header of the original packet.
+    const ntsa::Ipv4Header& header() const;
+
+    /// Return up to the first 8 bytes of the payload of the original packet.
+    const bsl::uint8_t* payloadData() const;
+
+    /// Return the payload size. Note that the maximum payload size is limited
+    /// to the first 8 bytes of the payload of the original packet.
+    bsl::size_t payloadSize() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -214,21 +249,25 @@ IcmpTimeout::IcmpTimeout()
 {
     BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
 
-    d_unused = static_cast<bsl::uint32_t>(0);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
 IcmpTimeout::IcmpTimeout(
     bslmf::MovableRef<IcmpTimeout> original) NTSCFG_NOEXCEPT
-: d_unused(NTSCFG_MOVE_FROM(original, d_unused))
 {
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
+
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
 IcmpTimeout::IcmpTimeout(const IcmpTimeout& original)
-: d_unused(original.d_unused)
 {
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -240,7 +279,10 @@ NTSCFG_INLINE
 IcmpTimeout& IcmpTimeout::operator=(
     bslmf::MovableRef<IcmpTimeout> other) NTSCFG_NOEXCEPT
 {
-    d_unused = NTSCFG_MOVE_FROM(other, d_unused);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -250,7 +292,7 @@ IcmpTimeout& IcmpTimeout::operator=(
 NTSCFG_INLINE
 IcmpTimeout& IcmpTimeout::operator=(const IcmpTimeout& other)
 {
-    d_unused = other.d_unused;
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
 
     return *this;
 }
@@ -258,20 +300,54 @@ IcmpTimeout& IcmpTimeout::operator=(const IcmpTimeout& other)
 NTSCFG_INLINE
 void IcmpTimeout::reset()
 {
-    d_unused = static_cast<bsl::uint32_t>(0);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
+}
+
+NTSCFG_INLINE
+void IcmpTimeout::setHeader(const ntsa::Ipv4Header& header)
+{
+    d_header = header;
+}
+
+NTSCFG_INLINE
+void IcmpTimeout::setPayload(const void* payload, bsl::size_t size)
+{
+    NTSCFG_MEMORY_ZERO(d_payloadData, sizeof d_payloadData);
+    if (size > 0) {
+        NTSCFG_MEMORY_COPY(d_payloadData,
+                           payload,
+                           bsl::min(size, sizeof d_payloadData));
+    }
+}
+
+NTSCFG_INLINE
+const ntsa::Ipv4Header& IcmpTimeout::header() const
+{
+    return d_header;
+}
+
+NTSCFG_INLINE
+const bsl::uint8_t* IcmpTimeout::payloadData() const
+{
+    return d_payloadData;
+}
+
+NTSCFG_INLINE
+bsl::size_t IcmpTimeout::payloadSize() const
+{
+    return d_payloadSize;
 }
 
 NTSCFG_INLINE
 bool IcmpTimeout::equals(const IcmpTimeout& other) const
 {
-    return d_unused == other.d_unused;
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
 }
 
 NTSCFG_INLINE
 bool IcmpTimeout::less(const IcmpTimeout& other) const
 {
-    return static_cast<bsl::uint32_t>(d_unused) <
-           static_cast<bsl::uint32_t>(other.d_unused);
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>
@@ -280,6 +356,10 @@ NTSCFG_INLINE void IcmpTimeout::hash(HASH_ALGORITHM& algorithm) const
     using bslh::hashAppend;
 
     hashAppend(algorithm, static_cast<bsl::uint32_t>(d_unused));
+    hashAppend(algorithm, d_header);
+    if (d_payloadSize > 0) {
+        algorithm(d_payloadData, d_payloadSize);
+    }
 }
 
 NTSCFG_INLINE

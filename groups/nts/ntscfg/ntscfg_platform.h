@@ -394,6 +394,25 @@ namespace ntscfg {
 #define NTSCFG_WARNING_UNUSED(variable) (void)(variable)
 
 /// @internal @brief
+/// Zero the specified 'size' number of bytes at the specified 'destination'.
+///
+/// @ingroup module_ntscfg
+#define NTSCFG_MEMORY_ZERO(destination, size)                                 \
+    bsl::memset(reinterpret_cast<void*>(destination),                         \
+                0,                                                            \
+                static_cast<bsl::size_t>(size))
+
+/// @internal @brief
+/// Set the specified 'size' number of bytes at the specified 'destination'
+/// to the specified 'value'.
+///
+/// @ingroup module_ntscfg
+#define NTSCFG_MEMORY_SET(destination, value, size)                           \
+    bsl::memset(reinterpret_cast<void*>(destination),                         \
+                static_cast<int>(value),                                      \
+                static_cast<bsl::size_t>(size))
+
+/// @internal @brief
 /// Copy the specified 'size' number of bytes from the specified 'source' to
 /// the specified 'destination'.
 ///

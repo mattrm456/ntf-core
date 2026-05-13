@@ -25,18 +25,62 @@ BSLS_IDENT_RCSID(ntsa_ipv6header_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-bool Ipv6Header::equals(const Ipv6Header& other) const
+ntsa::Error Ipv6Header::decode(ntsa::PacketDecoder* decoder)
 {
-    return bsl::memcmp(reinterpret_cast<const void*>(this),
-                       reinterpret_cast<const void*>(&other),
-                       sizeof *this) == 0;
+    ntsa::Error error;
+
+    reset();
+
+    error = decoder->decodeRaw(this, 8);
+    if (error) {
+        return error;
+    }
+
+    bsl::uint8_t sourceAddress[16];
+    error = decoder->decodeRaw(sourceAddress, sizeof sourceAddress);
+    if (error) {
+        return error;
+    }
+
+    d_sourceAddress.copyFrom(sourceAddress, sizeof sourceAddress);
+
+    bsl::uint8_t destinationAddress[16];
+    error = decoder->decodeRaw(destinationAddress, sizeof destinationAddress);
+    if (error) {
+        return error;
+    }
+
+    d_destinationAddress.copyFrom(destinationAddress, sizeof destinationAddress);
+
+    return ntsa::Error();
 }
 
-bool Ipv6Header::less(const Ipv6Header& other) const
+ntsa::Error Ipv6Header::encode(ntsa::PacketEncoder* encoder) const
 {
-    return bsl::memcmp(reinterpret_cast<const void*>(this),
-                       reinterpret_cast<const void*>(&other),
-                       sizeof *this) < 0;
+    ntsa::Error error;
+
+    error = encoder->encodeRaw(this, 8);
+    if (error) {
+        return error;
+    }
+
+    bsl::uint8_t sourceAddress[16];
+    d_sourceAddress.copyTo(sourceAddress, sizeof sourceAddress);
+
+    error = encoder->encodeRaw(sourceAddress, sizeof sourceAddress);
+    if (error) {
+        return error;
+    }
+
+    bsl::uint8_t destinationAddress[16];
+    d_destinationAddress.copyTo(destinationAddress, sizeof destinationAddress);
+
+    error = encoder->encodeRaw(destinationAddress, sizeof destinationAddress);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
 }
 
 bsl::ostream& Ipv6Header::print(bsl::ostream& stream,
