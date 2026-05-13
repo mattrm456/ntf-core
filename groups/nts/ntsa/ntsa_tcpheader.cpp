@@ -24,6 +24,32 @@ BSLS_IDENT_RCSID(ntsa_tcpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error TcpHeader::decode(ntsa::PacketDecoder* decoder)
+{
+    ntsa::Error error;
+
+    error = decoder->decodeRaw(this,
+                               static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error TcpHeader::encode(ntsa::PacketEncoder* encoder) const
+{
+    ntsa::Error error;
+
+    error = encoder->encodeRaw(this,
+                               static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
 ntsa::Error TcpHeader::decode(const bdlbb::BlobBuffer& buffer,
                               bsl::size_t              offset,
                               bsl::size_t              packetSize)
@@ -118,7 +144,7 @@ void TcpHeader::print(bslim::Printer* printer) const
     printer->printAttribute("destinationPort", this->destinationPort());
     printer->printAttribute("sequenceNumber", this->sequenceNumber());
     printer->printAttribute("acknowledgmentNumber",
-                           this->acknowledgmentNumber());
+                            this->acknowledgmentNumber());
     printer->printAttribute("dataOffset", this->dataOffset());
     printer->printForeign(this->flags(), &TcpHeader::printFlags, "flags");
     printer->printAttribute("windowSize", this->windowSize());

@@ -20,6 +20,8 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
@@ -213,6 +215,12 @@ class TcpHeader
 
     /// Set the urgent pointer to the specified 'value'.
     void setUrgentPointer(bsl::uint16_t value);
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
     /// Decode the header from the specified 'buffer' starting at the specified
     /// 'offset' inside the framing packet having the specified 'packetSize'.

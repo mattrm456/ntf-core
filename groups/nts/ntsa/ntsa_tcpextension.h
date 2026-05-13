@@ -19,6 +19,8 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntsa_tcpheader.h>
 #include <ntsa_tcpoptiontype.h>
 #include <ntsa_tcpoption.h>
@@ -52,8 +54,8 @@ class TcpExtension
     /// Defines a type alias for the arena in which options are stored.
     typedef bsl::uint8_t Arena[k_MAX_OPTIONS_LENGTH];
 
-    /// Provide a mechanism to decode the options.
-    class Decoder;
+    /// Provide a mechanism to vist each option.
+    class Visitor;
 
   private:
     /// The options.
@@ -90,6 +92,12 @@ class TcpExtension
 
     /// Add the specified 'option'. Return the error.
     ntsa::Error add(const ntsa::TcpOption& option, bool final);
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder, bsl::size_t size);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder, bsl::size_t size) const;
 
     /// Decode the TCP extension area having the specified 'size' from the
     /// specified 'buffer' starting at the specified 'offset'. Return the

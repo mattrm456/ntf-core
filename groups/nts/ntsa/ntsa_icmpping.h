@@ -21,6 +21,8 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_circular.h>
 #include <ntsa_error.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -83,13 +85,17 @@ class IcmpPing
     /// The sequence number.
     bdlb::BigEndianUint16 d_sequenceNumber;
 
-  public:
-    /// Enumerate the constants used by the implementation.
-    enum Constant {
-        /// The fixed length of the IcmpPing body in octets.
-        k_LENGTH = 4
-    };
+    /// The data.
+    bdlbb::BlobBuffer d_data;
 
+  private:
+    /// Print the specified 'data' to the specified 'stream'.
+    static bsl::ostream& printData(bsl::ostream&            stream,
+                                   const bdlbb::BlobBuffer& data,
+                                   int                      level,
+                                   int                      spacesPerLevel);
+
+  public:
     /// Create a new ICMP ping having a default value.
     IcmpPing();
 
@@ -123,6 +129,19 @@ class IcmpPing
     /// Set the sequence number to the specified 'value'.
     void setSequenceNumber(ntsa::CircularUint16 value);
 
+    /// Set the data to the specified 'value'.
+    void setData(const bdlbb::BlobBuffer& value);
+
+    /// Set the data to the specified 'value'. Assign an unspecified but valid
+    /// value to the 'original' original.
+    void setData(bslmf::MovableRef<bdlbb::BlobBuffer> value);
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+
     /// Decode the body from the specified 'buffer' starting at the specified
     /// 'offset' inside the framing packet having the specified 'packetSize'.
     /// Return the error.
@@ -139,6 +158,9 @@ class IcmpPing
 
     /// Return the sequence number.
     ntsa::CircularUint16 sequenceNumber() const;
+
+    /// Return the data.
+    const bdlbb::BlobBuffer& data() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -218,17 +240,17 @@ void hashAppend(HASH_ALGORITHM& algorithm, const IcmpPing& value);
 
 NTSCFG_INLINE
 IcmpPing::IcmpPing()
+: d_identifier()
+, d_sequenceNumber()
+, d_data()
 {
-    BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
-
-    d_identifier     = static_cast<bsl::uint16_t>(0);
-    d_sequenceNumber = static_cast<bsl::uint16_t>(0);
 }
 
 NTSCFG_INLINE
 IcmpPing::IcmpPing(bslmf::MovableRef<IcmpPing> original) NTSCFG_NOEXCEPT
-: d_identifier(NTSCFG_MOVE_FROM(original, d_identifier))
-, d_sequenceNumber(NTSCFG_MOVE_FROM(original, d_sequenceNumber))
+: d_identifier(NTSCFG_MOVE_FROM(original, d_identifier)),
+  d_sequenceNumber(NTSCFG_MOVE_FROM(original, d_sequenceNumber)),
+  d_data(NTSCFG_MOVE_FROM(original, d_data))
 {
     NTSCFG_MOVE_RESET(original);
 }
@@ -237,6 +259,7 @@ NTSCFG_INLINE
 IcmpPing::IcmpPing(const IcmpPing& original)
 : d_identifier(original.d_identifier)
 , d_sequenceNumber(original.d_sequenceNumber)
+, d_data(original.d_data)
 {
 }
 
@@ -251,6 +274,7 @@ IcmpPing& IcmpPing::operator=(bslmf::MovableRef<IcmpPing> other)
 {
     d_identifier     = NTSCFG_MOVE_FROM(other, d_identifier);
     d_sequenceNumber = NTSCFG_MOVE_FROM(other, d_sequenceNumber);
+    d_data           = NTSCFG_MOVE_FROM(other, d_data);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -262,6 +286,7 @@ IcmpPing& IcmpPing::operator=(const IcmpPing& other)
 {
     d_identifier     = other.d_identifier;
     d_sequenceNumber = other.d_sequenceNumber;
+    d_data           = other.d_data;
 
     return *this;
 }
@@ -271,6 +296,7 @@ void IcmpPing::reset()
 {
     d_identifier     = static_cast<bsl::uint16_t>(0);
     d_sequenceNumber = static_cast<bsl::uint16_t>(0);
+    d_data.reset();
 }
 
 NTSCFG_INLINE
@@ -286,6 +312,18 @@ void IcmpPing::setSequenceNumber(ntsa::CircularUint16 value)
 }
 
 NTSCFG_INLINE
+void IcmpPing::setData(const bdlbb::BlobBuffer& value)
+{
+    d_data = value;
+}
+
+NTSCFG_INLINE
+void IcmpPing::setData(bslmf::MovableRef<bdlbb::BlobBuffer> value)
+{
+    d_data = NTSCFG_MOVE(value);
+}
+
+NTSCFG_INLINE
 bsl::uint16_t IcmpPing::identifier() const
 {
     return static_cast<bsl::uint16_t>(d_identifier);
@@ -298,29 +336,9 @@ ntsa::CircularUint16 IcmpPing::sequenceNumber() const
 }
 
 NTSCFG_INLINE
-bool IcmpPing::equals(const IcmpPing& other) const
+const bdlbb::BlobBuffer& IcmpPing::data() const
 {
-    return d_identifier == other.d_identifier &&
-           d_sequenceNumber == other.d_sequenceNumber;
-}
-
-NTSCFG_INLINE
-bool IcmpPing::less(const IcmpPing& other) const
-{
-    if (static_cast<bsl::uint16_t>(d_identifier) <
-        static_cast<bsl::uint16_t>(other.d_identifier))
-    {
-        return true;
-    }
-
-    if (static_cast<bsl::uint16_t>(other.d_identifier) <
-        static_cast<bsl::uint16_t>(d_identifier))
-    {
-        return false;
-    }
-
-    return static_cast<bsl::uint16_t>(d_sequenceNumber) <
-           static_cast<bsl::uint16_t>(other.d_sequenceNumber);
+    return d_data;
 }
 
 template <typename HASH_ALGORITHM>
@@ -330,6 +348,10 @@ NTSCFG_INLINE void IcmpPing::hash(HASH_ALGORITHM& algorithm) const
 
     hashAppend(algorithm, static_cast<bsl::uint16_t>(d_identifier));
     hashAppend(algorithm, static_cast<bsl::uint16_t>(d_sequenceNumber));
+
+    if (d_data.size() > 0) {
+        algorithm(d_data.data(), d_data.size());
+    }
 }
 
 NTSCFG_INLINE

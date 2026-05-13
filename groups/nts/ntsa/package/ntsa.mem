@@ -62,6 +62,9 @@ ntsa_message
 ntsa_notification
 ntsa_notificationqueue
 ntsa_notificationtype
+ntsa_packet
+ntsa_packetdecoder
+ntsa_packetencoder
 ntsa_port
 ntsa_portoptions
 ntsa_reactorconfig

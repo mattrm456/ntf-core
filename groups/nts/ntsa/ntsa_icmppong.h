@@ -21,6 +21,8 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_circular.h>
 #include <ntsa_error.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -132,6 +134,12 @@ class IcmpPong
     /// Set the data to the specified 'value'. Assign an unspecified but valid
     /// value to the 'original' original.
     void setData(bslmf::MovableRef<bdlbb::BlobBuffer> value);
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
     /// Decode the body from the specified 'buffer' starting at the specified
     /// 'offset' inside the framing packet having the specified 'packetSize'.
@@ -330,66 +338,6 @@ NTSCFG_INLINE
 const bdlbb::BlobBuffer& IcmpPong::data() const
 {
     return d_data;
-}
-
-NTSCFG_INLINE
-bool IcmpPong::equals(const IcmpPong& other) const
-{
-    if (d_identifier != other.d_identifier) {
-        return false;
-    }
-
-    if (d_sequenceNumber != other.d_sequenceNumber) {
-        return false;
-    }
-
-    if (d_data.size() != other.d_data.size()) {
-        return false;
-    }
-
-    const int compare =
-        bsl::memcmp(d_data.data(), other.d_data.data(), d_data.size());
-    if (compare != 0) {
-        return false;
-    }
-
-    return true;
-}
-
-NTSCFG_INLINE
-bool IcmpPong::less(const IcmpPong& other) const
-{
-    if (static_cast<bsl::uint16_t>(d_identifier) <
-        static_cast<bsl::uint16_t>(other.d_identifier))
-    {
-        return true;
-    }
-
-    if (static_cast<bsl::uint16_t>(other.d_identifier) <
-        static_cast<bsl::uint16_t>(d_identifier))
-    {
-        return false;
-    }
-
-    if (static_cast<bsl::uint16_t>(d_sequenceNumber) <
-        static_cast<bsl::uint16_t>(other.d_sequenceNumber))
-    {
-        return true;
-    }
-
-    if (static_cast<bsl::uint16_t>(other.d_sequenceNumber) <
-        static_cast<bsl::uint16_t>(d_sequenceNumber))
-    {
-        return false;
-    }
-
-    const int compare =
-        bsl::memcmp(d_data.data(), other.d_data.data(), d_data.size());
-    if (compare >= 0) {
-        return false;
-    }
-
-    return true;
 }
 
 template <typename HASH_ALGORITHM>

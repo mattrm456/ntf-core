@@ -24,6 +24,24 @@ BSLS_IDENT_RCSID(ntsa_icmpredirect_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error IcmpRedirect::decode(ntsa::PacketDecoder* decoder)
+{
+    NTSCFG_WARNING_UNUSED(decoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error IcmpRedirect::encode(ntsa::PacketEncoder* encoder) const
+{
+    NTSCFG_WARNING_UNUSED(encoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
 ntsa::Error IcmpRedirect::decode(const bdlbb::BlobBuffer& buffer,
                                  bsl::size_t              offset,
                                  bsl::size_t              packetSize)

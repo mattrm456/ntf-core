@@ -22,6 +22,8 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_error.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntsa_udpheader.h>
 #include <ntsa_udppayload.h>
 #include <ntscfg_platform.h>
@@ -82,6 +84,19 @@ class UdpPacket
 
     /// Return a reference to the modifiable payload.
     ntsa::UdpPayload& payload();
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
+                       const ntsa::Ipv4Address& sourceAddress,
+                       const ntsa::Ipv4Address& destinationAddress) const;
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
+                       const ntsa::Ipv6Address& sourceAddress,
+                       const ntsa::Ipv6Address& destinationAddress) const;
 
     /// Decode the packet from the specified 'buffer' starting at the specified
     /// 'offset' inside the framing packet having the specified 'packetSize'.

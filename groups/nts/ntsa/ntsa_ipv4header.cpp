@@ -26,6 +26,51 @@ BSLS_IDENT_RCSID(ntsa_ipv4header_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error Ipv4Header::decode(ntsa::PacketDecoder* decoder)
+{
+    ntsa::Error error;
+
+    reset();
+
+    const bsl::uint8_t control = *decoder->next();
+    const bsl::uint8_t version = (control & 0xF0) >> 4;
+
+    const bsl::uint8_t headerLength = (control & 0x0F) * sizeof(bsl::uint32_t);
+
+    if (version != 4) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (headerLength < k_MIN_HEADER_LENGTH) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (headerLength > k_MAX_HEADER_LENGTH) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    error = decoder->decodeRaw(this, static_cast<bsl::size_t>(headerLength));
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error Ipv4Header::encode(ntsa::PacketEncoder* encoder) const
+{
+    ntsa::Error error;
+
+    const bsl::size_t headerLength = this->headerLength();
+
+    error = encoder->encodeRaw(this, headerLength);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
 ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& buffer,
                                bsl::size_t              offset)
 {
@@ -43,8 +88,7 @@ ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& buffer,
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::size_t bufferSize =
-        static_cast<bsl::size_t>(buffer.size());
+    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
 
     if (offset + static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH) > bufferSize) {
         return ntsa::Error(ntsa::Error::e_INVALID);
@@ -54,8 +98,7 @@ ntsa::Error Ipv4Header::decode(const bdlbb::BlobBuffer& buffer,
 
     const bsl::uint8_t version = (control & 0xF0) >> 4;
 
-    const bsl::uint8_t headerLength =
-        (control & 0x0F) * sizeof(bsl::uint32_t);
+    const bsl::uint8_t headerLength = (control & 0x0F) * sizeof(bsl::uint32_t);
 
     if (version != 4) {
         return ntsa::Error(ntsa::Error::e_INVALID);

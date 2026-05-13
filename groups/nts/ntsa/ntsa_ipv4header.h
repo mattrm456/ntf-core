@@ -21,6 +21,8 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
 #include <ntsa_ipv4address.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -371,14 +373,19 @@ class Ipv4Header
     /// Set the destination address to the specified 'value'.
     void setDestinationAddress(const ntsa::Ipv4Address& value);
 
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+
     /// Decode the packet from the specified 'buffer' starting at the specified
     /// 'offset'. Return the error.
     ntsa::Error decode(const bdlbb::BlobBuffer& buffer, bsl::size_t offset);
 
     /// Encode the packet to the specified 'buffer' starting at the specified
     /// 'offset'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer,
-                       bsl::size_t        offset) const;
+    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
 
     /// Return the length of the header including all options, in bytes.
     bsl::size_t headerLength() const;

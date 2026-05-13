@@ -22,6 +22,8 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_error.h>
 #include <ntsa_ipv4header.h>
 #include <ntsa_ipv4payload.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlbb_blob.h>
@@ -81,6 +83,12 @@ class Ipv4Packet
 
     /// Return a reference to the modifiable payload.
     ntsa::Ipv4Payload& payload();
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
     /// Decode the packet from the specified 'buffer' starting at the specified
     /// 'offset'. Return the error.

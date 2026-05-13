@@ -21,6 +21,8 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_buffer.h>
 #include <ntsa_error.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntsa_tcpoptiontype.h>
 #include <ntsa_tcpsequencenumber.h>
 #include <ntsa_tcptimepoint.h>
@@ -181,6 +183,12 @@ class TcpOption
     /// Return a reference to the modifiable "fastOpen" representation. The
     /// behavior is undefined unless 'isFastOpen()' is true.
     bdlb::Guid& fastOpen();
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder, bool final) const;
 
     /// Decode the option from the specified 'buffer'. Load into the specified
     /// 'size' the number of bytes decoded. Return the error.

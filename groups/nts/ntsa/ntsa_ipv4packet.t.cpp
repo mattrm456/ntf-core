@@ -54,16 +54,16 @@ class Ipv4PacketTest
     static void verifyTypeTraits();
 
     // Test decoding ICMP/IPv4.
-    static void verifySerializationIcmpIpv4();
+    static void verifySerializationIcmpPong();
 
     // Test decoding IGMP/IPv4.
-    static void verifySerializationIgmpIpv4();
+    static void verifySerializationIgmp();
 
     // Test decoding UDP/IPv4.
-    static void verifySerializationUdpIpv4();
+    static void verifySerializationUdp();
 
     // Test decoding TCP/IPv4.
-    static void verifySerializationTcpIpv4();
+    static void verifySerializationTcp();
 
     // Test usage example.
     static void verifyUsage();
@@ -73,7 +73,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTypeTraits)
 {
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpIpv4)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpPong)
 {
     ntsa::Error error;
 
@@ -138,8 +138,6 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpIpv4)
     NTSCFG_TEST_EQ(pong.identifier(), 7776);
     NTSCFG_TEST_EQ(pong.sequenceNumber().value(), 0);
 
-    // MRM
-#if 0
     bdlbb::BlobBuffer outgoingBlobBuffer;
     blobBufferFactory.allocate(&outgoingBlobBuffer);
     NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), k_DATA_SIZE);
@@ -178,14 +176,13 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpIpv4)
     }
 
     NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
-#endif
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIgmpIpv4)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIgmp)
 {
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdpIpv4)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdp)
 {
     ntsa::Error error;
 
@@ -293,7 +290,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdpIpv4)
     NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationTcpIpv4)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationTcp)
 {
     ntsa::Error error;
 

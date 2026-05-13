@@ -24,8 +24,8 @@ BSLS_IDENT_RCSID(ntsa_tcpextension_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide a mechanism to decode the options.
-class TcpExtension::Decoder
+/// Provide a mechanism to visit each option.
+class TcpExtension::Visitor
 {
     const bsl::uint8_t* d_current;
     const bsl::uint8_t* d_next;
@@ -36,18 +36,18 @@ class TcpExtension::Decoder
     bsl::size_t         d_size;
 
   private:
-    Decoder(const Decoder&) BSLS_KEYWORD_DELETED;
-    Decoder& operator=(const Decoder&) BSLS_KEYWORD_DELETED;
+    Visitor(const Visitor&) BSLS_KEYWORD_DELETED;
+    Visitor& operator=(const Visitor&) BSLS_KEYWORD_DELETED;
 
   public:
-    /// Create a new options decoder over the specified 'data' having the
+    /// Create a new options visitor over the specified 'data' having the
     /// specified 'dataSize'.
-    Decoder(const bsl::uint8_t* data, bsl::size_t dataSize);
+    Visitor(const bsl::uint8_t* data, bsl::size_t dataSize);
 
     /// Destroy this object.
-    ~Decoder();
+    ~Visitor();
 
-    /// Reset the decoder to its position upon construction.
+    /// Reset the visitor to its position upon construction.
     void reset();
 
     /// Decode the next option. Return the error.
@@ -68,12 +68,12 @@ class TcpExtension::Decoder
     /// Return the offset of the next option.
     bsl::size_t next() const;
 
-    /// Return true if the decoder is stopped at a valid option, and false
+    /// Return true if the visitor is stopped at a valid option, and false
     /// otherwise.
     bool isValid() const;
 };
 
-TcpExtension::Decoder::Decoder(const bsl::uint8_t* data, bsl::size_t dataSize)
+TcpExtension::Visitor::Visitor(const bsl::uint8_t* data, bsl::size_t dataSize)
 : d_current(data)
 , d_next(data)
 , d_begin(data)
@@ -84,11 +84,11 @@ TcpExtension::Decoder::Decoder(const bsl::uint8_t* data, bsl::size_t dataSize)
 {
 }
 
-TcpExtension::Decoder::~Decoder()
+TcpExtension::Visitor::~Visitor()
 {
 }
 
-void TcpExtension::Decoder::reset()
+void TcpExtension::Visitor::reset()
 {
     d_current = d_begin;
     d_type    = ntsa::TcpOptionType::e_PADDING;
@@ -98,7 +98,7 @@ void TcpExtension::Decoder::reset()
     decode();
 }
 
-ntsa::Error TcpExtension::Decoder::decode()
+ntsa::Error TcpExtension::Visitor::decode()
 {
     d_current = d_next;
 
@@ -113,7 +113,9 @@ ntsa::Error TcpExtension::Decoder::decode()
 
     d_type = d_current[0];
 
-    if (d_type == ntsa::TcpOptionType::e_UNDEFINED || d_type == ntsa::TcpOptionType::e_PADDING) {
+    if (d_type == ntsa::TcpOptionType::e_UNDEFINED ||
+        d_type == ntsa::TcpOptionType::e_PADDING)
+    {
         d_next = d_current + 1;
         d_data = 0;
         d_size = 0;
@@ -137,32 +139,32 @@ ntsa::Error TcpExtension::Decoder::decode()
     return ntsa::Error();
 }
 
-bsl::uint8_t TcpExtension::Decoder::type() const
+bsl::uint8_t TcpExtension::Visitor::type() const
 {
     return d_type;
 }
 
-const void* TcpExtension::Decoder::data() const
+const void* TcpExtension::Visitor::data() const
 {
     return d_data;
 }
 
-bsl::size_t TcpExtension::Decoder::size() const
+bsl::size_t TcpExtension::Visitor::size() const
 {
     return d_size;
 }
 
-bsl::size_t TcpExtension::Decoder::position() const
+bsl::size_t TcpExtension::Visitor::position() const
 {
     return static_cast<bsl::size_t>(d_current - d_begin);
 }
 
-bsl::size_t TcpExtension::Decoder::next() const
+bsl::size_t TcpExtension::Visitor::next() const
 {
     return static_cast<bsl::size_t>(d_next - d_begin);
 }
 
-bool TcpExtension::Decoder::isValid() const
+bool TcpExtension::Visitor::isValid() const
 {
     return d_current < d_end;
 }
@@ -177,8 +179,8 @@ ntsa::Error TcpExtension::add(const ntsa::TcpOption& option, bool final)
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    ntsa::MutableBuffer mutableBuffer(
-        d_options + offset, k_MAX_OPTIONS_LENGTH - offset);
+    ntsa::MutableBuffer mutableBuffer(d_options + offset,
+                                      k_MAX_OPTIONS_LENGTH - offset);
 
     bsl::size_t size = 0;
 
@@ -188,6 +190,32 @@ ntsa::Error TcpExtension::add(const ntsa::TcpOption& option, bool final)
     }
 
     offset += size;
+
+    return ntsa::Error();
+}
+
+ntsa::Error TcpExtension::decode(ntsa::PacketDecoder* decoder,
+                                 bsl::size_t          size)
+{
+    ntsa::Error error;
+
+    error = decoder->decodeRaw(this, size);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error TcpExtension::encode(ntsa::PacketEncoder* encoder,
+                                 bsl::size_t          size) const
+{
+    ntsa::Error error;
+
+    error = encoder->encodeRaw(this, size);
+    if (error) {
+        return error;
+    }
 
     return ntsa::Error();
 }
@@ -218,9 +246,9 @@ ntsa::Error TcpExtension::decode(const bdlbb::BlobBuffer& buffer,
 
     // MRM
 #if 0
-    Decoder decoder(d_options, k_MAX_OPTIONS_LENGTH);
-    while (decoder.isValid()) {
-        decoder.decode();
+    Visitor visitor(d_options, k_MAX_OPTIONS_LENGTH);
+    while (visitor.isValid()) {
+        visitor.decode();
 
         BSLS_LOG_INFO("Decoded option offset %d type %d length %d",
                   (int)(d_current ? (bsl::uint8_t*)d_current - d_begin : 0),
@@ -271,18 +299,18 @@ bool TcpExtension::find(const void** payload,
 {
     ntsa::Error error;
 
-    Decoder decoder(d_options + offset, k_MAX_OPTIONS_LENGTH);
+    Visitor visitor(d_options + offset, k_MAX_OPTIONS_LENGTH);
 
-    while (decoder.isValid()) {
-        error = decoder.decode();
+    while (visitor.isValid()) {
+        error = visitor.decode();
         if (error) {
             return false;
         }
 
-        if (decoder.type() == type) {
-            *payload = decoder.data();
-            *length  = decoder.size();
-            *next    = decoder.next();
+        if (visitor.type() == type) {
+            *payload = visitor.data();
+            *length  = visitor.size();
+            *next    = visitor.next();
 
             return true;
         }
@@ -310,7 +338,6 @@ void TcpExtension::load(ntsa::TcpOptionVector* result) const
         ntsa::ConstBuffer buffer(current,
                                  static_cast<bsl::size_t>(end - current));
 
-
         result->resize(result->size() + 1);
         ntsa::TcpOption& option = result->back();
 
@@ -329,16 +356,16 @@ bsl::size_t TcpExtension::size() const
 
     bsl::size_t result = 0;
 
-    Decoder decoder(d_options, k_MAX_OPTIONS_LENGTH);
+    Visitor visitor(d_options, k_MAX_OPTIONS_LENGTH);
 
-    while (decoder.isValid()) {
-        error = decoder.decode();
+    while (visitor.isValid()) {
+        error = visitor.decode();
         if (error) {
             break;
         }
 
-        if (decoder.type() == ntsa::TcpOptionType::e_UNDEFINED) {
-            result = decoder.position();
+        if (visitor.type() == ntsa::TcpOptionType::e_UNDEFINED) {
+            result = visitor.position();
             break;
         }
     }

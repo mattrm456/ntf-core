@@ -24,6 +24,32 @@ BSLS_IDENT_RCSID(ntsa_icmpheader_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error IcmpHeader::decode(ntsa::PacketDecoder* decoder)
+{
+    ntsa::Error error;
+
+    error = decoder->decodeRaw(this,
+                               static_cast<bsl::size_t>(k_LENGTH));
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error IcmpHeader::encode(ntsa::PacketEncoder* encoder) const
+{
+    ntsa::Error error;
+
+    error = encoder->encodeRaw(this,
+                               static_cast<bsl::size_t>(k_LENGTH));
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
 ntsa::Error IcmpHeader::decode(const bdlbb::BlobBuffer& buffer,
                               bsl::size_t              offset,
                               bsl::size_t              packetSize)

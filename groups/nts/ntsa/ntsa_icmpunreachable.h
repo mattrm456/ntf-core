@@ -20,6 +20,8 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -120,6 +122,12 @@ class IcmpUnreachable
 
     /// Reset the value of this object to its value upon default construction.
     void reset();
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
     /// Decode the body from the specified 'buffer' starting at the specified
     /// 'offset' inside the framing packet having the specified 'packetSize'.

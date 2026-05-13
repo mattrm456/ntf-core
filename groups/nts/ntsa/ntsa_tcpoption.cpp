@@ -318,6 +318,373 @@ bdlb::Guid& TcpOption::fastOpen()
     return d_fastOpen.object();
 }
 
+ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
+{
+    ntsa::Error error;
+
+    this->reset();
+
+    bsl::uint8_t type;
+    error = decoder->decodeUint8(&type);
+    if (error) {
+        return error;
+    }
+
+    if (type == ntsa::TcpOptionType::e_UNDEFINED) {
+        this->reset();
+    }
+    else if (type == ntsa::TcpOptionType::e_PADDING) {
+        this->makePadding();
+    }
+    else {
+        bsl::uint8_t payloadSize;
+        error = decoder->decodeUint8(&payloadSize);
+        if (error) {
+            return error;
+        }
+
+        if (payloadSize < 2) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        payloadSize -= 2;
+
+        if (type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+            if (payloadSize != sizeof(bsl::uint16_t)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bsl::uint16_t maxSegmentSize;
+            error = decoder->decodeUint16(&maxSegmentSize);
+            if (error) {
+                return error;
+            }
+
+            this->makeMaxSegmentSize(static_cast<bsl::size_t>(maxSegmentSize));
+        }
+        else if (type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+            if (payloadSize != sizeof(bsl::uint8_t)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bsl::uint8_t windowScale;
+            error = decoder->decodeUint8(&windowScale);
+            if (error) {
+                return error;
+            }
+
+            this->makeWindowScale(static_cast<bsl::size_t>(windowScale));
+        }
+        else if (type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
+            if (payloadSize != 0) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            this->makeSelectiveAckPermitted();
+        }
+        else if (type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+            if (payloadSize > 4) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            ntsa::TcpSequenceRangeVector& selectiveAck =
+                this->makeSelectiveAck();
+
+            selectiveAck.resize(payloadSize);
+
+            for (bsl::size_t i = 0; i < selectiveAck.size(); ++i) {
+                bsl::uint32_t oldest;
+                error = decoder->decodeUint32(&oldest);
+                if (error) {
+                    return error;
+                }
+
+                bsl::uint32_t newest;
+                error = decoder->decodeUint32(&newest);
+                if (error) {
+                    return error;
+                }
+
+                selectiveAck[i].setOldest(ntsa::TcpSequenceNumber(oldest));
+                selectiveAck[i].setNewest(ntsa::TcpSequenceNumber(newest));
+            }
+        }
+        else if (type == ntsa::TcpOptionType::e_TIMESTAMP) {
+            if (payloadSize !=
+                sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32))
+            {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bsl::uint32_t tx;
+            error = decoder->decodeUint32(&tx);
+            if (error) {
+                return error;
+            }
+
+            bsl::uint32_t rx;
+            error = decoder->decodeUint32(&rx);
+            if (error) {
+                return error;
+            }
+
+            ntsa::TcpTimePointInterval& timestamp = this->makeTimestamp();
+
+            timestamp.setTx(ntsa::TcpTimePoint(tx));
+            timestamp.setRx(ntsa::TcpTimePoint(rx));
+        }
+        else if (type == ntsa::TcpOptionType::e_FAST_OPEN) {
+            if (payloadSize != sizeof(bdlb::Guid)) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bdlb::Guid& guid = this->makeFastOpen();
+
+            error = decoder->decodeRaw(&guid, sizeof(bdlb::Guid));
+            if (error) {
+                return error;
+            }
+        }
+        else {
+            BSLS_LOG_WARN("Unknown TCP option %d", static_cast<int>(type));
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
+{
+    ntsa::Error error;
+
+    if (d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+        if (d_maxSegmentSize.object() >
+            bsl::numeric_limits<bsl::uint16_t>::max())
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint16);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint16(
+            static_cast<bsl::uint16_t>(d_maxSegmentSize.object()));
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+        if (d_windowScale.object() > bsl::numeric_limits<bsl::uint8_t>::max())
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const bsl::size_t payloadSize = sizeof(bsl::uint8_t);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(
+            static_cast<bsl::uint8_t>(d_windowScale.object()));
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
+        const bsl::size_t payloadSize = 0;
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+        const bsl::size_t payloadSize =
+            d_selectiveAck.object().size() *
+            (sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32));
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(
+            static_cast<bsl::uint8_t>(2 + d_selectiveAck.object().size()));
+        if (error) {
+            return error;
+        }
+
+        for (bsl::size_t i = 0; i < d_selectiveAck.object().size(); ++i) {
+            error = encoder->encodeUint32(
+                d_selectiveAck.object()[i].oldest().value());
+            if (error) {
+                return error;
+            }
+
+            error = encoder->encodeUint32(
+                d_selectiveAck.object()[i].newest().value());
+            if (error) {
+                return error;
+            }
+        }
+    }
+    else if (d_type == ntsa::TcpOptionType::e_TIMESTAMP) {
+        const bsl::size_t payloadSize =
+            sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint32(d_timestamp.object().tx().value());
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint32(d_timestamp.object().rx().value());
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
+        const bsl::size_t payloadSize = sizeof(bdlb::Guid);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeRaw(&d_fastOpen.object(), sizeof(bdlb::Guid));
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type != ntsa::TcpOptionType::e_PADDING &&
+             d_type != ntsa::TcpOptionType::e_UNDEFINED)
+    {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
 ntsa::Error TcpOption::decode(const ntsa::ConstBuffer& buffer,
                               bsl::size_t*             size)
 {
@@ -534,7 +901,7 @@ ntsa::Error TcpOption::encode(ntsa::MutableBuffer* buffer,
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
 
-         const bsl::size_t paddingSize =
+        const bsl::size_t paddingSize =
             final ? this->paddingSize(cursor, optionSize) : 0;
 
         const bsl::size_t totalSize = paddingSize + optionSize;
@@ -604,7 +971,7 @@ ntsa::Error TcpOption::encode(ntsa::MutableBuffer* buffer,
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
 
-         const bsl::size_t paddingSize =
+        const bsl::size_t paddingSize =
             final ? this->paddingSize(cursor, optionSize) : 0;
 
         const bsl::size_t totalSize = paddingSize + optionSize;
@@ -633,7 +1000,7 @@ ntsa::Error TcpOption::encode(ntsa::MutableBuffer* buffer,
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
 
-         const bsl::size_t paddingSize =
+        const bsl::size_t paddingSize =
             final ? this->paddingSize(cursor, optionSize) : 0;
 
         const bsl::size_t totalSize = paddingSize + optionSize;
@@ -682,7 +1049,7 @@ ntsa::Error TcpOption::encode(ntsa::MutableBuffer* buffer,
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
 
-         const bsl::size_t paddingSize =
+        const bsl::size_t paddingSize =
             final ? this->paddingSize(cursor, optionSize) : 0;
 
         const bsl::size_t totalSize = paddingSize + optionSize;
@@ -727,7 +1094,7 @@ ntsa::Error TcpOption::encode(ntsa::MutableBuffer* buffer,
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
 
-         const bsl::size_t paddingSize =
+        const bsl::size_t paddingSize =
             final ? this->paddingSize(cursor, optionSize) : 0;
 
         const bsl::size_t totalSize = paddingSize + optionSize;

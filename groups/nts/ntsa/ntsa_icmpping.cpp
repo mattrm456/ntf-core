@@ -24,6 +24,24 @@ BSLS_IDENT_RCSID(ntsa_icmpping_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error IcmpPing::decode(ntsa::PacketDecoder* decoder)
+{
+    NTSCFG_WARNING_UNUSED(decoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error IcmpPing::encode(ntsa::PacketEncoder* encoder) const
+{
+    NTSCFG_WARNING_UNUSED(encoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
 ntsa::Error IcmpPing::decode(const bdlbb::BlobBuffer& buffer,
                              bsl::size_t              offset,
                              bsl::size_t              packetSize)
@@ -32,25 +50,43 @@ ntsa::Error IcmpPing::decode(const bdlbb::BlobBuffer& buffer,
 
     reset();
 
-    if (buffer.data() == 0) {
+    if (offset > static_cast<bsl::size_t>(buffer.size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const char* bufferData = buffer.data();
+    const char* bufferData = buffer.data() + offset;
 
-    if (buffer.size() <= 0) {
+    bsl::size_t bufferSize =
+        static_cast<bsl::size_t>(buffer.size() - offset);
+
+    if (bufferSize < sizeof(bdlb::BigEndianUint16)) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
+    NTSCFG_MEMORY_COPY(&d_identifier,
+                       bufferData,
+                       sizeof(bdlb::BigEndianUint16));
 
-    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferSize) {
+    bufferData += sizeof(bdlb::BigEndianUint16);
+    bufferSize -= sizeof(bdlb::BigEndianUint16);
+
+    if (bufferSize < sizeof(bdlb::BigEndianUint16)) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                bufferData + offset,
-                static_cast<bsl::size_t>(k_LENGTH));
+    NTSCFG_MEMORY_COPY(&d_sequenceNumber,
+                       bufferData,
+                       sizeof(bdlb::BigEndianUint16));
+
+    bufferData += sizeof(bdlb::BigEndianUint16);
+    bufferSize -= sizeof(bdlb::BigEndianUint16);
+
+    if (bufferSize > 0) {
+        d_data.reset(
+            bsl::shared_ptr<char>(buffer.buffer(),
+                                  const_cast<char*>(bufferData)),
+            static_cast<int>(bufferSize));
+    }
 
     return ntsa::Error();
 }
@@ -58,28 +94,104 @@ ntsa::Error IcmpPing::decode(const bdlbb::BlobBuffer& buffer,
 ntsa::Error IcmpPing::encode(bdlbb::BlobBuffer* buffer,
                              bsl::size_t        offset) const
 {
-    if (buffer->data() == 0) {
+    if (offset > static_cast<bsl::size_t>(buffer->size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    char* bufferData = buffer->data();
+    char* bufferData = buffer->data() + offset;
 
-    if (buffer->size() <= 0) {
+    bsl::size_t bufferCapacity =
+        static_cast<bsl::size_t>(buffer->size() - offset);
+
+    if (bufferCapacity < sizeof(bdlb::BigEndianUint16)) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::size_t bufferCapacity =
-        static_cast<bsl::size_t>(buffer->size());
+    NTSCFG_MEMORY_COPY(bufferData,
+                       &d_identifier,
+                       sizeof(bdlb::BigEndianUint16));
 
-    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferCapacity) {
+    bufferData     += sizeof(bdlb::BigEndianUint16);
+    bufferCapacity -= sizeof(bdlb::BigEndianUint16);
+
+    if (bufferCapacity < sizeof(bdlb::BigEndianUint16)) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    bsl::memcpy(reinterpret_cast<void*>(bufferData + offset),
-                reinterpret_cast<const void*>(this),
-                static_cast<bsl::size_t>(k_LENGTH));
+    NTSCFG_MEMORY_COPY(bufferData,
+                       &d_sequenceNumber,
+                       sizeof(bdlb::BigEndianUint16));
+
+    bufferData     += sizeof(bdlb::BigEndianUint16);
+    bufferCapacity -= sizeof(bdlb::BigEndianUint16);
+
+    if (d_data.size() > 0) {
+        if (bufferCapacity < static_cast<bsl::size_t>(d_data.size())) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        NTSCFG_MEMORY_COPY(bufferData, d_data.data(), d_data.size());
+    }
 
     return ntsa::Error();
+}
+
+bool IcmpPing::equals(const IcmpPing& other) const
+{
+    if (d_identifier != other.d_identifier) {
+        return false;
+    }
+
+    if (d_sequenceNumber != other.d_sequenceNumber) {
+        return false;
+    }
+
+    if (d_data.size() != other.d_data.size()) {
+        return false;
+    }
+
+    const int compare =
+        bsl::memcmp(d_data.data(), other.d_data.data(), d_data.size());
+    if (compare != 0) {
+        return false;
+    }
+
+    return true;
+}
+
+bool IcmpPing::less(const IcmpPing& other) const
+{
+    if (static_cast<bsl::uint16_t>(d_identifier) <
+        static_cast<bsl::uint16_t>(other.d_identifier))
+    {
+        return true;
+    }
+
+    if (static_cast<bsl::uint16_t>(other.d_identifier) <
+        static_cast<bsl::uint16_t>(d_identifier))
+    {
+        return false;
+    }
+
+    if (static_cast<bsl::uint16_t>(d_sequenceNumber) <
+        static_cast<bsl::uint16_t>(other.d_sequenceNumber))
+    {
+        return true;
+    }
+
+    if (static_cast<bsl::uint16_t>(other.d_sequenceNumber) <
+        static_cast<bsl::uint16_t>(d_sequenceNumber))
+    {
+        return false;
+    }
+
+    const int compare =
+        bsl::memcmp(d_data.data(), other.d_data.data(), d_data.size());
+    if (compare >= 0) {
+        return false;
+    }
+
+    return true;
 }
 
 bsl::ostream& IcmpPing::print(bsl::ostream& stream,
@@ -98,6 +210,27 @@ void IcmpPing::print(bslim::Printer* printer) const
 {
     printer->printAttribute("identifier",     this->identifier());
     printer->printAttribute("sequenceNumber", this->sequenceNumber());
+    if (d_data.size() > 0) {
+        printer->printForeign(d_data, &IcmpPing::printData, "data");
+    }
+}
+
+bsl::ostream& IcmpPing::printData(bsl::ostream&            stream,
+                                  const bdlbb::BlobBuffer& data,
+                                  int                      level,
+                                  int                      spacesPerLevel)
+{
+    NTSCFG_WARNING_UNUSED(level);
+    NTSCFG_WARNING_UNUSED(spacesPerLevel);
+
+    if (data.size() > 0) {
+        return bdlb::Print::singleLineHexDump(stream,
+                                              data.data(),
+                                              data.size());
+    }
+    else {
+        return stream;
+    }
 }
 
 }  // close package namespace

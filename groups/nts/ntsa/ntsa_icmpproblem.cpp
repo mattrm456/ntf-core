@@ -24,33 +24,66 @@ BSLS_IDENT_RCSID(ntsa_icmpproblem_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error IcmpProblem::decode(ntsa::PacketDecoder* decoder)
+{
+    NTSCFG_WARNING_UNUSED(decoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error IcmpProblem::encode(ntsa::PacketEncoder* encoder) const
+{
+    NTSCFG_WARNING_UNUSED(encoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
 ntsa::Error IcmpProblem::decode(const bdlbb::BlobBuffer& buffer,
                                 bsl::size_t              offset,
                                 bsl::size_t              packetSize)
 {
     NTSCFG_WARNING_UNUSED(packetSize);
 
+    ntsa::Error error;
+
     reset();
 
-    if (buffer.data() == 0) {
+    if (offset > static_cast<bsl::size_t>(buffer.size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const char* bufferData = buffer.data();
+    const char* bufferData = buffer.data() + offset;
 
-    if (buffer.size() <= 0) {
+    bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size() - offset);
+
+    if (bufferSize < sizeof d_pointer) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
+    NTSCFG_MEMORY_COPY(&d_pointer, bufferData, sizeof d_pointer);
 
-    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferSize) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
+    bufferData += sizeof d_pointer;
+    bufferSize -= sizeof d_pointer;
+
+    error =
+        d_header.decode(buffer,
+                        static_cast<bsl::size_t>(bufferData - buffer.data()));
+    if (error) {
+        return error;
     }
 
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                bufferData + offset,
-                static_cast<bsl::size_t>(k_LENGTH));
+    bufferData += d_header.headerLength();
+    bufferSize -= d_header.headerLength();
+
+    if (bufferSize > 0) {
+        NTSCFG_MEMORY_COPY(d_payloadData,
+                           bufferData,
+                           bsl::min(bufferSize, sizeof d_payloadData));
+    }
 
     return ntsa::Error();
 }
@@ -58,26 +91,43 @@ ntsa::Error IcmpProblem::decode(const bdlbb::BlobBuffer& buffer,
 ntsa::Error IcmpProblem::encode(bdlbb::BlobBuffer* buffer,
                                 bsl::size_t        offset) const
 {
-    if (buffer->data() == 0) {
+    ntsa::Error error;
+
+    if (offset > static_cast<bsl::size_t>(buffer->size())) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    char* bufferData = buffer->data();
+    char* bufferData = buffer->data() + offset;
 
-    if (buffer->size() <= 0) {
+    bsl::size_t bufferCapacity =
+        static_cast<bsl::size_t>(buffer->size() - offset);
+
+    if (bufferCapacity < sizeof d_pointer) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::size_t bufferCapacity =
-        static_cast<bsl::size_t>(buffer->size());
+    NTSCFG_MEMORY_COPY(bufferData, &d_pointer, sizeof d_pointer);
 
-    if (offset + static_cast<bsl::size_t>(k_LENGTH) > bufferCapacity) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
+    bufferData     += sizeof d_pointer;
+    bufferCapacity -= sizeof d_pointer;
+
+    error =
+        d_header.encode(buffer,
+                        static_cast<bsl::size_t>(bufferData - buffer->data()));
+    if (error) {
+        return error;
     }
 
-    bsl::memcpy(reinterpret_cast<void*>(bufferData + offset),
-                reinterpret_cast<const void*>(this),
-                static_cast<bsl::size_t>(k_LENGTH));
+    bufferData     += d_header.headerLength();
+    bufferCapacity -= d_header.headerLength();
+
+    if (d_payloadSize > 0) {
+        if (bufferCapacity < static_cast<bsl::size_t>(d_payloadSize)) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        NTSCFG_MEMORY_COPY(bufferData, d_payloadData, d_payloadSize);
+    }
 
     return ntsa::Error();
 }
@@ -96,7 +146,33 @@ bsl::ostream& IcmpProblem::print(bsl::ostream& stream,
 
 void IcmpProblem::print(bslim::Printer* printer) const
 {
-    printer->printAttribute("pointer", static_cast<int>(d_pointer));
+    printer->printAttribute("pointer", static_cast<int>(d_pointer[0]));
+    printer->printAttribute("header", d_header);
+    if (d_payloadSize > 0) {
+        printer->printForeign(
+            bslstl::StringRef(reinterpret_cast<const char*>(d_payloadData),
+                              d_payloadSize),
+            &IcmpProblem::printData,
+            "payload");
+    }
+}
+
+bsl::ostream& IcmpProblem::printData(bsl::ostream&            stream,
+                                     const bslstl::StringRef& data,
+                                     int                      level,
+                                     int                      spacesPerLevel)
+{
+    NTSCFG_WARNING_UNUSED(level);
+    NTSCFG_WARNING_UNUSED(spacesPerLevel);
+
+    if (data.size() > 0) {
+        return bdlb::Print::singleLineHexDump(stream,
+                                              data.data(),
+                                              data.size());
+    }
+    else {
+        return stream;
+    }
 }
 
 }  // close package namespace

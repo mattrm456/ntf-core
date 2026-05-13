@@ -25,6 +25,24 @@ BSLS_IDENT_RCSID(ntsa_icmppong_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error IcmpPong::decode(ntsa::PacketDecoder* decoder)
+{
+    NTSCFG_WARNING_UNUSED(decoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error IcmpPong::encode(ntsa::PacketEncoder* encoder) const
+{
+    NTSCFG_WARNING_UNUSED(encoder);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
 ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
                              bsl::size_t              offset,
                              bsl::size_t              packetSize)
@@ -117,6 +135,64 @@ ntsa::Error IcmpPong::encode(bdlbb::BlobBuffer* buffer,
     }
 
     return ntsa::Error();
+}
+
+bool IcmpPong::equals(const IcmpPong& other) const
+{
+    if (d_identifier != other.d_identifier) {
+        return false;
+    }
+
+    if (d_sequenceNumber != other.d_sequenceNumber) {
+        return false;
+    }
+
+    if (d_data.size() != other.d_data.size()) {
+        return false;
+    }
+
+    const int compare =
+        bsl::memcmp(d_data.data(), other.d_data.data(), d_data.size());
+    if (compare != 0) {
+        return false;
+    }
+
+    return true;
+}
+
+bool IcmpPong::less(const IcmpPong& other) const
+{
+    if (static_cast<bsl::uint16_t>(d_identifier) <
+        static_cast<bsl::uint16_t>(other.d_identifier))
+    {
+        return true;
+    }
+
+    if (static_cast<bsl::uint16_t>(other.d_identifier) <
+        static_cast<bsl::uint16_t>(d_identifier))
+    {
+        return false;
+    }
+
+    if (static_cast<bsl::uint16_t>(d_sequenceNumber) <
+        static_cast<bsl::uint16_t>(other.d_sequenceNumber))
+    {
+        return true;
+    }
+
+    if (static_cast<bsl::uint16_t>(other.d_sequenceNumber) <
+        static_cast<bsl::uint16_t>(d_sequenceNumber))
+    {
+        return false;
+    }
+
+    const int compare =
+        bsl::memcmp(d_data.data(), other.d_data.data(), d_data.size());
+    if (compare >= 0) {
+        return false;
+    }
+
+    return true;
 }
 
 bsl::ostream& IcmpPong::print(bsl::ostream& stream,

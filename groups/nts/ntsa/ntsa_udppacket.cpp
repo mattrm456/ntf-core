@@ -26,6 +26,81 @@ BSLS_IDENT_RCSID(ntsa_udppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error UdpPacket::decode(ntsa::PacketDecoder* decoder)
+{
+    ntsa::Error error;
+
+    error = d_header.decode(decoder);
+    if (error) {
+        return error;
+    }
+
+    const bsl::size_t payloadSize = decoder->size() - decoder->position();
+
+    if (payloadSize > 0) {
+        error = decoder->decodeRaw(&d_payload, payloadSize);
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error UdpPacket::encode(
+    ntsa::PacketEncoder*     encoder,
+    const ntsa::Ipv4Address& sourceAddress,
+    const ntsa::Ipv4Address& destinationAddress) const
+{
+    ntsa::Error error;
+
+    const bsl::size_t headerLength = d_header.headerLength();
+    const bsl::size_t packetLength =
+        headerLength + static_cast<bsl::size_t>(d_payload.size());
+
+    ntsa::UdpHeader header = d_header;
+
+    header.setChecksum(0);
+
+    ntsa::UdpChecksum checksum;
+    checksum.add(sourceAddress, destinationAddress, packetLength);
+    checksum.add(&header, header.headerLength());
+    if (d_payload.size() > 0) {
+        checksum.add(d_payload.data(),
+                     static_cast<bsl::size_t>(d_payload.size()));
+    }
+
+    header.setChecksum(checksum.value());
+
+    error = header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    if (d_payload.size() > 0) {
+        error = encoder->encodeRaw(d_payload, d_payload.size());
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error UdpPacket::encode(
+    ntsa::PacketEncoder*     encoder,
+    const ntsa::Ipv6Address& sourceAddress,
+    const ntsa::Ipv6Address& destinationAddress) const
+{
+    NTSCFG_WARNING_UNUSED(encoder);
+    NTSCFG_WARNING_UNUSED(sourceAddress);
+    NTSCFG_WARNING_UNUSED(destinationAddress);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
 ntsa::Error UdpPacket::decode(const bdlbb::BlobBuffer& buffer,
                               bsl::size_t              offset,
                               bsl::size_t              packetSize)
@@ -170,7 +245,6 @@ bsl::ostream& UdpPacket::print(bsl::ostream& stream,
     printer.start();
 
     d_header.print(&printer);
-    
 
     printer.end();
 
