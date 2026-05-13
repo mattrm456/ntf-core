@@ -26,20 +26,55 @@ namespace ntsa {
 
 ntsa::Error IcmpProblem::decode(ntsa::PacketDecoder* decoder)
 {
-    NTSCFG_WARNING_UNUSED(decoder);
+    ntsa::Error error;
 
-    NTSCFG_NOT_IMPLEMENTED();
+    reset();
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    error = decoder->decodeRaw(d_pointer, sizeof d_pointer);
+    if (error) {
+        return error;
+    }
+
+    error = d_header.decode(decoder);
+    if (error) {
+        return error;
+    }
+
+    const bsl::size_t payloadSize = decoder->size() - decoder->position();
+
+    if (payloadSize > 0) {
+        error = decoder->decodeRaw(
+            d_payloadData, bsl::min(payloadSize, sizeof d_payloadData));
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error IcmpProblem::encode(ntsa::PacketEncoder* encoder) const
 {
-    NTSCFG_WARNING_UNUSED(encoder);
+    ntsa::Error error;
 
-    NTSCFG_NOT_IMPLEMENTED();
+    error = encoder->encodeRaw(d_pointer, sizeof d_pointer);
+    if (error) {
+        return error;
+    }
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    error = d_header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    if (d_payloadSize > 0) {
+        error = encoder->encodeRaw(d_payloadData, d_payloadSize);
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error IcmpProblem::decode(const bdlbb::BlobBuffer& buffer,

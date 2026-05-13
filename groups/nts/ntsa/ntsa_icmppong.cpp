@@ -27,20 +27,54 @@ namespace ntsa {
 
 ntsa::Error IcmpPong::decode(ntsa::PacketDecoder* decoder)
 {
-    NTSCFG_WARNING_UNUSED(decoder);
+    ntsa::Error error;
 
-    NTSCFG_NOT_IMPLEMENTED();
+    reset();
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    error = decoder->decodeUint16(&d_identifier);
+    if (error) {
+        return error;
+    }
+
+    error = decoder->decodeUint16(&d_sequenceNumber);
+    if (error) {
+        return error;
+    }
+
+    const bsl::size_t dataSize = decoder->size() - decoder->position();
+
+    if (dataSize > 0) {
+        error = decoder->decodeRaw(&d_data, dataSize);
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error IcmpPong::encode(ntsa::PacketEncoder* encoder) const
 {
-    NTSCFG_WARNING_UNUSED(encoder);
+    ntsa::Error error;
 
-    NTSCFG_NOT_IMPLEMENTED();
+    error = encoder->encodeUint16(d_identifier);
+    if (error) {
+        return error;
+    }
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    error = encoder->encodeUint16(d_sequenceNumber);
+    if (error) {
+        return error;
+    }
+
+    if (d_data.size() > 0) {
+        error = encoder->encodeRaw(d_data, d_data.size());
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
