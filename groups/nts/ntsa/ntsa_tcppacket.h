@@ -23,14 +23,15 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv6address.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
-#include <ntsa_tcpheader.h>
 #include <ntsa_tcpextension.h>
+#include <ntsa_tcpheader.h>
 #include <ntsa_tcpoption.h>
 #include <ntsa_tcppayload.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_nullablevalue.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -43,13 +44,16 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class TcpPacket
 {
-    ntsa::TcpHeader                         d_header;
-    bdlb::NullableValue<ntsa::TcpExtension> d_extension;
-    ntsa::TcpPayload                        d_payload;
+    ntsa::TcpHeader    d_header;
+    ntsa::TcpExtension d_extension;
+    ntsa::TcpPayload   d_payload;
+    bslma::Allocator*  d_allocator_p;
 
   public:
-    /// Create a new TCP packet having a default value.
-    TcpPacket();
+    /// Create a new TCP packet having a default value. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit TcpPacket(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new TCP packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -57,8 +61,10 @@ class TcpPacket
     TcpPacket(bslmf::MovableRef<TcpPacket> original) NTSCFG_NOEXCEPT;
 
     /// Create a new TCP packet having the same value as the specified
-    /// 'original' object.
-    TcpPacket(const TcpPacket& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    TcpPacket(const TcpPacket& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~TcpPacket();
@@ -79,58 +85,52 @@ class TcpPacket
     /// Set the header to the specified 'value'.
     void setHeader(const ntsa::TcpHeader& value);
 
+    /// Set the extension to the specified 'value'.
+    void setExtension(const ntsa::TcpExtension& value);
+
     /// Set the payload to the specified 'value'.
     void setPayload(const ntsa::TcpPayload& value);
 
     /// Return a reference to the modifiable header.
     ntsa::TcpHeader& header();
 
+    /// Return a reference to the modifiable extension.
+    ntsa::TcpExtension& extension();
+
     /// Return a reference to the modifiable payload.
     ntsa::TcpPayload& payload();
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder);
-
-    /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
+    ntsa::Error decode(ntsa::PacketDecoder* decoder,
                        const ntsa::Ipv4Address& sourceAddress,
-                       const ntsa::Ipv4Address& destinationAddress) const;
+                       const ntsa::Ipv4Address& destinationAddress);
 
-    /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder,
                        const ntsa::Ipv6Address& sourceAddress,
-                       const ntsa::Ipv6Address& destinationAddress) const;
+                       const ntsa::Ipv6Address& destinationAddress);
 
-    /// Decode the packet from the specified 'buffer' starting at the specified
-    /// 'offset' inside the framing packet having the specified 'packetSize'.
-    /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              packetSize);
-
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Calculate the checksum in terms of the specified
-    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
-                       bsl::size_t              offset,
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
                        const ntsa::Ipv4Address& sourceAddress,
                        const ntsa::Ipv4Address& destinationAddress) const;
 
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Calculate the checksum in terms of the specified
-    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
-                       bsl::size_t              offset,
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
                        const ntsa::Ipv6Address& sourceAddress,
                        const ntsa::Ipv6Address& destinationAddress) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::TcpHeader& header() const;
 
+    /// Return a reference to the non-modifiable extension.
+    const ntsa::TcpExtension& extension() const;
+
     /// Return a reference to the non-modifiable payload.
     const ntsa::TcpPayload& payload() const;
+
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -150,10 +150,9 @@ class TcpPacket
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
 
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(TcpPacket);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(TcpPacket);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -176,10 +175,11 @@ bool operator==(const TcpPacket& lhs, const TcpPacket& rhs);
 bool operator!=(const TcpPacket& lhs, const TcpPacket& rhs);
 
 NTSCFG_INLINE
-TcpPacket::TcpPacket()
+TcpPacket::TcpPacket(bslma::Allocator* basicAllocator)
 : d_header()
-, d_extension()
+, d_extension(basicAllocator)
 , d_payload()
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -187,16 +187,19 @@ NTSCFG_INLINE
 TcpPacket::TcpPacket(bslmf::MovableRef<TcpPacket> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
   d_extension(NTSCFG_MOVE_FROM(original, d_extension)),
-  d_payload(NTSCFG_MOVE_FROM(original, d_payload))
+  d_payload(NTSCFG_MOVE_FROM(original, d_payload)),
+  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-TcpPacket::TcpPacket(const TcpPacket& original)
+TcpPacket::TcpPacket(const TcpPacket&  original,
+                     bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
-, d_extension(original.d_extension)
+, d_extension(original.d_extension, basicAllocator)
 , d_payload(original.d_payload)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -209,9 +212,10 @@ NTSCFG_INLINE
 TcpPacket& TcpPacket::operator=(bslmf::MovableRef<TcpPacket> other)
     NTSCFG_NOEXCEPT
 {
-    d_header    = NTSCFG_MOVE_FROM(other, d_header);
-    d_extension = NTSCFG_MOVE_FROM(other, d_extension);
-    d_payload   = NTSCFG_MOVE_FROM(other, d_payload);
+    d_header      = NTSCFG_MOVE_FROM(other, d_header);
+    d_extension   = NTSCFG_MOVE_FROM(other, d_extension);
+    d_payload     = NTSCFG_MOVE_FROM(other, d_payload);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -221,9 +225,9 @@ TcpPacket& TcpPacket::operator=(bslmf::MovableRef<TcpPacket> other)
 NTSCFG_INLINE
 TcpPacket& TcpPacket::operator=(const TcpPacket& other)
 {
-    d_header  = other.d_header;
+    d_header    = other.d_header;
     d_extension = other.d_extension;
-    d_payload = other.d_payload;
+    d_payload   = other.d_payload;
 
     return *this;
 }
@@ -243,6 +247,12 @@ void TcpPacket::setHeader(const ntsa::TcpHeader& value)
 }
 
 NTSCFG_INLINE
+void TcpPacket::setExtension(const ntsa::TcpExtension& value)
+{
+    d_extension = value;
+}
+
+NTSCFG_INLINE
 void TcpPacket::setPayload(const ntsa::TcpPayload& value)
 {
     d_payload = value;
@@ -252,6 +262,12 @@ NTSCFG_INLINE
 ntsa::TcpHeader& TcpPacket::header()
 {
     return d_header;
+}
+
+NTSCFG_INLINE
+ntsa::TcpExtension& TcpPacket::extension()
+{
+    return d_extension;
 }
 
 NTSCFG_INLINE
@@ -267,9 +283,21 @@ const ntsa::TcpHeader& TcpPacket::header() const
 }
 
 NTSCFG_INLINE
+const ntsa::TcpExtension& TcpPacket::extension() const
+{
+    return d_extension;
+}
+
+NTSCFG_INLINE
 const ntsa::TcpPayload& TcpPacket::payload() const
 {
     return d_payload;
+}
+
+NTSCFG_INLINE
+bslma::Allocator* TcpPacket::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

@@ -13,15 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsa_tcpoption.h>
+#include <ntsa_udpoption.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_tcpoption_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_udpoption_cpp, "$Id$ $CSID$")
 
 namespace BloombergLP {
 namespace ntsa {
 
-bsl::size_t TcpOption::paddingSize(const bsl::uint8_t* cursor,
+bsl::size_t UdpOption::paddingSize(const bsl::uint8_t* cursor,
                                    bsl::size_t         optionSize)
 {
     const bsl::size_t address = static_cast<bsl::size_t>(
@@ -30,54 +30,54 @@ bsl::size_t TcpOption::paddingSize(const bsl::uint8_t* cursor,
     return (4 - (address & 3)) & 3;
 }
 
-TcpOption::TcpOption(bslma::Allocator* basicAllocator)
-: d_type(ntsa::TcpOptionType::e_UNDEFINED)
+UdpOption::UdpOption(bslma::Allocator* basicAllocator)
+: d_type(ntsa::UdpOptionType::e_UNDEFINED)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
-TcpOption::TcpOption(const TcpOption& other, bslma::Allocator* basicAllocator)
+UdpOption::UdpOption(const UdpOption& other, bslma::Allocator* basicAllocator)
 : d_type(other.d_type)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
     switch (d_type) {
-    case ntsa::TcpOptionType::e_PADDING:
+    case ntsa::UdpOptionType::e_PADDING:
         break;
-    case ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE:
+    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
         new (d_maxSegmentSize.buffer())
             bsl::size_t(other.d_maxSegmentSize.object());
         break;
-    case ntsa::TcpOptionType::e_WINDOW_SCALE:
+    case ntsa::UdpOptionType::e_WINDOW_SCALE:
         new (d_windowScale.buffer()) bsl::size_t(other.d_windowScale.object());
         break;
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
         break;
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
         new (d_selectiveAck.buffer())
-            ntsa::TcpSequenceRangeVector(other.d_selectiveAck.object(),
+            ntsa::UdpSequenceRangeVector(other.d_selectiveAck.object(),
                                          d_allocator_p);
         break;
-    case ntsa::TcpOptionType::e_TIMESTAMP:
+    case ntsa::UdpOptionType::e_TIMESTAMP:
         new (d_timestamp.buffer())
-            ntsa::TcpTimePointInterval(other.d_timestamp.object());
+            ntsa::UdpTimePointInterval(other.d_timestamp.object());
         break;
-    case ntsa::TcpOptionType::e_FAST_OPEN:
+    case ntsa::UdpOptionType::e_FAST_OPEN:
         new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
     default:
-        BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
+        BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
     }
 }
 
-TcpOption::~TcpOption()
+UdpOption::~UdpOption()
 {
     if (isSelectiveAck()) {
-        typedef ntsa::TcpSequenceRangeVector Type;
+        typedef ntsa::UdpSequenceRangeVector Type;
         d_selectiveAck.object().~Type();
     }
 }
 
-TcpOption& TcpOption::operator=(const TcpOption& other)
+UdpOption& UdpOption::operator=(const UdpOption& other)
 {
     if (this == &other) {
         return *this;
@@ -86,31 +86,31 @@ TcpOption& TcpOption::operator=(const TcpOption& other)
     this->reset();
 
     switch (other.d_type) {
-    case ntsa::TcpOptionType::e_PADDING:
+    case ntsa::UdpOptionType::e_PADDING:
         break;
-    case ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE:
+    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
         new (d_maxSegmentSize.buffer())
             bsl::size_t(other.d_maxSegmentSize.object());
         break;
-    case ntsa::TcpOptionType::e_WINDOW_SCALE:
+    case ntsa::UdpOptionType::e_WINDOW_SCALE:
         new (d_windowScale.buffer()) bsl::size_t(other.d_windowScale.object());
         break;
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
         break;
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
         new (d_selectiveAck.buffer())
-            ntsa::TcpSequenceRangeVector(other.d_selectiveAck.object(),
+            ntsa::UdpSequenceRangeVector(other.d_selectiveAck.object(),
                                          d_allocator_p);
         break;
-    case ntsa::TcpOptionType::e_TIMESTAMP:
+    case ntsa::UdpOptionType::e_TIMESTAMP:
         new (d_timestamp.buffer())
-            ntsa::TcpTimePointInterval(other.d_timestamp.object());
+            ntsa::UdpTimePointInterval(other.d_timestamp.object());
         break;
-    case ntsa::TcpOptionType::e_FAST_OPEN:
+    case ntsa::UdpOptionType::e_FAST_OPEN:
         new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
     default:
-        BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
+        BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
     }
 
     d_type = other.d_type;
@@ -118,207 +118,207 @@ TcpOption& TcpOption::operator=(const TcpOption& other)
     return *this;
 }
 
-void TcpOption::reset()
+void UdpOption::reset()
 {
     if (isSelectiveAck()) {
-        typedef ntsa::TcpSequenceRangeVector Type;
+        typedef ntsa::UdpSequenceRangeVector Type;
         d_selectiveAck.object().~Type();
     }
 
-    d_type = ntsa::TcpOptionType::e_UNDEFINED;
+    d_type = ntsa::UdpOptionType::e_UNDEFINED;
 }
 
-void TcpOption::makePadding()
+void UdpOption::makePadding()
 {
-    if (d_type != ntsa::TcpOptionType::e_PADDING) {
+    if (d_type != ntsa::UdpOptionType::e_PADDING) {
         reset();
-        d_type = ntsa::TcpOptionType::e_PADDING;
+        d_type = ntsa::UdpOptionType::e_PADDING;
     }
 }
 
-bsl::size_t& TcpOption::makeMaxSegmentSize()
+bsl::size_t& UdpOption::makeMaxSegmentSize()
 {
-    if (d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+    if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
         d_maxSegmentSize.object() = 0;
     }
     else {
         this->reset();
         new (d_maxSegmentSize.buffer()) bsl::size_t(0);
-        d_type = ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE;
+        d_type = ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE;
     }
 
     return d_maxSegmentSize.object();
 }
 
-bsl::size_t& TcpOption::makeMaxSegmentSize(bsl::size_t value)
+bsl::size_t& UdpOption::makeMaxSegmentSize(bsl::size_t value)
 {
-    if (d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+    if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
         d_maxSegmentSize.object() = value;
     }
     else {
         this->reset();
         new (d_maxSegmentSize.buffer()) bsl::size_t(value);
-        d_type = ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE;
+        d_type = ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE;
     }
 
     return d_maxSegmentSize.object();
 }
 
-bsl::size_t& TcpOption::makeWindowScale()
+bsl::size_t& UdpOption::makeWindowScale()
 {
-    if (d_type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+    if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
         d_windowScale.object() = 0;
     }
     else {
         this->reset();
         new (d_windowScale.buffer()) bsl::size_t(0);
-        d_type = ntsa::TcpOptionType::e_WINDOW_SCALE;
+        d_type = ntsa::UdpOptionType::e_WINDOW_SCALE;
     }
 
     return d_windowScale.object();
 }
 
-bsl::size_t& TcpOption::makeWindowScale(bsl::size_t value)
+bsl::size_t& UdpOption::makeWindowScale(bsl::size_t value)
 {
-    if (d_type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+    if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
         d_windowScale.object() = value;
     }
     else {
         this->reset();
         new (d_windowScale.buffer()) bsl::size_t(value);
-        d_type = ntsa::TcpOptionType::e_WINDOW_SCALE;
+        d_type = ntsa::UdpOptionType::e_WINDOW_SCALE;
     }
 
     return d_windowScale.object();
 }
 
-void TcpOption::makeSelectiveAckPermitted()
+void UdpOption::makeSelectiveAckPermitted()
 {
-    if (d_type != ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
+    if (d_type != ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
         reset();
-        d_type = ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED;
+        d_type = ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED;
     }
 }
 
-ntsa::TcpSequenceRangeVector& TcpOption::makeSelectiveAck()
+ntsa::UdpSequenceRangeVector& UdpOption::makeSelectiveAck()
 {
-    if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+    if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
         d_selectiveAck.object().clear();
     }
     else {
         this->reset();
         new (d_selectiveAck.buffer())
-            ntsa::TcpSequenceRangeVector(d_allocator_p);
-        d_type = ntsa::TcpOptionType::e_SELECTIVE_ACK;
+            ntsa::UdpSequenceRangeVector(d_allocator_p);
+        d_type = ntsa::UdpOptionType::e_SELECTIVE_ACK;
     }
 
     return d_selectiveAck.object();
 }
 
-ntsa::TcpSequenceRangeVector& TcpOption::makeSelectiveAck(
-    const ntsa::TcpSequenceRangeVector& value)
+ntsa::UdpSequenceRangeVector& UdpOption::makeSelectiveAck(
+    const ntsa::UdpSequenceRangeVector& value)
 {
-    if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+    if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
         d_selectiveAck.object() = value;
     }
     else {
         this->reset();
         new (d_selectiveAck.buffer())
-            ntsa::TcpSequenceRangeVector(value, d_allocator_p);
-        d_type = ntsa::TcpOptionType::e_SELECTIVE_ACK;
+            ntsa::UdpSequenceRangeVector(value, d_allocator_p);
+        d_type = ntsa::UdpOptionType::e_SELECTIVE_ACK;
     }
 
     return d_selectiveAck.object();
 }
 
-ntsa::TcpTimePointInterval& TcpOption::makeTimestamp()
+ntsa::UdpTimePointInterval& UdpOption::makeTimestamp()
 {
-    if (d_type == ntsa::TcpOptionType::e_TIMESTAMP) {
+    if (d_type == ntsa::UdpOptionType::e_TIMESTAMP) {
         d_timestamp.object().reset();
     }
     else {
         this->reset();
-        new (d_timestamp.buffer()) ntsa::TcpTimePointInterval();
-        d_type = ntsa::TcpOptionType::e_TIMESTAMP;
+        new (d_timestamp.buffer()) ntsa::UdpTimePointInterval();
+        d_type = ntsa::UdpOptionType::e_TIMESTAMP;
     }
 
     return d_timestamp.object();
 }
 
-ntsa::TcpTimePointInterval& TcpOption::makeTimestamp(
-    const ntsa::TcpTimePointInterval& value)
+ntsa::UdpTimePointInterval& UdpOption::makeTimestamp(
+    const ntsa::UdpTimePointInterval& value)
 {
-    if (d_type == ntsa::TcpOptionType::e_TIMESTAMP) {
+    if (d_type == ntsa::UdpOptionType::e_TIMESTAMP) {
         d_timestamp.object() = value;
     }
     else {
         this->reset();
-        new (d_timestamp.buffer()) ntsa::TcpTimePointInterval(value);
-        d_type = ntsa::TcpOptionType::e_TIMESTAMP;
+        new (d_timestamp.buffer()) ntsa::UdpTimePointInterval(value);
+        d_type = ntsa::UdpOptionType::e_TIMESTAMP;
     }
 
     return d_timestamp.object();
 }
 
-bdlb::Guid& TcpOption::makeFastOpen()
+bdlb::Guid& UdpOption::makeFastOpen()
 {
-    if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
+    if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
         d_fastOpen.object() = bdlb::Guid();
     }
     else {
         this->reset();
         new (d_fastOpen.buffer()) bdlb::Guid();
-        d_type = ntsa::TcpOptionType::e_FAST_OPEN;
+        d_type = ntsa::UdpOptionType::e_FAST_OPEN;
     }
 
     return d_fastOpen.object();
 }
 
-bdlb::Guid& TcpOption::makeFastOpen(const bdlb::Guid& value)
+bdlb::Guid& UdpOption::makeFastOpen(const bdlb::Guid& value)
 {
-    if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
+    if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
         d_fastOpen.object() = value;
     }
     else {
         this->reset();
         new (d_fastOpen.buffer()) bdlb::Guid(value);
-        d_type = ntsa::TcpOptionType::e_FAST_OPEN;
+        d_type = ntsa::UdpOptionType::e_FAST_OPEN;
     }
 
     return d_fastOpen.object();
 }
 
-bsl::size_t& TcpOption::maxSegmentSize()
+bsl::size_t& UdpOption::maxSegmentSize()
 {
     BSLS_ASSERT(isMaxSegmentSize());
     return d_maxSegmentSize.object();
 }
 
-bsl::size_t& TcpOption::windowScale()
+bsl::size_t& UdpOption::windowScale()
 {
     BSLS_ASSERT(isWindowScale());
     return d_windowScale.object();
 }
 
-ntsa::TcpSequenceRangeVector& TcpOption::selectiveAck()
+ntsa::UdpSequenceRangeVector& UdpOption::selectiveAck()
 {
     BSLS_ASSERT(isSelectiveAck());
     return d_selectiveAck.object();
 }
 
-ntsa::TcpTimePointInterval& TcpOption::timestamp()
+ntsa::UdpTimePointInterval& UdpOption::timestamp()
 {
     BSLS_ASSERT(isTimestamp());
     return d_timestamp.object();
 }
 
-bdlb::Guid& TcpOption::fastOpen()
+bdlb::Guid& UdpOption::fastOpen()
 {
     BSLS_ASSERT(isFastOpen());
     return d_fastOpen.object();
 }
 
-ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
 {
     ntsa::Error error;
 
@@ -330,10 +330,10 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
         return error;
     }
 
-    if (type == ntsa::TcpOptionType::e_UNDEFINED) {
+    if (type == ntsa::UdpOptionType::e_UNDEFINED) {
         this->reset();
     }
-    else if (type == ntsa::TcpOptionType::e_PADDING) {
+    else if (type == ntsa::UdpOptionType::e_PADDING) {
         this->makePadding();
     }
     else {
@@ -349,7 +349,7 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
 
         payloadSize -= 2;
 
-        if (type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+        if (type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
             if (payloadSize != sizeof(bsl::uint16_t)) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
@@ -362,7 +362,7 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
 
             this->makeMaxSegmentSize(static_cast<bsl::size_t>(maxSegmentSize));
         }
-        else if (type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+        else if (type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
             if (payloadSize != sizeof(bsl::uint8_t)) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
@@ -375,19 +375,19 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
 
             this->makeWindowScale(static_cast<bsl::size_t>(windowScale));
         }
-        else if (type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
+        else if (type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
             if (payloadSize != 0) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
             this->makeSelectiveAckPermitted();
         }
-        else if (type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+        else if (type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
             if (payloadSize > 4) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            ntsa::TcpSequenceRangeVector& selectiveAck =
+            ntsa::UdpSequenceRangeVector& selectiveAck =
                 this->makeSelectiveAck();
 
             selectiveAck.resize(payloadSize);
@@ -405,11 +405,11 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
                     return error;
                 }
 
-                selectiveAck[i].setOldest(ntsa::TcpSequenceNumber(oldest));
-                selectiveAck[i].setNewest(ntsa::TcpSequenceNumber(newest));
+                selectiveAck[i].setOldest(ntsa::UdpSequenceNumber(oldest));
+                selectiveAck[i].setNewest(ntsa::UdpSequenceNumber(newest));
             }
         }
-        else if (type == ntsa::TcpOptionType::e_TIMESTAMP) {
+        else if (type == ntsa::UdpOptionType::e_TIMESTAMP) {
             if (payloadSize !=
                 sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32))
             {
@@ -428,12 +428,12 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
                 return error;
             }
 
-            ntsa::TcpTimePointInterval& timestamp = this->makeTimestamp();
+            ntsa::UdpTimePointInterval& timestamp = this->makeTimestamp();
 
-            timestamp.setTx(ntsa::TcpTimePoint(tx));
-            timestamp.setRx(ntsa::TcpTimePoint(rx));
+            timestamp.setTx(ntsa::UdpTimePoint(tx));
+            timestamp.setRx(ntsa::UdpTimePoint(rx));
         }
-        else if (type == ntsa::TcpOptionType::e_FAST_OPEN) {
+        else if (type == ntsa::UdpOptionType::e_FAST_OPEN) {
             if (payloadSize != sizeof(bdlb::Guid)) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
@@ -446,7 +446,7 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
             }
         }
         else {
-            BSLS_LOG_WARN("Unknown TCP option %d", static_cast<int>(type));
+            BSLS_LOG_WARN("Unknown UDP option %d", static_cast<int>(type));
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
     }
@@ -454,11 +454,11 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
     return ntsa::Error();
 }
 
-ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
+ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 {
     ntsa::Error error;
 
-    if (d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+    if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
         if (d_maxSegmentSize.object() >
             bsl::numeric_limits<bsl::uint16_t>::max())
         {
@@ -475,7 +475,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 
         for (bsl::size_t i = 0; i < paddingSize; ++i) {
             error = encoder->encodeUint8(
-                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
             if (error) {
                 return error;
             }
@@ -497,7 +497,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
-    else if (d_type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+    else if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
         if (d_windowScale.object() > bsl::numeric_limits<bsl::uint8_t>::max())
         {
             return ntsa::Error(ntsa::Error::e_INVALID);
@@ -513,7 +513,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 
         for (bsl::size_t i = 0; i < paddingSize; ++i) {
             error = encoder->encodeUint8(
-                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
             if (error) {
                 return error;
             }
@@ -535,7 +535,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
-    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
+    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
         const bsl::size_t payloadSize = 0;
 
         const bsl::size_t optionSize =
@@ -546,7 +546,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 
         for (bsl::size_t i = 0; i < paddingSize; ++i) {
             error = encoder->encodeUint8(
-                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
             if (error) {
                 return error;
             }
@@ -562,7 +562,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
-    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
         const bsl::size_t payloadSize =
             d_selectiveAck.object().size() *
             (sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32));
@@ -575,7 +575,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 
         for (bsl::size_t i = 0; i < paddingSize; ++i) {
             error = encoder->encodeUint8(
-                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
             if (error) {
                 return error;
             }
@@ -606,7 +606,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             }
         }
     }
-    else if (d_type == ntsa::TcpOptionType::e_TIMESTAMP) {
+    else if (d_type == ntsa::UdpOptionType::e_TIMESTAMP) {
         const bsl::size_t payloadSize =
             sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32);
 
@@ -618,7 +618,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 
         for (bsl::size_t i = 0; i < paddingSize; ++i) {
             error = encoder->encodeUint8(
-                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
             if (error) {
                 return error;
             }
@@ -644,7 +644,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
-    else if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
+    else if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
         const bsl::size_t payloadSize = sizeof(bdlb::Guid);
 
         const bsl::size_t optionSize =
@@ -655,7 +655,7 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 
         for (bsl::size_t i = 0; i < paddingSize; ++i) {
             error = encoder->encodeUint8(
-                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
             if (error) {
                 return error;
             }
@@ -676,8 +676,8 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
-    else if (d_type != ntsa::TcpOptionType::e_PADDING &&
-             d_type != ntsa::TcpOptionType::e_UNDEFINED)
+    else if (d_type != ntsa::UdpOptionType::e_PADDING &&
+             d_type != ntsa::UdpOptionType::e_UNDEFINED)
     {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
@@ -685,160 +685,160 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
     return ntsa::Error();
 }
 
-bsl::size_t TcpOption::maxSegmentSize() const
+bsl::size_t UdpOption::maxSegmentSize() const
 {
     BSLS_ASSERT(isMaxSegmentSize());
     return d_maxSegmentSize.object();
 }
 
-bsl::size_t TcpOption::windowScale() const
+bsl::size_t UdpOption::windowScale() const
 {
     BSLS_ASSERT(isWindowScale());
     return d_windowScale.object();
 }
 
-const ntsa::TcpSequenceRangeVector& TcpOption::selectiveAck() const
+const ntsa::UdpSequenceRangeVector& UdpOption::selectiveAck() const
 {
     BSLS_ASSERT(isSelectiveAck());
     return d_selectiveAck.object();
 }
 
-const ntsa::TcpTimePointInterval& TcpOption::timestamp() const
+const ntsa::UdpTimePointInterval& UdpOption::timestamp() const
 {
     BSLS_ASSERT(isTimestamp());
     return d_timestamp.object();
 }
 
-const bdlb::Guid& TcpOption::fastOpen() const
+const bdlb::Guid& UdpOption::fastOpen() const
 {
     BSLS_ASSERT(isFastOpen());
     return d_fastOpen.object();
 }
 
-ntsa::TcpOptionType::Value TcpOption::type() const
+ntsa::UdpOptionType::Value UdpOption::type() const
 {
     return d_type;
 }
 
-const char* TcpOption::name() const
+const char* UdpOption::name() const
 {
     switch (d_type) {
-    case ntsa::TcpOptionType::e_UNDEFINED:
+    case ntsa::UdpOptionType::e_UNDEFINED:
         return "end";
-    case ntsa::TcpOptionType::e_PADDING:
+    case ntsa::UdpOptionType::e_PADDING:
         return "padding";
-    case ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE:
+    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
         return "maxSegmentSize";
-    case ntsa::TcpOptionType::e_WINDOW_SCALE:
+    case ntsa::UdpOptionType::e_WINDOW_SCALE:
         return "windowScale";
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
         return "selectiveAckPermitted";
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
         return "selectiveAck";
-    case ntsa::TcpOptionType::e_TIMESTAMP:
+    case ntsa::UdpOptionType::e_TIMESTAMP:
         return "timestamp";
-    case ntsa::TcpOptionType::e_FAST_OPEN:
+    case ntsa::UdpOptionType::e_FAST_OPEN:
         return "fastOpen";
     default:
         return "???";
     }
 }
 
-bool TcpOption::isUndefined() const
+bool UdpOption::isUndefined() const
 {
-    return d_type == ntsa::TcpOptionType::e_UNDEFINED;
+    return d_type == ntsa::UdpOptionType::e_UNDEFINED;
 }
 
-bool TcpOption::isPadding() const
+bool UdpOption::isPadding() const
 {
-    return d_type == ntsa::TcpOptionType::e_PADDING;
+    return d_type == ntsa::UdpOptionType::e_PADDING;
 }
 
-bool TcpOption::isMaxSegmentSize() const
+bool UdpOption::isMaxSegmentSize() const
 {
-    return d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE;
+    return d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE;
 }
 
-bool TcpOption::isWindowScale() const
+bool UdpOption::isWindowScale() const
 {
-    return d_type == ntsa::TcpOptionType::e_WINDOW_SCALE;
+    return d_type == ntsa::UdpOptionType::e_WINDOW_SCALE;
 }
 
-bool TcpOption::isSelectiveAckPermitted() const
+bool UdpOption::isSelectiveAckPermitted() const
 {
-    return d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED;
+    return d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED;
 }
 
-bool TcpOption::isSelectiveAck() const
+bool UdpOption::isSelectiveAck() const
 {
-    return d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK;
+    return d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK;
 }
 
-bool TcpOption::isTimestamp() const
+bool UdpOption::isTimestamp() const
 {
-    return d_type == ntsa::TcpOptionType::e_TIMESTAMP;
+    return d_type == ntsa::UdpOptionType::e_TIMESTAMP;
 }
 
-bool TcpOption::isFastOpen() const
+bool UdpOption::isFastOpen() const
 {
-    return d_type == ntsa::TcpOptionType::e_FAST_OPEN;
+    return d_type == ntsa::UdpOptionType::e_FAST_OPEN;
 }
 
-bool TcpOption::equals(const TcpOption& other) const
+bool UdpOption::equals(const UdpOption& other) const
 {
     if (d_type != other.d_type) {
         return false;
     }
 
     switch (d_type) {
-    case ntsa::TcpOptionType::e_PADDING:
+    case ntsa::UdpOptionType::e_PADDING:
         return true;
-    case ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE:
+    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
         return d_maxSegmentSize.object() == other.d_maxSegmentSize.object();
-    case ntsa::TcpOptionType::e_WINDOW_SCALE:
+    case ntsa::UdpOptionType::e_WINDOW_SCALE:
         return d_windowScale.object() == other.d_windowScale.object();
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
         return true;
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
         return d_selectiveAck.object() == other.d_selectiveAck.object();
-    case ntsa::TcpOptionType::e_TIMESTAMP:
+    case ntsa::UdpOptionType::e_TIMESTAMP:
         return d_timestamp.object() == other.d_timestamp.object();
-    case ntsa::TcpOptionType::e_FAST_OPEN:
+    case ntsa::UdpOptionType::e_FAST_OPEN:
         return d_fastOpen.object() == other.d_fastOpen.object();
     default:
-        BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
+        BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         return true;
     }
 }
 
-bool TcpOption::less(const TcpOption& other) const
+bool UdpOption::less(const UdpOption& other) const
 {
     if (d_type != other.d_type) {
         return false;
     }
 
     switch (d_type) {
-    case ntsa::TcpOptionType::e_PADDING:
+    case ntsa::UdpOptionType::e_PADDING:
         return false;
-    case ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE:
+    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
         return d_maxSegmentSize.object() < other.d_maxSegmentSize.object();
-    case ntsa::TcpOptionType::e_WINDOW_SCALE:
+    case ntsa::UdpOptionType::e_WINDOW_SCALE:
         return d_windowScale.object() < other.d_windowScale.object();
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
         return false;
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
         return d_selectiveAck.object() < other.d_selectiveAck.object();
-    case ntsa::TcpOptionType::e_TIMESTAMP:
+    case ntsa::UdpOptionType::e_TIMESTAMP:
         return d_timestamp.object() < other.d_timestamp.object();
-    case ntsa::TcpOptionType::e_FAST_OPEN:
+    case ntsa::UdpOptionType::e_FAST_OPEN:
         return d_fastOpen.object() < other.d_fastOpen.object();
     default:
-        BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
+        BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         return false;
     }
 }
 
-bsl::ostream& TcpOption::print(bsl::ostream& stream,
+bsl::ostream& UdpOption::print(bsl::ostream& stream,
                                int           level,
                                int           spacesPerLevel) const
 {
@@ -846,22 +846,22 @@ bsl::ostream& TcpOption::print(bsl::ostream& stream,
     printer.start();
 
     switch (d_type) {
-    case ntsa::TcpOptionType::e_PADDING:
+    case ntsa::UdpOptionType::e_PADDING:
         printer.printAttribute("padding", true);
-    case ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE:
+    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
         printer.printAttribute("maxSegmentSize", d_maxSegmentSize.object());
-    case ntsa::TcpOptionType::e_WINDOW_SCALE:
+    case ntsa::UdpOptionType::e_WINDOW_SCALE:
         printer.printAttribute("windowScale", d_windowScale.object());
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
         printer.printAttribute("selectiveAckPermitted", true);
-    case ntsa::TcpOptionType::e_SELECTIVE_ACK:
+    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
         printer.printAttribute("selectiveAck", d_selectiveAck.object());
-    case ntsa::TcpOptionType::e_TIMESTAMP:
+    case ntsa::UdpOptionType::e_TIMESTAMP:
         printer.printAttribute("timestamp", d_timestamp.object());
-    case ntsa::TcpOptionType::e_FAST_OPEN:
+    case ntsa::UdpOptionType::e_FAST_OPEN:
         printer.printAttribute("fastOpen", d_fastOpen.object());
     default:
-        BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
+        BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         stream << "UNDEFINED";
         break;
     }
@@ -871,47 +871,47 @@ bsl::ostream& TcpOption::print(bsl::ostream& stream,
     return stream;
 }
 
-void TcpOption::print(bslim::Printer* printer) const
+void UdpOption::print(bslim::Printer* printer) const
 {
-    if (d_type == ntsa::TcpOptionType::e_PADDING) {
+    if (d_type == ntsa::UdpOptionType::e_PADDING) {
         printer->printAttribute("padding", true);
     }
-    else if (d_type == ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE) {
+    else if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
         printer->printAttribute("maxSegmentSize", d_maxSegmentSize.object());
     }
-    else if (d_type == ntsa::TcpOptionType::e_WINDOW_SCALE) {
+    else if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
         printer->printAttribute("windowScale", d_windowScale.object());
     }
-    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED) {
+    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
         printer->printAttribute("selectiveAckPermitted", true);
     }
-    else if (d_type == ntsa::TcpOptionType::e_SELECTIVE_ACK) {
+    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
         printer->printAttribute("selectiveAck", d_selectiveAck.object());
     }
-    else if (d_type == ntsa::TcpOptionType::e_TIMESTAMP) {
+    else if (d_type == ntsa::UdpOptionType::e_TIMESTAMP) {
         printer->printAttribute("timestamp", d_timestamp.object());
     }
-    else if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
+    else if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
         printer->printAttribute("fastOpen", d_fastOpen.object());
     }
 }
 
-bsl::ostream& operator<<(bsl::ostream& stream, const TcpOption& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const UdpOption& object)
 {
     return object.print(stream, 0, -1);
 }
 
-bool operator==(const TcpOption& lhs, const TcpOption& rhs)
+bool operator==(const UdpOption& lhs, const UdpOption& rhs)
 {
     return lhs.equals(rhs);
 }
 
-bool operator!=(const TcpOption& lhs, const TcpOption& rhs)
+bool operator!=(const UdpOption& lhs, const UdpOption& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
-bool operator<(const TcpOption& lhs, const TcpOption& rhs)
+bool operator<(const UdpOption& lhs, const UdpOption& rhs)
 {
     return lhs.less(rhs);
 }

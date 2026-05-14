@@ -22,12 +22,14 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntsa_tcpheader.h>
-#include <ntsa_tcpoptiontype.h>
 #include <ntsa_tcpoption.h>
+#include <ntsa_tcpoptiontype.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bslim_printer.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
+#include <bsl_vector.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -51,19 +53,20 @@ class TcpExtension
     };
 
   private:
-    /// Defines a type alias for the arena in which options are stored.
-    typedef bsl::uint8_t Arena[k_MAX_OPTIONS_LENGTH];
+    /// Define a type alias for a vector of options.
+    typedef bsl::vector<ntsa::TcpOption> OptionVector;
 
-    /// Provide a mechanism to vist each option.
-    class Visitor;
+    /// The options vector.
+    OptionVector d_vector;
 
-  private:
-    /// The options.
-    Arena d_options;
+    /// The memory allocator.
+    bslma::Allocator* d_allocator_p;
 
   public:
-    /// Create a new TCP extension area having a default value.
-    TcpExtension();
+    /// Create a new TCP extension area having a default value. Optionally
+    /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
+    /// is 0, the currently installed default allocator is used.
+    explicit TcpExtension(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new TCP extension area having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -71,8 +74,11 @@ class TcpExtension
     TcpExtension(bslmf::MovableRef<TcpExtension> original) NTSCFG_NOEXCEPT;
 
     /// Create a new TCP extension area having the same value as the specified
-    /// 'original' object.
-    TcpExtension(const TcpExtension& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    TcpExtension(const TcpExtension& original,
+                 bslma::Allocator*   basicAllocator = 0);
 
     /// Destroy this object.
     ~TcpExtension();
@@ -90,47 +96,26 @@ class TcpExtension
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
-    /// Add the specified 'option'. Return the error.
-    ntsa::Error add(const ntsa::TcpOption& option, bool final);
+    /// Add the specified 'option'.
+    void add(const ntsa::TcpOption& option);
+
+    /// Add the specified 'option'.
+    void add(bslmf::MovableRef<ntsa::TcpOption> option);
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder, bsl::size_t size);
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
 
     /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder* encoder, bsl::size_t size) const;
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
-    /// Decode the TCP extension area having the specified 'size' from the
-    /// specified 'buffer' starting at the specified 'offset'. Return the
-    /// error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              size);
-
-    /// Encode the TCP extension area to the specified 'buffer' starting at the
-    /// specified 'offset'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer,
-                       bsl::size_t        offset) const;
-
-    /// Find the TCP option having the specified 'type' starting at the
-    /// specified 'offset'. If such an option is found, load into the specified
-    /// 'payload' the start of the  option's payload, load into the specified
-    /// 'length' the length of the option's payload, load into the specified
-    /// 'next' the offset of the next option, and return true. Otherwise,
-    /// return false.
-    bool find(const void** payload,
-              bsl::size_t* length,
-              bsl::size_t* next,
-              bsl::uint8_t type,
-              bsl::size_t  offset) const;
-
-    /// Load into the specified 'result' each option in the TCP extension area.
+    /// Load into the specified 'result' each option.
     void load(ntsa::TcpOptionVector* result) const;
 
-    /// Return the extension data.
-    const void* data() const;
+    /// Return true if no options are defined, otherwise return false.
+    bool empty() const;
 
-    /// Return the extension size, in bytes.
-    bsl::size_t size() const;
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -162,19 +147,9 @@ class TcpExtension
     /// Print this object using the specified 'printer'.
     void print(bslim::Printer* printer) const;
 
-    /// This type's default constructor is equivalent to setting each byte of
-    /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(TcpExtension);
-
-    /// This type's copy-constructor and copy-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(TcpExtension);
-
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(TcpExtension);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(TcpExtension);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -210,33 +185,25 @@ template <typename HASH_ALGORITHM>
 void hashAppend(HASH_ALGORITHM& algorithm, const TcpExtension& value);
 
 NTSCFG_INLINE
-TcpExtension::TcpExtension()
+TcpExtension::TcpExtension(bslma::Allocator* basicAllocator)
+: d_vector(basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-    BSLMF_ASSERT(sizeof(*this) == k_MAX_OPTIONS_LENGTH);
-
-    NTSCFG_WARNING_UNUSED(d_options);
-
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
 }
 
 NTSCFG_INLINE
 TcpExtension::TcpExtension(bslmf::MovableRef<TcpExtension> original)
     NTSCFG_NOEXCEPT
+: d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
+  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
-                    bslmf::MovableRefUtil::access(original))),
-                sizeof *this);
-
-    NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-TcpExtension::TcpExtension(const TcpExtension& original)
+TcpExtension::TcpExtension(const TcpExtension& original, bslma::Allocator* basicAllocator)
+: d_vector(original.d_vector, basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&original),
-                sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -248,10 +215,8 @@ NTSCFG_INLINE
 TcpExtension& TcpExtension::operator=(bslmf::MovableRef<TcpExtension> other)
     NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(
-                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
-                sizeof *this);
+    d_vector      = NTSCFG_MOVE_FROM(other, d_vector);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -261,9 +226,7 @@ TcpExtension& TcpExtension::operator=(bslmf::MovableRef<TcpExtension> other)
 NTSCFG_INLINE
 TcpExtension& TcpExtension::operator=(const TcpExtension& other)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&other),
-                sizeof *this);
+    d_vector = other.d_vector;
 
     return *this;
 }
@@ -271,20 +234,26 @@ TcpExtension& TcpExtension::operator=(const TcpExtension& other)
 NTSCFG_INLINE
 void TcpExtension::reset()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    d_vector.clear();
 }
 
 NTSCFG_INLINE
-const void* TcpExtension::data() const
+bool TcpExtension::empty() const
 {
-    return d_options;
+    return d_vector.empty();
+}
+
+NTSCFG_INLINE
+bslma::Allocator* TcpExtension::allocator() const
+{
+    return d_allocator_p;
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void TcpExtension::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    algorithm(reinterpret_cast<const char*>(this), sizeof *this);
+    hashAppend(algorithm, d_vector);
 }
 
 NTSCFG_INLINE

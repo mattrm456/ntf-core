@@ -99,7 +99,10 @@ ntsa_timestamp
 ntsa_timestamptype
 ntsa_udpchecksum
 ntsa_udpextension
+ntsa_udpfragmentation
 ntsa_udpheader
+ntsa_udpoption
+ntsa_udpoptiontype
 ntsa_udppacket
 ntsa_udppayload
 ntsa_uri

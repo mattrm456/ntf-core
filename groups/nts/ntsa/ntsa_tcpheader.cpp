@@ -28,10 +28,15 @@ ntsa::Error TcpHeader::decode(ntsa::PacketDecoder* decoder)
 {
     ntsa::Error error;
 
-    error = decoder->decodeRaw(this,
-                               static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
+    error = decoder->decodeRaw(this, sizeof *this);
     if (error) {
         return error;
+    }
+
+    const bsl::size_t dataOffset = this->dataOffset();
+
+    if (dataOffset < static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH)) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     return ntsa::Error();
@@ -41,89 +46,12 @@ ntsa::Error TcpHeader::encode(ntsa::PacketEncoder* encoder) const
 {
     ntsa::Error error;
 
-    error = encoder->encodeRaw(this,
-                               static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
+    error = encoder->encodeRaw(this, sizeof *this);
     if (error) {
         return error;
     }
 
     return ntsa::Error();
-}
-
-ntsa::Error TcpHeader::decode(const bdlbb::BlobBuffer& buffer,
-                              bsl::size_t              offset,
-                              bsl::size_t              packetSize)
-{
-    NTSCFG_WARNING_UNUSED(packetSize);
-
-    reset();
-
-    if (buffer.data() == 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const char* bufferData = buffer.data();
-
-    if (buffer.size() <= 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
-
-    if (offset + static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH) > bufferSize) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                bufferData + offset,
-                static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
-
-    return ntsa::Error();
-}
-
-ntsa::Error TcpHeader::encode(bdlbb::BlobBuffer* buffer,
-                              bsl::size_t        offset) const
-{
-    ntsa::Error error;
-
-    if (buffer->data() == 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    char* bufferData = buffer->data();
-
-    if (buffer->size() <= 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t bufferCapacity =
-        static_cast<bsl::size_t>(buffer->size());
-
-    if (offset + static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH) >
-        bufferCapacity)
-    {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    bsl::memcpy(reinterpret_cast<void*>(bufferData + offset),
-                reinterpret_cast<const void*>(this),
-                static_cast<bsl::size_t>(k_MIN_HEADER_LENGTH));
-
-    return ntsa::Error();
-}
-
-bool TcpHeader::equals(const TcpHeader& other) const
-{
-    return bsl::memcmp(reinterpret_cast<const void*>(this),
-                       reinterpret_cast<const void*>(&other),
-                       sizeof *this) == 0;
-}
-
-bool TcpHeader::less(const TcpHeader& other) const
-{
-    return bsl::memcmp(reinterpret_cast<const void*>(this),
-                       reinterpret_cast<const void*>(&other),
-                       sizeof *this) < 0;
 }
 
 bsl::ostream& TcpHeader::print(bsl::ostream& stream,

@@ -26,34 +26,28 @@ BSLS_IDENT_RCSID(ntsa_tcppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error TcpPacket::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error TcpPacket::decode(ntsa::PacketDecoder*     decoder,
+                              const ntsa::Ipv4Address& sourceAddress,
+                              const ntsa::Ipv4Address& destinationAddress)
 {
     ntsa::Error error;
+
+    const bsl::size_t headerPosition = decoder->position();
 
     error = d_header.decode(decoder);
     if (error) {
         return error;
     }
 
-    const bsl::size_t headerLength =
+    const bsl::size_t extensionLength =
+        d_header.dataOffset() -
         static_cast<bsl::size_t>(ntsa::TcpHeader::k_MIN_HEADER_LENGTH);
 
-    if (d_header.dataOffset() < headerLength) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t extensionLength = d_header.dataOffset() - headerLength;
-
     if (extensionLength > 0) {
-        d_extension.makeValue();
-
-        error = d_extension.value().decode(decoder, extensionLength);
+        error = d_extension.decode(decoder);
         if (error) {
             return error;
         }
-
-        ntsa::TcpOptionVector optionVector;
-        d_extension.value().load(&optionVector);
     }
 
     const bsl::size_t payloadSize = decoder->size() - decoder->position();
@@ -65,7 +59,48 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoder* decoder)
         }
     }
 
+    const bsl::size_t finalPosition = decoder->position();
+
+    const bsl::size_t packetLength =
+        static_cast<bsl::size_t>(finalPosition - headerPosition);
+
+    error = decoder->seek(headerPosition);
+    if (error) {
+        return error;
+    }
+
+    ntsa::TcpChecksum checksum;
+    checksum.add(sourceAddress, destinationAddress, packetLength);
+    checksum.add(decoder->next(), packetLength);
+
+    const bsl::uint16_t checksumValue = checksum.value();
+
+    if (checksumValue != 0xFFFF) {
+        BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
+                      static_cast<bsl::size_t>(d_header.checksum()),
+                      static_cast<bsl::size_t>(checksumValue));
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    error = decoder->seek(finalPosition);
+    if (error) {
+        return error;
+    }
+
     return ntsa::Error();
+}
+
+ntsa::Error TcpPacket::decode(ntsa::PacketDecoder*     decoder,
+                              const ntsa::Ipv6Address& sourceAddress,
+                              const ntsa::Ipv6Address& destinationAddress)
+{
+    NTSCFG_WARNING_UNUSED(decoder);
+    NTSCFG_WARNING_UNUSED(sourceAddress);
+    NTSCFG_WARNING_UNUSED(destinationAddress);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 ntsa::Error TcpPacket::encode(
@@ -75,31 +110,62 @@ ntsa::Error TcpPacket::encode(
 {
     ntsa::Error error;
 
+    ntsa::TcpHeader header = d_header;
+    header.setChecksum(0);
+
+    const bsl::size_t headerPosition = encoder->position();
+
     const bsl::size_t headerLength =
         static_cast<bsl::size_t>(ntsa::TcpHeader::k_MIN_HEADER_LENGTH);
 
-    const bsl::size_t extensionLength =
-        d_extension.has_value() ? d_extension.value().size() : 0;
+    error = encoder->advance(headerLength);
+    if (error) {
+        return error;
+    }
 
-    const bsl::size_t packetLength =
-        headerLength + extensionLength +
+    const bsl::size_t extensionPosition = encoder->position();
+
+    error = d_extension.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    const bsl::size_t extensionLength =
+        static_cast<bsl::size_t>(encoder->position() - extensionPosition);
+
+    const bsl::size_t payloadLength =
         static_cast<bsl::size_t>(d_payload.size());
 
-    ntsa::TcpHeader header = d_header;
+    if (payloadLength > 0) {
+        error = encoder->encodeRaw(d_payload, d_payload.size());
+        if (error) {
+            return error;
+        }
+    }
 
-    header.setChecksum(0);
+    const bsl::size_t finalPosition = encoder->position();
+
+    const bsl::size_t packetLength =
+        headerLength + extensionLength + payloadLength;
+
+    error = encoder->seek(headerPosition);
+    if (error) {
+        return error;
+    }
+
+    error = header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    error = encoder->seek(headerPosition);
+    if (error) {
+        return error;
+    }
 
     ntsa::TcpChecksum checksum;
     checksum.add(sourceAddress, destinationAddress, packetLength);
-    checksum.add(&header, headerLength);
-    if (extensionLength > 0) {
-        checksum.add(d_extension.value().data(), extensionLength);
-    }
-
-    if (d_payload.size() > 0) {
-        checksum.add(d_payload.data(),
-                     static_cast<bsl::size_t>(d_payload.size()));
-    }
+    checksum.add(encoder->next(), packetLength);
 
     header.setChecksum(checksum.value());
 
@@ -108,18 +174,9 @@ ntsa::Error TcpPacket::encode(
         return error;
     }
 
-    if (extensionLength > 0) {
-        error = d_extension.value().encode(encoder, extensionLength);
-        if (error) {
-            return error;
-        }
-    }
-
-    if (d_payload.size() > 0) {
-        error = encoder->encodeRaw(d_payload, d_payload.size());
-        if (error) {
-            return error;
-        }
+    error = encoder->seek(finalPosition);
+    if (error) {
+        return error;
     }
 
     return ntsa::Error();
@@ -139,179 +196,13 @@ ntsa::Error TcpPacket::encode(
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
-ntsa::Error TcpPacket::decode(const bdlbb::BlobBuffer& buffer,
-                              bsl::size_t              offset,
-                              bsl::size_t              packetSize)
-{
-    ntsa::Error error;
-
-    if (buffer.data() == 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const char* bufferData = buffer.data();
-
-    if (buffer.size() <= 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size());
-
-    error = d_header.decode(buffer, offset, packetSize);
-    if (error) {
-        return error;
-    }
-
-    const bsl::size_t headerLength =
-        static_cast<bsl::size_t>(ntsa::TcpHeader::k_MIN_HEADER_LENGTH);
-
-    if (d_header.dataOffset() < headerLength) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t extensionLength = d_header.dataOffset() - headerLength;
-
-    if (extensionLength > 0) {
-        d_extension.makeValue();
-
-        error = d_extension.value().decode(buffer,
-                                           offset + headerLength,
-                                           extensionLength);
-        if (error) {
-            return error;
-        }
-
-        ntsa::TcpOptionVector optionVector;
-        d_extension.value().load(&optionVector);
-    }
-
-    if (offset + headerLength + extensionLength >
-        static_cast<bsl::size_t>(buffer.size()))
-    {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (offset + headerLength + extensionLength != packetSize) {
-        const bsl::size_t payloadOffset =
-            offset + headerLength + extensionLength;
-
-        const bsl::size_t payloadSize = static_cast<bsl::size_t>(
-            bufferSize - offset - headerLength - extensionLength);
-
-        if (payloadOffset + payloadSize > bufferSize) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        d_payload.reset(bsl::shared_ptr<char>(
-                            buffer.buffer(),
-                            const_cast<char*>(bufferData + payloadOffset)),
-                        static_cast<int>(payloadSize));
-    }
-
-    return ntsa::Error();
-}
-
-ntsa::Error TcpPacket::encode(
-    bdlbb::BlobBuffer*       buffer,
-    bsl::size_t              offset,
-    const ntsa::Ipv4Address& sourceAddress,
-    const ntsa::Ipv4Address& destinationAddress) const
-{
-    ntsa::Error error;
-
-    if (buffer->data() == 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    char* bufferData = buffer->data();
-
-    if (buffer->size() <= 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t bufferCapacity =
-        static_cast<bsl::size_t>(buffer->size());
-
-    if (offset > bufferCapacity) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t headerLength =
-        static_cast<bsl::size_t>(ntsa::TcpHeader::k_MIN_HEADER_LENGTH);
-
-    const bsl::size_t extensionLength =
-        d_extension.has_value() ? d_extension.value().size() : 0;
-
-    const bsl::size_t packetLength =
-        headerLength + extensionLength +
-        static_cast<bsl::size_t>(d_payload.size());
-
-    ntsa::TcpHeader header = d_header;
-
-    header.setChecksum(0);
-
-    ntsa::TcpChecksum checksum;
-    checksum.add(sourceAddress, destinationAddress, packetLength);
-    checksum.add(&header, headerLength);
-    if (extensionLength > 0) {
-        checksum.add(d_extension.value().data(), extensionLength);
-    }
-
-    if (d_payload.size() > 0) {
-        checksum.add(d_payload.data(),
-                     static_cast<bsl::size_t>(d_payload.size()));
-    }
-
-    header.setChecksum(checksum.value());
-
-    error = header.encode(buffer, offset);
-    if (error) {
-        return error;
-    }
-
-    if (extensionLength > 0) {
-        error = d_extension.value().encode(buffer, offset + headerLength);
-        if (error) {
-            return error;
-        }
-    }
-
-    if (d_payload.size() > 0) {
-        const bsl::size_t payloadOffset =
-            offset + headerLength + extensionLength;
-
-        const bsl::size_t payloadSize =
-            static_cast<bsl::size_t>(d_payload.size());
-
-        if (payloadOffset + payloadSize > bufferCapacity) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        bsl::memcpy(bufferData + payloadOffset, d_payload.data(), payloadSize);
-    }
-
-    return ntsa::Error();
-}
-
-ntsa::Error TcpPacket::encode(
-    bdlbb::BlobBuffer*       buffer,
-    bsl::size_t              offset,
-    const ntsa::Ipv6Address& sourceAddress,
-    const ntsa::Ipv6Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(buffer);
-    NTSCFG_WARNING_UNUSED(offset);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
 bool TcpPacket::equals(const TcpPacket& other) const
 {
     if (d_header != other.d_header) {
+        return false;
+    }
+
+    if (d_extension != other.d_extension) {
         return false;
     }
 
@@ -337,9 +228,7 @@ bsl::ostream& TcpPacket::print(bsl::ostream& stream,
     printer.start();
 
     d_header.print(&printer);
-    if (d_extension.has_value()) {
-        d_extension.value().print(&printer);
-    }
+    d_extension.print(&printer);
 
     printer.end();
 

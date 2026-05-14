@@ -123,6 +123,10 @@ class PacketDecoder
     /// specified 'destination'. Return the error.
     ntsa::Error decodeRaw(bdlbb::BlobBuffer* destination, bsl::size_t size);
 
+    /// Set the position of the next byte to be encoded to the specified
+    /// 'position'. Return the error.
+    ntsa::Error seek(bsl::size_t position);
+
     /// Increment the position of the next byte to be decoded by the specified
     /// 'amount'. Return the error.
     ntsa::Error advance(bsl::size_t amount);
@@ -455,6 +459,19 @@ ntsa::Error PacketDecoder::decodeRaw(bdlbb::BlobBuffer* destination,
     d_size    -= size;
 
     return ntsa::Error();
+}
+
+NTSCFG_INLINE
+ntsa::Error PacketDecoder::seek(bsl::size_t position)
+{
+    if (d_begin + position <= d_end) {
+        d_current  = d_begin + position;
+        d_size  = static_cast<bsl::size_t>(d_end - d_current);
+        return ntsa::Error();
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
 }
 
 NTSCFG_INLINE

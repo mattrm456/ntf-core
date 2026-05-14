@@ -81,90 +81,24 @@ ntsa::Error IcmpProblem::decode(const bdlbb::BlobBuffer& buffer,
                                 bsl::size_t              offset,
                                 bsl::size_t              packetSize)
 {
+    NTSCFG_WARNING_UNUSED(buffer);
+    NTSCFG_WARNING_UNUSED(offset);
     NTSCFG_WARNING_UNUSED(packetSize);
 
-    ntsa::Error error;
+    NTSCFG_NOT_IMPLEMENTED();
 
-    reset();
-
-    if (offset > static_cast<bsl::size_t>(buffer.size())) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const char* bufferData = buffer.data() + offset;
-
-    bsl::size_t bufferSize = static_cast<bsl::size_t>(buffer.size() - offset);
-
-    if (bufferSize < sizeof d_pointer) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    NTSCFG_MEMORY_COPY(&d_pointer, bufferData, sizeof d_pointer);
-
-    bufferData += sizeof d_pointer;
-    bufferSize -= sizeof d_pointer;
-
-    error =
-        d_header.decode(buffer,
-                        static_cast<bsl::size_t>(bufferData - buffer.data()));
-    if (error) {
-        return error;
-    }
-
-    bufferData += d_header.headerLength();
-    bufferSize -= d_header.headerLength();
-
-    if (bufferSize > 0) {
-        NTSCFG_MEMORY_COPY(d_payloadData,
-                           bufferData,
-                           bsl::min(bufferSize, sizeof d_payloadData));
-    }
-
-    return ntsa::Error();
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 ntsa::Error IcmpProblem::encode(bdlbb::BlobBuffer* buffer,
                                 bsl::size_t        offset) const
 {
-    ntsa::Error error;
+    NTSCFG_WARNING_UNUSED(buffer);
+    NTSCFG_WARNING_UNUSED(offset);
 
-    if (offset > static_cast<bsl::size_t>(buffer->size())) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
+    NTSCFG_NOT_IMPLEMENTED();
 
-    char* bufferData = buffer->data() + offset;
-
-    bsl::size_t bufferCapacity =
-        static_cast<bsl::size_t>(buffer->size() - offset);
-
-    if (bufferCapacity < sizeof d_pointer) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    NTSCFG_MEMORY_COPY(bufferData, &d_pointer, sizeof d_pointer);
-
-    bufferData     += sizeof d_pointer;
-    bufferCapacity -= sizeof d_pointer;
-
-    error =
-        d_header.encode(buffer,
-                        static_cast<bsl::size_t>(bufferData - buffer->data()));
-    if (error) {
-        return error;
-    }
-
-    bufferData     += d_header.headerLength();
-    bufferCapacity -= d_header.headerLength();
-
-    if (d_payloadSize > 0) {
-        if (bufferCapacity < static_cast<bsl::size_t>(d_payloadSize)) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        NTSCFG_MEMORY_COPY(bufferData, d_payloadData, d_payloadSize);
-    }
-
-    return ntsa::Error();
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 bsl::ostream& IcmpProblem::print(bsl::ostream& stream,

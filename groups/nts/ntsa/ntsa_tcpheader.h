@@ -222,18 +222,6 @@ class TcpHeader
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
-    /// Decode the header from the specified 'buffer' starting at the specified
-    /// 'offset' inside the framing packet having the specified 'packetSize'.
-    /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              packetSize);
-
-    /// Encode the header to the specified 'buffer' starting at the specified
-    /// 'offset'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
-
     /// Return the source port.
     ntsa::Port sourcePort() const;
 
@@ -356,17 +344,17 @@ TcpHeader::TcpHeader()
 
     NTSCFG_WARNING_UNUSED(d_reserved);
 
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
     initialize();
 }
 
 NTSCFG_INLINE
 TcpHeader::TcpHeader(bslmf::MovableRef<TcpHeader> original) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
-                    bslmf::MovableRefUtil::access(original))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(original);
 }
@@ -374,9 +362,7 @@ TcpHeader::TcpHeader(bslmf::MovableRef<TcpHeader> original) NTSCFG_NOEXCEPT
 NTSCFG_INLINE
 TcpHeader::TcpHeader(const TcpHeader& original)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&original),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -388,10 +374,10 @@ NTSCFG_INLINE
 TcpHeader& TcpHeader::operator=(bslmf::MovableRef<TcpHeader> other)
     NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(
-                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -401,9 +387,7 @@ TcpHeader& TcpHeader::operator=(bslmf::MovableRef<TcpHeader> other)
 NTSCFG_INLINE
 TcpHeader& TcpHeader::operator=(const TcpHeader& other)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&other),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
 
     return *this;
 }
@@ -411,7 +395,7 @@ TcpHeader& TcpHeader::operator=(const TcpHeader& other)
 NTSCFG_INLINE
 void TcpHeader::reset()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
     initialize();
 }
 
@@ -538,6 +522,18 @@ NTSCFG_INLINE
 bsl::uint16_t TcpHeader::urgentPointer() const
 {
     return static_cast<bsl::uint32_t>(d_urgentPointer);
+}
+
+NTSCFG_INLINE
+bool TcpHeader::equals(const TcpHeader& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
+}
+
+NTSCFG_INLINE
+bool TcpHeader::less(const TcpHeader& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>

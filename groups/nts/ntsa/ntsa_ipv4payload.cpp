@@ -26,7 +26,9 @@ namespace BloombergLP {
 namespace ntsa {
 
 Ipv4Payload::Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original)
-    NTSCFG_NOEXCEPT : d_type(NTSCFG_MOVE_FROM(original, d_type))
+    NTSCFG_NOEXCEPT
+: d_type(NTSCFG_MOVE_FROM(original, d_type))
+, d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     if (d_type == e_RAW) {
         new (d_raw.buffer())
@@ -51,20 +53,21 @@ Ipv4Payload::Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original)
     NTSCFG_MOVE_RESET(original);
 }
 
-Ipv4Payload::Ipv4Payload(const Ipv4Payload& original)
+Ipv4Payload::Ipv4Payload(const Ipv4Payload& original, bslma::Allocator* basicAllocator)
 : d_type(original.d_type)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
     if (d_type == e_RAW) {
         new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
     }
     else if (d_type == e_ICMP) {
-        new (d_icmp.buffer()) ntsa::IcmpPacket(original.d_icmp.object());
+        new (d_icmp.buffer()) ntsa::IcmpPacket(original.d_icmp.object(), d_allocator_p);
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpPacket(original.d_tcp.object());
+        new (d_tcp.buffer()) ntsa::TcpPacket(original.d_tcp.object(), d_allocator_p);
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpPacket(original.d_udp.object());
+        new (d_udp.buffer()) ntsa::UdpPacket(original.d_udp.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -137,13 +140,13 @@ Ipv4Payload& Ipv4Payload::operator=(const Ipv4Payload& other)
         new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
     }
     else if (d_type == e_ICMP) {
-        new (d_icmp.buffer()) ntsa::IcmpPacket(other.d_icmp.object());
+        new (d_icmp.buffer()) ntsa::IcmpPacket(other.d_icmp.object(), d_allocator_p);
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpPacket(other.d_tcp.object());
+        new (d_tcp.buffer()) ntsa::TcpPacket(other.d_tcp.object(), d_allocator_p);
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpPacket(other.d_udp.object());
+        new (d_udp.buffer()) ntsa::UdpPacket(other.d_udp.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -226,7 +229,7 @@ ntsa::IcmpPacket& Ipv4Payload::makeIcmp()
     }
     else {
         reset();
-        new (d_icmp.buffer()) ntsa::IcmpPacket();
+        new (d_icmp.buffer()) ntsa::IcmpPacket(d_allocator_p);
         d_type = e_ICMP;
     }
 
@@ -240,7 +243,7 @@ ntsa::IcmpPacket& Ipv4Payload::makeIcmp(const ntsa::IcmpPacket& value)
     }
     else {
         reset();
-        new (d_icmp.buffer()) ntsa::IcmpPacket(value);
+        new (d_icmp.buffer()) ntsa::IcmpPacket(value, d_allocator_p);
         d_type = e_ICMP;
     }
 
@@ -271,7 +274,7 @@ ntsa::TcpPacket& Ipv4Payload::makeTcp()
     }
     else {
         reset();
-        new (d_tcp.buffer()) ntsa::TcpPacket();
+        new (d_tcp.buffer()) ntsa::TcpPacket(d_allocator_p);
         d_type = e_TCP;
     }
 
@@ -285,7 +288,7 @@ ntsa::TcpPacket& Ipv4Payload::makeTcp(const ntsa::TcpPacket& value)
     }
     else {
         reset();
-        new (d_tcp.buffer()) ntsa::TcpPacket(value);
+        new (d_tcp.buffer()) ntsa::TcpPacket(value, d_allocator_p);
         d_type = e_TCP;
     }
 
@@ -316,7 +319,7 @@ ntsa::UdpPacket& Ipv4Payload::makeUdp()
     }
     else {
         reset();
-        new (d_udp.buffer()) ntsa::UdpPacket();
+        new (d_udp.buffer()) ntsa::UdpPacket(d_allocator_p);
         d_type = e_UDP;
     }
 
@@ -330,7 +333,7 @@ ntsa::UdpPacket& Ipv4Payload::makeUdp(const ntsa::UdpPacket& value)
     }
     else {
         reset();
-        new (d_udp.buffer()) ntsa::UdpPacket(value);
+        new (d_udp.buffer()) ntsa::UdpPacket(value, d_allocator_p);
         d_type = e_UDP;
     }
 
@@ -370,6 +373,11 @@ bool Ipv4Payload::equals(const Ipv4Payload& other) const
                                         d_raw.object().size());
 
         if (compare != 0) {
+            return false;
+        }
+    }
+    else if (d_type == e_ICMP) {
+        if (!d_icmp.object().equals(other.d_icmp.object())) {
             return false;
         }
     }

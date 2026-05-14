@@ -21,6 +21,7 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
 #include <ntsa_ipv4header.h>
+#include <ntsa_ipv4extension.h>
 #include <ntsa_ipv4payload.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
@@ -28,6 +29,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsscm_version.h>
 #include <bdlbb_blob.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -42,10 +44,13 @@ class Ipv4Packet
 {
     ntsa::Ipv4Header  d_header;
     ntsa::Ipv4Payload d_payload;
+    bslma::Allocator* d_allocator_p;
 
   public:
-    /// Create a new IPv4 packet having a default value.
-    Ipv4Packet();
+    /// Create a new IPv4 packet having a default value. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit Ipv4Packet(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new IPv4 packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -53,8 +58,10 @@ class Ipv4Packet
     Ipv4Packet(bslmf::MovableRef<Ipv4Packet> original) NTSCFG_NOEXCEPT;
 
     /// Create a new IPv4 packet having the same value as the specified
-    /// 'original' object.
-    Ipv4Packet(const Ipv4Packet& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    Ipv4Packet(const Ipv4Packet& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4Packet();
@@ -90,19 +97,14 @@ class Ipv4Packet
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
-    /// Decode the packet from the specified 'buffer' starting at the specified
-    /// 'offset'. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer, bsl::size_t offset);
-
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
-
     /// Return a reference to the non-modifiable header.
     const ntsa::Ipv4Header& header() const;
 
     /// Return a reference to the non-modifiable payload.
     const ntsa::Ipv4Payload& payload() const;
+
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -122,10 +124,9 @@ class Ipv4Packet
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
 
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(Ipv4Packet);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(Ipv4Packet);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -148,24 +149,27 @@ bool operator==(const Ipv4Packet& lhs, const Ipv4Packet& rhs);
 bool operator!=(const Ipv4Packet& lhs, const Ipv4Packet& rhs);
 
 NTSCFG_INLINE
-Ipv4Packet::Ipv4Packet()
+Ipv4Packet::Ipv4Packet(bslma::Allocator* basicAllocator)
 : d_header()
 , d_payload()
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
 NTSCFG_INLINE
 Ipv4Packet::Ipv4Packet(bslmf::MovableRef<Ipv4Packet> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
-  d_payload(NTSCFG_MOVE_FROM(original, d_payload))
+  d_payload(NTSCFG_MOVE_FROM(original, d_payload)),
+  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-Ipv4Packet::Ipv4Packet(const Ipv4Packet& original)
+Ipv4Packet::Ipv4Packet(const Ipv4Packet& original, bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
 , d_payload(original.d_payload)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -178,8 +182,9 @@ NTSCFG_INLINE
 Ipv4Packet& Ipv4Packet::operator=(bslmf::MovableRef<Ipv4Packet> other)
     NTSCFG_NOEXCEPT
 {
-    d_header  = NTSCFG_MOVE_FROM(other, d_header);
-    d_payload = NTSCFG_MOVE_FROM(other, d_payload);
+    d_header      = NTSCFG_MOVE_FROM(other, d_header);
+    d_payload     = NTSCFG_MOVE_FROM(other, d_payload);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -235,6 +240,12 @@ NTSCFG_INLINE
 const ntsa::Ipv4Payload& Ipv4Packet::payload() const
 {
     return d_payload;
+}
+
+NTSCFG_INLINE
+bslma::Allocator* Ipv4Packet::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

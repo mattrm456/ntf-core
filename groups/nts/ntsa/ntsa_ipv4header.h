@@ -234,9 +234,6 @@ class Ipv4Header
     /// The destination IPv4 address.
     ntsa::Ipv4Address d_destinationAddress;
 
-    /// The options.
-    bsl::uint8_t d_options[40];
-
   private:
     /// Initialize the header to its default values.
     void initialize();
@@ -382,14 +379,6 @@ class Ipv4Header
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
-    /// Decode the packet from the specified 'buffer' starting at the specified
-    /// 'offset'. Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer, bsl::size_t offset);
-
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
-
     /// Return the length of the header including all options, in bytes.
     bsl::size_t headerLength() const;
 
@@ -517,21 +506,19 @@ void Ipv4Header::initialize()
 NTSCFG_INLINE
 Ipv4Header::Ipv4Header()
 {
-    BSLMF_ASSERT(sizeof(*this) == k_MAX_HEADER_LENGTH);
+    BSLMF_ASSERT(sizeof(*this) == k_MIN_HEADER_LENGTH);
 
-    NTSCFG_WARNING_UNUSED(d_options);
-
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
     initialize();
 }
 
 NTSCFG_INLINE
 Ipv4Header::Ipv4Header(bslmf::MovableRef<Ipv4Header> original) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
-                    bslmf::MovableRefUtil::access(original))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(original);
 }
@@ -539,9 +526,7 @@ Ipv4Header::Ipv4Header(bslmf::MovableRef<Ipv4Header> original) NTSCFG_NOEXCEPT
 NTSCFG_INLINE
 Ipv4Header::Ipv4Header(const Ipv4Header& original)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&original),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -553,10 +538,10 @@ NTSCFG_INLINE
 Ipv4Header& Ipv4Header::operator=(bslmf::MovableRef<Ipv4Header> other)
     NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(
-                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -566,16 +551,15 @@ Ipv4Header& Ipv4Header::operator=(bslmf::MovableRef<Ipv4Header> other)
 NTSCFG_INLINE
 Ipv4Header& Ipv4Header::operator=(const Ipv4Header& other)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&other),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
+
     return *this;
 }
 
 NTSCFG_INLINE
 void Ipv4Header::reset()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
     initialize();
 }
 
@@ -762,6 +746,18 @@ NTSCFG_INLINE
 const ntsa::Ipv4Address& Ipv4Header::destinationAddress() const
 {
     return d_destinationAddress;
+}
+
+NTSCFG_INLINE
+bool Ipv4Header::equals(const Ipv4Header& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
+}
+
+NTSCFG_INLINE
+bool Ipv4Header::less(const Ipv4Header& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>

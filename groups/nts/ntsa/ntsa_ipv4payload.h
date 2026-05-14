@@ -28,6 +28,7 @@ BSLS_IDENT("$Id: $")
 #include <bsls_assert.h>
 #include <bsls_objectbuffer.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -70,9 +71,13 @@ class Ipv4Payload
         bsls::ObjectBuffer<ntsa::UdpPacket>    d_udp;
     };
 
+    bslma::Allocator* d_allocator_p;
+
   public:
-    /// Create a new IPv4 payload having a default value.
-    Ipv4Payload();
+    /// Create a new IPv4 payload having a default value. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit Ipv4Payload(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new IPv4 payload having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -80,8 +85,10 @@ class Ipv4Payload
     Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original) NTSCFG_NOEXCEPT;
 
     /// Create a new IPv4 payload having the same value as the specified
-    /// 'original' object.
-    Ipv4Payload(const Ipv4Payload& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    Ipv4Payload(const Ipv4Payload& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4Payload();
@@ -188,6 +195,9 @@ class Ipv4Payload
     /// undefined unless 'isUdp()' is true.
     const ntsa::UdpPacket& udp() const;
 
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
+
     /// Return true if the representation is not defined, otherwise return
     /// false.
     bool isUndefined() const;
@@ -225,6 +235,10 @@ class Ipv4Payload
     bsl::ostream& print(bsl::ostream& stream,
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
+
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(Ipv4Payload);
 };
 
 /// Write the specified 'object' to the specified 'stream'. Return a modifiable
@@ -246,8 +260,9 @@ bool operator==(const Ipv4Payload& lhs, const Ipv4Payload& rhs);
 bool operator!=(const Ipv4Payload& lhs, const Ipv4Payload& rhs);
 
 NTSCFG_INLINE
-Ipv4Payload::Ipv4Payload()
+Ipv4Payload::Ipv4Payload(bslma::Allocator* basicAllocator)
 : d_type(e_UNDEFINED)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -305,6 +320,12 @@ const ntsa::UdpPacket& Ipv4Payload::udp() const
 {
     BSLS_ASSERT(isUdp());
     return d_udp.object();
+}
+
+NTSCFG_INLINE
+bslma::Allocator* Ipv4Payload::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

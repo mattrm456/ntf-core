@@ -115,18 +115,6 @@ class UdpHeader
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
-    /// Decode the header from the specified 'buffer' starting at the specified
-    /// 'offset' inside the framing packet having the specified 'packetSize'.
-    /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              packetSize);
-
-    /// Encode the header to the specified 'buffer' starting at the specified
-    /// 'offset'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
-
     /// Return the source port.
     ntsa::Port sourcePort() const;
 
@@ -225,16 +213,16 @@ UdpHeader::UdpHeader()
 {
     BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
 
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
 UdpHeader::UdpHeader(bslmf::MovableRef<UdpHeader> original) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(BSLS_UTIL_ADDRESSOF(
-                    bslmf::MovableRefUtil::access(original))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(original);
 }
@@ -242,9 +230,7 @@ UdpHeader::UdpHeader(bslmf::MovableRef<UdpHeader> original) NTSCFG_NOEXCEPT
 NTSCFG_INLINE
 UdpHeader::UdpHeader(const UdpHeader& original)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&original),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -256,10 +242,10 @@ NTSCFG_INLINE
 UdpHeader& UdpHeader::operator=(bslmf::MovableRef<UdpHeader> other)
     NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(
-                    BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other))),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(
+        this,
+        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
+        sizeof *this);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -269,9 +255,7 @@ UdpHeader& UdpHeader::operator=(bslmf::MovableRef<UdpHeader> other)
 NTSCFG_INLINE
 UdpHeader& UdpHeader::operator=(const UdpHeader& other)
 {
-    bsl::memcpy(reinterpret_cast<void*>(this),
-                reinterpret_cast<const void*>(&other),
-                sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
 
     return *this;
 }
@@ -279,7 +263,7 @@ UdpHeader& UdpHeader::operator=(const UdpHeader& other)
 NTSCFG_INLINE
 void UdpHeader::reset()
 {
-    bsl::memset(reinterpret_cast<void*>(this), 0, sizeof *this);
+    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -335,6 +319,18 @@ NTSCFG_INLINE
 bsl::uint16_t UdpHeader::checksum() const
 {
     return static_cast<bsl::uint16_t>(d_checksum);
+}
+
+NTSCFG_INLINE
+bool UdpHeader::equals(const UdpHeader& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
+}
+
+NTSCFG_INLINE
+bool UdpHeader::less(const UdpHeader& other) const
+{
+    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>

@@ -29,6 +29,7 @@ BSLS_IDENT("$Id: $")
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -41,12 +42,15 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class UdpPacket
 {
-    ntsa::UdpHeader  d_header;
-    ntsa::UdpPayload d_payload;
+    ntsa::UdpHeader   d_header;
+    ntsa::UdpPayload  d_payload;
+    bslma::Allocator* d_allocator_p;
 
   public:
-    /// Create a new UDP packet having a default value.
-    UdpPacket();
+    /// Create a new UDP packet having a default value. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit UdpPacket(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new UDP packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -54,8 +58,10 @@ class UdpPacket
     UdpPacket(bslmf::MovableRef<UdpPacket> original) NTSCFG_NOEXCEPT;
 
     /// Create a new UDP packet having the same value as the specified
-    /// 'original' object.
-    UdpPacket(const UdpPacket& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    UdpPacket(const UdpPacket& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~UdpPacket();
@@ -98,36 +104,14 @@ class UdpPacket
                        const ntsa::Ipv6Address& sourceAddress,
                        const ntsa::Ipv6Address& destinationAddress) const;
 
-    /// Decode the packet from the specified 'buffer' starting at the specified
-    /// 'offset' inside the framing packet having the specified 'packetSize'.
-    /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              packetSize);
-
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Calculate the checksum in terms of the specified
-    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
-                       bsl::size_t              offset,
-                       const ntsa::Ipv4Address& sourceAddress,
-                       const ntsa::Ipv4Address& destinationAddress) const;
-
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Calculate the checksum in terms of the specified
-    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
-                       bsl::size_t              offset,
-                       const ntsa::Ipv6Address& sourceAddress,
-                       const ntsa::Ipv6Address& destinationAddress) const;
-
     /// Return a reference to the non-modifiable header.
     const ntsa::UdpHeader& header() const;
 
     /// Return a reference to the non-modifiable payload.
     const ntsa::UdpPayload& payload() const;
+
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -147,10 +131,9 @@ class UdpPacket
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
 
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(UdpPacket);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(UdpPacket);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -173,24 +156,28 @@ bool operator==(const UdpPacket& lhs, const UdpPacket& rhs);
 bool operator!=(const UdpPacket& lhs, const UdpPacket& rhs);
 
 NTSCFG_INLINE
-UdpPacket::UdpPacket()
+UdpPacket::UdpPacket(bslma::Allocator* basicAllocator)
 : d_header()
 , d_payload()
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
 NTSCFG_INLINE
 UdpPacket::UdpPacket(bslmf::MovableRef<UdpPacket> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
-  d_payload(NTSCFG_MOVE_FROM(original, d_payload))
+  d_payload(NTSCFG_MOVE_FROM(original, d_payload)),
+  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-UdpPacket::UdpPacket(const UdpPacket& original)
+UdpPacket::UdpPacket(const UdpPacket&  original,
+                     bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
 , d_payload(original.d_payload)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -203,8 +190,9 @@ NTSCFG_INLINE
 UdpPacket& UdpPacket::operator=(bslmf::MovableRef<UdpPacket> other)
     NTSCFG_NOEXCEPT
 {
-    d_header  = NTSCFG_MOVE_FROM(other, d_header);
-    d_payload = NTSCFG_MOVE_FROM(other, d_payload);
+    d_header      = NTSCFG_MOVE_FROM(other, d_header);
+    d_payload     = NTSCFG_MOVE_FROM(other, d_payload);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -260,6 +248,12 @@ NTSCFG_INLINE
 const ntsa::UdpPayload& UdpPacket::payload() const
 {
     return d_payload;
+}
+
+NTSCFG_INLINE
+bslma::Allocator* UdpPacket::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

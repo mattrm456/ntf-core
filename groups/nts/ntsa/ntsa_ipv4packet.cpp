@@ -35,6 +35,13 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
         return error;
     }
 
+    const bsl::size_t extensionLength =
+        d_header.headerLength() - ntsa::Ipv4Header::k_MIN_HEADER_LENGTH;
+
+    if (extensionLength > 0) {
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    }
+
     if (d_header.protocol() ==
         static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_ICMP))
     {
@@ -46,11 +53,13 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
         }
     }
     else if (d_header.protocol() ==
-        static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
+             static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
     {
         ntsa::TcpPacket& tcp = d_payload.makeTcp();
 
-        error = tcp.decode(decoder);
+        error = tcp.decode(decoder,
+                           d_header.sourceAddress(),
+                           d_header.destinationAddress());
         if (error) {
             return error;
         }
@@ -66,8 +75,8 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
         }
     }
     else {
-        error = decoder->decodeRaw(
-            &d_payload.makeRaw(), decoder->size() - decoder->position());
+        error = decoder->decodeRaw(&d_payload.makeRaw(),
+                                   decoder->size() - decoder->position());
         if (error) {
             return error;
         }
@@ -144,157 +153,11 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoder* encoder) const
     }
     else if (d_payload.isRaw()) {
         if (d_payload.raw().size() > 0) {
-            error = encoder->encodeRaw(d_payload.raw(), d_payload.raw().size());
+            error =
+                encoder->encodeRaw(d_payload.raw(), d_payload.raw().size());
             if (error) {
                 return error;
             }
-        }
-    }
-    else {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    return ntsa::Error();
-}
-
-ntsa::Error Ipv4Packet::decode(const bdlbb::BlobBuffer& buffer,
-                               bsl::size_t              offset)
-{
-    ntsa::Error error;
-
-    error = d_header.decode(buffer, offset);
-    if (error) {
-        return error;
-    }
-
-    const bsl::size_t headerLength =
-        static_cast<bsl::size_t>(d_header.headerLength());
-
-    const bsl::size_t packetSize =
-        static_cast<bsl::size_t>(d_header.packetLength());
-
-    if (d_header.protocol() ==
-        static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_ICMP))
-    {
-        ntsa::IcmpPacket& icmp = d_payload.makeIcmp();
-
-        error = icmp.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_header.protocol() ==
-        static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
-    {
-        ntsa::TcpPacket& tcp = d_payload.makeTcp();
-
-        error = tcp.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_header.protocol() ==
-             static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_UDP))
-    {
-        ntsa::UdpPacket& udp = d_payload.makeUdp();
-
-        error = udp.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else {
-        bdlbb::BlobBuffer& blobBuffer = d_payload.makeRaw();
-        blobBuffer.reset(
-            bsl::shared_ptr<char>(buffer.buffer(),
-                                  buffer.data() + offset + headerLength),
-            static_cast<int>(buffer.size() - offset - headerLength));
-    }
-
-    return ntsa::Error();
-}
-
-ntsa::Error Ipv4Packet::encode(bdlbb::BlobBuffer* buffer,
-                               bsl::size_t        offset) const
-{
-    ntsa::Error error;
-
-    ntsa::Ipv4Header header = d_header;
-
-    header.setChecksum(0);
-
-    ntsa::Ipv4Checksum checksum;
-    checksum.add(&header, header.headerLength());
-
-    header.setChecksum(checksum.value());
-
-    error = d_header.encode(buffer, offset);
-    if (error) {
-        return error;
-    }
-
-    if (d_payload.isIcmp()) {
-        if (d_header.protocol() !=
-            static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_ICMP))
-        {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        const ntsa::IcmpPacket& icmp = d_payload.icmp();
-
-        error = icmp.encode(buffer,
-                            offset + d_header.headerLength(),
-                            d_header.sourceAddress(),
-                            d_header.destinationAddress());
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_payload.isTcp()) {
-        if (d_header.protocol() !=
-            static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_TCP))
-        {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        const ntsa::TcpPacket& tcp = d_payload.tcp();
-
-        error = tcp.encode(buffer,
-                           offset + d_header.headerLength(),
-                           d_header.sourceAddress(),
-                           d_header.destinationAddress());
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_payload.isUdp()) {
-        if (d_header.protocol() !=
-            static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_UDP))
-        {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        const ntsa::UdpPacket& udp = d_payload.udp();
-
-        error = udp.encode(buffer,
-                           offset + d_header.headerLength(),
-                           d_header.sourceAddress(),
-                           d_header.destinationAddress());
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_payload.isRaw()) {
-        if (d_payload.raw().size() > 0) {
-            if (offset + d_header.headerLength() + d_payload.raw().size() >
-                static_cast<bsl::size_t>(buffer->size()))
-            {
-                return ntsa::Error(ntsa::Error::e_INVALID);
-            }
-
-            bsl::memcpy(buffer->data() + offset + d_header.headerLength(),
-                        d_payload.raw().data(),
-                        static_cast<bsl::size_t>(d_payload.raw().size()));
         }
     }
     else {

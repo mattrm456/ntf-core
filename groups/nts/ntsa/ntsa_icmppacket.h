@@ -29,6 +29,7 @@ BSLS_IDENT("$Id: $")
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -43,10 +44,13 @@ class IcmpPacket
 {
     ntsa::IcmpHeader  d_header;
     ntsa::IcmpPayload d_payload;
+    bslma::Allocator* d_allocator_p;
 
   public:
-    /// Create a new ICMP packet having a default value.
-    IcmpPacket();
+    /// Create a new ICMP packet having a default value. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit IcmpPacket(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new ICMP packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -54,8 +58,10 @@ class IcmpPacket
     IcmpPacket(bslmf::MovableRef<IcmpPacket> original) NTSCFG_NOEXCEPT;
 
     /// Create a new ICMP packet having the same value as the specified
-    /// 'original' object.
-    IcmpPacket(const IcmpPacket& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    IcmpPacket(const IcmpPacket& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~IcmpPacket();
@@ -129,6 +135,9 @@ class IcmpPacket
     /// Return a reference to the non-modifiable payload.
     const ntsa::IcmpPayload& payload() const;
 
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
+
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
     bool equals(const IcmpPacket& other) const;
@@ -147,10 +156,9 @@ class IcmpPacket
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
 
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(IcmpPacket);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(IcmpPacket);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -173,24 +181,27 @@ bool operator==(const IcmpPacket& lhs, const IcmpPacket& rhs);
 bool operator!=(const IcmpPacket& lhs, const IcmpPacket& rhs);
 
 NTSCFG_INLINE
-IcmpPacket::IcmpPacket()
+IcmpPacket::IcmpPacket(bslma::Allocator* basicAllocator)
 : d_header()
 , d_payload()
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
 NTSCFG_INLINE
 IcmpPacket::IcmpPacket(bslmf::MovableRef<IcmpPacket> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
-  d_payload(NTSCFG_MOVE_FROM(original, d_payload))
+  d_payload(NTSCFG_MOVE_FROM(original, d_payload)),
+  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-IcmpPacket::IcmpPacket(const IcmpPacket& original)
+IcmpPacket::IcmpPacket(const IcmpPacket& original, bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
 , d_payload(original.d_payload)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -203,8 +214,9 @@ NTSCFG_INLINE
 IcmpPacket& IcmpPacket::operator=(bslmf::MovableRef<IcmpPacket> other)
     NTSCFG_NOEXCEPT
 {
-    d_header  = NTSCFG_MOVE_FROM(other, d_header);
-    d_payload = NTSCFG_MOVE_FROM(other, d_payload);
+    d_header      = NTSCFG_MOVE_FROM(other, d_header);
+    d_payload     = NTSCFG_MOVE_FROM(other, d_payload);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -260,6 +272,12 @@ NTSCFG_INLINE
 const ntsa::IcmpPayload& IcmpPacket::payload() const
 {
     return d_payload;
+}
+
+NTSCFG_INLINE
+bslma::Allocator* IcmpPacket::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

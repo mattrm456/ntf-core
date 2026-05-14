@@ -21,6 +21,8 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_ethernetaddress.h>
 #include <ntsa_ethernetprotocol.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bslh_hash.h>

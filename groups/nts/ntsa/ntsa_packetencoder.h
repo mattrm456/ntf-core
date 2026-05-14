@@ -109,6 +109,10 @@ class PacketEncoder
     /// Return the error.
     ntsa::Error encodeRaw(const bdlbb::BlobBuffer& source, bsl::size_t size);
 
+    /// Set the position of the next byte to be encoded to the specified
+    /// 'position'. Return the error.
+    ntsa::Error seek(bsl::size_t position);
+
     /// Increment the position of the next byte to be encoded by the specified
     /// 'amount'. Return the error.
     ntsa::Error advance(bsl::size_t amount);
@@ -431,6 +435,19 @@ ntsa::Error PacketEncoder::encodeRaw(const bdlbb::BlobBuffer& source,
     d_capacity -= size;
 
     return ntsa::Error();
+}
+
+NTSCFG_INLINE
+ntsa::Error PacketEncoder::seek(bsl::size_t position)
+{
+    if (d_begin + position <= d_end) {
+        d_current  = d_begin + position;
+        d_capacity  = static_cast<bsl::size_t>(d_end - d_current);
+        return ntsa::Error();
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
 }
 
 NTSCFG_INLINE
