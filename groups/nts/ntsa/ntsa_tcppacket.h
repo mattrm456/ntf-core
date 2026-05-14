@@ -101,12 +101,12 @@ class TcpPacket
     ntsa::TcpPayload& payload();
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder,
+    ntsa::Error decode(ntsa::PacketDecoder*     decoder,
                        const ntsa::Ipv4Address& sourceAddress,
                        const ntsa::Ipv4Address& destinationAddress);
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder,
+    ntsa::Error decode(ntsa::PacketDecoder*     decoder,
                        const ntsa::Ipv6Address& sourceAddress,
                        const ntsa::Ipv6Address& destinationAddress);
 

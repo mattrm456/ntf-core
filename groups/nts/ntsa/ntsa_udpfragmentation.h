@@ -70,7 +70,7 @@ class UdpFragmentation
     void reset();
 
     /// Set the identifier of the original datagram to the specified 'value'.
-    void setIdentifier(bsl::uint32_t value;
+    void setIdentifier(bsl::uint32_t value);
 
     /// Set the location of the start of the fragment data, measured from
     /// the start of the UDP header, to the specified 'value'.

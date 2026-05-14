@@ -105,5 +105,7 @@ ntsa_udpoption
 ntsa_udpoptiontype
 ntsa_udppacket
 ntsa_udppayload
+ntsa_udpreassembly
+ntsa_udptimepoint
 ntsa_uri
 ntsa_zerocopy

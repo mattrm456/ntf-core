@@ -24,6 +24,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv6address.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
+#include <ntsa_udpextension.h>
 #include <ntsa_udpheader.h>
 #include <ntsa_udppayload.h>
 #include <ntscfg_platform.h>
@@ -42,9 +43,10 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class UdpPacket
 {
-    ntsa::UdpHeader   d_header;
-    ntsa::UdpPayload  d_payload;
-    bslma::Allocator* d_allocator_p;
+    ntsa::UdpHeader    d_header;
+    ntsa::UdpExtension d_extension;
+    ntsa::UdpPayload   d_payload;
+    bslma::Allocator*  d_allocator_p;
 
   public:
     /// Create a new UDP packet having a default value. Optionally specify a
@@ -82,17 +84,30 @@ class UdpPacket
     /// Set the header to the specified 'value'.
     void setHeader(const ntsa::UdpHeader& value);
 
+    /// Set the extension to the specified 'value'.
+    void setExtension(const ntsa::UdpExtension& value);
+
     /// Set the payload to the specified 'value'.
     void setPayload(const ntsa::UdpPayload& value);
 
     /// Return a reference to the modifiable header.
     ntsa::UdpHeader& header();
 
+    /// Return a reference to the modifiable extension.
+    ntsa::UdpExtension& extension();
+
     /// Return a reference to the modifiable payload.
     ntsa::UdpPayload& payload();
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+    ntsa::Error decode(ntsa::PacketDecoder*     decoder,
+                       const ntsa::Ipv4Address& sourceAddress,
+                       const ntsa::Ipv4Address& destinationAddress);
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder*     decoder,
+                       const ntsa::Ipv6Address& sourceAddress,
+                       const ntsa::Ipv6Address& destinationAddress);
 
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder*     encoder,
@@ -106,6 +121,9 @@ class UdpPacket
 
     /// Return a reference to the non-modifiable header.
     const ntsa::UdpHeader& header() const;
+
+    /// Return a reference to the non-modifiable extension.
+    const ntsa::UdpExtension& extension() const;
 
     /// Return a reference to the non-modifiable payload.
     const ntsa::UdpPayload& payload() const;
@@ -158,6 +176,7 @@ bool operator!=(const UdpPacket& lhs, const UdpPacket& rhs);
 NTSCFG_INLINE
 UdpPacket::UdpPacket(bslma::Allocator* basicAllocator)
 : d_header()
+, d_extension(basicAllocator)
 , d_payload()
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -166,6 +185,7 @@ UdpPacket::UdpPacket(bslma::Allocator* basicAllocator)
 NTSCFG_INLINE
 UdpPacket::UdpPacket(bslmf::MovableRef<UdpPacket> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
+  d_extension(NTSCFG_MOVE_FROM(original, d_extension)),
   d_payload(NTSCFG_MOVE_FROM(original, d_payload)),
   d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
@@ -176,6 +196,7 @@ NTSCFG_INLINE
 UdpPacket::UdpPacket(const UdpPacket&  original,
                      bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
+, d_extension(original.d_extension, basicAllocator)
 , d_payload(original.d_payload)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -191,6 +212,7 @@ UdpPacket& UdpPacket::operator=(bslmf::MovableRef<UdpPacket> other)
     NTSCFG_NOEXCEPT
 {
     d_header      = NTSCFG_MOVE_FROM(other, d_header);
+    d_extension   = NTSCFG_MOVE_FROM(other, d_extension);
     d_payload     = NTSCFG_MOVE_FROM(other, d_payload);
     d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
@@ -203,6 +225,7 @@ NTSCFG_INLINE
 UdpPacket& UdpPacket::operator=(const UdpPacket& other)
 {
     d_header  = other.d_header;
+    d_extension = other.d_extension;
     d_payload = other.d_payload;
     return *this;
 }
@@ -211,6 +234,7 @@ NTSCFG_INLINE
 void UdpPacket::reset()
 {
     d_header.reset();
+    d_extension.reset();
     d_payload.reset();
 }
 
@@ -218,6 +242,12 @@ NTSCFG_INLINE
 void UdpPacket::setHeader(const ntsa::UdpHeader& value)
 {
     d_header = value;
+}
+
+NTSCFG_INLINE
+void UdpPacket::setExtension(const ntsa::UdpExtension& value)
+{
+    d_extension = value;
 }
 
 NTSCFG_INLINE
@@ -233,6 +263,12 @@ ntsa::UdpHeader& UdpPacket::header()
 }
 
 NTSCFG_INLINE
+ntsa::UdpExtension& UdpPacket::extension()
+{
+    return d_extension;
+}
+
+NTSCFG_INLINE
 ntsa::UdpPayload& UdpPacket::payload()
 {
     return d_payload;
@@ -242,6 +278,12 @@ NTSCFG_INLINE
 const ntsa::UdpHeader& UdpPacket::header() const
 {
     return d_header;
+}
+
+NTSCFG_INLINE
+const ntsa::UdpExtension& UdpPacket::extension() const
+{
+    return d_extension;
 }
 
 NTSCFG_INLINE

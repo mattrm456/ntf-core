@@ -234,6 +234,8 @@ if (${NTF_BUILD_WITH_NTS})
     ntf_component(NAME ntsa_udpoptiontype)
     ntf_component(NAME ntsa_udppacket)
     ntf_component(NAME ntsa_udppayload)
+    ntf_component(NAME ntsa_udpreassembly)
+    ntf_component(NAME ntsa_udptimepoint)
     ntf_component(NAME ntsa_uri)
     ntf_component(NAME ntsa_zerocopy)
 

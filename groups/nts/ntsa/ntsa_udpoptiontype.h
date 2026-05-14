@@ -53,7 +53,16 @@ struct UdpOptionType {
         e_MAX_DATAGRAM_SIZE = 4,
 
         /// The maximum reassembled datagram size (MRDS) option type.
-        e_MAX_REASSEMBLED_DATAGRAM_SIZE = 5
+        e_MAX_REASSEMBLED_DATAGRAM_SIZE = 5,
+
+        /// The echo request option type.
+        e_ECHO_REQUEST = 6,
+
+        /// The echo response option type.
+        e_ECHO_RESPONSE = 7,
+
+        /// The timestamp option type.
+        e_TIMESTAMP = 8
     };
 
     /// Return the string representation exactly matching the enumerator name

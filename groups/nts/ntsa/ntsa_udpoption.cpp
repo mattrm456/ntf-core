@@ -43,26 +43,33 @@ UdpOption::UdpOption(const UdpOption& other, bslma::Allocator* basicAllocator)
     switch (d_type) {
     case ntsa::UdpOptionType::e_PADDING:
         break;
-    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
-        new (d_maxSegmentSize.buffer())
-            bsl::size_t(other.d_maxSegmentSize.object());
+    case ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM:
+        new (d_additionalChecksum.buffer())
+            bsl::uint32_t(other.d_additionalChecksum.object());
         break;
-    case ntsa::UdpOptionType::e_WINDOW_SCALE:
-        new (d_windowScale.buffer()) bsl::size_t(other.d_windowScale.object());
+    case ntsa::UdpOptionType::e_FRAGMENTATION:
+        new (d_fragmentation.buffer())
+            ntsa::UdpFragmentation(other.d_fragmentation.object());
         break;
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE:
+        new (d_maxDatagramSize.buffer())
+            bsl::uint32_t(other.d_maxDatagramSize.object());
         break;
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
-        new (d_selectiveAck.buffer())
-            ntsa::UdpSequenceRangeVector(other.d_selectiveAck.object(),
-                                         d_allocator_p);
+    case ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE:
+        new (d_reassembly.buffer())
+            ntsa::UdpReassembly(other.d_reassembly.object());
+        break;
+    case ntsa::UdpOptionType::e_ECHO_REQUEST:
+        new (d_echoRequest.buffer())
+            bsl::uint32_t(other.d_echoRequest.object());
+        break;
+    case ntsa::UdpOptionType::e_ECHO_RESPONSE:
+        new (d_echoResponse.buffer())
+            bsl::uint32_t(other.d_echoResponse.object());
         break;
     case ntsa::UdpOptionType::e_TIMESTAMP:
         new (d_timestamp.buffer())
             ntsa::UdpTimePointInterval(other.d_timestamp.object());
-        break;
-    case ntsa::UdpOptionType::e_FAST_OPEN:
-        new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
@@ -71,9 +78,13 @@ UdpOption::UdpOption(const UdpOption& other, bslma::Allocator* basicAllocator)
 
 UdpOption::~UdpOption()
 {
-    if (isSelectiveAck()) {
-        typedef ntsa::UdpSequenceRangeVector Type;
-        d_selectiveAck.object().~Type();
+    if (isFragmentation()) {
+        typedef ntsa::UdpFragmentation Type;
+        d_fragmentation.object().~Type();
+    }
+    else if (isReassembly()) {
+        typedef ntsa::UdpReassembly Type;
+        d_reassembly.object().~Type();
     }
 }
 
@@ -88,26 +99,33 @@ UdpOption& UdpOption::operator=(const UdpOption& other)
     switch (other.d_type) {
     case ntsa::UdpOptionType::e_PADDING:
         break;
-    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
-        new (d_maxSegmentSize.buffer())
-            bsl::size_t(other.d_maxSegmentSize.object());
+    case ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM:
+        new (d_additionalChecksum.buffer())
+            bsl::uint32_t(other.d_additionalChecksum.object());
         break;
-    case ntsa::UdpOptionType::e_WINDOW_SCALE:
-        new (d_windowScale.buffer()) bsl::size_t(other.d_windowScale.object());
+    case ntsa::UdpOptionType::e_FRAGMENTATION:
+        new (d_fragmentation.buffer())
+            ntsa::UdpFragmentation(other.d_fragmentation.object());
         break;
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
+    case ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE:
+        new (d_maxDatagramSize.buffer())
+            bsl::uint32_t(other.d_maxDatagramSize.object());
         break;
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
-        new (d_selectiveAck.buffer())
-            ntsa::UdpSequenceRangeVector(other.d_selectiveAck.object(),
-                                         d_allocator_p);
+    case ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE:
+        new (d_reassembly.buffer())
+            ntsa::UdpReassembly(other.d_reassembly.object());
+        break;
+    case ntsa::UdpOptionType::e_ECHO_REQUEST:
+        new (d_echoRequest.buffer())
+            bsl::uint32_t(other.d_echoRequest.object());
+        break;
+    case ntsa::UdpOptionType::e_ECHO_RESPONSE:
+        new (d_echoResponse.buffer())
+            bsl::uint32_t(other.d_echoResponse.object());
         break;
     case ntsa::UdpOptionType::e_TIMESTAMP:
         new (d_timestamp.buffer())
             ntsa::UdpTimePointInterval(other.d_timestamp.object());
-        break;
-    case ntsa::UdpOptionType::e_FAST_OPEN:
-        new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
@@ -120,9 +138,13 @@ UdpOption& UdpOption::operator=(const UdpOption& other)
 
 void UdpOption::reset()
 {
-    if (isSelectiveAck()) {
-        typedef ntsa::UdpSequenceRangeVector Type;
-        d_selectiveAck.object().~Type();
+    if (isFragmentation()) {
+        typedef ntsa::UdpFragmentation Type;
+        d_fragmentation.object().~Type();
+    }
+    else if (isReassembly()) {
+        typedef ntsa::UdpReassembly Type;
+        d_reassembly.object().~Type();
     }
 
     d_type = ntsa::UdpOptionType::e_UNDEFINED;
@@ -136,99 +158,174 @@ void UdpOption::makePadding()
     }
 }
 
-bsl::size_t& UdpOption::makeMaxSegmentSize()
+bsl::uint32_t& UdpOption::makeAdditionalChecksum()
 {
-    if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
-        d_maxSegmentSize.object() = 0;
+    if (d_type == ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM) {
+        d_additionalChecksum.object() = 0;
     }
     else {
         this->reset();
-        new (d_maxSegmentSize.buffer()) bsl::size_t(0);
-        d_type = ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE;
+        new (d_additionalChecksum.buffer()) bsl::uint32_t(0);
+        d_type = ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM;
     }
 
-    return d_maxSegmentSize.object();
+    return d_additionalChecksum.object();
 }
 
-bsl::size_t& UdpOption::makeMaxSegmentSize(bsl::size_t value)
+bsl::uint32_t& UdpOption::makeAdditionalChecksum(bsl::uint32_t value)
 {
-    if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
-        d_maxSegmentSize.object() = value;
+    if (d_type == ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM) {
+        d_additionalChecksum.object() = value;
     }
     else {
         this->reset();
-        new (d_maxSegmentSize.buffer()) bsl::size_t(value);
-        d_type = ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE;
+        new (d_additionalChecksum.buffer()) bsl::size_t(value);
+        d_type = ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM;
     }
 
-    return d_maxSegmentSize.object();
+    return d_additionalChecksum.object();
 }
 
-bsl::size_t& UdpOption::makeWindowScale()
+ntsa::UdpFragmentation& UdpOption::makeFragmentation()
 {
-    if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
-        d_windowScale.object() = 0;
+    if (d_type == ntsa::UdpOptionType::e_FRAGMENTATION) {
+        d_fragmentation.object().reset();
     }
     else {
         this->reset();
-        new (d_windowScale.buffer()) bsl::size_t(0);
-        d_type = ntsa::UdpOptionType::e_WINDOW_SCALE;
+        new (d_fragmentation.buffer()) ntsa::UdpFragmentation();
+        d_type = ntsa::UdpOptionType::e_FRAGMENTATION;
     }
 
-    return d_windowScale.object();
+    return d_fragmentation.object();
 }
 
-bsl::size_t& UdpOption::makeWindowScale(bsl::size_t value)
+ntsa::UdpFragmentation& UdpOption::makeFragmentation(
+    const ntsa::UdpFragmentation& value)
 {
-    if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
-        d_windowScale.object() = value;
+    if (d_type == ntsa::UdpOptionType::e_FRAGMENTATION) {
+        d_fragmentation.object() = value;
     }
     else {
         this->reset();
-        new (d_windowScale.buffer()) bsl::size_t(value);
-        d_type = ntsa::UdpOptionType::e_WINDOW_SCALE;
+        new (d_fragmentation.buffer()) ntsa::UdpFragmentation(value);
+        d_type = ntsa::UdpOptionType::e_FRAGMENTATION;
     }
 
-    return d_windowScale.object();
+    return d_fragmentation.object();
 }
 
-void UdpOption::makeSelectiveAckPermitted()
+bsl::uint32_t& UdpOption::makeMaxDatagramSize()
 {
-    if (d_type != ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
-        reset();
-        d_type = ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED;
-    }
-}
-
-ntsa::UdpSequenceRangeVector& UdpOption::makeSelectiveAck()
-{
-    if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
-        d_selectiveAck.object().clear();
+    if (d_type == ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE) {
+        d_maxDatagramSize.object() = 0;
     }
     else {
         this->reset();
-        new (d_selectiveAck.buffer())
-            ntsa::UdpSequenceRangeVector(d_allocator_p);
-        d_type = ntsa::UdpOptionType::e_SELECTIVE_ACK;
+        new (d_maxDatagramSize.buffer()) bsl::uint32_t(0);
+        d_type = ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE;
     }
 
-    return d_selectiveAck.object();
+    return d_maxDatagramSize.object();
 }
 
-ntsa::UdpSequenceRangeVector& UdpOption::makeSelectiveAck(
-    const ntsa::UdpSequenceRangeVector& value)
+bsl::uint32_t& UdpOption::makeMaxDatagramSize(bsl::uint32_t value)
 {
-    if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
-        d_selectiveAck.object() = value;
+    if (d_type == ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE) {
+        d_maxDatagramSize.object() = value;
     }
     else {
         this->reset();
-        new (d_selectiveAck.buffer())
-            ntsa::UdpSequenceRangeVector(value, d_allocator_p);
-        d_type = ntsa::UdpOptionType::e_SELECTIVE_ACK;
+        new (d_maxDatagramSize.buffer()) bsl::size_t(value);
+        d_type = ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE;
     }
 
-    return d_selectiveAck.object();
+    return d_maxDatagramSize.object();
+}
+
+ntsa::UdpReassembly& UdpOption::makeReassembly()
+{
+    if (d_type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE) {
+        d_reassembly.object().reset();
+    }
+    else {
+        this->reset();
+        new (d_reassembly.buffer()) ntsa::UdpReassembly();
+        d_type = ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE;
+    }
+
+    return d_reassembly.object();
+}
+
+ntsa::UdpReassembly& UdpOption::makeReassembly(
+    const ntsa::UdpReassembly& value)
+{
+    if (d_type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE) {
+        d_reassembly.object() = value;
+    }
+    else {
+        this->reset();
+        new (d_reassembly.buffer()) ntsa::UdpReassembly(value);
+        d_type = ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE;
+    }
+
+    return d_reassembly.object();
+}
+
+bsl::uint32_t& UdpOption::makeEchoRequest()
+{
+    if (d_type == ntsa::UdpOptionType::e_ECHO_REQUEST) {
+        d_echoRequest.object() = 0;
+    }
+    else {
+        this->reset();
+        new (d_echoRequest.buffer()) bsl::uint32_t(0);
+        d_type = ntsa::UdpOptionType::e_ECHO_REQUEST;
+    }
+
+    return d_echoRequest.object();
+}
+
+bsl::uint32_t& UdpOption::makeEchoRequest(bsl::uint32_t value)
+{
+    if (d_type == ntsa::UdpOptionType::e_ECHO_REQUEST) {
+        d_echoRequest.object() = value;
+    }
+    else {
+        this->reset();
+        new (d_echoRequest.buffer()) bsl::size_t(value);
+        d_type = ntsa::UdpOptionType::e_ECHO_REQUEST;
+    }
+
+    return d_echoRequest.object();
+}
+
+bsl::uint32_t& UdpOption::makeEchoResponse()
+{
+    if (d_type == ntsa::UdpOptionType::e_ECHO_RESPONSE) {
+        d_echoResponse.object() = 0;
+    }
+    else {
+        this->reset();
+        new (d_echoResponse.buffer()) bsl::uint32_t(0);
+        d_type = ntsa::UdpOptionType::e_ECHO_RESPONSE;
+    }
+
+    return d_echoResponse.object();
+}
+
+bsl::uint32_t& UdpOption::makeEchoResponse(bsl::uint32_t value)
+{
+    if (d_type == ntsa::UdpOptionType::e_ECHO_RESPONSE) {
+        d_echoResponse.object() = value;
+    }
+    else {
+        this->reset();
+        new (d_echoResponse.buffer()) bsl::size_t(value);
+        d_type = ntsa::UdpOptionType::e_ECHO_RESPONSE;
+    }
+
+    return d_echoResponse.object();
 }
 
 ntsa::UdpTimePointInterval& UdpOption::makeTimestamp()
@@ -260,62 +357,46 @@ ntsa::UdpTimePointInterval& UdpOption::makeTimestamp(
     return d_timestamp.object();
 }
 
-bdlb::Guid& UdpOption::makeFastOpen()
+bsl::uint32_t& UdpOption::additionalChecksum()
 {
-    if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
-        d_fastOpen.object() = bdlb::Guid();
-    }
-    else {
-        this->reset();
-        new (d_fastOpen.buffer()) bdlb::Guid();
-        d_type = ntsa::UdpOptionType::e_FAST_OPEN;
-    }
-
-    return d_fastOpen.object();
+    BSLS_ASSERT(isAdditionalChecksum());
+    return d_additionalChecksum.object();
 }
 
-bdlb::Guid& UdpOption::makeFastOpen(const bdlb::Guid& value)
+ntsa::UdpFragmentation& UdpOption::fragmentation()
 {
-    if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
-        d_fastOpen.object() = value;
-    }
-    else {
-        this->reset();
-        new (d_fastOpen.buffer()) bdlb::Guid(value);
-        d_type = ntsa::UdpOptionType::e_FAST_OPEN;
-    }
-
-    return d_fastOpen.object();
+    BSLS_ASSERT(isFragmentation());
+    return d_fragmentation.object();
 }
 
-bsl::size_t& UdpOption::maxSegmentSize()
+bsl::uint32_t& UdpOption::maxDatagramSize()
 {
-    BSLS_ASSERT(isMaxSegmentSize());
-    return d_maxSegmentSize.object();
+    BSLS_ASSERT(isMaxDatagramSize());
+    return d_maxDatagramSize.object();
 }
 
-bsl::size_t& UdpOption::windowScale()
+ntsa::UdpReassembly& UdpOption::reassembly()
 {
-    BSLS_ASSERT(isWindowScale());
-    return d_windowScale.object();
+    BSLS_ASSERT(isReassembly());
+    return d_reassembly.object();
 }
 
-ntsa::UdpSequenceRangeVector& UdpOption::selectiveAck()
+bsl::uint32_t& UdpOption::echoRequest()
 {
-    BSLS_ASSERT(isSelectiveAck());
-    return d_selectiveAck.object();
+    BSLS_ASSERT(isEchoRequest());
+    return d_echoRequest.object();
+}
+
+bsl::uint32_t& UdpOption::echoResponse()
+{
+    BSLS_ASSERT(isEchoResponse());
+    return d_echoResponse.object();
 }
 
 ntsa::UdpTimePointInterval& UdpOption::timestamp()
 {
     BSLS_ASSERT(isTimestamp());
     return d_timestamp.object();
-}
-
-bdlb::Guid& UdpOption::fastOpen()
-{
-    BSLS_ASSERT(isFastOpen());
-    return d_fastOpen.object();
 }
 
 ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
@@ -349,65 +430,126 @@ ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
 
         payloadSize -= 2;
 
-        if (type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
-            if (payloadSize != sizeof(bsl::uint16_t)) {
+        if (type == ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM) {
+            if (payloadSize != sizeof(bsl::uint32_t)) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            bsl::uint16_t maxSegmentSize;
-            error = decoder->decodeUint16(&maxSegmentSize);
+            bsl::uint32_t checksum;
+            error = decoder->decodeUint32(&checksum);
             if (error) {
                 return error;
             }
 
-            this->makeMaxSegmentSize(static_cast<bsl::size_t>(maxSegmentSize));
+            this->makeAdditionalChecksum(checksum);
         }
-        else if (type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
-            if (payloadSize != sizeof(bsl::uint8_t)) {
+        else if (type == ntsa::UdpOptionType::e_FRAGMENTATION) {
+            if (payloadSize != 8 && payloadSize != 10) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            bsl::uint8_t windowScale;
-            error = decoder->decodeUint8(&windowScale);
+            ntsa::UdpFragmentation& fragmentation =
+                this->makeFragmentation();
+
+            bsl::uint16_t start;
+            error = decoder->decodeUint16(&start);
             if (error) {
                 return error;
             }
 
-            this->makeWindowScale(static_cast<bsl::size_t>(windowScale));
-        }
-        else if (type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
-            if (payloadSize != 0) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
+            fragmentation.setStart(start);
+
+            bsl::uint32_t identifier;
+            error = decoder->decodeUint32(&identifier);
+            if (error) {
+                return error;
             }
 
-            this->makeSelectiveAckPermitted();
-        }
-        else if (type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
-            if (payloadSize > 4) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
+            fragmentation.setIdentifier(identifier);
+
+            bsl::uint16_t offset;
+            error = decoder->decodeUint16(&offset);
+            if (error) {
+                return error;
             }
 
-            ntsa::UdpSequenceRangeVector& selectiveAck =
-                this->makeSelectiveAck();
+            fragmentation.setOffset(offset);
 
-            selectiveAck.resize(payloadSize);
-
-            for (bsl::size_t i = 0; i < selectiveAck.size(); ++i) {
-                bsl::uint32_t oldest;
-                error = decoder->decodeUint32(&oldest);
+            if (payloadSize == 10) {
+                bsl::uint16_t rdos;
+                error = decoder->decodeUint16(&rdos);
                 if (error) {
                     return error;
                 }
 
-                bsl::uint32_t newest;
-                error = decoder->decodeUint32(&newest);
-                if (error) {
-                    return error;
-                }
-
-                selectiveAck[i].setOldest(ntsa::UdpSequenceNumber(oldest));
-                selectiveAck[i].setNewest(ntsa::UdpSequenceNumber(newest));
+                fragmentation.setOffset(rdos);
             }
+
+            this->makeFragmentation(fragmentation);
+        }
+        else if (type == ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE) {
+            if (payloadSize != 4) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bsl::uint32_t maxDatagramSize;
+            error = decoder->decodeUint32(&maxDatagramSize);
+            if (error) {
+                return error;
+            }
+
+            this->makeMaxDatagramSize(maxDatagramSize);
+        }
+        else if (type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE) {
+            if (payloadSize != 3) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            ntsa::UdpReassembly& reassembly = this->makeReassembly();
+
+            bsl::uint16_t maxSize;
+            error = decoder->decodeUint16(&maxSize);
+            if (error) {
+                return error;
+            }
+
+            reassembly.setMaxSize(maxSize);
+
+            bsl::uint8_t maxFragments;
+            error = decoder->decodeUint8(&maxFragments);
+            if (error) {
+                return error;
+            }
+
+            reassembly.setMaxFragments(maxFragments);
+
+            this->makeReassembly(reassembly);
+        }
+        else if (type == ntsa::UdpOptionType::e_ECHO_REQUEST) {
+            if (payloadSize != 4) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bsl::uint32_t token;
+            error = decoder->decodeUint32(&token);
+            if (error) {
+                return error;
+            }
+
+            this->makeEchoRequest(token);
+        }
+        else if (type == ntsa::UdpOptionType::e_ECHO_RESPONSE) {
+            if (payloadSize != 4) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            bsl::uint32_t token;
+            error = decoder->decodeUint32(&token);
+            if (error) {
+                return error;
+            }
+
+            this->makeEchoResponse(token);
         }
         else if (type == ntsa::UdpOptionType::e_TIMESTAMP) {
             if (payloadSize !=
@@ -433,18 +575,6 @@ ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
             timestamp.setTx(ntsa::UdpTimePoint(tx));
             timestamp.setRx(ntsa::UdpTimePoint(rx));
         }
-        else if (type == ntsa::UdpOptionType::e_FAST_OPEN) {
-            if (payloadSize != sizeof(bdlb::Guid)) {
-                return ntsa::Error(ntsa::Error::e_INVALID);
-            }
-
-            bdlb::Guid& guid = this->makeFastOpen();
-
-            error = decoder->decodeRaw(&guid, sizeof(bdlb::Guid));
-            if (error) {
-                return error;
-            }
-        }
         else {
             BSLS_LOG_WARN("Unknown UDP option %d", static_cast<int>(type));
             return ntsa::Error(ntsa::Error::e_INVALID);
@@ -458,14 +588,41 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
 {
     ntsa::Error error;
 
-    if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
-        if (d_maxSegmentSize.object() >
-            bsl::numeric_limits<bsl::uint16_t>::max())
-        {
-            return ntsa::Error(ntsa::Error::e_INVALID);
+    if (d_type == ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM) {
+        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint32);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
         }
 
-        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint16);
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint32(d_additionalChecksum.object());
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::UdpOptionType::e_FRAGMENTATION) {
+        const bsl::size_t payloadSize =
+            d_fragmentation.object().rdos().has_value() ? 10 : 8;
 
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
@@ -492,18 +649,56 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
         }
 
         error = encoder->encodeUint16(
-            static_cast<bsl::uint16_t>(d_maxSegmentSize.object()));
+            static_cast<bsl::uint16_t>(d_fragmentation.object().start()));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint32(
+            static_cast<bsl::uint32_t>(d_fragmentation.object().identifier()));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint16(
+            static_cast<bsl::uint16_t>(d_fragmentation.object().offset()));
+        if (error) {
+            return error;
+        }
+
+        if (d_fragmentation.object().rdos().has_value()) {
+            error = encoder->encodeUint16(
+                static_cast<bsl::uint16_t>(
+                    d_fragmentation.object().rdos().value()));
+            if (error) {
+                return error;
+            }
+        }
+    }
+    else if (d_type == ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE) {
+        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint32);
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint32(d_maxDatagramSize.object());
         if (error) {
             return error;
         }
     }
-    else if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
-        if (d_windowScale.object() > bsl::numeric_limits<bsl::uint8_t>::max())
-        {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        const bsl::size_t payloadSize = sizeof(bsl::uint8_t);
+    else if (d_type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE) {
+        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint16) + sizeof(bsl::uint8_t);
 
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
@@ -529,14 +724,20 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
 
+        error = encoder->encodeUint16(
+            static_cast<bsl::uint16_t>(d_reassembly.object().maxSize()));
+        if (error) {
+            return error;
+        }
+
         error = encoder->encodeUint8(
-            static_cast<bsl::uint8_t>(d_windowScale.object()));
+            static_cast<bsl::uint8_t>(d_reassembly.object().maxFragments()));
         if (error) {
             return error;
         }
     }
-    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
-        const bsl::size_t payloadSize = 0;
+    else if (d_type == ntsa::UdpOptionType::e_ECHO_REQUEST) {
+        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint32);
 
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
@@ -561,11 +762,15 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
         if (error) {
             return error;
         }
+
+        error = encoder->encodeUint32(
+            static_cast<bsl::uint32_t>(d_echoRequest.object()));
+        if (error) {
+            return error;
+        }
     }
-    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
-        const bsl::size_t payloadSize =
-            d_selectiveAck.object().size() *
-            (sizeof(bdlb::BigEndianUint32) + sizeof(bdlb::BigEndianUint32));
+    else if (d_type == ntsa::UdpOptionType::e_ECHO_RESPONSE) {
+        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint32);
 
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
@@ -586,24 +791,15 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
 
-        error = encoder->encodeUint8(
-            static_cast<bsl::uint8_t>(2 + d_selectiveAck.object().size()));
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
         if (error) {
             return error;
         }
 
-        for (bsl::size_t i = 0; i < d_selectiveAck.object().size(); ++i) {
-            error = encoder->encodeUint32(
-                d_selectiveAck.object()[i].oldest().value());
-            if (error) {
-                return error;
-            }
-
-            error = encoder->encodeUint32(
-                d_selectiveAck.object()[i].newest().value());
-            if (error) {
-                return error;
-            }
+        error = encoder->encodeUint32(
+            static_cast<bsl::uint32_t>(d_echoResponse.object()));
+        if (error) {
+            return error;
         }
     }
     else if (d_type == ntsa::UdpOptionType::e_TIMESTAMP) {
@@ -644,38 +840,6 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
-    else if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
-        const bsl::size_t payloadSize = sizeof(bdlb::Guid);
-
-        const bsl::size_t optionSize =
-            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
-
-        const bsl::size_t paddingSize =
-            final ? this->paddingSize(encoder->next(), optionSize) : 0;
-
-        for (bsl::size_t i = 0; i < paddingSize; ++i) {
-            error = encoder->encodeUint8(
-                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
-            if (error) {
-                return error;
-            }
-        }
-
-        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
-        if (error) {
-            return error;
-        }
-
-        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
-        if (error) {
-            return error;
-        }
-
-        error = encoder->encodeRaw(&d_fastOpen.object(), sizeof(bdlb::Guid));
-        if (error) {
-            return error;
-        }
-    }
     else if (d_type != ntsa::UdpOptionType::e_PADDING &&
              d_type != ntsa::UdpOptionType::e_UNDEFINED)
     {
@@ -685,34 +849,46 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
     return ntsa::Error();
 }
 
-bsl::size_t UdpOption::maxSegmentSize() const
+bsl::uint32_t UdpOption::additionalChecksum() const
 {
-    BSLS_ASSERT(isMaxSegmentSize());
-    return d_maxSegmentSize.object();
+    BSLS_ASSERT(isAdditionalChecksum());
+    return d_additionalChecksum.object();
 }
 
-bsl::size_t UdpOption::windowScale() const
+const ntsa::UdpFragmentation& UdpOption::fragmentation() const
 {
-    BSLS_ASSERT(isWindowScale());
-    return d_windowScale.object();
+    BSLS_ASSERT(isFragmentation());
+    return d_fragmentation.object();
 }
 
-const ntsa::UdpSequenceRangeVector& UdpOption::selectiveAck() const
+bsl::uint32_t UdpOption::maxDatagramSize() const
 {
-    BSLS_ASSERT(isSelectiveAck());
-    return d_selectiveAck.object();
+    BSLS_ASSERT(isMaxDatagramSize());
+    return d_maxDatagramSize.object();
+}
+
+const ntsa::UdpReassembly& UdpOption::reassembly() const
+{
+    BSLS_ASSERT(isReassembly());
+    return d_reassembly.object();
+}
+
+bsl::uint32_t UdpOption::echoRequest() const
+{
+    BSLS_ASSERT(isEchoRequest());
+    return d_echoRequest.object();
+}
+
+bsl::uint32_t UdpOption::echoResponse() const
+{
+    BSLS_ASSERT(isEchoResponse());
+    return d_echoResponse.object();
 }
 
 const ntsa::UdpTimePointInterval& UdpOption::timestamp() const
 {
     BSLS_ASSERT(isTimestamp());
     return d_timestamp.object();
-}
-
-const bdlb::Guid& UdpOption::fastOpen() const
-{
-    BSLS_ASSERT(isFastOpen());
-    return d_fastOpen.object();
 }
 
 ntsa::UdpOptionType::Value UdpOption::type() const
@@ -727,18 +903,20 @@ const char* UdpOption::name() const
         return "end";
     case ntsa::UdpOptionType::e_PADDING:
         return "padding";
-    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
-        return "maxSegmentSize";
-    case ntsa::UdpOptionType::e_WINDOW_SCALE:
-        return "windowScale";
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
-        return "selectiveAckPermitted";
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
-        return "selectiveAck";
+    case ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM:
+        return "additionalChecksum";
+    case ntsa::UdpOptionType::e_FRAGMENTATION:
+        return "fragmentation";
+    case ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE:
+        return "maxDatagramSize";
+    case ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE:
+        return "reassembly";
+    case ntsa::UdpOptionType::e_ECHO_REQUEST:
+        return "echoRequest";
+    case ntsa::UdpOptionType::e_ECHO_RESPONSE:
+        return "echoResponse";
     case ntsa::UdpOptionType::e_TIMESTAMP:
         return "timestamp";
-    case ntsa::UdpOptionType::e_FAST_OPEN:
-        return "fastOpen";
     default:
         return "???";
     }
@@ -754,34 +932,39 @@ bool UdpOption::isPadding() const
     return d_type == ntsa::UdpOptionType::e_PADDING;
 }
 
-bool UdpOption::isMaxSegmentSize() const
+bool UdpOption::isAdditionalChecksum() const
 {
-    return d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE;
+    return d_type == ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM;
 }
 
-bool UdpOption::isWindowScale() const
+bool UdpOption::isFragmentation() const
 {
-    return d_type == ntsa::UdpOptionType::e_WINDOW_SCALE;
+    return d_type == ntsa::UdpOptionType::e_FRAGMENTATION;
 }
 
-bool UdpOption::isSelectiveAckPermitted() const
+bool UdpOption::isMaxDatagramSize() const
 {
-    return d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED;
+    return d_type == ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE;
 }
 
-bool UdpOption::isSelectiveAck() const
+bool UdpOption::isReassembly() const
 {
-    return d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK;
+    return d_type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE;
+}
+
+bool UdpOption::isEchoRequest() const
+{
+    return d_type == ntsa::UdpOptionType::e_ECHO_REQUEST;
+}
+
+bool UdpOption::isEchoResponse() const
+{
+    return d_type == ntsa::UdpOptionType::e_ECHO_RESPONSE;
 }
 
 bool UdpOption::isTimestamp() const
 {
     return d_type == ntsa::UdpOptionType::e_TIMESTAMP;
-}
-
-bool UdpOption::isFastOpen() const
-{
-    return d_type == ntsa::UdpOptionType::e_FAST_OPEN;
 }
 
 bool UdpOption::equals(const UdpOption& other) const
@@ -793,18 +976,21 @@ bool UdpOption::equals(const UdpOption& other) const
     switch (d_type) {
     case ntsa::UdpOptionType::e_PADDING:
         return true;
-    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
-        return d_maxSegmentSize.object() == other.d_maxSegmentSize.object();
-    case ntsa::UdpOptionType::e_WINDOW_SCALE:
-        return d_windowScale.object() == other.d_windowScale.object();
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
-        return true;
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
-        return d_selectiveAck.object() == other.d_selectiveAck.object();
+    case ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM:
+        return d_additionalChecksum.object() ==
+               other.d_additionalChecksum.object();
+    case ntsa::UdpOptionType::e_FRAGMENTATION:
+        return d_fragmentation.object() == other.d_fragmentation.object();
+    case ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE:
+        return d_maxDatagramSize.object() == other.d_maxDatagramSize.object();
+    case ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE:
+        return d_reassembly.object() == other.d_reassembly.object();
+    case ntsa::UdpOptionType::e_ECHO_REQUEST:
+        return d_echoRequest.object() == other.d_echoRequest.object();
+    case ntsa::UdpOptionType::e_ECHO_RESPONSE:
+        return d_echoResponse.object() == other.d_echoResponse.object();
     case ntsa::UdpOptionType::e_TIMESTAMP:
         return d_timestamp.object() == other.d_timestamp.object();
-    case ntsa::UdpOptionType::e_FAST_OPEN:
-        return d_fastOpen.object() == other.d_fastOpen.object();
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         return true;
@@ -820,18 +1006,21 @@ bool UdpOption::less(const UdpOption& other) const
     switch (d_type) {
     case ntsa::UdpOptionType::e_PADDING:
         return false;
-    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
-        return d_maxSegmentSize.object() < other.d_maxSegmentSize.object();
-    case ntsa::UdpOptionType::e_WINDOW_SCALE:
-        return d_windowScale.object() < other.d_windowScale.object();
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
-        return false;
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
-        return d_selectiveAck.object() < other.d_selectiveAck.object();
+    case ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM:
+        return d_additionalChecksum.object() <
+               other.d_additionalChecksum.object();
+    case ntsa::UdpOptionType::e_FRAGMENTATION:
+        return d_fragmentation.object() < other.d_fragmentation.object();
+    case ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE:
+        return d_maxDatagramSize.object() < other.d_maxDatagramSize.object();
+    case ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE:
+        return d_reassembly.object() < other.d_reassembly.object();
+    case ntsa::UdpOptionType::e_ECHO_REQUEST:
+        return d_echoRequest.object() < other.d_echoRequest.object();
+    case ntsa::UdpOptionType::e_ECHO_RESPONSE:
+        return d_echoResponse.object() < other.d_echoResponse.object();
     case ntsa::UdpOptionType::e_TIMESTAMP:
         return d_timestamp.object() < other.d_timestamp.object();
-    case ntsa::UdpOptionType::e_FAST_OPEN:
-        return d_fastOpen.object() < other.d_fastOpen.object();
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         return false;
@@ -848,18 +1037,29 @@ bsl::ostream& UdpOption::print(bsl::ostream& stream,
     switch (d_type) {
     case ntsa::UdpOptionType::e_PADDING:
         printer.printAttribute("padding", true);
-    case ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE:
-        printer.printAttribute("maxSegmentSize", d_maxSegmentSize.object());
-    case ntsa::UdpOptionType::e_WINDOW_SCALE:
-        printer.printAttribute("windowScale", d_windowScale.object());
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED:
-        printer.printAttribute("selectiveAckPermitted", true);
-    case ntsa::UdpOptionType::e_SELECTIVE_ACK:
-        printer.printAttribute("selectiveAck", d_selectiveAck.object());
+        break;
+    case ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM:
+        printer.printAttribute("additionalChecksum",
+                               d_additionalChecksum.object());
+        break;
+    case ntsa::UdpOptionType::e_FRAGMENTATION:
+        printer.printAttribute("fragmentation", d_fragmentation.object());
+        break;
+    case ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE:
+        printer.printAttribute("maxDatagramSize", d_maxDatagramSize.object());
+        break;
+    case ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE:
+        printer.printAttribute("reassembly", d_reassembly.object());
+        break;
+    case ntsa::UdpOptionType::e_ECHO_REQUEST:
+        printer.printAttribute("echoRequest", d_echoRequest.object());
+        break;
+    case ntsa::UdpOptionType::e_ECHO_RESPONSE:
+        printer.printAttribute("echoResponse", d_echoResponse.object());
+        break;
     case ntsa::UdpOptionType::e_TIMESTAMP:
         printer.printAttribute("timestamp", d_timestamp.object());
-    case ntsa::UdpOptionType::e_FAST_OPEN:
-        printer.printAttribute("fastOpen", d_fastOpen.object());
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         stream << "UNDEFINED";
@@ -876,23 +1076,27 @@ void UdpOption::print(bslim::Printer* printer) const
     if (d_type == ntsa::UdpOptionType::e_PADDING) {
         printer->printAttribute("padding", true);
     }
-    else if (d_type == ntsa::UdpOptionType::e_MAX_SEGMENT_SIZE) {
-        printer->printAttribute("maxSegmentSize", d_maxSegmentSize.object());
+    else if (d_type == ntsa::UdpOptionType::e_ADDITIONAL_PAYLOAD_CHECKSUM) {
+        printer->printAttribute("additionalChecksum",
+                                d_additionalChecksum.object());
     }
-    else if (d_type == ntsa::UdpOptionType::e_WINDOW_SCALE) {
-        printer->printAttribute("windowScale", d_windowScale.object());
+    else if (d_type == ntsa::UdpOptionType::e_FRAGMENTATION) {
+        printer->printAttribute("fragmentation", d_fragmentation.object());
     }
-    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK_PERMITTED) {
-        printer->printAttribute("selectiveAckPermitted", true);
+    else if (d_type == ntsa::UdpOptionType::e_MAX_DATAGRAM_SIZE) {
+        printer->printAttribute("maxDatagramSize", d_maxDatagramSize.object());
     }
-    else if (d_type == ntsa::UdpOptionType::e_SELECTIVE_ACK) {
-        printer->printAttribute("selectiveAck", d_selectiveAck.object());
+    else if (d_type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE) {
+        printer->printAttribute("reassembly", d_reassembly.object());
+    }
+    else if (d_type == ntsa::UdpOptionType::e_ECHO_REQUEST) {
+        printer->printAttribute("echoRequest", d_echoRequest.object());
+    }
+    else if (d_type == ntsa::UdpOptionType::e_ECHO_RESPONSE) {
+        printer->printAttribute("echoResponse", d_echoResponse.object());
     }
     else if (d_type == ntsa::UdpOptionType::e_TIMESTAMP) {
         printer->printAttribute("timestamp", d_timestamp.object());
-    }
-    else if (d_type == ntsa::UdpOptionType::e_FAST_OPEN) {
-        printer->printAttribute("fastOpen", d_fastOpen.object());
     }
 }
 

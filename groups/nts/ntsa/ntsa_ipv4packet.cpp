@@ -69,7 +69,9 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
     {
         ntsa::UdpPacket& udp = d_payload.makeUdp();
 
-        error = udp.decode(decoder);
+        error = udp.decode(decoder,
+                           d_header.sourceAddress(),
+                           d_header.destinationAddress());
         if (error) {
             return error;
         }

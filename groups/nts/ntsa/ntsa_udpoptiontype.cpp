@@ -34,6 +34,9 @@ int UdpOptionType::fromInt(UdpOptionType::Value* result, int number)
     case UdpOptionType::e_FRAGMENTATION:
     case UdpOptionType::e_MAX_DATAGRAM_SIZE:
     case UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE:
+    case UdpOptionType::e_ECHO_REQUEST:
+    case UdpOptionType::e_ECHO_RESPONSE:
+    case UdpOptionType::e_TIMESTAMP:
         *result = static_cast<UdpOptionType::Value>(number);
         return 0;
     default:
@@ -69,6 +72,18 @@ int UdpOptionType::fromString(UdpOptionType::Value*  result,
         *result = e_MAX_REASSEMBLED_DATAGRAM_SIZE;
         return 0;
     }
+    if (bdlb::String::areEqualCaseless(string, "ECHO_REQUEST")) {
+        *result = e_ECHO_REQUEST;
+        return 0;
+    }
+    if (bdlb::String::areEqualCaseless(string, "ECHO_RESPONSE")) {
+        *result = e_ECHO_RESPONSE;
+        return 0;
+    }
+    if (bdlb::String::areEqualCaseless(string, "TIMESTAMP")) {
+        *result = e_TIMESTAMP;
+        return 0;
+    }
 
     *result = e_UNDEFINED;
     return -1;
@@ -94,6 +109,15 @@ const char* UdpOptionType::toString(UdpOptionType::Value value)
     } break;
     case e_MAX_REASSEMBLED_DATAGRAM_SIZE: {
         return "MAX_REASSEMBLED_DATAGRAM_SIZE";
+    } break;
+    case e_ECHO_REQUEST: {
+        return "ECHO_REQUEST";
+    } break;
+    case e_ECHO_RESPONSE: {
+        return "ECHO_RESPONSE";
+    } break;
+    case e_TIMESTAMP: {
+        return "TIMESTAMP";
     } break;
     }
 

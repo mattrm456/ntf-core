@@ -848,18 +848,25 @@ bsl::ostream& TcpOption::print(bsl::ostream& stream,
     switch (d_type) {
     case ntsa::TcpOptionType::e_PADDING:
         printer.printAttribute("padding", true);
+        break;
     case ntsa::TcpOptionType::e_MAX_SEGMENT_SIZE:
         printer.printAttribute("maxSegmentSize", d_maxSegmentSize.object());
+        break;
     case ntsa::TcpOptionType::e_WINDOW_SCALE:
         printer.printAttribute("windowScale", d_windowScale.object());
+        break;
     case ntsa::TcpOptionType::e_SELECTIVE_ACK_PERMITTED:
         printer.printAttribute("selectiveAckPermitted", true);
+        break;
     case ntsa::TcpOptionType::e_SELECTIVE_ACK:
         printer.printAttribute("selectiveAck", d_selectiveAck.object());
+        break;
     case ntsa::TcpOptionType::e_TIMESTAMP:
         printer.printAttribute("timestamp", d_timestamp.object());
+        break;
     case ntsa::TcpOptionType::e_FAST_OPEN:
         printer.printAttribute("fastOpen", d_fastOpen.object());
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
         stream << "UNDEFINED";

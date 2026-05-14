@@ -24,6 +24,8 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntsa_udpfragmentation.h>
+#include <ntsa_udpreassembly.h>
+#include <ntsa_udptimepoint.h>
 #include <ntsa_udpoptiontype.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
@@ -51,7 +53,7 @@ namespace ntsa {
 /// @par Attributes
 /// This class is composed of the following attributes.
 ///
-/// @li @b additionalPayloadChecksum:
+/// @li @b additionalChecksum:
 /// TODO
 ///
 /// @li @b fragmentation:
@@ -63,6 +65,15 @@ namespace ntsa {
 /// @li @b maxReassembledDatagramSize:
 /// TODO
 ///
+/// @li @b echoRequest:
+/// TODO
+///
+/// @li @b echoResponse:
+/// TODO
+///
+/// @li @b timestamp:
+/// TODO
+///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
@@ -70,15 +81,13 @@ namespace ntsa {
 class UdpOption
 {
     union {
-        bsls::ObjectBuffer<bsl::uint32_t>                  d_additionalPayloadChecksum;
-        bsls::ObjectBuffer<ntsa::UdpFragmentation>         d_fragmentation;
-
-
-        bsls::ObjectBuffer<bsl::size_t>                  d_maxSegmentSize;
-        bsls::ObjectBuffer<bsl::size_t>                  d_windowScale;
-        bsls::ObjectBuffer<ntsa::UdpSequenceRangeVector> d_selectiveAck;
-        bsls::ObjectBuffer<ntsa::UdpTimePointInterval>   d_timestamp;
-        bsls::ObjectBuffer<bdlb::Guid>                   d_fastOpen;
+        bsls::ObjectBuffer<bsl::uint32_t>              d_additionalChecksum;
+        bsls::ObjectBuffer<ntsa::UdpFragmentation>     d_fragmentation;
+        bsls::ObjectBuffer<bsl::uint32_t>              d_maxDatagramSize;
+        bsls::ObjectBuffer<ntsa::UdpReassembly>        d_reassembly;
+        bsls::ObjectBuffer<bsl::uint32_t>              d_echoRequest;
+        bsls::ObjectBuffer<bsl::uint32_t>              d_echoResponse;
+        bsls::ObjectBuffer<ntsa::UdpTimePointInterval> d_timestamp;
     };
 
     ntsa::UdpOptionType::Value d_type;
@@ -116,33 +125,55 @@ class UdpOption
     /// Select the "padding" representation.
     void makePadding();
 
+    /// Select the "additionalChecksum" representation. Return a reference to the
+    /// modifiable representation.
+    bsl::uint32_t& makeAdditionalChecksum();
+
+    /// Select the "additionalChecksum" representation initially having the
+    /// specified 'value'. Return a reference to the modifiable representation.
+    bsl::uint32_t& makeAdditionalChecksum(bsl::uint32_t value);
+
+    /// Select the "fragmentation" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::UdpFragmentation& makeFragmentation();
+
+    /// Select the "fragmentation" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::UdpFragmentation& makeFragmentation(
+        const ntsa::UdpFragmentation& value);
+
     /// Select the "maxSegmentSize" representation. Return a reference to the
     /// modifiable representation.
-    bsl::size_t& makeMaxSegmentSize();
+    bsl::uint32_t& makeMaxDatagramSize();
 
     /// Select the "maxSegmentSize" representation initially having the
     /// specified 'value'. Return a reference to the modifiable representation.
-    bsl::size_t& makeMaxSegmentSize(bsl::size_t value);
+    bsl::uint32_t& makeMaxDatagramSize(bsl::uint32_t value);
 
-    /// Select the "windowScale" representation. Return a reference to the
+    /// Select the "reassembly" representation. Return a reference to the
     /// modifiable representation.
-    bsl::size_t& makeWindowScale();
+    ntsa::UdpReassembly& makeReassembly();
 
-    /// Select the "windowScale" representation initially having the specified
+    /// Select the "reassembly" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    bsl::size_t& makeWindowScale(bsl::size_t value);
+    ntsa::UdpReassembly& makeReassembly(
+        const ntsa::UdpReassembly& value);
 
-    /// Select the "selectiveAckPermitted" representation.
-    void makeSelectiveAckPermitted();
-
-    /// Select the "selectiveAck" representation. Return a reference to the
+    /// Select the "echoRequest" representation. Return a reference to the
     /// modifiable representation.
-    ntsa::UdpSequenceRangeVector& makeSelectiveAck();
+    bsl::uint32_t& makeEchoRequest();
 
-    /// Select the "selectiveAck" representation initially having the specified
+    /// Select the "echoRequest" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::UdpSequenceRangeVector& makeSelectiveAck(
-        const ntsa::UdpSequenceRangeVector& value);
+    bsl::uint32_t& makeEchoRequest(bsl::uint32_t value);
+
+    /// Select the "echoResponse" representation. Return a reference to the
+    /// modifiable representation.
+    bsl::uint32_t& makeEchoResponse();
+
+    /// Select the "echoResponse" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    bsl::uint32_t& makeEchoResponse(bsl::uint32_t value);
 
     /// Select the "timestamp" representation. Return a reference to the
     /// modifiable representation.
@@ -153,33 +184,34 @@ class UdpOption
     ntsa::UdpTimePointInterval& makeTimestamp(
         const ntsa::UdpTimePointInterval& value);
 
-    /// Select the "fastOpen" representation. Return a reference to the
-    /// modifiable representation.
-    bdlb::Guid& makeFastOpen();
+    /// Return a reference to the modifiable "additionalChecksum"
+    /// representation. The behavior is undefined unless
+    /// 'isAdditionalChecksum()' is true.
+    bsl::uint32_t& additionalChecksum();
 
-    /// Select the "fastOpen" representation initially having the specified
-    /// 'value'. Return a reference to the modifiable representation.
-    bdlb::Guid& makeFastOpen(const bdlb::Guid& value);
+    /// Return a reference to the modifiable "fragmentation" representation.
+    /// The behavior is undefined unless 'isFragmentation()' is true.
+    ntsa::UdpFragmentation& fragmentation();
 
-    /// Return a reference to the modifiable "maxSegmentSize" representation.
-    /// The behavior is undefined unless 'isMaxSegmentSize()' is true.
-    bsl::size_t& maxSegmentSize();
+    /// Return a reference to the modifiable "maxDatagramSize" representation.
+    /// The behavior is undefined unless 'isMaxDatagramSize()' is true.
+    bsl::uint32_t& maxDatagramSize();
 
-    /// Return a reference to the modifiable "windowScale" representation. The
-    /// behavior is undefined unless 'isWindowScale()' is true.
-    bsl::size_t& windowScale();
+    /// Return a reference to the modifiable "reassembly" representation.
+    /// The behavior is undefined unless 'isReassembly()' is true.
+    ntsa::UdpReassembly& reassembly();
 
-    /// Return a reference to the modifiable "selectiveAck" representation. The
-    /// behavior is undefined unless 'isSelectiveAck()' is true.
-    ntsa::UdpSequenceRangeVector& selectiveAck();
+    /// Return a reference to the modifiable "echoRequest" representation. The
+    /// behavior is undefined unless 'isEchoRequest()' is true.
+    bsl::uint32_t& echoRequest();
+
+    /// Return a reference to the modifiable "echoResponse" representation. The
+    /// behavior is undefined unless 'isEchoResponse()' is true.
+    bsl::uint32_t& echoResponse();
 
     /// Return a reference to the modifiable "timestamp" representation. The
     /// behavior is undefined unless 'isTimestamp()' is true.
     ntsa::UdpTimePointInterval& timestamp();
-
-    /// Return a reference to the modifiable "fastOpen" representation. The
-    /// behavior is undefined unless 'isFastOpen()' is true.
-    bdlb::Guid& fastOpen();
 
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
@@ -187,26 +219,34 @@ class UdpOption
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder, bool final) const;
 
-    /// Return a reference to the non-modifiable "maxSegmentSize"
-    /// representation. The behavior is undefined unless 'isMaxSegmentSize()'
-    /// is true.
-    bsl::size_t maxSegmentSize() const;
+    /// Return a reference to the modifiable "additionalChecksum"
+    /// representation. The behavior is undefined unless
+    /// 'isAdditionalChecksum()' is true.
+    bsl::uint32_t additionalChecksum() const;
 
-    /// Return a reference to the non-modifiable "windowScale" representation.
-    /// The behavior is undefined unless 'isWindowScale()' is true.
-    bsl::size_t windowScale() const;
+    /// Return a reference to the modifiable "fragmentation" representation.
+    /// The behavior is undefined unless 'isFragmentation()' is true.
+    const ntsa::UdpFragmentation& fragmentation() const;
 
-    /// Return a reference to the non-modifiable "selectiveAck" representation.
-    /// The behavior is undefined unless 'isSelectiveAck()' is true.
-    const ntsa::UdpSequenceRangeVector& selectiveAck() const;
+    /// Return a reference to the modifiable "maxDatagramSize" representation.
+    /// The behavior is undefined unless 'isMaxDatagramSize()' is true.
+    bsl::uint32_t maxDatagramSize() const;
 
-    /// Return a reference to the non-modifiable "timestamp" representation.
-    /// The behavior is undefined unless 'isTimestamp()' is true.
+    /// Return a reference to the modifiable "reassembly" representation.
+    /// The behavior is undefined unless 'isReassembly()' is true.
+    const ntsa::UdpReassembly& reassembly() const;
+
+    /// Return a reference to the modifiable "echoRequest" representation. The
+    /// behavior is undefined unless 'isEchoRequest()' is true.
+    bsl::uint32_t echoRequest() const;
+
+    /// Return a reference to the modifiable "echoResponse" representation. The
+    /// behavior is undefined unless 'isEchoResponse()' is true.
+    bsl::uint32_t echoResponse() const;
+
+    /// Return a reference to the modifiable "timestamp" representation. The
+    /// behavior is undefined unless 'isTimestamp()' is true.
     const ntsa::UdpTimePointInterval& timestamp() const;
-
-    /// Return a reference to the non-modifiable "fastOpen" representation. The
-    /// behavior is undefined unless 'isFastOpen()' is true.
-    const bdlb::Guid& fastOpen() const;
 
     /// Return the type of the option representation.
     ntsa::UdpOptionType::Value type() const;
@@ -222,29 +262,33 @@ class UdpOption
     /// otherwise return false.
     bool isPadding() const;
 
-    /// Return true if the "maxSegmentSize" representation is currently
+    /// Return true if the "additionalChecksum" representation is currently
     /// selected, otherwise return false.
-    bool isMaxSegmentSize() const;
+    bool isAdditionalChecksum() const;
 
-    /// Return true if the "windowScale" representation is currently
+    /// Return true if the "fragmentation" representation is currently
     /// selected, otherwise return false.
-    bool isWindowScale() const;
+    bool isFragmentation() const;
 
-    /// Return true if the "selectiveAckPermitted" representation is currently
+    /// Return true if the "maxDatagramSize" representation is currently
     /// selected, otherwise return false.
-    bool isSelectiveAckPermitted() const;
+    bool isMaxDatagramSize() const;
 
-    /// Return true if the "selectiveAck" representation is currently selected,
+    /// Return true if the "reassembly" representation is currently selected,
     /// otherwise return false.
-    bool isSelectiveAck() const;
+    bool isReassembly() const;
+
+    /// Return true if the "echoRequest" representation is currently
+    /// selected, otherwise return false.
+    bool isEchoRequest() const;
+
+    /// Return true if the "echoResponse" representation is currently
+    /// selected, otherwise return false.
+    bool isEchoResponse() const;
 
     /// Return true if the "timestamp" representation is currently selected,
     /// otherwise return false.
     bool isTimestamp() const;
-
-    /// Return true if the "fastOpen" representation is currently selected,
-    /// otherwise return false.
-    bool isFastOpen() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
