@@ -26,36 +26,53 @@ BSLS_IDENT_RCSID(ntsa_icmppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
+                               const ntsa::Ipv4Address& sourceAddress,
+                               const ntsa::Ipv4Address& destinationAddress)
 {
+    NTSCFG_WARNING_UNUSED(sourceAddress);
+    NTSCFG_WARNING_UNUSED(destinationAddress);
+
     ntsa::Error error;
+
+    const bsl::uint8_t* packetData = decoder->next();
+
+    const bsl::size_t headerPosition = decoder->position();
 
     error = d_header.decode(decoder);
     if (error) {
         return error;
     }
 
-    if (d_header.code() == ntsa::IcmpType::e_ECHO) {
-        ntsa::IcmpPing& ping = d_payload.makeEcho();
+    if (d_header.code() == ntsa::IcmpType::e_ECHO_REQUEST) {
+        ntsa::IcmpEchoRequest& echoRequest = d_payload.makeEchoRequest();
 
-        error = ping.decode(decoder);
+        error = echoRequest.decode(decoder);
         if (error) {
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_ECHO_REPLY) {
-        ntsa::IcmpPong& pong = d_payload.makeEchoReply();
+    else if (d_header.code() == ntsa::IcmpType::e_ECHO_RESPONSE) {
+        ntsa::IcmpEchoResponse& echoResponse = d_payload.makeEchoResponse();
 
-        error = pong.decode(decoder);
+        error = echoResponse.decode(decoder);
         if (error) {
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_DESTINATION_UNREACHABLE) {
-        ntsa::IcmpUnreachable& unreachable =
-            d_payload.makeDestinationUnreachable();
+    else if (d_header.code() == ntsa::IcmpType::e_ROUTER_REQUEST) {
+        ntsa::IcmpRouterRequest& routerRequest = d_payload.makeRouterRequest();
 
-        error = unreachable.decode(decoder);
+        error = routerRequest.decode(decoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_header.code() == ntsa::IcmpType::e_ROUTER_RESPONSE) {
+        ntsa::IcmpRouterResponse& routerResponse =
+            d_payload.makeRouterResponse();
+
+        error = routerResponse.decode(decoder);
         if (error) {
             return error;
         }
@@ -68,16 +85,24 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder* decoder)
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_TIME_EXCEEDED) {
-        ntsa::IcmpTimeout& timeout = d_payload.makeTimeExceeded();
+    else if (d_header.code() == ntsa::IcmpType::e_UNREACHABLE) {
+        ntsa::IcmpUnreachable& unreachable = d_payload.makeUnreachable();
+
+        error = unreachable.decode(decoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_header.code() == ntsa::IcmpType::e_TIMEOUT) {
+        ntsa::IcmpTimeout& timeout = d_payload.makeTimeout();
 
         error = timeout.decode(decoder);
         if (error) {
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_PARAMETER_PROBLEM) {
-        ntsa::IcmpProblem& problem = d_payload.makeParameterProblem();
+    else if (d_header.code() == ntsa::IcmpType::e_PROBLEM) {
+        ntsa::IcmpProblem& problem = d_payload.makeProblem();
 
         error = problem.decode(decoder);
         if (error) {
@@ -88,7 +113,37 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder* decoder)
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
 
+    const bsl::size_t finalPosition = decoder->position();
+
+    const bsl::size_t packetLength =
+        static_cast<bsl::size_t>(finalPosition - headerPosition);
+
+    ntsa::IcmpChecksum checksum;
+    checksum.add(packetData, packetLength);
+
+    const bsl::uint16_t checksumValue = checksum.value();
+
+    if (checksumValue != 0xFFFF) {
+        BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
+                      static_cast<bsl::size_t>(d_header.checksum()),
+                      static_cast<bsl::size_t>(checksumValue));
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     return ntsa::Error();
+}
+
+ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
+                               const ntsa::Ipv6Address& sourceAddress,
+                               const ntsa::Ipv6Address& destinationAddress)
+{
+    NTSCFG_WARNING_UNUSED(decoder);
+    NTSCFG_WARNING_UNUSED(sourceAddress);
+    NTSCFG_WARNING_UNUSED(destinationAddress);
+
+    NTSCFG_NOT_IMPLEMENTED();
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 ntsa::Error IcmpPacket::encode(
@@ -96,13 +151,151 @@ ntsa::Error IcmpPacket::encode(
     const ntsa::Ipv4Address& sourceAddress,
     const ntsa::Ipv4Address& destinationAddress) const
 {
-    NTSCFG_WARNING_UNUSED(encoder);
     NTSCFG_WARNING_UNUSED(sourceAddress);
     NTSCFG_WARNING_UNUSED(destinationAddress);
 
-    NTSCFG_NOT_IMPLEMENTED();
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    ntsa::IcmpHeader header = d_header;
+    header.setChecksum(0);
+
+    const bsl::uint8_t* packetData = encoder->next();
+
+    const bsl::size_t headerPosition = encoder->position();
+
+    error = header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    if (d_payload.isEchoRequest()) {
+        if (d_header.code() != ntsa::IcmpType::e_ECHO_REQUEST) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpEchoRequest& echoRequest = d_payload.echoRequest();
+
+        error = echoRequest.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isEchoResponse()) {
+        if (d_header.code() != ntsa::IcmpType::e_ECHO_RESPONSE) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpEchoResponse& echoResponse = d_payload.echoResponse();
+
+        error = echoResponse.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isRouterRequest()) {
+        if (d_header.code() != ntsa::IcmpType::e_ROUTER_REQUEST) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpRouterRequest& routerRequest =
+            d_payload.routerRequest();
+
+        error = routerRequest.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isRouterResponse()) {
+        if (d_header.code() != ntsa::IcmpType::e_ROUTER_RESPONSE) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpRouterResponse& routerResponse =
+            d_payload.routerResponse();
+
+        error = routerResponse.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isRedirect()) {
+        if (d_header.code() != ntsa::IcmpType::e_REDIRECT) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpRedirect& redirect = d_payload.redirect();
+
+        error = redirect.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isUnreachable()) {
+        if (d_header.code() != ntsa::IcmpType::e_UNREACHABLE) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpUnreachable& unreachable = d_payload.unreachable();
+
+        error = unreachable.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isTimeout()) {
+        if (d_header.code() != ntsa::IcmpType::e_TIMEOUT) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpTimeout& timeout = d_payload.timeout();
+
+        error = timeout.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isProblem()) {
+        if (d_header.code() != ntsa::IcmpType::e_PROBLEM) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IcmpProblem& problem = d_payload.problem();
+
+        error = problem.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    }
+
+    const bsl::size_t finalPosition = encoder->position();
+
+    const bsl::size_t packetLength =
+        static_cast<bsl::size_t>(finalPosition - headerPosition);
+
+    ntsa::IcmpChecksum checksum;
+    checksum.add(packetData, packetLength);
+
+    header.setChecksum(checksum.value());
+
+    error = encoder->seek(headerPosition);
+    if (error) {
+        return error;
+    }
+
+    error = header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    error = encoder->seek(finalPosition);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error IcmpPacket::encode(
@@ -123,89 +316,13 @@ ntsa::Error IcmpPacket::decode(const bdlbb::BlobBuffer& buffer,
                                bsl::size_t              offset,
                                bsl::size_t              packetSize)
 {
-    ntsa::Error error;
+    NTSCFG_WARNING_UNUSED(buffer);
+    NTSCFG_WARNING_UNUSED(offset);
+    NTSCFG_WARNING_UNUSED(packetSize);
 
-    if (buffer.size() <= 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
+    NTSCFG_NOT_IMPLEMENTED();
 
-    if (offset > packetSize) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (offset > static_cast<bsl::size_t>(buffer.size())) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    error = d_header.decode(buffer, offset, packetSize);
-    if (error) {
-        return error;
-    }
-
-    const bsl::size_t headerLength = ntsa::IcmpHeader::k_LENGTH;
-
-    if (offset + headerLength > static_cast<bsl::size_t>(buffer.size())) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (offset + headerLength == packetSize) {
-        return ntsa::Error();
-    }
-
-    if (d_header.code() == ntsa::IcmpType::e_ECHO) {
-        ntsa::IcmpPing& ping = d_payload.makeEcho();
-
-        error = ping.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_header.code() == ntsa::IcmpType::e_ECHO_REPLY) {
-        ntsa::IcmpPong& pong = d_payload.makeEchoReply();
-
-        error = pong.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_header.code() == ntsa::IcmpType::e_DESTINATION_UNREACHABLE) {
-        ntsa::IcmpUnreachable& unreachable =
-            d_payload.makeDestinationUnreachable();
-
-        error = unreachable.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_header.code() == ntsa::IcmpType::e_REDIRECT) {
-        ntsa::IcmpRedirect& redirect = d_payload.makeRedirect();
-
-        error = redirect.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_header.code() == ntsa::IcmpType::e_TIME_EXCEEDED) {
-        ntsa::IcmpTimeout& timeout = d_payload.makeTimeExceeded();
-
-        error = timeout.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else if (d_header.code() == ntsa::IcmpType::e_PARAMETER_PROBLEM) {
-        ntsa::IcmpProblem& problem = d_payload.makeParameterProblem();
-
-        error = problem.decode(buffer, offset + headerLength, packetSize);
-        if (error) {
-            return error;
-        }
-    }
-    else {
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-    }
-
-    return ntsa::Error();
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 ntsa::Error IcmpPacket::encode(
@@ -214,67 +331,14 @@ ntsa::Error IcmpPacket::encode(
     const ntsa::Ipv4Address& sourceAddress,
     const ntsa::Ipv4Address& destinationAddress) const
 {
-    ntsa::Error error;
-
-    if (buffer->data() == 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    char* bufferData = buffer->data();
-
-    if (buffer->size() <= 0) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t bufferCapacity =
-        static_cast<bsl::size_t>(buffer->size());
-
-    if (offset > bufferCapacity) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    // MRM
+    NTSCFG_WARNING_UNUSED(buffer);
+    NTSCFG_WARNING_UNUSED(offset);
     NTSCFG_WARNING_UNUSED(sourceAddress);
     NTSCFG_WARNING_UNUSED(destinationAddress);
-    NTSCFG_WARNING_UNUSED(bufferData);
-#if 0
-    const bsl::size_t headerLength = ntsa::IcmpHeader::k_LENGTH;
 
-    const bsl::size_t packetLength =
-        headerLength + static_cast<bsl::size_t>(d_payload.size());
+    NTSCFG_NOT_IMPLEMENTED();
 
-    ntsa::IcmpHeader header = d_header;
-
-    header.setChecksum(0);
-
-
-    ntsa::IcmpChecksum checksum;
-    checksum.add(sourceAddress, destinationAddress, packetLength);
-    checksum.add(&header, header.headerLength());
-    if (d_payload.size() > 0) {
-        checksum.add(d_payload.data(),
-                     static_cast<bsl::size_t>(d_payload.size()));
-    }
-
-    header.setChecksum(checksum.value());
-
-    error = header.encode(buffer, offset);
-    if (error) {
-        return error;
-    }
-
-    if (d_payload.size() > 0) {
-        if (offset + headerLength > bufferCapacity) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-
-        bsl::memcpy(bufferData + offset + headerLength,
-                    d_payload.data(),
-                    static_cast<bsl::size_t>(d_payload.size()));
-    }
-#endif
-
-    return ntsa::Error();
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 ntsa::Error IcmpPacket::encode(

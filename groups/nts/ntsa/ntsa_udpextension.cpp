@@ -18,6 +18,7 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntsa_udpextension_cpp, "$Id$ $CSID$")
 
+#include <ntsa_udpchecksum.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
 
@@ -40,6 +41,28 @@ ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder)
 
     reset();
 
+    const bsl::size_t initialPosition = decoder->position();
+
+    const bsl::uint8_t* extensionArea = decoder->next();
+
+    if (initialPosition % 2 != 0) {
+        bsl::uint8_t padding = 0xFF;
+        error = decoder->decodeUint8(&padding);
+        if (error) {
+            return error;
+        }
+
+        if (padding != 0) {
+            return ntsa::Error();
+        }
+    }
+
+    bsl::uint16_t ocs;
+    error = decoder->decodeUint16(&ocs);
+    if (error) {
+        return error;
+    }
+
     while (true) {
         ntsa::UdpOption option(d_allocator_p);
         error = option.decode(decoder);
@@ -53,6 +76,25 @@ ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder)
         }
 
         d_vector.push_back(NTSCFG_MOVE(option));
+    }
+
+    const bsl::size_t finalPosition = decoder->position();
+
+    bdlb::BigEndianUint16 extensionLength;
+    extensionLength =
+        static_cast<bsl::uint16_t>(finalPosition - initialPosition);
+
+    ntsa::UdpChecksum checksum;
+    checksum.add(&extensionLength, sizeof extensionLength);
+    checksum.add(extensionArea, extensionLength);
+
+    bsl::uint16_t checksumValue = checksum.value();
+
+    if (checksumValue != 0xFFFF) {
+        BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
+                      static_cast<bsl::size_t>(ocs),
+                      static_cast<bsl::size_t>(checksumValue));
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     return ntsa::Error();
@@ -70,7 +112,9 @@ ntsa::Error UdpExtension::encode(ntsa::PacketEncoder* encoder) const
 
     const bsl::size_t initialPosition = encoder->position();
 
-    if (reinterpret_cast<bsl::uintptr_t>(encoder->next()) % 2 != 0) {
+    const bsl::uint8_t* extensionArea = encoder->next();
+
+    if (initialPosition % 2 != 0) {
         error = encoder->encodeUint8(0);
         if (error) {
             return error;
@@ -91,7 +135,30 @@ ntsa::Error UdpExtension::encode(ntsa::PacketEncoder* encoder) const
 
     const bsl::size_t finalPosition = encoder->position();
 
-    bsl::uint16_t checksumValue = 0;
+    bdlb::BigEndianUint16 extensionLength;
+    extensionLength =
+        static_cast<bsl::uint16_t>(finalPosition - initialPosition);
+
+    ntsa::UdpChecksum checksum;
+    checksum.add(&extensionLength, sizeof extensionLength);
+    checksum.add(extensionArea, extensionLength);
+
+    bsl::uint16_t checksumValue = checksum.value();
+
+    error = encoder->seek(checksumPosition);
+    if (error) {
+        return error;
+    }
+
+    error = encoder->encodeUint16(checksumValue);
+    if (error) {
+        return error;
+    }
+
+    error = encoder->seek(finalPosition);
+    if (error) {
+        return error;
+    }
 
     return ntsa::Error();
 }

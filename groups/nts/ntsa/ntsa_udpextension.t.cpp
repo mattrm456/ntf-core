@@ -40,20 +40,10 @@ class UdpExtensionTest
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpExtensionTest::verifyTypeTraits)
 {
-    const bool isBitwiseInitializable =
-        NTSCFG_TYPE_CHECK_BITWISE_INITIALIZABLE(ntsa::UdpExtension);
+    const bool isAllocatorAware =
+        NTSCFG_TYPE_CHECK_ALLOCATOR_AWARE(ntsa::UdpExtension);
 
-    NTSCFG_TEST_TRUE(isBitwiseInitializable);
-
-    const bool isBitwiseMovable =
-        NTSCFG_TYPE_CHECK_BITWISE_MOVABLE(ntsa::UdpExtension);
-
-    NTSCFG_TEST_TRUE(isBitwiseMovable);
-
-    const bool isBitwiseCopyable =
-        NTSCFG_TYPE_CHECK_BITWISE_COPYABLE(ntsa::UdpExtension);
-
-    NTSCFG_TEST_TRUE(isBitwiseCopyable);
+    NTSCFG_TEST_TRUE(isAllocatorAware);
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpExtensionTest::verifyUsage)
@@ -62,22 +52,38 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpExtensionTest::verifyUsage)
 
     {
         ntsa::UdpOption option;
-        option.makeMaxSegmentSize(65495);
+        option.makeMaxDatagramSize(65495);
 
         extension.add(option);
     }
 
     {
+        ntsa::UdpFragmentation fragmentation;
+        fragmentation.setIdentifier(12345);
+        fragmentation.setStart(32);
+        fragmentation.setOffset(4096);
+
         ntsa::UdpOption option;
-        option.makeSelectiveAckPermitted();
+        option.makeFragmentation(fragmentation);
+
+        extension.add(option);
+    }
+
+    {
+        ntsa::UdpReassembly reassembly;
+        reassembly.setMaxSize(16384);
+        reassembly.setMaxFragments(8);
+
+        ntsa::UdpOption option;
+        option.makeReassembly(reassembly);
 
         extension.add(option);
     }
 
     {
         ntsa::UdpTimePointInterval timestamp;
-        timestamp.setTx(ntsa::UdpSequenceNumber(3711540824));
-        timestamp.setRx(ntsa::UdpSequenceNumber(0));
+        timestamp.setTx(ntsa::UdpTimePoint(3711540824));
+        timestamp.setRx(ntsa::UdpTimePoint(0));
 
         ntsa::UdpOption option;
         option.makeTimestamp(timestamp);
@@ -85,14 +91,7 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpExtensionTest::verifyUsage)
         extension.add(option);
     }
 
-    {
-        ntsa::UdpOption option;
-        option.makeWindowScale(11);
-
-        extension.add(option);
-    }
-
-    // NTSCFG_TEST_LOG_TRACE << "Options = " << extension << " length = " << extension.size() << NTSCFG_TEST_LOG_END;
+    NTSCFG_TEST_LOG_TRACE << "Options = " << extension << NTSCFG_TEST_LOG_END;
 }
 
 }  // close namespace ntsa

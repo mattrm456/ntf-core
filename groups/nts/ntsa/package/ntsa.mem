@@ -30,10 +30,12 @@ ntsa_icmpchecksum
 ntsa_icmpheader
 ntsa_icmppacket
 ntsa_icmppayload
-ntsa_icmpping
-ntsa_icmppong
+ntsa_icmpechorequest
+ntsa_icmpechoresponse
 ntsa_icmpproblem
 ntsa_icmpredirect
+ntsa_icmprouterrequest
+ntsa_icmprouterresponse
 ntsa_icmptimeout
 ntsa_icmptype
 ntsa_icmpunreachable

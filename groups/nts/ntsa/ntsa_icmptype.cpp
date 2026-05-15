@@ -29,12 +29,14 @@ int IcmpType::fromInt(IcmpType::Value* result, int number)
 {
     switch (number) {
     case IcmpType::e_UNDEFINED:
-    case IcmpType::e_ECHO_REPLY:
-    case IcmpType::e_DESTINATION_UNREACHABLE:
+    case IcmpType::e_ECHO_REQUEST:
+    case IcmpType::e_ECHO_RESPONSE:
+    case IcmpType::e_ROUTER_REQUEST:
+    case IcmpType::e_ROUTER_RESPONSE:
     case IcmpType::e_REDIRECT:
-    case IcmpType::e_ECHO:
-    case IcmpType::e_TIME_EXCEEDED:
-    case IcmpType::e_PARAMETER_PROBLEM:
+    case IcmpType::e_UNREACHABLE:
+    case IcmpType::e_TIMEOUT:
+    case IcmpType::e_PROBLEM:
         *result = static_cast<IcmpType::Value>(number);
         return 0;
     default:
@@ -50,28 +52,36 @@ int IcmpType::fromString(IcmpType::Value*          result,
         *result = e_UNDEFINED;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "ECHO_REPLY")) {
-        *result = e_ECHO_REPLY;
+    if (bdlb::String::areEqualCaseless(string, "ECHO_REQUEST")) {
+        *result = e_ECHO_REQUEST;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "DESTINATION_UNREACHABLE")) {
-        *result = e_DESTINATION_UNREACHABLE;
+    if (bdlb::String::areEqualCaseless(string, "ECHO_RESPONSE")) {
+        *result = e_ECHO_RESPONSE;
+        return 0;
+    }
+    if (bdlb::String::areEqualCaseless(string, "ROUTER_REQUEST")) {
+        *result = e_ROUTER_REQUEST;
+        return 0;
+    }
+    if (bdlb::String::areEqualCaseless(string, "ROUTER_RESPONSE")) {
+        *result = e_ROUTER_RESPONSE;
         return 0;
     }
     if (bdlb::String::areEqualCaseless(string, "REDIRECT")) {
         *result = e_REDIRECT;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "ECHO")) {
-        *result = e_ECHO;
+    if (bdlb::String::areEqualCaseless(string, "UNREACHABLE")) {
+        *result = e_UNREACHABLE;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "TIME_EXCEEDED")) {
-        *result = e_TIME_EXCEEDED;
+    if (bdlb::String::areEqualCaseless(string, "TIMEOUT")) {
+        *result = e_TIMEOUT;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "PARAMETER_PROBLEM")) {
-        *result = e_PARAMETER_PROBLEM;
+    if (bdlb::String::areEqualCaseless(string, "PROBLEM")) {
+        *result = e_PROBLEM;
         return 0;
     }
 
@@ -85,23 +95,29 @@ const char* IcmpType::toString(IcmpType::Value value)
     case e_UNDEFINED: {
         return "UNDEFINED";
     } break;
-    case e_ECHO_REPLY: {
-        return "ECHO_REPLY";
+    case e_ECHO_REQUEST: {
+        return "ECHO_REQUEST";
     } break;
-    case e_DESTINATION_UNREACHABLE: {
-        return "DESTINATION_UNREACHABLE";
+    case e_ECHO_RESPONSE: {
+        return "ECHO_RESPONSE";
+    } break;
+    case e_ROUTER_REQUEST: {
+        return "ROUTER_REQUEST";
+    } break;
+    case e_ROUTER_RESPONSE: {
+        return "ROUTER_RESPONSE";
     } break;
     case e_REDIRECT: {
         return "REDIRECT";
     } break;
-    case e_ECHO: {
-        return "ECHO";
+    case e_UNREACHABLE: {
+        return "UNREACHABLE";
     } break;
-    case e_TIME_EXCEEDED: {
-        return "TIME_EXCEEDED";
+    case e_TIMEOUT: {
+        return "TIMEOUT";
     } break;
-    case e_PARAMETER_PROBLEM: {
-        return "PARAMETER_PROBLEM";
+    case e_PROBLEM: {
+        return "PROBLEM";
     } break;
     }
 

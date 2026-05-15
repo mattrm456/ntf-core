@@ -40,31 +40,39 @@ struct IcmpType {
         /// The ICMP message type is not defined.
         e_UNDEFINED = 255,
 
-        /// Echo reply (type 0). Sent by a host in response to an echo
-        /// request to confirm reachability.
-        e_ECHO_REPLY = 0,
+        /// Echo request (type 8). Sent by a host to verify that a
+        /// destination is reachable and to measure round-trip latency.
+        e_ECHO_REQUEST = 8,
 
-        /// Destination unreachable (type 3). Sent by a gateway or host when
-        /// a datagram cannot be delivered to its destination.
-        e_DESTINATION_UNREACHABLE = 3,
+        /// Echo response (type 0). Sent by a host in response to an echo
+        /// request to confirm reachability.
+        e_ECHO_RESPONSE = 0,
+
+        /// Router solicitation (type 10). Sent by a host to discover available
+        /// routers.
+        e_ROUTER_REQUEST = 10,
+
+        /// Router advertisement (type 9). Sent by a router to to announce
+        /// itself to hosts.
+        e_ROUTER_RESPONSE = 9,
 
         /// Redirect (type 5). Sent by a gateway to inform a source host that
         /// a better route to a destination exists.
         e_REDIRECT = 5,
 
-        /// Echo request (type 8). Sent by a host to verify that a
-        /// destination is reachable and to measure round-trip latency.
-        e_ECHO = 8,
+        /// Destination unreachable (type 3). Sent by a gateway or host when
+        /// a datagram cannot be delivered to its destination.
+        e_UNREACHABLE = 3,
 
         /// Time exceeded (type 11). Sent by a gateway when a datagram's
         /// time-to-live reaches zero, or by a host when fragment reassembly
         /// times out.
-        e_TIME_EXCEEDED = 11,
+        e_TIMEOUT = 11,
 
         /// Parameter problem (type 12). Sent by a gateway or host when an
         /// error in the IP header parameters causes a datagram to be
         /// discarded.
-        e_PARAMETER_PROBLEM = 12
+        e_PROBLEM = 12
     };
 
     /// Return the string representation exactly matching the enumerator name

@@ -110,7 +110,8 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpPong)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error = incomingIpv4Packet.decode(&decoder); // incomingBlobBuffer, 0);
+        error =
+            incomingIpv4Packet.decode(&decoder);  // incomingBlobBuffer, 0);
         NTSCFG_TEST_OK(error);
     }
 
@@ -138,10 +139,11 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpPong)
     NTSCFG_TEST_EQ(incomingIcmpPacket.header().code(), 0);
     NTSCFG_TEST_EQ(incomingIcmpPacket.header().checksum(), 17882);
 
-    const ntsa::IcmpPong& pong = incomingIcmpPacket.payload().echoReply();
+    const ntsa::IcmpEchoResponse& echoResponse =
+        incomingIcmpPacket.payload().echoResponse();
 
-    NTSCFG_TEST_EQ(pong.identifier(), 7776);
-    NTSCFG_TEST_EQ(pong.sequenceNumber().value(), 0);
+    NTSCFG_TEST_EQ(echoResponse.identifier(), 7776);
+    NTSCFG_TEST_EQ(echoResponse.sequenceNumber().value(), 0);
 
     bdlbb::BlobBuffer outgoingBlobBuffer;
     {
@@ -346,7 +348,8 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationTcp)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error = incomingIpv4Packet.decode(&decoder); // incomingBlobBuffer, 0);
+        error =
+            incomingIpv4Packet.decode(&decoder);  // incomingBlobBuffer, 0);
         NTSCFG_TEST_OK(error);
     }
 
@@ -428,9 +431,9 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationTcp)
     }
 
     BALL_LOG_DEBUG << "Outgoing data:\n"
-                    << bdlb::PrintStringHexDumper(outgoingBlobBuffer.data(),
-                                                    outgoingBlobBuffer.size())
-                    << BALL_LOG_END;
+                   << bdlb::PrintStringHexDumper(outgoingBlobBuffer.data(),
+                                                 outgoingBlobBuffer.size())
+                   << BALL_LOG_END;
 
     NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), incomingBlobBuffer.size());
 

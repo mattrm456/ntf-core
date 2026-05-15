@@ -20,10 +20,12 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
-#include <ntsa_icmpping.h>
-#include <ntsa_icmppong.h>
+#include <ntsa_icmpechorequest.h>
+#include <ntsa_icmpechoresponse.h>
 #include <ntsa_icmpproblem.h>
 #include <ntsa_icmpredirect.h>
+#include <ntsa_icmprouterrequest.h>
+#include <ntsa_icmprouterresponse.h>
 #include <ntsa_icmptimeout.h>
 #include <ntsa_icmptype.h>
 #include <ntsa_icmpunreachable.h>
@@ -50,10 +52,15 @@ namespace ntsa {
 /// @par Attributes
 /// This class is composed of the following attributes.
 ///
-/// @li @b echoReply:
+/// @li @b echoRequest:
+/// The body of an ICMP type 8 echo request message, containing the
+/// identifier and sequence number. Active when 'type()' is
+/// 'ntsa::IcmpType::e_ECHO_REQUEST'.
+///
+/// @li @b echoResponse:
 /// The body of an ICMP type 0 echo reply message, containing the identifier
 /// and sequence number echoed back from the echo request. Active when
-/// 'type()' is 'ntsa::IcmpType::e_ECHO_REPLY'.
+/// 'type()' is 'ntsa::IcmpType::e_ECHO_RESPONSE'.
 ///
 /// @li @b destinationUnreachable:
 /// The reserved body of an ICMP type 3 destination unreachable message.
@@ -63,11 +70,6 @@ namespace ntsa {
 /// The body of an ICMP type 5 redirect message, containing the gateway
 /// address toward which traffic should be redirected. Active when 'type()'
 /// is 'ntsa::IcmpType::e_REDIRECT'.
-///
-/// @li @b echo:
-/// The body of an ICMP type 8 echo request message, containing the
-/// identifier and sequence number. Active when 'type()' is
-/// 'ntsa::IcmpType::e_ECHO'.
 ///
 /// @li @b timeExceeded:
 /// The reserved body of an ICMP type 11 time exceeded message. Active when
@@ -85,12 +87,14 @@ namespace ntsa {
 class IcmpPayload
 {
     union {
-        bsls::ObjectBuffer<ntsa::IcmpPong>        d_echoReply;
-        bsls::ObjectBuffer<ntsa::IcmpUnreachable> d_destinationUnreachable;
-        bsls::ObjectBuffer<ntsa::IcmpRedirect>    d_redirect;
-        bsls::ObjectBuffer<ntsa::IcmpPing>        d_echo;
-        bsls::ObjectBuffer<ntsa::IcmpTimeout>     d_timeExceeded;
-        bsls::ObjectBuffer<ntsa::IcmpProblem>     d_parameterProblem;
+        bsls::ObjectBuffer<ntsa::IcmpEchoRequest>    d_echoRequest;
+        bsls::ObjectBuffer<ntsa::IcmpEchoResponse>   d_echoResponse;
+        bsls::ObjectBuffer<ntsa::IcmpRouterRequest>  d_routerRequest;
+        bsls::ObjectBuffer<ntsa::IcmpRouterResponse> d_routerResponse;
+        bsls::ObjectBuffer<ntsa::IcmpUnreachable>    d_unreachable;
+        bsls::ObjectBuffer<ntsa::IcmpRedirect>       d_redirect;
+        bsls::ObjectBuffer<ntsa::IcmpTimeout>        d_timeout;
+        bsls::ObjectBuffer<ntsa::IcmpProblem>        d_problem;
     };
 
     ntsa::IcmpType::Value d_type;
@@ -124,16 +128,37 @@ class IcmpPayload
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
-    /// Select the "echoReply" representation. Return a reference to the
+    /// Select the "echoRequest" representation. Return a reference to the
     /// modifiable representation.
-    ntsa::IcmpPong& makeEchoReply();
+    ntsa::IcmpEchoRequest& makeEchoRequest();
 
-    /// Select the "echoReply" representation initially having the specified
+    /// Select the "echoRequest" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::IcmpPong& makeEchoReply(const ntsa::IcmpPong& value);
+    ntsa::IcmpEchoRequest& makeEchoRequest(const ntsa::IcmpEchoRequest& value);
 
-    /// Select the "destinationUnreachable" representation.
-    ntsa::IcmpUnreachable& makeDestinationUnreachable();
+    /// Select the "echoResponse" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::IcmpEchoResponse& makeEchoResponse();
+
+    /// Select the "echoResponse" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::IcmpEchoResponse& makeEchoResponse(const ntsa::IcmpEchoResponse& value);
+
+    /// Select the "routerRequest" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::IcmpRouterRequest& makeRouterRequest();
+
+    /// Select the "routerRequest" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::IcmpRouterRequest& makeRouterRequest(const ntsa::IcmpRouterRequest& value);
+
+    /// Select the "routerResponse" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::IcmpRouterResponse& makeRouterResponse();
+
+    /// Select the "routerResponse" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::IcmpRouterResponse& makeRouterResponse(const ntsa::IcmpRouterResponse& value);
 
     /// Select the "redirect" representation. Return a reference to the
     /// modifiable representation.
@@ -143,75 +168,92 @@ class IcmpPayload
     /// 'value'. Return a reference to the modifiable representation.
     ntsa::IcmpRedirect& makeRedirect(const ntsa::IcmpRedirect& value);
 
-    /// Select the "echo" representation. Return a reference to the modifiable
-    /// representation.
-    ntsa::IcmpPing& makeEcho();
+    /// Select the "unreachable" representation.
+    ntsa::IcmpUnreachable& makeUnreachable();
 
-    /// Select the "echo" representation initially having the specified
+    /// Select the "unreachable" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::IcmpPing& makeEcho(const ntsa::IcmpPing& value);
+    ntsa::IcmpUnreachable& makeUnreachable(const ntsa::IcmpUnreachable& value);
 
-    /// Select the "timeExceeded" representation.
-    ntsa::IcmpTimeout& makeTimeExceeded();
+    /// Select the "timeout" representation.
+    ntsa::IcmpTimeout& makeTimeout();
 
-    /// Select the "parameterProblem" representation. Return a reference to
-    /// the modifiable representation.
-    ntsa::IcmpProblem& makeParameterProblem();
+    /// Select the "timeout" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::IcmpTimeout& makeTimeout(const ntsa::IcmpTimeout& value);
 
-    /// Select the "parameterProblem" representation initially having the
-    /// specified 'value'. Return a reference to the modifiable representation.
-    ntsa::IcmpProblem& makeParameterProblem(const ntsa::IcmpProblem& value);
+    /// Select the "problem" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::IcmpProblem& makeProblem();
 
-    /// Return a reference to the modifiable "echoReply" representation. The
-    /// behavior is undefined unless 'isEchoReply()' is true.
-    ntsa::IcmpPong& echoReply();
+    /// Select the "problem" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::IcmpProblem& makeProblem(const ntsa::IcmpProblem& value);
 
-    /// Return a reference to the modifiable "destinationUnreachable"
-    /// representation. The behavior is undefined unless
-    /// 'isDestinationUnreachable()' is true.
-    ntsa::IcmpUnreachable& destinationUnreachable();
+    /// Return a reference to the modifiable "echoRequest" representation. The
+    /// behavior is undefined unless 'isEchoRequest()' is true.
+    ntsa::IcmpEchoRequest& echoRequest();
+
+    /// Return a reference to the modifiable "echoResponse" representation. The
+    /// behavior is undefined unless 'isEchoResponse()' is true.
+    ntsa::IcmpEchoResponse& echoResponse();
+
+    /// Return a reference to the modifiable "routerRequest" representation.
+    /// The behavior is undefined unless 'isRouterRequest()' is true.
+    ntsa::IcmpRouterRequest& routerRequest();
+
+    /// Return a reference to the modifiable "routerResponse" representation.
+    /// The behavior is undefined unless 'isRouterResponse()' is true.
+    ntsa::IcmpRouterResponse& routerResponse();
 
     /// Return a reference to the modifiable "redirect" representation. The
     /// behavior is undefined unless 'isRedirect()' is true.
     ntsa::IcmpRedirect& redirect();
 
-    /// Return a reference to the modifiable "echo" representation. The
-    /// behavior is undefined unless 'isEcho()' is true.
-    ntsa::IcmpPing& echo();
+    /// Return a reference to the modifiable "unreachable" representation. The
+    /// behavior is undefined unless 'isUnreachable()' is true.
+    ntsa::IcmpUnreachable& unreachable();
 
-    /// Return a reference to the modifiable "timeExceeded" representation.
-    /// The behavior is undefined unless 'isTimeExceeded()' is true.
-    ntsa::IcmpTimeout& timeExceeded();
+    /// Return a reference to the modifiable "timeout" representation. The
+    /// behavior is undefined unless 'isTimeout()' is true.
+    ntsa::IcmpTimeout& timeout();
 
-    /// Return a reference to the modifiable "parameterProblem" representation.
-    /// The behavior is undefined unless 'isParameterProblem()' is true.
-    ntsa::IcmpProblem& parameterProblem();
+    /// Return a reference to the modifiable "problem" representation. The
+    /// behavior is undefined unless 'isProblem()' is true.
+    ntsa::IcmpProblem& problem();
 
-    /// Return a reference to the non-modifiable "echoReply" representation.
-    /// The behavior is undefined unless 'isEchoReply()' is true.
-    const ntsa::IcmpPong& echoReply() const;
+    /// Return a reference to the non-modifiable "echoRequest" representation.
+    /// The behavior is undefined unless 'isEchoRequest()' is true.
+    const ntsa::IcmpEchoRequest& echoRequest() const;
 
-    /// Return a reference to the non-modifiable "destinationUnreachable"
-    /// representation. The behavior is undefined unless
-    /// 'isDestinationUnreachable()' is true.
-    const ntsa::IcmpUnreachable& destinationUnreachable() const;
+    /// Return a reference to the non-modifiable "echoResponse" representation.
+    /// The behavior is undefined unless 'isEchoResponse()' is true.
+    const ntsa::IcmpEchoResponse& echoResponse() const;
+
+    /// Return a reference to the non-modifiable "routerRequest" representation.
+    /// The behavior is undefined unless 'isRouterRequest()' is true.
+    const ntsa::IcmpRouterRequest& routerRequest() const;
+
+    /// Return a reference to the non-modifiable "routerResponse"
+    /// representation. The behavior is undefined unless 'isRouterResponse()'
+    /// is true.
+    const ntsa::IcmpRouterResponse& routerResponse() const;
 
     /// Return a reference to the non-modifiable "redirect" representation.
     /// The behavior is undefined unless 'isRedirect()' is true.
     const ntsa::IcmpRedirect& redirect() const;
 
-    /// Return a reference to the non-modifiable "echo" representation. The
-    /// behavior is undefined unless 'isEcho()' is true.
-    const ntsa::IcmpPing& echo() const;
+    /// Return a reference to the non-modifiable "unreachable" representation.
+    /// The behavior is undefined unless 'isUnreachable()' is true.
+    const ntsa::IcmpUnreachable& unreachable() const;
 
-    /// Return a reference to the non-modifiable "timeExceeded" representation.
-    /// The behavior is undefined unless 'isTimeExceeded()' is true.
-    const ntsa::IcmpTimeout& timeExceeded() const;
+    /// Return a reference to the non-modifiable "timeout" representation. The
+    /// behavior is undefined unless 'isTimeout()' is true.
+    const ntsa::IcmpTimeout& timeout() const;
 
-    /// Return a reference to the non-modifiable "parameterProblem"
-    /// representation. The behavior is undefined unless
-    /// 'isParameterProblem()' is true.
-    const ntsa::IcmpProblem& parameterProblem() const;
+    /// Return a reference to the non-modifiable "problem" representation. The
+    /// behavior is undefined unless 'isProblem()' is true.
+    const ntsa::IcmpProblem& problem() const;
 
     /// Return the type of the active representation.
     ntsa::IcmpType::Value type() const;
@@ -223,29 +265,37 @@ class IcmpPayload
     /// return false.
     bool isUndefined() const;
 
-    /// Return true if the "echoReply" representation is currently selected,
+    /// Return true if the "echoRequest" representation is currently selected,
     /// otherwise return false.
-    bool isEchoReply() const;
+    bool isEchoRequest() const;
 
-    /// Return true if the "destinationUnreachable" representation is
-    /// currently selected, otherwise return false.
-    bool isDestinationUnreachable() const;
+    /// Return true if the "echoResponse" representation is currently selected,
+    /// otherwise return false.
+    bool isEchoResponse() const;
+
+    /// Return true if the "routerRequest" representation is currently
+    /// selected, otherwise return false.
+    bool isRouterRequest() const;
+
+    /// Return true if the "routerResponse" representation is currently
+    /// selected, otherwise return false.
+    bool isRouterResponse() const;
 
     /// Return true if the "redirect" representation is currently selected,
     /// otherwise return false.
     bool isRedirect() const;
 
-    /// Return true if the "echo" representation is currently selected,
+    /// Return true if the "unreachable" representation is currently selected,
     /// otherwise return false.
-    bool isEcho() const;
+    bool isUnreachable() const;
 
-    /// Return true if the "timeExceeded" representation is currently
-    /// selected, otherwise return false.
-    bool isTimeExceeded() const;
+    /// Return true if the "timeout" representation is currently selected,
+    /// otherwise return false.
+    bool isTimeout() const;
 
-    /// Return true if the "parameterProblem" representation is currently
-    /// selected, otherwise return false.
-    bool isParameterProblem() const;
+    /// Return true if the "problem" representation is currently selected,
+    /// otherwise return false.
+    bool isProblem() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -317,23 +367,29 @@ NTSCFG_INLINE void IcmpPayload::hash(HASH_ALGORITHM& algorithm) const
     hashAppend(algorithm, static_cast<int>(d_type));
 
     switch (d_type) {
-    case ntsa::IcmpType::e_ECHO_REPLY:
-        d_echoReply.object().hash(algorithm);
+    case ntsa::IcmpType::e_ECHO_REQUEST:
+        d_echoRequest.object().hash(algorithm);
         break;
-    case ntsa::IcmpType::e_DESTINATION_UNREACHABLE:
-        d_destinationUnreachable.object().hash(algorithm);
+    case ntsa::IcmpType::e_ECHO_RESPONSE:
+        d_echoResponse.object().hash(algorithm);
+        break;
+    case ntsa::IcmpType::e_ROUTER_REQUEST:
+        d_routerRequest.object().hash(algorithm);
+        break;
+    case ntsa::IcmpType::e_ROUTER_RESPONSE:
+        d_routerResponse.object().hash(algorithm);
         break;
     case ntsa::IcmpType::e_REDIRECT:
         d_redirect.object().hash(algorithm);
         break;
-    case ntsa::IcmpType::e_ECHO:
-        d_echo.object().hash(algorithm);
+    case ntsa::IcmpType::e_UNREACHABLE:
+        d_unreachable.object().hash(algorithm);
         break;
-    case ntsa::IcmpType::e_TIME_EXCEEDED:
-        d_timeExceeded.object().hash(algorithm);
+    case ntsa::IcmpType::e_TIMEOUT:
+        d_timeout.object().hash(algorithm);
         break;
-    case ntsa::IcmpType::e_PARAMETER_PROBLEM:
-        d_parameterProblem.object().hash(algorithm);
+    case ntsa::IcmpType::e_PROBLEM:
+        d_problem.object().hash(algorithm);
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::IcmpType::e_UNDEFINED);

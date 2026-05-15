@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSA_ICMPPING
-#define INCLUDED_NTSA_ICMPPING
+#ifndef INCLUDED_NTSA_ICMPECHOREQUEST
+#define INCLUDED_NTSA_ICMPECHOREQUEST
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
@@ -77,7 +77,7 @@ namespace ntsa {
 /// This class is not thread safe.
 ///
 /// @ingroup module_ntsa_protocol
-class IcmpPing
+class IcmpEchoRequest
 {
     /// The identifier.
     bdlb::BigEndianUint16 d_identifier;
@@ -97,28 +97,28 @@ class IcmpPing
 
   public:
     /// Create a new ICMP ping having a default value.
-    IcmpPing();
+    IcmpEchoRequest();
 
     /// Create a new ICMP ping having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    IcmpPing(bslmf::MovableRef<IcmpPing> original) NTSCFG_NOEXCEPT;
+    IcmpEchoRequest(bslmf::MovableRef<IcmpEchoRequest> original) NTSCFG_NOEXCEPT;
 
     /// Create a new ICMP ping having the same value as the specified
     /// 'original' object.
-    IcmpPing(const IcmpPing& original);
+    IcmpEchoRequest(const IcmpEchoRequest& original);
 
     /// Destroy this object.
-    ~IcmpPing();
+    ~IcmpEchoRequest();
 
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpPing& operator=(bslmf::MovableRef<IcmpPing> other) NTSCFG_NOEXCEPT;
+    IcmpEchoRequest& operator=(bslmf::MovableRef<IcmpEchoRequest> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
-    IcmpPing& operator=(const IcmpPing& other);
+    IcmpEchoRequest& operator=(const IcmpEchoRequest& other);
 
     /// Reset the value of this object to its value upon default construction.
     void reset();
@@ -164,11 +164,11 @@ class IcmpPing
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
-    bool equals(const IcmpPing& other) const;
+    bool equals(const IcmpEchoRequest& other) const;
 
     /// Return true if the value of this object is less than the value of the
     /// specified 'other' object, otherwise return false.
-    bool less(const IcmpPing& other) const;
+    bool less(const IcmpEchoRequest& other) const;
 
     /// Contribute the values of the salient attributes of this object to the
     /// specified hash 'algorithm'.
@@ -194,52 +194,52 @@ class IcmpPing
 
     /// This type's default constructor is equivalent to setting each byte of
     /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(IcmpPing);
+    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(IcmpEchoRequest);
 
     /// This type's copy-constructor and copy-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(IcmpPing);
+    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(IcmpEchoRequest);
 
     /// This type's move-constructor and move-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(IcmpPing);
+    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(IcmpEchoRequest);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
 /// into the specified 'stream'. Return a reference to the modifiable 'stream'.
 ///
-/// @related ntsa::IcmpPing
-bsl::ostream& operator<<(bsl::ostream& stream, const IcmpPing& object);
+/// @related ntsa::IcmpEchoRequest
+bsl::ostream& operator<<(bsl::ostream& stream, const IcmpEchoRequest& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
-/// @related ntsa::IcmpPing
-bool operator==(const IcmpPing& lhs, const IcmpPing& rhs);
+/// @related ntsa::IcmpEchoRequest
+bool operator==(const IcmpEchoRequest& lhs, const IcmpEchoRequest& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
-/// @related ntsa::IcmpPing
-bool operator!=(const IcmpPing& lhs, const IcmpPing& rhs);
+/// @related ntsa::IcmpEchoRequest
+bool operator!=(const IcmpEchoRequest& lhs, const IcmpEchoRequest& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
-/// @related ntsa::IcmpPing
-bool operator<(const IcmpPing& lhs, const IcmpPing& rhs);
+/// @related ntsa::IcmpEchoRequest
+bool operator<(const IcmpEchoRequest& lhs, const IcmpEchoRequest& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.
 ///
-/// @related ntsa::IcmpPing
+/// @related ntsa::IcmpEchoRequest
 template <typename HASH_ALGORITHM>
-void hashAppend(HASH_ALGORITHM& algorithm, const IcmpPing& value);
+void hashAppend(HASH_ALGORITHM& algorithm, const IcmpEchoRequest& value);
 
 NTSCFG_INLINE
-IcmpPing::IcmpPing()
+IcmpEchoRequest::IcmpEchoRequest()
 : d_identifier()
 , d_sequenceNumber()
 , d_data()
@@ -247,7 +247,7 @@ IcmpPing::IcmpPing()
 }
 
 NTSCFG_INLINE
-IcmpPing::IcmpPing(bslmf::MovableRef<IcmpPing> original) NTSCFG_NOEXCEPT
+IcmpEchoRequest::IcmpEchoRequest(bslmf::MovableRef<IcmpEchoRequest> original) NTSCFG_NOEXCEPT
 : d_identifier(NTSCFG_MOVE_FROM(original, d_identifier)),
   d_sequenceNumber(NTSCFG_MOVE_FROM(original, d_sequenceNumber)),
   d_data(NTSCFG_MOVE_FROM(original, d_data))
@@ -256,7 +256,7 @@ IcmpPing::IcmpPing(bslmf::MovableRef<IcmpPing> original) NTSCFG_NOEXCEPT
 }
 
 NTSCFG_INLINE
-IcmpPing::IcmpPing(const IcmpPing& original)
+IcmpEchoRequest::IcmpEchoRequest(const IcmpEchoRequest& original)
 : d_identifier(original.d_identifier)
 , d_sequenceNumber(original.d_sequenceNumber)
 , d_data(original.d_data)
@@ -264,12 +264,12 @@ IcmpPing::IcmpPing(const IcmpPing& original)
 }
 
 NTSCFG_INLINE
-IcmpPing::~IcmpPing()
+IcmpEchoRequest::~IcmpEchoRequest()
 {
 }
 
 NTSCFG_INLINE
-IcmpPing& IcmpPing::operator=(bslmf::MovableRef<IcmpPing> other)
+IcmpEchoRequest& IcmpEchoRequest::operator=(bslmf::MovableRef<IcmpEchoRequest> other)
     NTSCFG_NOEXCEPT
 {
     d_identifier     = NTSCFG_MOVE_FROM(other, d_identifier);
@@ -282,7 +282,7 @@ IcmpPing& IcmpPing::operator=(bslmf::MovableRef<IcmpPing> other)
 }
 
 NTSCFG_INLINE
-IcmpPing& IcmpPing::operator=(const IcmpPing& other)
+IcmpEchoRequest& IcmpEchoRequest::operator=(const IcmpEchoRequest& other)
 {
     d_identifier     = other.d_identifier;
     d_sequenceNumber = other.d_sequenceNumber;
@@ -292,7 +292,7 @@ IcmpPing& IcmpPing::operator=(const IcmpPing& other)
 }
 
 NTSCFG_INLINE
-void IcmpPing::reset()
+void IcmpEchoRequest::reset()
 {
     d_identifier     = static_cast<bsl::uint16_t>(0);
     d_sequenceNumber = static_cast<bsl::uint16_t>(0);
@@ -300,49 +300,49 @@ void IcmpPing::reset()
 }
 
 NTSCFG_INLINE
-void IcmpPing::setIdentifier(bsl::uint16_t value)
+void IcmpEchoRequest::setIdentifier(bsl::uint16_t value)
 {
     d_identifier = value;
 }
 
 NTSCFG_INLINE
-void IcmpPing::setSequenceNumber(ntsa::CircularUint16 value)
+void IcmpEchoRequest::setSequenceNumber(ntsa::CircularUint16 value)
 {
     d_sequenceNumber = value.value();
 }
 
 NTSCFG_INLINE
-void IcmpPing::setData(const bdlbb::BlobBuffer& value)
+void IcmpEchoRequest::setData(const bdlbb::BlobBuffer& value)
 {
     d_data = value;
 }
 
 NTSCFG_INLINE
-void IcmpPing::setData(bslmf::MovableRef<bdlbb::BlobBuffer> value)
+void IcmpEchoRequest::setData(bslmf::MovableRef<bdlbb::BlobBuffer> value)
 {
     d_data = NTSCFG_MOVE(value);
 }
 
 NTSCFG_INLINE
-bsl::uint16_t IcmpPing::identifier() const
+bsl::uint16_t IcmpEchoRequest::identifier() const
 {
     return static_cast<bsl::uint16_t>(d_identifier);
 }
 
 NTSCFG_INLINE
-ntsa::CircularUint16 IcmpPing::sequenceNumber() const
+ntsa::CircularUint16 IcmpEchoRequest::sequenceNumber() const
 {
     return ntsa::CircularUint16(static_cast<bsl::uint16_t>(d_sequenceNumber));
 }
 
 NTSCFG_INLINE
-const bdlbb::BlobBuffer& IcmpPing::data() const
+const bdlbb::BlobBuffer& IcmpEchoRequest::data() const
 {
     return d_data;
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void IcmpPing::hash(HASH_ALGORITHM& algorithm) const
+NTSCFG_INLINE void IcmpEchoRequest::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
 
@@ -355,31 +355,31 @@ NTSCFG_INLINE void IcmpPing::hash(HASH_ALGORITHM& algorithm) const
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const IcmpPing& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const IcmpEchoRequest& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const IcmpPing& lhs, const IcmpPing& rhs)
+bool operator==(const IcmpEchoRequest& lhs, const IcmpEchoRequest& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const IcmpPing& lhs, const IcmpPing& rhs)
+bool operator!=(const IcmpEchoRequest& lhs, const IcmpEchoRequest& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
 NTSCFG_INLINE
-bool operator<(const IcmpPing& lhs, const IcmpPing& rhs)
+bool operator<(const IcmpEchoRequest& lhs, const IcmpEchoRequest& rhs)
 {
     return lhs.less(rhs);
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM& algorithm, const IcmpPing& value)
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM& algorithm, const IcmpEchoRequest& value)
 {
     value.hash(algorithm);
 }

@@ -13,19 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsa_icmppong.h>
+#include <ntsa_icmpechorequest.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_icmppong_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_icmpechorequest_cpp, "$Id$ $CSID$")
 
-#include <bdlb_print.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
 
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error IcmpPong::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error IcmpEchoRequest::decode(ntsa::PacketDecoder* decoder)
 {
     ntsa::Error error;
 
@@ -53,7 +52,7 @@ ntsa::Error IcmpPong::decode(ntsa::PacketDecoder* decoder)
     return ntsa::Error();
 }
 
-ntsa::Error IcmpPong::encode(ntsa::PacketEncoder* encoder) const
+ntsa::Error IcmpEchoRequest::encode(ntsa::PacketEncoder* encoder) const
 {
     ntsa::Error error;
 
@@ -77,7 +76,7 @@ ntsa::Error IcmpPong::encode(ntsa::PacketEncoder* encoder) const
     return ntsa::Error();
 }
 
-ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
+ntsa::Error IcmpEchoRequest::decode(const bdlbb::BlobBuffer& buffer,
                              bsl::size_t              offset,
                              bsl::size_t              packetSize)
 {
@@ -126,7 +125,7 @@ ntsa::Error IcmpPong::decode(const bdlbb::BlobBuffer& buffer,
     return ntsa::Error();
 }
 
-ntsa::Error IcmpPong::encode(bdlbb::BlobBuffer* buffer,
+ntsa::Error IcmpEchoRequest::encode(bdlbb::BlobBuffer* buffer,
                              bsl::size_t        offset) const
 {
     if (offset > static_cast<bsl::size_t>(buffer->size())) {
@@ -171,7 +170,7 @@ ntsa::Error IcmpPong::encode(bdlbb::BlobBuffer* buffer,
     return ntsa::Error();
 }
 
-bool IcmpPong::equals(const IcmpPong& other) const
+bool IcmpEchoRequest::equals(const IcmpEchoRequest& other) const
 {
     if (d_identifier != other.d_identifier) {
         return false;
@@ -194,7 +193,7 @@ bool IcmpPong::equals(const IcmpPong& other) const
     return true;
 }
 
-bool IcmpPong::less(const IcmpPong& other) const
+bool IcmpEchoRequest::less(const IcmpEchoRequest& other) const
 {
     if (static_cast<bsl::uint16_t>(d_identifier) <
         static_cast<bsl::uint16_t>(other.d_identifier))
@@ -229,7 +228,7 @@ bool IcmpPong::less(const IcmpPong& other) const
     return true;
 }
 
-bsl::ostream& IcmpPong::print(bsl::ostream& stream,
+bsl::ostream& IcmpEchoRequest::print(bsl::ostream& stream,
                               int           level,
                               int           spacesPerLevel) const
 {
@@ -241,16 +240,16 @@ bsl::ostream& IcmpPong::print(bsl::ostream& stream,
     return stream;
 }
 
-void IcmpPong::print(bslim::Printer* printer) const
+void IcmpEchoRequest::print(bslim::Printer* printer) const
 {
-    printer->printAttribute("identifier", this->identifier());
+    printer->printAttribute("identifier",     this->identifier());
     printer->printAttribute("sequenceNumber", this->sequenceNumber());
     if (d_data.size() > 0) {
-        printer->printForeign(d_data, &IcmpPong::printData, "data");
+        printer->printForeign(d_data, &IcmpEchoRequest::printData, "data");
     }
 }
 
-bsl::ostream& IcmpPong::printData(bsl::ostream&            stream,
+bsl::ostream& IcmpEchoRequest::printData(bsl::ostream&            stream,
                                   const bdlbb::BlobBuffer& data,
                                   int                      level,
                                   int                      spacesPerLevel)

@@ -52,14 +52,16 @@ NTSCFG_TEST_FUNCTION(ntsa::IcmpTypeTest::verifyFromInt)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  0, 255, T::e_UNDEFINED               },
-        {  0,   0, T::e_ECHO_REPLY              },
-        {  0,   3, T::e_DESTINATION_UNREACHABLE },
-        {  0,   5, T::e_REDIRECT                },
-        {  0,   8, T::e_ECHO                    },
-        {  0,  11, T::e_TIME_EXCEEDED           },
-        {  0,  12, T::e_PARAMETER_PROBLEM       },
-        { -1,  -1, T::e_UNDEFINED               }
+        {  0, 255, T::e_UNDEFINED       },
+        {  0,   8, T::e_ECHO_REQUEST    },
+        {  0,   0, T::e_ECHO_RESPONSE   },
+        {  0,   9, T::e_ROUTER_RESPONSE },
+        {  0,  10, T::e_ROUTER_REQUEST  },
+        {  0,   5, T::e_REDIRECT        },
+        {  0,   3, T::e_UNREACHABLE     },
+        {  0,  11, T::e_TIMEOUT         },
+        {  0,  12, T::e_PROBLEM         },
+        { -1,  -1, T::e_UNDEFINED       }
     };
     // clang-format on
 
@@ -91,14 +93,16 @@ NTSCFG_TEST_FUNCTION(ntsa::IcmpTypeTest::verifyFromString)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  0, "UNDEFINED",              T::e_UNDEFINED               },
-        {  0, "ECHO_REPLY",             T::e_ECHO_REPLY              },
-        {  0, "DESTINATION_UNREACHABLE", T::e_DESTINATION_UNREACHABLE },
-        {  0, "REDIRECT",               T::e_REDIRECT                },
-        {  0, "ECHO",                   T::e_ECHO                    },
-        {  0, "TIME_EXCEEDED",          T::e_TIME_EXCEEDED           },
-        {  0, "PARAMETER_PROBLEM",      T::e_PARAMETER_PROBLEM       },
-        { -1, "!",                      T::e_UNDEFINED               }
+        {  0, "UNDEFINED",       T::e_UNDEFINED       },
+        {  0, "ECHO_REQUEST",    T::e_ECHO_REQUEST    },
+        {  0, "ECHO_RESPONSE",   T::e_ECHO_RESPONSE   },
+        {  0, "ROUTER_REQUEST",  T::e_ROUTER_REQUEST  },
+        {  0, "ROUTER_RESPONSE", T::e_ROUTER_RESPONSE },
+        {  0, "REDIRECT",        T::e_REDIRECT        },
+        {  0, "UNREACHABLE",     T::e_UNREACHABLE     },
+        {  0, "TIMEOUT",         T::e_TIMEOUT         },
+        {  0, "PROBLEM",         T::e_PROBLEM         },
+        { -1, "!",               T::e_UNDEFINED       }
     };
     // clang-format on
 
@@ -127,13 +131,15 @@ NTSCFG_TEST_FUNCTION(ntsa::IcmpTypeTest::verifyPrint)
     };
 
     const TestData k_TEST_DATA[] = {
-        { "UNDEFINED",              255 },
-        { "ECHO_REPLY",               0 },
-        { "DESTINATION_UNREACHABLE",  3 },
-        { "REDIRECT",                 5 },
-        { "ECHO",                     8 },
-        { "TIME_EXCEEDED",           11 },
-        { "PARAMETER_PROBLEM",       12 },
+        { "UNDEFINED",       255 },
+        { "ECHO_REQUEST",      8 },
+        { "ECHO_RESPONSE",     0 },
+        { "ROUTER_REQUEST",   10 },
+        { "ROUTER_RESPONSE",   9 },
+        { "REDIRECT",          5 },
+        { "UNREACHABLE",       3 },
+        { "TIMEOUT",          11 },
+        { "PROBLEM",          12 }
     };
     // clang-format on
 
