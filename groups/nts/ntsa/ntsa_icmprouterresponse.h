@@ -95,11 +95,26 @@ class IcmpRouterResponse
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
+    /// Add the specified 'value' to the entry vector of available routers.
+    void addInfo(const ntsa::IcmpRouterInfo& value);
+
+    /// Set the entry vector of available routers to the specified 'value'.
+    void setInfo(const bsl::vector<ntsa::IcmpRouterInfo>& value);
+
+    /// Set the time-to-live to the specified 'value'.
+    void setTimeToLive(bsl::uint16_t value);
+
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
 
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+
+    /// Return the entry vector of available routers.
+    const bsl::vector<ntsa::IcmpRouterInfo>& info() const;
+
+    /// Return the time-to-live.
+    bsl::uint16_t timeToLive() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -222,6 +237,36 @@ void IcmpRouterResponse::reset()
 {
     d_infoVector.clear();
     d_timeToLive = k_DEFAULT_TIME_TO_LIVE;
+}
+
+NTSCFG_INLINE
+void IcmpRouterResponse::addInfo(const ntsa::IcmpRouterInfo& value)
+{
+    d_infoVector.push_back(value);
+}
+
+NTSCFG_INLINE
+void IcmpRouterResponse::setInfo(const bsl::vector<ntsa::IcmpRouterInfo>& value)
+{
+    d_infoVector = value;
+}
+
+NTSCFG_INLINE
+void IcmpRouterResponse::setTimeToLive(bsl::uint16_t value)
+{
+    d_timeToLive = value;
+}
+
+NTSCFG_INLINE
+const bsl::vector<ntsa::IcmpRouterInfo>& IcmpRouterResponse::info() const
+{
+    return d_infoVector;
+}
+
+NTSCFG_INLINE
+bsl::uint16_t IcmpRouterResponse::timeToLive() const
+{
+    return d_timeToLive;
 }
 
 template <typename HASH_ALGORITHM>

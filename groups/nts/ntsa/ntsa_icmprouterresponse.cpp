@@ -158,7 +158,8 @@ bsl::ostream& IcmpRouterResponse::print(bsl::ostream& stream,
 
 void IcmpRouterResponse::print(bslim::Printer* printer) const
 {
-    NTSCFG_WARNING_UNUSED(printer);
+    printer->printAttribute("info", d_infoVector);
+    printer->printAttribute("timeToLive", d_timeToLive);
 }
 
 }  // close package namespace
