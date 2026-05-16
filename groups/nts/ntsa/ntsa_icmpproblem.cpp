@@ -43,8 +43,8 @@ ntsa::Error IcmpProblem::decode(ntsa::PacketDecoder* decoder)
     const bsl::size_t payloadSize = decoder->size() - decoder->position();
 
     if (payloadSize > 0) {
-        error = decoder->decodeRaw(
-            d_payloadData, bsl::min(payloadSize, sizeof d_payloadData));
+        d_payloadSize = bsl::min(payloadSize, sizeof d_payloadData);
+        error = decoder->decodeRaw(d_payloadData, d_payloadSize);
         if (error) {
             return error;
         }

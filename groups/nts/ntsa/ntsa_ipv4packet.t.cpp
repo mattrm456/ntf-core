@@ -551,22 +551,495 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterResponse)
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRedirect)
 {
+    ntsa::Error error;
 
+    // clang-format off
+    const bsl::uint8_t k_DATA[] = {
+        0x45, 0x00, 0x00, 0x38, 0x9a, 0xbc, 0x40, 0x00, 0xff, 0x01, 0x14,
+        0xfb, 0x0a, 0x00, 0x00, 0x01, 0xc0, 0xa8, 0x01, 0x64, 0x05, 0x01,
+        0x86, 0x45, 0x0a, 0x00, 0x00, 0x02, 0x45, 0x00, 0x00, 0x28, 0xab,
+        0xcd, 0x40, 0x00, 0x3f, 0x06, 0x21, 0xe5, 0xc0, 0xa8, 0x01, 0x64,
+        0xac, 0x10, 0x00, 0x01, 0x00, 0x50, 0x01, 0xbb, 0x12, 0x34, 0x56,
+        0x78
+    };
+    // clang-format on
+
+    const bsl::size_t k_DATA_SIZE = sizeof(k_DATA);
+
+    bdlbb::SimpleBlobBufferFactory blobBufferFactory(k_DATA_SIZE,
+                                                     NTSCFG_TEST_ALLOCATOR);
+
+    bdlbb::BlobBuffer incomingBlobBuffer;
+    blobBufferFactory.allocate(&incomingBlobBuffer);
+    NTSCFG_TEST_EQ(incomingBlobBuffer.size(), k_DATA_SIZE);
+
+    bsl::memcpy(incomingBlobBuffer.data(), k_DATA, k_DATA_SIZE);
+
+    BALL_LOG_DEBUG << "Incoming data:\n"
+                   << bdlb::PrintStringHexDumper(incomingBlobBuffer.data(),
+                                                 incomingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    ntsa::Ipv4Packet incomingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&incomingBlobBuffer);
+
+        error =
+            incomingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Incoming packet = " << incomingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().packetLength(), 56);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().id(), 39612);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().timeToLive(), 255);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().protocol(), 1);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().checksum(), 5371);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().sourceAddress(),
+                   ntsa::Ipv4Address("10.0.0.1"));
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().destinationAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+
+    NTSCFG_TEST_TRUE(incomingIpv4Packet.payload().isIcmp());
+
+    const ntsa::IcmpPacket& incomingIcmpPacket =
+        incomingIpv4Packet.payload().icmp();
+
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().type(), 5);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().code(), 1);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().checksum(), 34373);
+
+    NTSCFG_TEST_TRUE(incomingIcmpPacket.payload().isRedirect());
+
+    const ntsa::IcmpRedirect& redirect =
+        incomingIcmpPacket.payload().redirect();
+
+    NTSCFG_TEST_EQ(redirect.gatewayAddress(),
+                   ntsa::Ipv4Address("10.0.0.2"));
+
+    NTSCFG_TEST_EQ(redirect.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(redirect.header().packetLength(), 40);
+    NTSCFG_TEST_EQ(redirect.header().id(), 43981);
+    NTSCFG_TEST_EQ(redirect.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(redirect.header().timeToLive(), 63);
+    NTSCFG_TEST_EQ(redirect.header().protocol(), 6);
+    NTSCFG_TEST_EQ(redirect.header().checksum(), 8677);
+    NTSCFG_TEST_EQ(redirect.header().sourceAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+    NTSCFG_TEST_EQ(redirect.header().destinationAddress(),
+                   ntsa::Ipv4Address("172.16.0.1"));
+
+    bdlbb::BlobBuffer outgoingBlobBuffer;
+    {
+        blobBufferFactory.allocate(&outgoingBlobBuffer);
+        NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), k_DATA_SIZE);
+
+        ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
+
+        error = incomingIpv4Packet.encode(&encoder);
+        NTSCFG_TEST_OK(error);
+
+        error = encoder.flush();
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing data:\n"
+                   << bdlb::PrintStringHexDumper(outgoingBlobBuffer.data(),
+                                                 outgoingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), incomingBlobBuffer.size());
+
+    const int compare =
+        bsl::memcmp(outgoingBlobBuffer.data(),
+                    incomingBlobBuffer.data(),
+                    static_cast<bsl::size_t>(outgoingBlobBuffer.size()));
+    NTSCFG_TEST_EQ(compare, 0);
+
+    ntsa::Ipv4Packet outgoingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
+
+        error = outgoingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing packet = " << outgoingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpUnreachable)
 {
+    ntsa::Error error;
 
+    // clang-format off
+    const bsl::uint8_t k_DATA[] = {
+        0x45, 0x00, 0x00, 0x38, 0xbe, 0xef, 0x40, 0x00, 0x40, 0x01, 0xae,
+        0xc7, 0x0a, 0x01, 0x01, 0x01, 0xc0, 0xa8, 0x01, 0x64, 0x03, 0x03,
+        0x20, 0xb1, 0x00, 0x00, 0x00, 0x00, 0x45, 0x00, 0x00, 0x24, 0xfe,
+        0xdc, 0x40, 0x00, 0x3f, 0x11, 0x6f, 0xde, 0xc0, 0xa8, 0x01, 0x64,
+        0x0a, 0x01, 0x01, 0x01, 0x30, 0x39, 0x00, 0x35, 0x00, 0x10, 0xab,
+        0xcd
+    };
+    // clang-format on
+
+    const bsl::size_t k_DATA_SIZE = sizeof(k_DATA);
+
+    bdlbb::SimpleBlobBufferFactory blobBufferFactory(k_DATA_SIZE,
+                                                     NTSCFG_TEST_ALLOCATOR);
+
+    bdlbb::BlobBuffer incomingBlobBuffer;
+    blobBufferFactory.allocate(&incomingBlobBuffer);
+    NTSCFG_TEST_EQ(incomingBlobBuffer.size(), k_DATA_SIZE);
+
+    bsl::memcpy(incomingBlobBuffer.data(), k_DATA, k_DATA_SIZE);
+
+    BALL_LOG_DEBUG << "Incoming data:\n"
+                   << bdlb::PrintStringHexDumper(incomingBlobBuffer.data(),
+                                                 incomingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    ntsa::Ipv4Packet incomingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&incomingBlobBuffer);
+
+        error =
+            incomingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Incoming packet = " << incomingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().packetLength(), 56);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().id(), 48879);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().timeToLive(), 64);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().protocol(), 1);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().checksum(), 44743);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().sourceAddress(),
+                   ntsa::Ipv4Address("10.1.1.1"));
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().destinationAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+
+    NTSCFG_TEST_TRUE(incomingIpv4Packet.payload().isIcmp());
+
+    const ntsa::IcmpPacket& incomingIcmpPacket =
+        incomingIpv4Packet.payload().icmp();
+
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().type(), 3);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().code(), 3);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().checksum(), 8369);
+
+    NTSCFG_TEST_TRUE(incomingIcmpPacket.payload().isUnreachable());
+
+    const ntsa::IcmpUnreachable& unreachable =
+        incomingIcmpPacket.payload().unreachable();
+
+    NTSCFG_TEST_EQ(unreachable.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(unreachable.header().packetLength(), 36);
+    NTSCFG_TEST_EQ(unreachable.header().id(), 65244);
+    NTSCFG_TEST_EQ(unreachable.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(unreachable.header().timeToLive(), 63);
+    NTSCFG_TEST_EQ(unreachable.header().protocol(), 17);
+    NTSCFG_TEST_EQ(unreachable.header().checksum(), 28638);
+    NTSCFG_TEST_EQ(unreachable.header().sourceAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+    NTSCFG_TEST_EQ(unreachable.header().destinationAddress(),
+                   ntsa::Ipv4Address("10.1.1.1"));
+
+    bdlbb::BlobBuffer outgoingBlobBuffer;
+    {
+        blobBufferFactory.allocate(&outgoingBlobBuffer);
+        NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), k_DATA_SIZE);
+
+        ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
+
+        error = incomingIpv4Packet.encode(&encoder);
+        NTSCFG_TEST_OK(error);
+
+        error = encoder.flush();
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing data:\n"
+                   << bdlb::PrintStringHexDumper(outgoingBlobBuffer.data(),
+                                                 outgoingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), incomingBlobBuffer.size());
+
+    const int compare =
+        bsl::memcmp(outgoingBlobBuffer.data(),
+                    incomingBlobBuffer.data(),
+                    static_cast<bsl::size_t>(outgoingBlobBuffer.size()));
+    NTSCFG_TEST_EQ(compare, 0);
+
+    ntsa::Ipv4Packet outgoingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
+
+        error = outgoingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing packet = " << outgoingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpTimeout)
 {
+    ntsa::Error error;
 
+    // clang-format off
+    const bsl::uint8_t k_DATA[] = {
+        0x45, 0x00, 0x00, 0x38, 0xde, 0xad, 0x40, 0x00, 0xff, 0x01, 0xd1,
+        0x09, 0x0a, 0x00, 0x00, 0x01, 0xc0, 0xa8, 0x01, 0x64, 0x0b, 0x00,
+        0x41, 0x30, 0x00, 0x00, 0x00, 0x00, 0x45, 0x00, 0x00, 0x54, 0x12,
+        0x34, 0x40, 0x00, 0x01, 0x01, 0x95, 0x59, 0xc0, 0xa8, 0x01, 0x64,
+        0x08, 0x08, 0x08, 0x08, 0x08, 0x00, 0xab, 0xcd, 0x00, 0x01, 0x00,
+        0x01
+    };
+    // clang-format on
+
+    const bsl::size_t k_DATA_SIZE = sizeof(k_DATA);
+
+    bdlbb::SimpleBlobBufferFactory blobBufferFactory(k_DATA_SIZE,
+                                                     NTSCFG_TEST_ALLOCATOR);
+
+    bdlbb::BlobBuffer incomingBlobBuffer;
+    blobBufferFactory.allocate(&incomingBlobBuffer);
+    NTSCFG_TEST_EQ(incomingBlobBuffer.size(), k_DATA_SIZE);
+
+    bsl::memcpy(incomingBlobBuffer.data(), k_DATA, k_DATA_SIZE);
+
+    BALL_LOG_DEBUG << "Incoming data:\n"
+                   << bdlb::PrintStringHexDumper(incomingBlobBuffer.data(),
+                                                 incomingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    ntsa::Ipv4Packet incomingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&incomingBlobBuffer);
+
+        error =
+            incomingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Incoming packet = " << incomingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().packetLength(), 56);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().id(), 57005);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().timeToLive(), 255);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().protocol(), 1);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().checksum(), 53513);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().sourceAddress(),
+                   ntsa::Ipv4Address("10.0.0.1"));
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().destinationAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+
+    NTSCFG_TEST_TRUE(incomingIpv4Packet.payload().isIcmp());
+
+    const ntsa::IcmpPacket& incomingIcmpPacket =
+        incomingIpv4Packet.payload().icmp();
+
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().type(), 11);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().code(), 0);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().checksum(), 16688);
+
+    NTSCFG_TEST_TRUE(incomingIcmpPacket.payload().isTimeout());
+
+    const ntsa::IcmpTimeout& timeout =
+        incomingIcmpPacket.payload().timeout();
+
+    NTSCFG_TEST_EQ(timeout.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(timeout.header().packetLength(), 84);
+    NTSCFG_TEST_EQ(timeout.header().id(), 4660);
+    NTSCFG_TEST_EQ(timeout.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(timeout.header().timeToLive(), 1);
+    NTSCFG_TEST_EQ(timeout.header().protocol(), 1);
+    NTSCFG_TEST_EQ(timeout.header().checksum(), 38233);
+    NTSCFG_TEST_EQ(timeout.header().sourceAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+    NTSCFG_TEST_EQ(timeout.header().destinationAddress(),
+                   ntsa::Ipv4Address("8.8.8.8"));
+
+    bdlbb::BlobBuffer outgoingBlobBuffer;
+    {
+        blobBufferFactory.allocate(&outgoingBlobBuffer);
+        NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), k_DATA_SIZE);
+
+        ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
+
+        error = incomingIpv4Packet.encode(&encoder);
+        NTSCFG_TEST_OK(error);
+
+        error = encoder.flush();
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing data:\n"
+                   << bdlb::PrintStringHexDumper(outgoingBlobBuffer.data(),
+                                                 outgoingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), incomingBlobBuffer.size());
+
+    const int compare =
+        bsl::memcmp(outgoingBlobBuffer.data(),
+                    incomingBlobBuffer.data(),
+                    static_cast<bsl::size_t>(outgoingBlobBuffer.size()));
+    NTSCFG_TEST_EQ(compare, 0);
+
+    ntsa::Ipv4Packet outgoingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
+
+        error = outgoingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing packet = " << outgoingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpProblem)
 {
+    ntsa::Error error;
 
+    // clang-format off
+    const bsl::uint8_t k_DATA[] = {
+        0x45, 0x00, 0x00, 0x38, 0xca, 0xfe, 0x40, 0x00, 0xff, 0x01, 0xe4,
+        0xb8, 0x0a, 0x00, 0x00, 0x01, 0xc0, 0xa8, 0x01, 0x64, 0x0c, 0x00,
+        0x7f, 0x75, 0x01, 0x00, 0x00, 0x00, 0x45, 0xff, 0x00, 0x28, 0x55,
+        0x55, 0x40, 0x00, 0x3e, 0x06, 0x78, 0x2d, 0xc0, 0xa8, 0x01, 0x64,
+        0xac, 0x10, 0x00, 0x32, 0x01, 0xbb, 0xd4, 0x31, 0xde, 0xad, 0xbe,
+        0xef
+    };
+    // clang-format on
+
+    const bsl::size_t k_DATA_SIZE = sizeof(k_DATA);
+
+    bdlbb::SimpleBlobBufferFactory blobBufferFactory(k_DATA_SIZE,
+                                                     NTSCFG_TEST_ALLOCATOR);
+
+    bdlbb::BlobBuffer incomingBlobBuffer;
+    blobBufferFactory.allocate(&incomingBlobBuffer);
+    NTSCFG_TEST_EQ(incomingBlobBuffer.size(), k_DATA_SIZE);
+
+    bsl::memcpy(incomingBlobBuffer.data(), k_DATA, k_DATA_SIZE);
+
+    BALL_LOG_DEBUG << "Incoming data:\n"
+                   << bdlb::PrintStringHexDumper(incomingBlobBuffer.data(),
+                                                 incomingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    ntsa::Ipv4Packet incomingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&incomingBlobBuffer);
+
+        error =
+            incomingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Incoming packet = " << incomingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().packetLength(), 56);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().id(), 51966);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().timeToLive(), 255);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().protocol(), 1);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().checksum(), 58552);
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().sourceAddress(),
+                   ntsa::Ipv4Address("10.0.0.1"));
+    NTSCFG_TEST_EQ(incomingIpv4Packet.header().destinationAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+
+    NTSCFG_TEST_TRUE(incomingIpv4Packet.payload().isIcmp());
+
+    const ntsa::IcmpPacket& incomingIcmpPacket =
+        incomingIpv4Packet.payload().icmp();
+
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().type(), 12);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().code(), 0);
+    NTSCFG_TEST_EQ(incomingIcmpPacket.header().checksum(), 32629);
+
+    NTSCFG_TEST_TRUE(incomingIcmpPacket.payload().isProblem());
+
+    const ntsa::IcmpProblem& problem =
+        incomingIcmpPacket.payload().problem();
+
+    NTSCFG_TEST_EQ(problem.pointer(), 1);
+
+    NTSCFG_TEST_EQ(problem.header().headerLength(), 20);
+    NTSCFG_TEST_EQ(problem.header().packetLength(), 40);
+    NTSCFG_TEST_EQ(problem.header().id(), 21845);
+    NTSCFG_TEST_EQ(problem.header().fragmentOffset(), 64);
+    NTSCFG_TEST_EQ(problem.header().timeToLive(), 62);
+    NTSCFG_TEST_EQ(problem.header().protocol(), 6);
+    NTSCFG_TEST_EQ(problem.header().checksum(), 30765);
+    NTSCFG_TEST_EQ(problem.header().sourceAddress(),
+                   ntsa::Ipv4Address("192.168.1.100"));
+    NTSCFG_TEST_EQ(problem.header().destinationAddress(),
+                   ntsa::Ipv4Address("172.16.0.50"));
+
+    bdlbb::BlobBuffer outgoingBlobBuffer;
+    {
+        blobBufferFactory.allocate(&outgoingBlobBuffer);
+        NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), k_DATA_SIZE);
+
+        ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
+
+        error = incomingIpv4Packet.encode(&encoder);
+        NTSCFG_TEST_OK(error);
+
+        error = encoder.flush();
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing data:\n"
+                   << bdlb::PrintStringHexDumper(outgoingBlobBuffer.data(),
+                                                 outgoingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), incomingBlobBuffer.size());
+
+    const int compare =
+        bsl::memcmp(outgoingBlobBuffer.data(),
+                    incomingBlobBuffer.data(),
+                    static_cast<bsl::size_t>(outgoingBlobBuffer.size()));
+    NTSCFG_TEST_EQ(compare, 0);
+
+    ntsa::Ipv4Packet outgoingIpv4Packet;
+    {
+        ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
+
+        error = outgoingIpv4Packet.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing packet = " << outgoingIpv4Packet
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIgmp)
