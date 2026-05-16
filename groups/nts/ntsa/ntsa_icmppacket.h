@@ -190,7 +190,7 @@ bool operator!=(const IcmpPacket& lhs, const IcmpPacket& rhs);
 NTSCFG_INLINE
 IcmpPacket::IcmpPacket(bslma::Allocator* basicAllocator)
 : d_header()
-, d_payload()
+, d_payload(basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
@@ -207,7 +207,7 @@ IcmpPacket::IcmpPacket(bslmf::MovableRef<IcmpPacket> original) NTSCFG_NOEXCEPT
 NTSCFG_INLINE
 IcmpPacket::IcmpPacket(const IcmpPacket& original, bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
-, d_payload(original.d_payload)
+, d_payload(original.d_payload, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }

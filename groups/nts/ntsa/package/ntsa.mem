@@ -34,6 +34,7 @@ ntsa_icmpechorequest
 ntsa_icmpechoresponse
 ntsa_icmpproblem
 ntsa_icmpredirect
+ntsa_icmprouterinfo
 ntsa_icmprouterrequest
 ntsa_icmprouterresponse
 ntsa_icmptimeout

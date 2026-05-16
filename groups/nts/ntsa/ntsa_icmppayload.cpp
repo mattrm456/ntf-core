@@ -24,18 +24,19 @@ BSLS_IDENT_RCSID(ntsa_icmppayload_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-IcmpPayload::IcmpPayload()
+IcmpPayload::IcmpPayload(bslma::Allocator* basicAllocator)
 : d_type(ntsa::IcmpType::e_UNDEFINED)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
 IcmpPayload::IcmpPayload(bslmf::MovableRef<IcmpPayload> original)
-    NTSCFG_NOEXCEPT
-: d_type(ntsa::IcmpType::e_UNDEFINED)
+    NTSCFG_NOEXCEPT : d_type(ntsa::IcmpType::e_UNDEFINED)
 {
     IcmpPayload& ref = bslmf::MovableRefUtil::access(original);
 
-    d_type = ref.d_type;
+    d_type        = ref.d_type;
+    d_allocator_p = ref.d_allocator_p;
 
     switch (d_type) {
     case ntsa::IcmpType::e_ECHO_REQUEST:
@@ -52,23 +53,21 @@ IcmpPayload::IcmpPayload(bslmf::MovableRef<IcmpPayload> original)
         break;
     case ntsa::IcmpType::e_ROUTER_RESPONSE:
         new (d_routerResponse.buffer())
-            ntsa::IcmpRouterResponse(ref.d_routerResponse.object());
+            ntsa::IcmpRouterResponse(ref.d_routerResponse.object(),
+                                     ref.d_allocator_p);
         break;
     case ntsa::IcmpType::e_REDIRECT:
-        new (d_redirect.buffer())
-            ntsa::IcmpRedirect(ref.d_redirect.object());
+        new (d_redirect.buffer()) ntsa::IcmpRedirect(ref.d_redirect.object());
         break;
     case ntsa::IcmpType::e_UNREACHABLE:
         new (d_unreachable.buffer())
             ntsa::IcmpUnreachable(ref.d_unreachable.object());
         break;
     case ntsa::IcmpType::e_TIMEOUT:
-        new (d_timeout.buffer())
-            ntsa::IcmpTimeout(ref.d_timeout.object());
+        new (d_timeout.buffer()) ntsa::IcmpTimeout(ref.d_timeout.object());
         break;
     case ntsa::IcmpType::e_PROBLEM:
-        new (d_problem.buffer())
-            ntsa::IcmpProblem(ref.d_problem.object());
+        new (d_problem.buffer()) ntsa::IcmpProblem(ref.d_problem.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::IcmpType::e_UNDEFINED);
@@ -77,8 +76,10 @@ IcmpPayload::IcmpPayload(bslmf::MovableRef<IcmpPayload> original)
     ref.reset();
 }
 
-IcmpPayload::IcmpPayload(const IcmpPayload& original)
+IcmpPayload::IcmpPayload(const IcmpPayload& original,
+                         bslma::Allocator*  basicAllocator)
 : d_type(original.d_type)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
     switch (d_type) {
     case ntsa::IcmpType::e_ECHO_REQUEST:
@@ -95,7 +96,8 @@ IcmpPayload::IcmpPayload(const IcmpPayload& original)
         break;
     case ntsa::IcmpType::e_ROUTER_RESPONSE:
         new (d_routerResponse.buffer())
-            ntsa::IcmpRouterResponse(original.d_routerResponse.object());
+            ntsa::IcmpRouterResponse(original.d_routerResponse.object(),
+                                     d_allocator_p);
         break;
     case ntsa::IcmpType::e_REDIRECT:
         new (d_redirect.buffer())
@@ -151,23 +153,21 @@ IcmpPayload& IcmpPayload::operator=(bslmf::MovableRef<IcmpPayload> other)
         break;
     case ntsa::IcmpType::e_ROUTER_RESPONSE:
         new (d_routerResponse.buffer())
-            ntsa::IcmpRouterResponse(ref.d_routerResponse.object());
+            ntsa::IcmpRouterResponse(ref.d_routerResponse.object(),
+                                     d_allocator_p);
         break;
     case ntsa::IcmpType::e_REDIRECT:
-        new (d_redirect.buffer())
-            ntsa::IcmpRedirect(ref.d_redirect.object());
+        new (d_redirect.buffer()) ntsa::IcmpRedirect(ref.d_redirect.object());
         break;
     case ntsa::IcmpType::e_UNREACHABLE:
         new (d_unreachable.buffer())
             ntsa::IcmpUnreachable(ref.d_unreachable.object());
         break;
     case ntsa::IcmpType::e_TIMEOUT:
-        new (d_timeout.buffer())
-            ntsa::IcmpTimeout(ref.d_timeout.object());
+        new (d_timeout.buffer()) ntsa::IcmpTimeout(ref.d_timeout.object());
         break;
     case ntsa::IcmpType::e_PROBLEM:
-        new (d_problem.buffer())
-            ntsa::IcmpProblem(ref.d_problem.object());
+        new (d_problem.buffer()) ntsa::IcmpProblem(ref.d_problem.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::IcmpType::e_UNDEFINED);
@@ -203,7 +203,8 @@ IcmpPayload& IcmpPayload::operator=(const IcmpPayload& other)
         break;
     case ntsa::IcmpType::e_ROUTER_RESPONSE:
         new (d_routerResponse.buffer())
-            ntsa::IcmpRouterResponse(other.d_routerResponse.object());
+            ntsa::IcmpRouterResponse(other.d_routerResponse.object(),
+                                     d_allocator_p);
         break;
     case ntsa::IcmpType::e_REDIRECT:
         new (d_redirect.buffer())
@@ -214,12 +215,10 @@ IcmpPayload& IcmpPayload::operator=(const IcmpPayload& other)
             ntsa::IcmpUnreachable(other.d_unreachable.object());
         break;
     case ntsa::IcmpType::e_TIMEOUT:
-        new (d_timeout.buffer())
-            ntsa::IcmpTimeout(other.d_timeout.object());
+        new (d_timeout.buffer()) ntsa::IcmpTimeout(other.d_timeout.object());
         break;
     case ntsa::IcmpType::e_PROBLEM:
-        new (d_problem.buffer())
-            ntsa::IcmpProblem(other.d_problem.object());
+        new (d_problem.buffer()) ntsa::IcmpProblem(other.d_problem.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::IcmpType::e_UNDEFINED);
@@ -234,7 +233,7 @@ void IcmpPayload::reset()
     case ntsa::IcmpType::e_ECHO_REQUEST: {
         typedef ntsa::IcmpEchoRequest Type;
         d_echoRequest.object().~Type();
-     } break;
+    } break;
     case ntsa::IcmpType::e_ECHO_RESPONSE: {
         typedef ntsa::IcmpEchoResponse Type;
         d_echoResponse.object().~Type();
@@ -242,13 +241,13 @@ void IcmpPayload::reset()
     case ntsa::IcmpType::e_ROUTER_REQUEST: {
         typedef ntsa::IcmpRouterRequest Type;
         d_routerRequest.object().~Type();
-     } break;
+    } break;
     case ntsa::IcmpType::e_ROUTER_RESPONSE: {
         typedef ntsa::IcmpRouterResponse Type;
         d_routerResponse.object().~Type();
     } break;
     case ntsa::IcmpType::e_REDIRECT: {
-       typedef ntsa::IcmpRedirect Type;
+        typedef ntsa::IcmpRedirect Type;
         d_redirect.object().~Type();
     } break;
     case ntsa::IcmpType::e_UNREACHABLE: {
@@ -284,7 +283,8 @@ ntsa::IcmpEchoRequest& IcmpPayload::makeEchoRequest()
     return d_echoRequest.object();
 }
 
-ntsa::IcmpEchoRequest& IcmpPayload::makeEchoRequest(const ntsa::IcmpEchoRequest& value)
+ntsa::IcmpEchoRequest& IcmpPayload::makeEchoRequest(
+    const ntsa::IcmpEchoRequest& value)
 {
     if (d_type == ntsa::IcmpType::e_ECHO_REQUEST) {
         d_echoRequest.object() = value;
@@ -312,7 +312,8 @@ ntsa::IcmpEchoResponse& IcmpPayload::makeEchoResponse()
     return d_echoResponse.object();
 }
 
-ntsa::IcmpEchoResponse& IcmpPayload::makeEchoResponse(const ntsa::IcmpEchoResponse& value)
+ntsa::IcmpEchoResponse& IcmpPayload::makeEchoResponse(
+    const ntsa::IcmpEchoResponse& value)
 {
     if (d_type == ntsa::IcmpType::e_ECHO_RESPONSE) {
         d_echoResponse.object() = value;
@@ -340,7 +341,8 @@ ntsa::IcmpRouterRequest& IcmpPayload::makeRouterRequest()
     return d_routerRequest.object();
 }
 
-ntsa::IcmpRouterRequest& IcmpPayload::makeRouterRequest(const ntsa::IcmpRouterRequest& value)
+ntsa::IcmpRouterRequest& IcmpPayload::makeRouterRequest(
+    const ntsa::IcmpRouterRequest& value)
 {
     if (d_type == ntsa::IcmpType::e_ROUTER_REQUEST) {
         d_routerRequest.object() = value;
@@ -361,21 +363,24 @@ ntsa::IcmpRouterResponse& IcmpPayload::makeRouterResponse()
     }
     else {
         this->reset();
-        new (d_routerResponse.buffer()) ntsa::IcmpRouterResponse();
+        new (d_routerResponse.buffer())
+            ntsa::IcmpRouterResponse(d_allocator_p);
         d_type = ntsa::IcmpType::e_ROUTER_RESPONSE;
     }
 
     return d_routerResponse.object();
 }
 
-ntsa::IcmpRouterResponse& IcmpPayload::makeRouterResponse(const ntsa::IcmpRouterResponse& value)
+ntsa::IcmpRouterResponse& IcmpPayload::makeRouterResponse(
+    const ntsa::IcmpRouterResponse& value)
 {
     if (d_type == ntsa::IcmpType::e_ROUTER_RESPONSE) {
         d_routerResponse.object() = value;
     }
     else {
         this->reset();
-        new (d_routerResponse.buffer()) ntsa::IcmpRouterResponse(value);
+        new (d_routerResponse.buffer())
+            ntsa::IcmpRouterResponse(value, d_allocator_p);
         d_type = ntsa::IcmpType::e_ROUTER_RESPONSE;
     }
 
@@ -421,7 +426,8 @@ ntsa::IcmpUnreachable& IcmpPayload::makeUnreachable()
     return d_unreachable.object();
 }
 
-ntsa::IcmpUnreachable& IcmpPayload::makeUnreachable(const ntsa::IcmpUnreachable& value)
+ntsa::IcmpUnreachable& IcmpPayload::makeUnreachable(
+    const ntsa::IcmpUnreachable& value)
 {
     if (d_type == ntsa::IcmpType::e_UNREACHABLE) {
         d_unreachable.object() = value;
@@ -446,8 +452,7 @@ ntsa::IcmpTimeout& IcmpPayload::makeTimeout()
     return d_timeout.object();
 }
 
-ntsa::IcmpTimeout& IcmpPayload::makeTimeout(
-    const ntsa::IcmpTimeout& value)
+ntsa::IcmpTimeout& IcmpPayload::makeTimeout(const ntsa::IcmpTimeout& value)
 {
     if (d_type == ntsa::IcmpType::e_TIMEOUT) {
         d_timeout.object() = value;
@@ -475,8 +480,7 @@ ntsa::IcmpProblem& IcmpPayload::makeProblem()
     return d_problem.object();
 }
 
-ntsa::IcmpProblem& IcmpPayload::makeProblem(
-    const ntsa::IcmpProblem& value)
+ntsa::IcmpProblem& IcmpPayload::makeProblem(const ntsa::IcmpProblem& value)
 {
     if (d_type == ntsa::IcmpType::e_PROBLEM) {
         d_problem.object() = value;
@@ -674,17 +678,16 @@ bool IcmpPayload::equals(const IcmpPayload& other) const
     case ntsa::IcmpType::e_ROUTER_REQUEST:
         return d_routerRequest.object().equals(other.d_routerRequest.object());
     case ntsa::IcmpType::e_ROUTER_RESPONSE:
-        return d_routerResponse.object().equals(other.d_routerResponse.object());
+        return d_routerResponse.object().equals(
+            other.d_routerResponse.object());
     case ntsa::IcmpType::e_REDIRECT:
         return d_redirect.object().equals(other.d_redirect.object());
     case ntsa::IcmpType::e_UNREACHABLE:
-        return d_unreachable.object().equals(
-            other.d_unreachable.object());
+        return d_unreachable.object().equals(other.d_unreachable.object());
     case ntsa::IcmpType::e_TIMEOUT:
         return d_timeout.object().equals(other.d_timeout.object());
     case ntsa::IcmpType::e_PROBLEM:
-        return d_problem.object().equals(
-            other.d_problem.object());
+        return d_problem.object().equals(other.d_problem.object());
     default:
         BSLS_ASSERT(d_type == ntsa::IcmpType::e_UNDEFINED);
         return true;

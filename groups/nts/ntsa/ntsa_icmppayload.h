@@ -62,23 +62,33 @@ namespace ntsa {
 /// and sequence number echoed back from the echo request. Active when
 /// 'type()' is 'ntsa::IcmpType::e_ECHO_RESPONSE'.
 ///
-/// @li @b destinationUnreachable:
-/// The reserved body of an ICMP type 3 destination unreachable message.
-/// Active when 'type()' is 'ntsa::IcmpType::e_DESTINATION_UNREACHABLE'.
+/// @li @b routerRequest:
+/// The body of an ICMP type 10 router soliticitation message. Active when
+/// 'type()' is 'ntsa::IcmpType::e_ROUTER_REQUEST'.
+///
+/// @li @b routerResponse:
+/// The body of an ICMP type 9 router advertisement message, containing the the
+/// available router addresss, their priorities, and the time to live for the
+/// router address list. Active when 'type()' is
+/// 'ntsa::IcmpType::e_ROUTER_RESPONSE'.
 ///
 /// @li @b redirect:
 /// The body of an ICMP type 5 redirect message, containing the gateway
 /// address toward which traffic should be redirected. Active when 'type()'
 /// is 'ntsa::IcmpType::e_REDIRECT'.
 ///
-/// @li @b timeExceeded:
-/// The reserved body of an ICMP type 11 time exceeded message. Active when
-/// 'type()' is 'ntsa::IcmpType::e_TIME_EXCEEDED'.
+/// @li @b unreachable:
+/// The reserved body of an ICMP type 3 destination unreachable message.
+/// Active when 'type()' is 'ntsa::IcmpType::e_UNREACHABLE'.
 ///
-/// @li @b parameterProblem:
+/// @li @b timeout:
+/// The reserved body of an ICMP type 11 time exceeded message. Active when
+/// 'type()' is 'ntsa::IcmpType::e_TIMEOUT'.
+///
+/// @li @b problem:
 /// The body of an ICMP type 12 parameter problem message, containing the
 /// pointer field that identifies the offending octet in the IP header.
-/// Active when 'type()' is 'ntsa::IcmpType::e_PARAMETER_PROBLEM'.
+/// Active when 'type()' is 'ntsa::IcmpType::e_PROBLEM'.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -98,10 +108,13 @@ class IcmpPayload
     };
 
     ntsa::IcmpType::Value d_type;
+    bslma::Allocator*     d_allocator_p;
 
   public:
-    /// Create a new ICMP payload having an undefined type.
-    IcmpPayload();
+    /// Create a new ICMP payload having an undefined type. Optionally specify
+    /// a 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    IcmpPayload(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new ICMP payload having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -109,8 +122,10 @@ class IcmpPayload
     IcmpPayload(bslmf::MovableRef<IcmpPayload> original) NTSCFG_NOEXCEPT;
 
     /// Create a new ICMP payload having the same value as the specified
-    /// 'original' object.
-    IcmpPayload(const IcmpPayload& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    IcmpPayload(const IcmpPayload& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~IcmpPayload();
@@ -326,6 +341,10 @@ class IcmpPayload
 
     /// Print this object using the specified 'printer'.
     void print(bslim::Printer* printer) const;
+
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(IcmpPayload);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'

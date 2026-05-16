@@ -20,6 +20,7 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
+#include <ntsa_icmprouterinfo.h>
 #include <ntsa_ipv4header.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
@@ -46,28 +47,37 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class IcmpRouterResponse
 {
-    /// Reserved field; must be zero.
-    bdlb::BigEndianUint32 d_unused;
+    /// The vector of router addresses and their priorities.
+    bsl::vector<ntsa::IcmpRouterInfo> d_infoVector;
 
+    /// The maximum number of seconds the router addresses should be considered
+    /// to be valid.
+    bsl::uint16_t d_timeToLive;
 
   public:
-    /// Enumerate the constants used by the implementation.
+    /// Enumerates the constants used by this implementation.
     enum Constant {
-        /// The fixed length of the IcmpRouterResponse body in octets.
-        k_LENGTH = sizeof(bdlb::BigEndianUint32)
+        /// The default number of seconds the router addresses should be
+        /// considered to be valid.
+        k_DEFAULT_TIME_TO_LIVE = 1800
     };
 
-    /// Create a new ICMP timeout having a default value.
-    IcmpRouterResponse();
+    /// Create a new ICMP router response having a default value. Optionally
+    /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
+    /// is 0, the currently installed default allocator is used.
+    explicit IcmpRouterResponse(bslma::Allocator* basicAllocator = 0);
 
-    /// Create a new ICMP timeout having the same value as the specified
-    /// 'original' object. Assign an unspecified but valid value to the
-    /// 'original' original.
+    /// Create a new ICMP router response having the same value as the
+    /// specified 'original' object. Assign an unspecified but valid value to
+    /// the 'original' original.
     IcmpRouterResponse(bslmf::MovableRef<IcmpRouterResponse> original) NTSCFG_NOEXCEPT;
 
-    /// Create a new ICMP timeout having the same value as the specified
-    /// 'original' object.
-    IcmpRouterResponse(const IcmpRouterResponse& original);
+    /// Create a new ICMP router response having the same value as the
+    /// specified 'original' object. Optionally specify a 'basicAllocator' used
+    /// to supply memory. If 'basicAllocator' is 0, the currently installed
+    /// default allocator is used.
+    IcmpRouterResponse(const IcmpRouterResponse& original,
+                       bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~IcmpRouterResponse();
@@ -121,19 +131,9 @@ class IcmpRouterResponse
     /// Print this object using the specified 'printer'.
     void print(bslim::Printer* printer) const;
 
-    /// This type's default constructor is equivalent to setting each byte of
-    /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(IcmpRouterResponse);
-
-    /// This type's copy-constructor and copy-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(IcmpRouterResponse);
-
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(IcmpRouterResponse);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(IcmpRouterResponse);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -168,29 +168,27 @@ template <typename HASH_ALGORITHM>
 void hashAppend(HASH_ALGORITHM& algorithm, const IcmpRouterResponse& value);
 
 NTSCFG_INLINE
-IcmpRouterResponse::IcmpRouterResponse()
+IcmpRouterResponse::IcmpRouterResponse(bslma::Allocator* basicAllocator)
+: d_infoVector(basicAllocator)
+, d_timeToLive(k_DEFAULT_TIME_TO_LIVE)
 {
-    BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
-
-    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
 IcmpRouterResponse::IcmpRouterResponse(
     bslmf::MovableRef<IcmpRouterResponse> original) NTSCFG_NOEXCEPT
+: d_infoVector(NTSCFG_MOVE_FROM(original, d_infoVector))
+, d_timeToLive(NTSCFG_MOVE_FROM(original, d_timeToLive))
 {
-    NTSCFG_MEMORY_COPY(
-        this,
-        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
-        sizeof *this);
 
-    NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-IcmpRouterResponse::IcmpRouterResponse(const IcmpRouterResponse& original)
+IcmpRouterResponse::IcmpRouterResponse(
+    const IcmpRouterResponse& original, bslma::Allocator* basicAllocator)
+: d_infoVector(original.d_infoVector, basicAllocator)
+, d_timeToLive(original.d_timeToLive)
 {
-    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -202,10 +200,8 @@ NTSCFG_INLINE
 IcmpRouterResponse& IcmpRouterResponse::operator=(
     bslmf::MovableRef<IcmpRouterResponse> other) NTSCFG_NOEXCEPT
 {
-    NTSCFG_MEMORY_COPY(
-        this,
-        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
-        sizeof *this);
+    d_infoVector = NTSCFG_MOVE_FROM(other, d_infoVector);
+    d_timeToLive  = NTSCFG_MOVE_FROM(other, d_timeToLive);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -215,7 +211,8 @@ IcmpRouterResponse& IcmpRouterResponse::operator=(
 NTSCFG_INLINE
 IcmpRouterResponse& IcmpRouterResponse::operator=(const IcmpRouterResponse& other)
 {
-    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
+    d_infoVector = other.d_infoVector;
+    d_timeToLive  = other.d_timeToLive;
 
     return *this;
 }
@@ -223,26 +220,16 @@ IcmpRouterResponse& IcmpRouterResponse::operator=(const IcmpRouterResponse& othe
 NTSCFG_INLINE
 void IcmpRouterResponse::reset()
 {
-    NTSCFG_MEMORY_ZERO(this, sizeof *this);
-}
-
-NTSCFG_INLINE
-bool IcmpRouterResponse::equals(const IcmpRouterResponse& other) const
-{
-    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
-}
-
-NTSCFG_INLINE
-bool IcmpRouterResponse::less(const IcmpRouterResponse& other) const
-{
-    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
+    d_infoVector.clear();
+    d_timeToLive = k_DEFAULT_TIME_TO_LIVE;
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void IcmpRouterResponse::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    hashAppend(algorithm, static_cast<bsl::uint32_t>(d_unused));
+    hashAppend(algorithm, d_infoVector);
+    hashAppend(algorithm, d_timeToLive);
 }
 
 NTSCFG_INLINE

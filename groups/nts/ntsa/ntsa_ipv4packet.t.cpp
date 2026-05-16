@@ -53,17 +53,46 @@ class Ipv4PacketTest
     // Test value semantics: type traits.
     static void verifyTypeTraits();
 
-    // Test decoding ICMP/IPv4.
-    static void verifySerializationIcmpPong();
+    // Test encoding and decoding an ICMP type 8 echo request carried in the
+    // payload of an IPv4 packet.
+    static void verifyIcmpEchoRequest();
+
+    // Test encoding and decoding an ICMP type 0 echo response carried in the
+    // payload of an IPv4 packet.
+    static void verifyIcmpEchoResponse();
+
+    // Test encoding and decoding an ICMP type 10 router solicitation carried
+    // in the payload of an IPv4 packet.
+    static void verifyIcmpRouterRequest();
+
+    // Test encoding and decoding an ICMP type 9 router advertisement carried
+    // in the payload of an IPv4 packet.
+    static void verifyIcmpRouterResponse();
+
+    // Test encoding and decoding an ICMP type 5 redirect message carried in
+    // the payload of an IPv4 packet.
+    static void verifyIcmpRedirect();
+
+    // Test encoding and decoding an ICMP type 3 destination unreachable
+    // message carried in the payload of an IPv4 packet.
+    static void verifyIcmpUnreachable();
+
+    // Test encoding and decoding an ICMP type 11 time exceeded message carried
+    // in the payload of an IPv4 packet.
+    static void verifyIcmpTimeout();
+
+    // Test encoding and decoding an ICMP type 12 parameter problem message
+    // carried in the payload of an IPv4 packet.
+    static void verifyIcmpProblem();
 
     // Test decoding IGMP/IPv4.
-    static void verifySerializationIgmp();
+    static void verifyIgmp();
 
     // Test decoding UDP/IPv4.
-    static void verifySerializationUdp();
+    static void verifyUdp();
 
     // Test decoding TCP/IPv4.
-    static void verifySerializationTcp();
+    static void verifyTcp();
 
     // Test usage example.
     static void verifyUsage();
@@ -73,7 +102,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTypeTraits)
 {
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpPong)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoRequest)
+{
+
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoResponse)
 {
     ntsa::Error error;
 
@@ -186,11 +220,41 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIcmpPong)
     NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationIgmp)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterRequest)
+{
+
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterResponse)
+{
+
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRedirect)
+{
+
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpUnreachable)
+{
+
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpTimeout)
+{
+
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpProblem)
+{
+
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIgmp)
 {
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdp)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyUdp)
 {
     ntsa::Error error;
 
@@ -313,7 +377,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationUdp)
     NTSCFG_TEST_EQ(outgoingIpv4Packet, incomingIpv4Packet);
 }
 
-NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifySerializationTcp)
+NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTcp)
 {
     ntsa::Error error;
 
