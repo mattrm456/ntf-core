@@ -44,7 +44,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
         return error;
     }
 
-    if (d_header.code() == ntsa::IcmpType::e_ECHO_REQUEST) {
+    if (d_header.type() == ntsa::IcmpType::e_ECHO_REQUEST) {
         ntsa::IcmpEchoRequest& echoRequest = d_payload.makeEchoRequest();
 
         error = echoRequest.decode(decoder);
@@ -52,7 +52,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_ECHO_RESPONSE) {
+    else if (d_header.type() == ntsa::IcmpType::e_ECHO_RESPONSE) {
         ntsa::IcmpEchoResponse& echoResponse = d_payload.makeEchoResponse();
 
         error = echoResponse.decode(decoder);
@@ -60,7 +60,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_ROUTER_REQUEST) {
+    else if (d_header.type() == ntsa::IcmpType::e_ROUTER_REQUEST) {
         ntsa::IcmpRouterRequest& routerRequest = d_payload.makeRouterRequest();
 
         error = routerRequest.decode(decoder);
@@ -68,7 +68,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_ROUTER_RESPONSE) {
+    else if (d_header.type() == ntsa::IcmpType::e_ROUTER_RESPONSE) {
         ntsa::IcmpRouterResponse& routerResponse =
             d_payload.makeRouterResponse();
 
@@ -77,7 +77,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_REDIRECT) {
+    else if (d_header.type() == ntsa::IcmpType::e_REDIRECT) {
         ntsa::IcmpRedirect& redirect = d_payload.makeRedirect();
 
         error = redirect.decode(decoder);
@@ -85,7 +85,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_UNREACHABLE) {
+    else if (d_header.type() == ntsa::IcmpType::e_UNREACHABLE) {
         ntsa::IcmpUnreachable& unreachable = d_payload.makeUnreachable();
 
         error = unreachable.decode(decoder);
@@ -93,7 +93,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_TIMEOUT) {
+    else if (d_header.type() == ntsa::IcmpType::e_TIMEOUT) {
         ntsa::IcmpTimeout& timeout = d_payload.makeTimeout();
 
         error = timeout.decode(decoder);
@@ -101,7 +101,7 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
             return error;
         }
     }
-    else if (d_header.code() == ntsa::IcmpType::e_PROBLEM) {
+    else if (d_header.type() == ntsa::IcmpType::e_PROBLEM) {
         ntsa::IcmpProblem& problem = d_payload.makeProblem();
 
         error = problem.decode(decoder);
@@ -169,7 +169,7 @@ ntsa::Error IcmpPacket::encode(
     }
 
     if (d_payload.isEchoRequest()) {
-        if (d_header.code() != ntsa::IcmpType::e_ECHO_REQUEST) {
+        if (d_header.type() != ntsa::IcmpType::e_ECHO_REQUEST) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -181,7 +181,7 @@ ntsa::Error IcmpPacket::encode(
         }
     }
     else if (d_payload.isEchoResponse()) {
-        if (d_header.code() != ntsa::IcmpType::e_ECHO_RESPONSE) {
+        if (d_header.type() != ntsa::IcmpType::e_ECHO_RESPONSE) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -193,7 +193,7 @@ ntsa::Error IcmpPacket::encode(
         }
     }
     else if (d_payload.isRouterRequest()) {
-        if (d_header.code() != ntsa::IcmpType::e_ROUTER_REQUEST) {
+        if (d_header.type() != ntsa::IcmpType::e_ROUTER_REQUEST) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -206,7 +206,7 @@ ntsa::Error IcmpPacket::encode(
         }
     }
     else if (d_payload.isRouterResponse()) {
-        if (d_header.code() != ntsa::IcmpType::e_ROUTER_RESPONSE) {
+        if (d_header.type() != ntsa::IcmpType::e_ROUTER_RESPONSE) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -219,7 +219,7 @@ ntsa::Error IcmpPacket::encode(
         }
     }
     else if (d_payload.isRedirect()) {
-        if (d_header.code() != ntsa::IcmpType::e_REDIRECT) {
+        if (d_header.type() != ntsa::IcmpType::e_REDIRECT) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -231,7 +231,7 @@ ntsa::Error IcmpPacket::encode(
         }
     }
     else if (d_payload.isUnreachable()) {
-        if (d_header.code() != ntsa::IcmpType::e_UNREACHABLE) {
+        if (d_header.type() != ntsa::IcmpType::e_UNREACHABLE) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -243,7 +243,7 @@ ntsa::Error IcmpPacket::encode(
         }
     }
     else if (d_payload.isTimeout()) {
-        if (d_header.code() != ntsa::IcmpType::e_TIMEOUT) {
+        if (d_header.type() != ntsa::IcmpType::e_TIMEOUT) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -255,7 +255,7 @@ ntsa::Error IcmpPacket::encode(
         }
     }
     else if (d_payload.isProblem()) {
-        if (d_header.code() != ntsa::IcmpType::e_PROBLEM) {
+        if (d_header.type() != ntsa::IcmpType::e_PROBLEM) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
