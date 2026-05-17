@@ -111,31 +111,6 @@ class IcmpPacket
                        const ntsa::Ipv6Address& sourceAddress,
                        const ntsa::Ipv6Address& destinationAddress) const;
 
-    /// Decode the packet from the specified 'buffer' starting at the specified
-    /// 'offset' inside the framing packet having the specified 'packetSize'.
-    /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              packetSize);
-
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Calculate the checksum in terms of the specified
-    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
-                       bsl::size_t              offset,
-                       const ntsa::Ipv4Address& sourceAddress,
-                       const ntsa::Ipv4Address& destinationAddress) const;
-
-    /// Encode the packet to the specified 'buffer' starting at the specified
-    /// 'offset'. Calculate the checksum in terms of the specified
-    /// 'sourceAddress' to the specified 'destinationAddress'. Return the
-    /// error.
-    ntsa::Error encode(bdlbb::BlobBuffer*       buffer,
-                       bsl::size_t              offset,
-                       const ntsa::Ipv6Address& sourceAddress,
-                       const ntsa::Ipv6Address& destinationAddress) const;
-
     /// Return a reference to the non-modifiable header.
     const ntsa::IcmpHeader& header() const;
 

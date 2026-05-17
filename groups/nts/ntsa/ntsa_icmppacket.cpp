@@ -312,51 +312,6 @@ ntsa::Error IcmpPacket::encode(
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
-ntsa::Error IcmpPacket::decode(const bdlbb::BlobBuffer& buffer,
-                               bsl::size_t              offset,
-                               bsl::size_t              packetSize)
-{
-    NTSCFG_WARNING_UNUSED(buffer);
-    NTSCFG_WARNING_UNUSED(offset);
-    NTSCFG_WARNING_UNUSED(packetSize);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error IcmpPacket::encode(
-    bdlbb::BlobBuffer*       buffer,
-    bsl::size_t              offset,
-    const ntsa::Ipv4Address& sourceAddress,
-    const ntsa::Ipv4Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(buffer);
-    NTSCFG_WARNING_UNUSED(offset);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error IcmpPacket::encode(
-    bdlbb::BlobBuffer*       buffer,
-    bsl::size_t              offset,
-    const ntsa::Ipv6Address& sourceAddress,
-    const ntsa::Ipv6Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(buffer);
-    NTSCFG_WARNING_UNUSED(offset);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
 bool IcmpPacket::equals(const IcmpPacket& other) const
 {
     if (d_header != other.d_header) {
