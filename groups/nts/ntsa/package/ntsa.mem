@@ -40,6 +40,13 @@ ntsa_icmprouterresponse
 ntsa_icmptimeout
 ntsa_icmptype
 ntsa_icmpunreachable
+ntsa_igmpheader
+ntsa_igmpleave
+ntsa_igmppacket
+ntsa_igmppayload
+ntsa_igmpquery
+ntsa_igmpreport
+ntsa_igmptype
 ntsa_ipaddress
 ntsa_ipaddressoptions
 ntsa_ipaddresstype
