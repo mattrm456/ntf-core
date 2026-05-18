@@ -37,6 +37,9 @@ class EthernetHeaderTest
     // Test encoding.
     static void verifyEncoding();
 
+    // Test encoding with a tag.
+    static void verifyEncodingTagged();
+
     // Test usage example.
     static void verifyUsage();
 };
@@ -105,6 +108,106 @@ NTSCFG_TEST_FUNCTION(ntsa::EthernetHeaderTest::verifyEncoding)
 
     NTSCFG_TEST_EQ(incomingEthernetHeader.protocol(),
                    ntsa::EthernetProtocol::e_IPV4);
+
+    bdlbb::BlobBuffer outgoingBlobBuffer;
+    {
+        blobBufferFactory.allocate(&outgoingBlobBuffer);
+        NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), k_DATA_SIZE);
+
+        ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
+
+        error = incomingEthernetHeader.encode(&encoder);
+        NTSCFG_TEST_OK(error);
+
+        error = encoder.flush();
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing data:\n"
+                   << bdlb::PrintStringHexDumper(outgoingBlobBuffer.data(),
+                                                 outgoingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingBlobBuffer.size(), incomingBlobBuffer.size());
+
+    const int compare =
+        bsl::memcmp(outgoingBlobBuffer.data(),
+                    incomingBlobBuffer.data(),
+                    static_cast<bsl::size_t>(outgoingBlobBuffer.size()));
+    NTSCFG_TEST_EQ(compare, 0);
+
+    ntsa::EthernetHeader outgoingEthernetHeader;
+    {
+        ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
+
+        error = outgoingEthernetHeader.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Outgoing header = " << outgoingEthernetHeader
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(outgoingEthernetHeader, incomingEthernetHeader);
+}
+
+NTSCFG_TEST_FUNCTION(ntsa::EthernetHeaderTest::verifyEncodingTagged)
+{
+    ntsa::Error error;
+
+    // clang-format off
+    static const bsl::uint8_t k_DATA[18] = {
+        0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E, 0x00, 0x11,
+        0x22, 0x33, 0x44, 0x55, 0x81, 0x00, 0xE0, 0x0A,
+        0x08, 0x00
+        // 0x45, 0x00, 0x00, 0x2E, 0x00, 0x00,
+        // 0x00, 0x00, 0x40, 0x11, 0x00, 0x00, 0xC0, 0xA8,
+        // 0x01, 0x01, 0xC0, 0xA8, 0x01, 0x02, 0x00, 0x00,
+        // 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+    // clang-format on
+
+    const bsl::size_t k_DATA_SIZE = sizeof(k_DATA);
+
+    bdlbb::SimpleBlobBufferFactory blobBufferFactory(k_DATA_SIZE,
+                                                     NTSCFG_TEST_ALLOCATOR);
+
+    bdlbb::BlobBuffer incomingBlobBuffer;
+    blobBufferFactory.allocate(&incomingBlobBuffer);
+    NTSCFG_TEST_EQ(incomingBlobBuffer.size(), k_DATA_SIZE);
+
+    bsl::memcpy(incomingBlobBuffer.data(), k_DATA, k_DATA_SIZE);
+
+    BALL_LOG_DEBUG << "Incoming data:\n"
+                   << bdlb::PrintStringHexDumper(incomingBlobBuffer.data(),
+                                                 incomingBlobBuffer.size())
+                   << BALL_LOG_END;
+
+    ntsa::EthernetHeader incomingEthernetHeader;
+    {
+        ntsa::PacketDecoder decoder(&incomingBlobBuffer);
+
+        error = incomingEthernetHeader.decode(&decoder);
+        NTSCFG_TEST_OK(error);
+    }
+
+    BALL_LOG_DEBUG << "Incoming header = " << incomingEthernetHeader
+                   << BALL_LOG_END;
+
+    NTSCFG_TEST_EQ(incomingEthernetHeader.source(),
+                   ntsa::EthernetAddress("00:11:22:33:44:55"));
+
+    NTSCFG_TEST_EQ(incomingEthernetHeader.destination(),
+                   ntsa::EthernetAddress("00:1a:2b:3c:4d:5e"));
+
+    NTSCFG_TEST_EQ(incomingEthernetHeader.protocol(),
+                   ntsa::EthernetProtocol::e_IPV4);
+
+    NTSCFG_TEST_TRUE(incomingEthernetHeader.tag().has_value());
+
+    NTSCFG_TEST_EQ(incomingEthernetHeader.tag().value().group(), 10);
+    NTSCFG_TEST_EQ(incomingEthernetHeader.tag().value().droppable(), false);
+    NTSCFG_TEST_EQ(incomingEthernetHeader.tag().value().priority(),
+                   ntsa::EthernetPriority::e_ROUTING);
 
     bdlbb::BlobBuffer outgoingBlobBuffer;
     {

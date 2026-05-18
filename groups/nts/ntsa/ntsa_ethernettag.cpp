@@ -23,12 +23,46 @@ BSLS_IDENT_RCSID(ntsa_ethernettag_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error EthernetTag::decode(ntsa::PacketDecoder* decoder)
+{
+    ntsa::Error error;
+
+    error = decoder->decodeRaw(this, sizeof *this);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error EthernetTag::encode(ntsa::PacketEncoder* encoder) const
+{
+    ntsa::Error error;
+
+    error = encoder->encodeRaw(this, sizeof *this);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
 bsl::ostream& EthernetTag::print(bsl::ostream& stream,
                                  int           level,
                                  int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
+
+    const bsl::uint16_t                 group =     this->group();
+    const ntsa::EthernetPriority::Value priority =  this->priority();
+    const bool                          droppable = this->droppable();
+
+    printer.printAttribute("group", group);
+    printer.printAttribute("priority", priority);
+    if (droppable) {
+        printer.printAttribute("droppable", true);
+    }
 
     printer.end();
 

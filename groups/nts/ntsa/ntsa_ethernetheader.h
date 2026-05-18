@@ -90,6 +90,9 @@ class EthernetHeader
     /// Set the protocol to the specified 'value'.
     void setProtocol(ntsa::EthernetProtocol::Value value);
 
+    /// Set the tag to the specified 'value'.
+    void setTag(const ntsa::EthernetTag& value);
+
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
 
@@ -104,6 +107,9 @@ class EthernetHeader
 
     /// Return the protocol.
     ntsa::EthernetProtocol::Value protocol() const;
+
+    /// Return the tag.
+    const bdlb::NullableValue<ntsa::EthernetTag>& tag() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -265,6 +271,12 @@ void EthernetHeader::setProtocol(ntsa::EthernetProtocol::Value value)
 }
 
 NTSCFG_INLINE
+void EthernetHeader::setTag(const ntsa::EthernetTag& value)
+{
+    d_tag = value;
+}
+
+NTSCFG_INLINE
 const ntsa::EthernetAddress& EthernetHeader::source() const
 {
     return d_source;
@@ -280,6 +292,12 @@ NTSCFG_INLINE
 ntsa::EthernetProtocol::Value EthernetHeader::protocol() const
 {
     return d_protocol;
+}
+
+NTSCFG_INLINE
+const bdlb::NullableValue<ntsa::EthernetTag>& EthernetHeader::tag() const
+{
+    return d_tag;
 }
 
 template <typename HASH_ALGORITHM>

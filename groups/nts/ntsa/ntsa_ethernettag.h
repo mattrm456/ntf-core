@@ -19,6 +19,9 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_ethernetpriority.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -27,7 +30,7 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Describes an IEEE 802.1Q ethernet tag.
+/// Describes an IEEE 802.1Q Ethernet tag.
 ///
 /// @ingroup module_ntsa_protocol
 class EthernetTag
@@ -35,10 +38,16 @@ class EthernetTag
     bdlb::BigEndianUint16 d_tci;
 
   public:
-    /// Enumerates the constants used by this implementation.
+    /// Enumerates the constants used by the implementation.
     enum Constant {
-        /// The length of the Ethernet tag on the wire.
-        k_LENGTH = 2
+        /// The length of the tag on the wire.
+        k_LENGTH = 2,
+
+        /// The minimum virtual LAN (VLAN) group identifier, inclusive.
+        k_MIN_GROUP = 0,
+
+        /// The maximum virtual LAN (VLAN) group identifier, inclusive.
+        k_MAX_GROUP = 4095
     };
 
     /// Create a new Ethernet tag having a default value.
@@ -69,6 +78,33 @@ class EthernetTag
     /// Reset the value of this object to its value upon default
     /// construction.
     void reset();
+
+    /// Set the virtual LAN (VLAN) identifier to the specified 'value'. The
+    /// behavior is undefined unless 'value' is less than or equal to
+    /// k_MAX_GROUP.
+    void setGroup(bsl::uint16_t value);
+
+    /// Set the priority to the specified 'value'.
+    void setPriority(ntsa::EthernetPriority::Value value);
+
+    /// Set the flag that indicates the packet is eligible to the dropped in
+    /// the presence of congestion to the specified 'value'.
+    void setDroppable(bool value);
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+
+    /// Return the virtual LAN (VLAN) identifier.
+    bsl::uint16_t group() const;
+
+    /// Return the priority.
+    ntsa::EthernetPriority::Value priority() const;
+
+    /// Return the flag that indicates the packet is eligible to the dropped.
+    bool droppable() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -147,9 +183,7 @@ void hashAppend(HASH_ALGORITHM& algorithm, const EthernetTag& value);
 NTSCFG_INLINE
 EthernetTag::EthernetTag()
 {
-    NTSCFG_WARNING_UNUSED(d_tci);
-
-    BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
+    BSLMF_ASSERT(sizeof *this == k_LENGTH);
 
     NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
@@ -203,6 +237,58 @@ NTSCFG_INLINE
 void EthernetTag::reset()
 {
     NTSCFG_MEMORY_ZERO(this, sizeof *this);
+}
+
+NTSCFG_INLINE
+void EthernetTag::setGroup(bsl::uint16_t value)
+{
+    BSLS_ASSERT(value <= k_MAX_GROUP);
+
+    bsl::uint16_t tci = static_cast<bsl::uint16_t>(d_tci);
+    tci = static_cast<bsl::uint16_t>((tci & 0xF000) | (value & 0x0FFF));
+    d_tci = tci;
+}
+
+NTSCFG_INLINE
+void EthernetTag::setPriority(ntsa::EthernetPriority::Value value)
+{
+    bsl::uint16_t tci = static_cast<bsl::uint16_t>(d_tci);
+    tci = static_cast<bsl::uint16_t>(
+        (tci & 0x1FFF) | (static_cast<bsl::uint16_t>(value) << 13));
+    d_tci = tci;
+}
+
+NTSCFG_INLINE
+void EthernetTag::setDroppable(bool value)
+{
+    bsl::uint16_t tci = static_cast<bsl::uint16_t>(d_tci);
+    if (value) {
+        tci = static_cast<bsl::uint16_t>(tci | 0x1000);
+    }
+    else {
+        tci = static_cast<bsl::uint16_t>(tci & ~0x1000);
+    }
+    d_tci = tci;
+}
+
+NTSCFG_INLINE
+bsl::uint16_t EthernetTag::group() const
+{
+    return static_cast<bsl::uint16_t>(
+        static_cast<bsl::uint16_t>(d_tci) & 0x0FFF);
+}
+
+NTSCFG_INLINE
+ntsa::EthernetPriority::Value EthernetTag::priority() const
+{
+    return static_cast<ntsa::EthernetPriority::Value>(
+        (static_cast<bsl::uint16_t>(d_tci) >> 13) & 0x07);
+}
+
+NTSCFG_INLINE
+bool EthernetTag::droppable() const
+{
+    return (static_cast<bsl::uint16_t>(d_tci) & 0x1000) != 0;
 }
 
 NTSCFG_INLINE
