@@ -13,20 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSA_ICMPROUTERREQUEST
-#define INCLUDED_NTSA_ICMPROUTERREQUEST
+#ifndef INCLUDED_NTSA_IGMPJOIN
+#define INCLUDED_NTSA_IGMPJOIN
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
-#include <ntsa_ipv4header.h>
+#include <ntsa_ipv4address.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
-#include <bdlb_bigendian.h>
-#include <bdlbb_blob.h>
 #include <bslh_hash.h>
 #include <bslim_printer.h>
 #include <bsls_assert.h>
@@ -35,54 +33,81 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide the body of an ICMP type 10 router solicitation message.
+/// Provide the body of an IGMPv2 Membership Report message.
 ///
 /// @details
-/// TODO
+/// The IGMPv2 Membership Report message is sent by a host to inform
+/// neighboring multicast routers that the host is joining, has joined, or is
+/// otherwise a member of a multicast group, as described in RFC 2236. The
+/// IGMPv2 Membership Report message is addressed to the all-routers multicast
+/// group (224.0.0.2).
+///
+/// The full join wire format, carried inside an IP datagram, is:
+///
+///```
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |  Type = 0x17  | Max Resp Time |          Checksum             |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                         Group Address                         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+///```
+///
+/// The type (0x17), max response time (set to zero), and checksum fields are
+/// represented by 'ntsa::IgmpHeader'. This class represents the
+/// message-specific body that immediately follows the header: the group
+/// address being left.
+///
+/// Group Address (32 bits): The IP multicast group address of the group being
+/// joined.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
 /// @ingroup module_ntsa_protocol
-class IcmpRouterRequest
+class IgmpJoin
 {
-    /// Reserved field; must be zero.
-    bdlb::BigEndianUint32 d_unused;
+    /// The group address.
+    ntsa::Ipv4Address d_groupAddress;
 
   public:
     /// Enumerate the constants used by the implementation.
     enum Constant {
-        /// The fixed length of the IcmpRouterRequest body in octets.
-        k_LENGTH = sizeof(bdlb::BigEndianUint32)
+        /// The fixed length of the IgmpJoin body in octets.
+        k_LENGTH = sizeof(ntsa::Ipv4Address)
     };
 
-    /// Create a new ICMP timeout having a default value.
-    IcmpRouterRequest();
+    /// Create a new IGMP join having a default value.
+    IgmpJoin();
 
-    /// Create a new ICMP timeout having the same value as the specified
+    /// Create a new IGMP join having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    IcmpRouterRequest(bslmf::MovableRef<IcmpRouterRequest> original) NTSCFG_NOEXCEPT;
+    IgmpJoin(bslmf::MovableRef<IgmpJoin> original) NTSCFG_NOEXCEPT;
 
-    /// Create a new ICMP timeout having the same value as the specified
+    /// Create a new IGMP join having the same value as the specified
     /// 'original' object.
-    IcmpRouterRequest(const IcmpRouterRequest& original);
+    IgmpJoin(const IgmpJoin& original);
 
     /// Destroy this object.
-    ~IcmpRouterRequest();
+    ~IgmpJoin();
 
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpRouterRequest& operator=(
-        bslmf::MovableRef<IcmpRouterRequest> other) NTSCFG_NOEXCEPT;
+    IgmpJoin& operator=(
+        bslmf::MovableRef<IgmpJoin> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
-    IcmpRouterRequest& operator=(const IcmpRouterRequest& other);
+    IgmpJoin& operator=(const IgmpJoin& other);
 
     /// Reset the value of this object to its value upon default construction.
     void reset();
+
+    /// Set the group address to the specified 'value'.
+    void setGroupAddress(const ntsa::Ipv4Address& value);
 
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
@@ -90,13 +115,16 @@ class IcmpRouterRequest
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
+    /// Return the group address.
+    const ntsa::Ipv4Address& groupAddress() const;
+
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
-    bool equals(const IcmpRouterRequest& other) const;
+    bool equals(const IgmpJoin& other) const;
 
     /// Return true if the value of this object is less than the value of the
     /// specified 'other' object, otherwise return false.
-    bool less(const IcmpRouterRequest& other) const;
+    bool less(const IgmpJoin& other) const;
 
     /// Contribute the values of the salient attributes of this object to the
     /// specified hash 'algorithm'.
@@ -122,52 +150,52 @@ class IcmpRouterRequest
 
     /// This type's default constructor is equivalent to setting each byte of
     /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(IcmpRouterRequest);
+    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(IgmpJoin);
 
     /// This type's copy-constructor and copy-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(IcmpRouterRequest);
+    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(IgmpJoin);
 
     /// This type's move-constructor and move-assignment operator is equivalent
     /// to copying each byte of the source object's footprint to each
     /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(IcmpRouterRequest);
+    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(IgmpJoin);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
 /// into the specified 'stream'. Return a reference to the modifiable 'stream'.
 ///
-/// @related ntsa::IcmpRouterRequest
-bsl::ostream& operator<<(bsl::ostream& stream, const IcmpRouterRequest& object);
+/// @related ntsa::IgmpJoin
+bsl::ostream& operator<<(bsl::ostream& stream, const IgmpJoin& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
-/// @related ntsa::IcmpRouterRequest
-bool operator==(const IcmpRouterRequest& lhs, const IcmpRouterRequest& rhs);
+/// @related ntsa::IgmpJoin
+bool operator==(const IgmpJoin& lhs, const IgmpJoin& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
-/// @related ntsa::IcmpRouterRequest
-bool operator!=(const IcmpRouterRequest& lhs, const IcmpRouterRequest& rhs);
+/// @related ntsa::IgmpJoin
+bool operator!=(const IgmpJoin& lhs, const IgmpJoin& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
-/// @related ntsa::IcmpRouterRequest
-bool operator<(const IcmpRouterRequest& lhs, const IcmpRouterRequest& rhs);
+/// @related ntsa::IgmpJoin
+bool operator<(const IgmpJoin& lhs, const IgmpJoin& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.
 ///
-/// @related ntsa::IcmpRouterRequest
+/// @related ntsa::IgmpJoin
 template <typename HASH_ALGORITHM>
-void hashAppend(HASH_ALGORITHM& algorithm, const IcmpRouterRequest& value);
+void hashAppend(HASH_ALGORITHM& algorithm, const IgmpJoin& value);
 
 NTSCFG_INLINE
-IcmpRouterRequest::IcmpRouterRequest()
+IgmpJoin::IgmpJoin()
 {
     BSLMF_ASSERT(sizeof(*this) == k_LENGTH);
 
@@ -175,8 +203,8 @@ IcmpRouterRequest::IcmpRouterRequest()
 }
 
 NTSCFG_INLINE
-IcmpRouterRequest::IcmpRouterRequest(
-    bslmf::MovableRef<IcmpRouterRequest> original) NTSCFG_NOEXCEPT
+IgmpJoin::IgmpJoin(
+    bslmf::MovableRef<IgmpJoin> original) NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -187,19 +215,19 @@ IcmpRouterRequest::IcmpRouterRequest(
 }
 
 NTSCFG_INLINE
-IcmpRouterRequest::IcmpRouterRequest(const IcmpRouterRequest& original)
+IgmpJoin::IgmpJoin(const IgmpJoin& original)
 {
     NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
-IcmpRouterRequest::~IcmpRouterRequest()
+IgmpJoin::~IgmpJoin()
 {
 }
 
 NTSCFG_INLINE
-IcmpRouterRequest& IcmpRouterRequest::operator=(
-    bslmf::MovableRef<IcmpRouterRequest> other) NTSCFG_NOEXCEPT
+IgmpJoin& IgmpJoin::operator=(
+    bslmf::MovableRef<IgmpJoin> other) NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -212,7 +240,7 @@ IcmpRouterRequest& IcmpRouterRequest::operator=(
 }
 
 NTSCFG_INLINE
-IcmpRouterRequest& IcmpRouterRequest::operator=(const IcmpRouterRequest& other)
+IgmpJoin& IgmpJoin::operator=(const IgmpJoin& other)
 {
     NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
 
@@ -220,57 +248,69 @@ IcmpRouterRequest& IcmpRouterRequest::operator=(const IcmpRouterRequest& other)
 }
 
 NTSCFG_INLINE
-void IcmpRouterRequest::reset()
+void IgmpJoin::reset()
 {
     NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
-bool IcmpRouterRequest::equals(const IcmpRouterRequest& other) const
+void IgmpJoin::setGroupAddress(const ntsa::Ipv4Address& value)
+{
+    d_groupAddress = value;
+}
+
+NTSCFG_INLINE
+const ntsa::Ipv4Address& IgmpJoin::groupAddress() const
+{
+    return d_groupAddress;
+}
+
+NTSCFG_INLINE
+bool IgmpJoin::equals(const IgmpJoin& other) const
 {
     return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
 }
 
 NTSCFG_INLINE
-bool IcmpRouterRequest::less(const IcmpRouterRequest& other) const
+bool IgmpJoin::less(const IgmpJoin& other) const
 {
     return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void IcmpRouterRequest::hash(HASH_ALGORITHM& algorithm) const
+NTSCFG_INLINE void IgmpJoin::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    hashAppend(algorithm, static_cast<bsl::uint32_t>(d_unused));
+    hashAppend(algorithm, d_groupAddress);
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const IcmpRouterRequest& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const IgmpJoin& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const IcmpRouterRequest& lhs, const IcmpRouterRequest& rhs)
+bool operator==(const IgmpJoin& lhs, const IgmpJoin& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const IcmpRouterRequest& lhs, const IcmpRouterRequest& rhs)
+bool operator!=(const IgmpJoin& lhs, const IgmpJoin& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
 NTSCFG_INLINE
-bool operator<(const IcmpRouterRequest& lhs, const IcmpRouterRequest& rhs)
+bool operator<(const IgmpJoin& lhs, const IgmpJoin& rhs)
 {
     return lhs.less(rhs);
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&    algorithm,
-                              const IcmpRouterRequest& value)
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
+                              const IgmpJoin& value)
 {
     value.hash(algorithm);
 }

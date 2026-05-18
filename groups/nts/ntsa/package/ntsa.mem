@@ -41,10 +41,13 @@ ntsa_icmptimeout
 ntsa_icmptype
 ntsa_icmpunreachable
 ntsa_igmpheader
+ntsa_igmpjoin
 ntsa_igmpleave
 ntsa_igmppacket
 ntsa_igmppayload
 ntsa_igmpquery
+ntsa_igmprecord
+ntsa_igmprecordtype
 ntsa_igmpreport
 ntsa_igmptype
 ntsa_ipaddress

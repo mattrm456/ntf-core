@@ -77,30 +77,6 @@ ntsa::Error IcmpProblem::encode(ntsa::PacketEncoder* encoder) const
     return ntsa::Error();
 }
 
-ntsa::Error IcmpProblem::decode(const bdlbb::BlobBuffer& buffer,
-                                bsl::size_t              offset,
-                                bsl::size_t              packetSize)
-{
-    NTSCFG_WARNING_UNUSED(buffer);
-    NTSCFG_WARNING_UNUSED(offset);
-    NTSCFG_WARNING_UNUSED(packetSize);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error IcmpProblem::encode(bdlbb::BlobBuffer* buffer,
-                                bsl::size_t        offset) const
-{
-    NTSCFG_WARNING_UNUSED(buffer);
-    NTSCFG_WARNING_UNUSED(offset);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
 bsl::ostream& IcmpProblem::print(bsl::ostream& stream,
                                  int           level,
                                  int           spacesPerLevel) const

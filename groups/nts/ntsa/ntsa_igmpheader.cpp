@@ -68,7 +68,6 @@ void IgmpHeader::print(bslim::Printer* printer) const
     printer->printAttribute("maxResponseCode",
                             static_cast<int>(this->maxResponseCode()));
     printer->printAttribute("checksum", this->checksum());
-    printer->printAttribute("groupAddress", this->groupAddress());
 }
 
 }  // close package namespace

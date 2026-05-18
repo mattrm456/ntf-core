@@ -13,10 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsa_igmpleave.h>
+#include <ntsa_igmpjoin.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsa_igmpleave_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_igmpjoin_cpp, "$Id$ $CSID$")
 
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
@@ -24,7 +24,7 @@ BSLS_IDENT_RCSID(ntsa_igmpleave_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error IgmpLeave::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error IgmpJoin::decode(ntsa::PacketDecoder* decoder)
 {
     ntsa::Error error;
 
@@ -41,7 +41,7 @@ ntsa::Error IgmpLeave::decode(ntsa::PacketDecoder* decoder)
     return ntsa::Error();
 }
 
-ntsa::Error IgmpLeave::encode(ntsa::PacketEncoder* encoder) const
+ntsa::Error IgmpJoin::encode(ntsa::PacketEncoder* encoder) const
 {
     ntsa::Error error;
 
@@ -55,7 +55,7 @@ ntsa::Error IgmpLeave::encode(ntsa::PacketEncoder* encoder) const
     return ntsa::Error();
 }
 
-bsl::ostream& IgmpLeave::print(bsl::ostream& stream,
+bsl::ostream& IgmpJoin::print(bsl::ostream& stream,
                                int           level,
                                int           spacesPerLevel) const
 {
@@ -67,7 +67,7 @@ bsl::ostream& IgmpLeave::print(bsl::ostream& stream,
     return stream;
 }
 
-void IgmpLeave::print(bslim::Printer* printer) const
+void IgmpJoin::print(bslim::Printer* printer) const
 {
     printer->printAttribute("groupAddress", d_groupAddress);
 }

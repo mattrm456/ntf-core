@@ -20,7 +20,6 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
-#include <ntsa_ipv4address.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
@@ -43,9 +42,9 @@ namespace ntsa {
 /// as described in RFC 2236 (IGMPv2) and RFC 9776 (IGMPv3). IGMP messages are
 /// carried directly inside IP datagrams using IP protocol number 2.
 ///
-/// The fixed portion of the IGMP header is 8 octets (64 bits). This class
-/// represents the common header shared by all IGMPv2 message types (Query,
-/// Report, Leave) and the first 8 bytes of IGMPv3 Query messages.
+/// The fixed portion of the IGMP header common to all IGMP message types is
+/// 4 octets (32 bits). The remaining content of the IGMP message is specific
+/// to the message type and is not represented by this class.
 ///
 /// The binary layout of the header in network byte order is:
 ///
@@ -54,8 +53,6 @@ namespace ntsa {
 ///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 /// |      Type     | Max Resp Code |           Checksum            |
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-/// |                         Group Address                         |
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///```
 ///
@@ -76,11 +73,6 @@ namespace ntsa {
 /// of the entire IGMP message (the full IP payload). The checksum field is
 /// treated as zero when computing the sum.
 ///
-/// Group Address (32 bits): In a Membership Query, set to zero for a General
-/// Query or the multicast address being queried for a Group-Specific Query. In
-/// a Membership Report or Leave Group message, the multicast group address
-/// being reported or left.
-///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
@@ -96,14 +88,11 @@ class IgmpHeader
     /// The checksum.
     bdlb::BigEndianUint16 d_checksum;
 
-    /// The group address.
-    bdlb::BigEndianUint32 d_groupAddress;
-
   public:
     /// Enumerate the constants used by the implementation.
     enum Constant {
         /// The fixed IGMP header length.
-        k_LENGTH = 8,
+        k_LENGTH = 4,
 
         /// The protocol number indicating the IPv4 packet carries IGMP.
         k_PROTOCOL_IGMP = 2
@@ -146,9 +135,6 @@ class IgmpHeader
     /// Set the checksum to the specified 'value'.
     void setChecksum(bsl::uint16_t value);
 
-    /// Set the group address to the specified 'value'.
-    void setGroupAddress(bsl::uint32_t value);
-
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
 
@@ -163,9 +149,6 @@ class IgmpHeader
 
     /// Return the checksum.
     bsl::uint16_t checksum() const;
-
-    /// Return the group address.
-    bsl::uint32_t groupAddress() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -322,12 +305,6 @@ void IgmpHeader::setChecksum(bsl::uint16_t value)
 }
 
 NTSCFG_INLINE
-void IgmpHeader::setGroupAddress(bsl::uint32_t value)
-{
-    d_groupAddress = static_cast<bsl::uint32_t>(value);
-}
-
-NTSCFG_INLINE
 bsl::uint8_t IgmpHeader::type() const
 {
     return d_type;
@@ -343,12 +320,6 @@ NTSCFG_INLINE
 bsl::uint16_t IgmpHeader::checksum() const
 {
     return static_cast<bsl::uint16_t>(d_checksum);
-}
-
-NTSCFG_INLINE
-bsl::uint32_t IgmpHeader::groupAddress() const
-{
-    return static_cast<bsl::uint32_t>(d_groupAddress);
 }
 
 NTSCFG_INLINE

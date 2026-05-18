@@ -154,17 +154,6 @@ class IcmpRedirect
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
-    /// Decode the body from the specified 'buffer' starting at the specified
-    /// 'offset' inside the framing packet having the specified 'packetSize'.
-    /// Return the error.
-    ntsa::Error decode(const bdlbb::BlobBuffer& buffer,
-                       bsl::size_t              offset,
-                       bsl::size_t              packetSize);
-
-    /// Encode the body to the specified 'buffer' starting at the specified
-    /// 'offset'. Return the error.
-    ntsa::Error encode(bdlbb::BlobBuffer* buffer, bsl::size_t offset) const;
-
     /// Return the gateway address.
     const ntsa::Ipv4Address& gatewayAddress() const;
 
