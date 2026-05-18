@@ -125,7 +125,8 @@ class IcmpPayload
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    IcmpPayload(const IcmpPayload& original, bslma::Allocator* basicAllocator = 0);
+    IcmpPayload(const IcmpPayload& original,
+                bslma::Allocator*  basicAllocator = 0);
 
     /// Destroy this object.
     ~IcmpPayload();
@@ -157,7 +158,8 @@ class IcmpPayload
 
     /// Select the "echoResponse" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::IcmpEchoResponse& makeEchoResponse(const ntsa::IcmpEchoResponse& value);
+    ntsa::IcmpEchoResponse& makeEchoResponse(
+        const ntsa::IcmpEchoResponse& value);
 
     /// Select the "routerRequest" representation. Return a reference to the
     /// modifiable representation.
@@ -165,7 +167,8 @@ class IcmpPayload
 
     /// Select the "routerRequest" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::IcmpRouterRequest& makeRouterRequest(const ntsa::IcmpRouterRequest& value);
+    ntsa::IcmpRouterRequest& makeRouterRequest(
+        const ntsa::IcmpRouterRequest& value);
 
     /// Select the "routerResponse" representation. Return a reference to the
     /// modifiable representation.
@@ -173,7 +176,8 @@ class IcmpPayload
 
     /// Select the "routerResponse" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::IcmpRouterResponse& makeRouterResponse(const ntsa::IcmpRouterResponse& value);
+    ntsa::IcmpRouterResponse& makeRouterResponse(
+        const ntsa::IcmpRouterResponse& value);
 
     /// Select the "redirect" representation. Return a reference to the
     /// modifiable representation.
@@ -417,7 +421,7 @@ NTSCFG_INLINE void IcmpPayload::hash(HASH_ALGORITHM& algorithm) const
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&    algorithm,
-                               const IcmpPayload& value)
+                              const IcmpPayload& value)
 {
     value.hash(algorithm);
 }
