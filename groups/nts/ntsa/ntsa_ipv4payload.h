@@ -20,6 +20,7 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_icmppacket.h>
+#include <ntsa_igmppacket.h>
 #include <ntsa_tcppacket.h>
 #include <ntsa_udppacket.h>
 #include <ntscfg_platform.h>
@@ -65,10 +66,11 @@ class Ipv4Payload
     Type d_type;
 
     union {
-        bsls::ObjectBuffer<bdlbb::BlobBuffer>  d_raw;
-        bsls::ObjectBuffer<ntsa::IcmpPacket>   d_icmp;
-        bsls::ObjectBuffer<ntsa::TcpPacket>    d_tcp;
-        bsls::ObjectBuffer<ntsa::UdpPacket>    d_udp;
+        bsls::ObjectBuffer<bdlbb::BlobBuffer> d_raw;
+        bsls::ObjectBuffer<ntsa::IcmpPacket>  d_icmp;
+        bsls::ObjectBuffer<ntsa::IgmpPacket>  d_igmp;
+        bsls::ObjectBuffer<ntsa::TcpPacket>   d_tcp;
+        bsls::ObjectBuffer<ntsa::UdpPacket>   d_udp;
     };
 
     bslma::Allocator* d_allocator_p;
@@ -88,7 +90,8 @@ class Ipv4Payload
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    Ipv4Payload(const Ipv4Payload& original, bslma::Allocator* basicAllocator = 0);
+    Ipv4Payload(const Ipv4Payload& original,
+                bslma::Allocator*  basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4Payload();
@@ -135,6 +138,20 @@ class Ipv4Payload
     ntsa::IcmpPacket& makeIcmp(bslmf::MovableRef<ntsa::IcmpPacket> value)
         NTSCFG_NOEXCEPT;
 
+    /// Make the representation of the payload an IGMP packet. Return a
+    /// reference to the modifable representation.
+    ntsa::IgmpPacket& makeIgmp();
+
+    /// Make the representation of the payload an IGMP packet having the
+    /// specified 'value'. Return a reference to the modifable representation.
+    ntsa::IgmpPacket& makeIgmp(const ntsa::IgmpPacket& value);
+
+    /// Make the representation of the payload an IGMP packet having the
+    /// specified 'value'. Assign an unspecified but valid value to the
+    /// 'value'. Return a reference to the modifable representation.
+    ntsa::IgmpPacket& makeIgmp(bslmf::MovableRef<ntsa::IgmpPacket> value)
+        NTSCFG_NOEXCEPT;
+
     /// Make the representation of the payload a TCP packet. Return a reference
     /// to the modifable representation.
     ntsa::TcpPacket& makeTcp();
@@ -171,6 +188,10 @@ class Ipv4Payload
     /// undefined unless 'isIcmp()' is true.
     ntsa::IcmpPacket& icmp();
 
+    /// Return a reference to the modifiable IGMP packet. The behavior is
+    /// undefined unless 'isIgmp()' is true.
+    ntsa::IgmpPacket& igmp();
+
     /// Return a reference to the modifiable TCP packet. The behavior is
     /// undefined unless 'isTcp()' is true.
     ntsa::TcpPacket& tcp();
@@ -186,6 +207,10 @@ class Ipv4Payload
     /// Return a reference to the non-modifiable ICMP packet. The behavior is
     /// undefined unless 'isIcmp()' is true.
     const ntsa::IcmpPacket& icmp() const;
+
+    /// Return a reference to the non-modifiable IGMP packet. The behavior is
+    /// undefined unless 'isIgmp()' is true.
+    const ntsa::IgmpPacket& igmp() const;
 
     /// Return a reference to the non-modifiable TCP packet. The behavior is
     /// undefined unless 'isTcp()' is true.
@@ -209,6 +234,10 @@ class Ipv4Payload
     /// Return true if the representation is an ICMP packet, otherwise return
     /// false.
     bool isIcmp() const;
+
+    /// Return true if the representation is an IGMP packet, otherwise return
+    /// false.
+    bool isIgmp() const;
 
     /// Return true if the representation is a TCP packet, otherwise return
     /// false.
@@ -281,6 +310,13 @@ ntsa::IcmpPacket& Ipv4Payload::icmp()
 }
 
 NTSCFG_INLINE
+ntsa::IgmpPacket& Ipv4Payload::igmp()
+{
+    BSLS_ASSERT(isIgmp());
+    return d_igmp.object();
+}
+
+NTSCFG_INLINE
 ntsa::TcpPacket& Ipv4Payload::tcp()
 {
     BSLS_ASSERT(isTcp());
@@ -306,6 +342,13 @@ const ntsa::IcmpPacket& Ipv4Payload::icmp() const
 {
     BSLS_ASSERT(isIcmp());
     return d_icmp.object();
+}
+
+NTSCFG_INLINE
+const ntsa::IgmpPacket& Ipv4Payload::igmp() const
+{
+    BSLS_ASSERT(isIgmp());
+    return d_igmp.object();
 }
 
 NTSCFG_INLINE
@@ -344,6 +387,12 @@ NTSCFG_INLINE
 bool Ipv4Payload::isIcmp() const
 {
     return d_type == e_ICMP;
+}
+
+NTSCFG_INLINE
+bool Ipv4Payload::isIgmp() const
+{
+    return d_type == e_IGMP;
 }
 
 NTSCFG_INLINE

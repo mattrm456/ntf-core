@@ -21,10 +21,12 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_ethernetaddress.h>
 #include <ntsa_ethernetprotocol.h>
+#include <ntsa_ethernettag.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlb_nullablevalue.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
 #include <bsl_iosfwd.h>
@@ -44,9 +46,10 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class EthernetHeader
 {
-    ntsa::EthernetAddress         d_source;
-    ntsa::EthernetAddress         d_destination;
-    ntsa::EthernetProtocol::Value d_protocol;
+    ntsa::EthernetAddress                  d_source;
+    ntsa::EthernetAddress                  d_destination;
+    bdlb::NullableValue<ntsa::EthernetTag> d_tag;
+    ntsa::EthernetProtocol::Value          d_protocol;
 
   public:
     /// Create a new Ethernet header having a default value.
@@ -86,6 +89,12 @@ class EthernetHeader
 
     /// Set the protocol to the specified 'value'.
     void setProtocol(ntsa::EthernetProtocol::Value value);
+
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
     /// Return the source address.
     const ntsa::EthernetAddress& source() const;
@@ -175,6 +184,7 @@ NTSCFG_INLINE
 EthernetHeader::EthernetHeader()
 : d_source()
 , d_destination()
+, d_tag()
 , d_protocol(ntsa::EthernetProtocol::e_UNDEFINED)
 {
 }
@@ -183,6 +193,7 @@ NTSCFG_INLINE
 EthernetHeader::EthernetHeader(bslmf::MovableRef<EthernetHeader> original)
     NTSCFG_NOEXCEPT : d_source(NTSCFG_MOVE_FROM(original, d_source)),
                       d_destination(NTSCFG_MOVE_FROM(original, d_destination)),
+                      d_tag(NTSCFG_MOVE_FROM(original, d_tag)),
                       d_protocol(NTSCFG_MOVE_FROM(original, d_protocol))
 {
     NTSCFG_MOVE_RESET(original);
@@ -192,6 +203,7 @@ NTSCFG_INLINE
 EthernetHeader::EthernetHeader(const EthernetHeader& original)
 : d_source(original.d_source)
 , d_destination(original.d_destination)
+, d_tag(original.d_tag)
 , d_protocol(original.d_protocol)
 {
 }
@@ -207,6 +219,7 @@ EthernetHeader& EthernetHeader::operator=(
 {
     d_source      = NTSCFG_MOVE_FROM(other, d_source);
     d_destination = NTSCFG_MOVE_FROM(other, d_destination);
+    d_tag         = NTSCFG_MOVE_FROM(other, d_tag);
     d_protocol    = NTSCFG_MOVE_FROM(other, d_protocol);
 
     NTSCFG_MOVE_RESET(other);
@@ -219,6 +232,7 @@ EthernetHeader& EthernetHeader::operator=(const EthernetHeader& other)
 {
     d_source      = other.d_source;
     d_destination = other.d_destination;
+    d_tag         = other.d_tag;
     d_protocol    = other.d_protocol;
     return *this;
 }
@@ -228,6 +242,7 @@ void EthernetHeader::reset()
 {
     d_source.reset();
     d_destination.reset();
+    d_tag.reset();
     d_protocol = ntsa::EthernetProtocol::e_UNDEFINED;
 }
 
@@ -273,6 +288,7 @@ NTSCFG_INLINE void EthernetHeader::hash(HASH_ALGORITHM& algorithm) const
     using bslh::hashAppend;
     hashAppend(algorithm, d_source);
     hashAppend(algorithm, d_destination);
+    hashAppend(algorithm, d_tag);
     hashAppend(algorithm, d_protocol);
 }
 

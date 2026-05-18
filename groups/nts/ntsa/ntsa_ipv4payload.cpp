@@ -26,9 +26,8 @@ namespace BloombergLP {
 namespace ntsa {
 
 Ipv4Payload::Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original)
-    NTSCFG_NOEXCEPT
-: d_type(NTSCFG_MOVE_FROM(original, d_type))
-, d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
+    NTSCFG_NOEXCEPT : d_type(NTSCFG_MOVE_FROM(original, d_type)),
+                      d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     if (d_type == e_RAW) {
         new (d_raw.buffer())
@@ -37,6 +36,10 @@ Ipv4Payload::Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original)
     else if (d_type == e_ICMP) {
         new (d_icmp.buffer())
             ntsa::IcmpPacket(NTSCFG_MOVE_FROM(original, d_icmp.object()));
+    }
+    else if (d_type == e_IGMP) {
+        new (d_igmp.buffer())
+            ntsa::IgmpPacket(NTSCFG_MOVE_FROM(original, d_igmp.object()));
     }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer())
@@ -53,7 +56,8 @@ Ipv4Payload::Ipv4Payload(bslmf::MovableRef<Ipv4Payload> original)
     NTSCFG_MOVE_RESET(original);
 }
 
-Ipv4Payload::Ipv4Payload(const Ipv4Payload& original, bslma::Allocator* basicAllocator)
+Ipv4Payload::Ipv4Payload(const Ipv4Payload& original,
+                         bslma::Allocator*  basicAllocator)
 : d_type(original.d_type)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -61,13 +65,20 @@ Ipv4Payload::Ipv4Payload(const Ipv4Payload& original, bslma::Allocator* basicAll
         new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
     }
     else if (d_type == e_ICMP) {
-        new (d_icmp.buffer()) ntsa::IcmpPacket(original.d_icmp.object(), d_allocator_p);
+        new (d_icmp.buffer())
+            ntsa::IcmpPacket(original.d_icmp.object(), d_allocator_p);
+    }
+    else if (d_type == e_IGMP) {
+        new (d_igmp.buffer())
+            ntsa::IgmpPacket(original.d_igmp.object(), d_allocator_p);
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpPacket(original.d_tcp.object(), d_allocator_p);
+        new (d_tcp.buffer())
+            ntsa::TcpPacket(original.d_tcp.object(), d_allocator_p);
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpPacket(original.d_udp.object(), d_allocator_p);
+        new (d_udp.buffer())
+            ntsa::UdpPacket(original.d_udp.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -84,6 +95,10 @@ Ipv4Payload::~Ipv4Payload()
         typedef ntsa::IcmpPacket Type;
         d_icmp.object().~Type();
     }
+    else if (d_type == e_IGMP) {
+        typedef ntsa::IgmpPacket Type;
+        d_igmp.object().~Type();
+    }
     else if (d_type == e_TCP) {
         typedef ntsa::TcpPacket Type;
         d_tcp.object().~Type();
@@ -99,7 +114,8 @@ Ipv4Payload& Ipv4Payload::operator=(bslmf::MovableRef<Ipv4Payload> other)
 {
     reset();
 
-    d_type = NTSCFG_MOVE_FROM(other, d_type);
+    d_type        = NTSCFG_MOVE_FROM(other, d_type);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     if (d_type == e_RAW) {
         new (d_raw.buffer())
@@ -108,6 +124,10 @@ Ipv4Payload& Ipv4Payload::operator=(bslmf::MovableRef<Ipv4Payload> other)
     else if (d_type == e_ICMP) {
         new (d_icmp.buffer())
             ntsa::IcmpPacket(NTSCFG_MOVE_FROM(other, d_icmp.object()));
+    }
+    else if (d_type == e_IGMP) {
+        new (d_igmp.buffer())
+            ntsa::IgmpPacket(NTSCFG_MOVE_FROM(other, d_igmp.object()));
     }
     else if (d_type == e_TCP) {
         new (d_tcp.buffer())
@@ -140,13 +160,20 @@ Ipv4Payload& Ipv4Payload::operator=(const Ipv4Payload& other)
         new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
     }
     else if (d_type == e_ICMP) {
-        new (d_icmp.buffer()) ntsa::IcmpPacket(other.d_icmp.object(), d_allocator_p);
+        new (d_icmp.buffer())
+            ntsa::IcmpPacket(other.d_icmp.object(), d_allocator_p);
+    }
+    else if (d_type == e_IGMP) {
+        new (d_igmp.buffer())
+            ntsa::IgmpPacket(other.d_igmp.object(), d_allocator_p);
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpPacket(other.d_tcp.object(), d_allocator_p);
+        new (d_tcp.buffer())
+            ntsa::TcpPacket(other.d_tcp.object(), d_allocator_p);
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpPacket(other.d_udp.object(), d_allocator_p);
+        new (d_udp.buffer())
+            ntsa::UdpPacket(other.d_udp.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -164,6 +191,10 @@ void Ipv4Payload::reset()
     else if (d_type == e_ICMP) {
         typedef ntsa::IcmpPacket Type;
         d_icmp.object().~Type();
+    }
+    else if (d_type == e_IGMP) {
+        typedef ntsa::IgmpPacket Type;
+        d_igmp.object().~Type();
     }
     else if (d_type == e_TCP) {
         typedef ntsa::TcpPacket Type;
@@ -250,8 +281,8 @@ ntsa::IcmpPacket& Ipv4Payload::makeIcmp(const ntsa::IcmpPacket& value)
     return d_icmp.object();
 }
 
-ntsa::IcmpPacket& Ipv4Payload::makeIcmp(bslmf::MovableRef<ntsa::IcmpPacket> value)
-    NTSCFG_NOEXCEPT
+ntsa::IcmpPacket& Ipv4Payload::makeIcmp(
+    bslmf::MovableRef<ntsa::IcmpPacket> value) NTSCFG_NOEXCEPT
 {
     if (d_type == e_ICMP) {
         d_icmp.object() = NTSCFG_MOVE(value);
@@ -265,6 +296,51 @@ ntsa::IcmpPacket& Ipv4Payload::makeIcmp(bslmf::MovableRef<ntsa::IcmpPacket> valu
     NTSCFG_MOVE_RESET(value);
 
     return d_icmp.object();
+}
+
+ntsa::IgmpPacket& Ipv4Payload::makeIgmp()
+{
+    if (d_type == e_IGMP) {
+        d_igmp.object().reset();
+    }
+    else {
+        reset();
+        new (d_igmp.buffer()) ntsa::IgmpPacket(d_allocator_p);
+        d_type = e_IGMP;
+    }
+
+    return d_igmp.object();
+}
+
+ntsa::IgmpPacket& Ipv4Payload::makeIgmp(const ntsa::IgmpPacket& value)
+{
+    if (d_type == e_IGMP) {
+        d_igmp.object() = value;
+    }
+    else {
+        reset();
+        new (d_igmp.buffer()) ntsa::IgmpPacket(value, d_allocator_p);
+        d_type = e_IGMP;
+    }
+
+    return d_igmp.object();
+}
+
+ntsa::IgmpPacket& Ipv4Payload::makeIgmp(
+    bslmf::MovableRef<ntsa::IgmpPacket> value) NTSCFG_NOEXCEPT
+{
+    if (d_type == e_IGMP) {
+        d_igmp.object() = NTSCFG_MOVE(value);
+    }
+    else {
+        reset();
+        new (d_igmp.buffer()) ntsa::IgmpPacket(NTSCFG_MOVE(value));
+        d_type = e_IGMP;
+    }
+
+    NTSCFG_MOVE_RESET(value);
+
+    return d_igmp.object();
 }
 
 ntsa::TcpPacket& Ipv4Payload::makeTcp()
@@ -381,6 +457,11 @@ bool Ipv4Payload::equals(const Ipv4Payload& other) const
             return false;
         }
     }
+    else if (d_type == e_IGMP) {
+        if (!d_igmp.object().equals(other.d_igmp.object())) {
+            return false;
+        }
+    }
     else if (d_type == e_TCP) {
         if (!d_tcp.object().equals(other.d_tcp.object())) {
             return false;
@@ -409,6 +490,9 @@ bsl::ostream& Ipv4Payload::print(bsl::ostream& stream,
     }
     else if (d_type == e_ICMP) {
         return d_icmp.object().print(stream, level, spacesPerLevel);
+    }
+    else if (d_type == e_IGMP) {
+        return d_igmp.object().print(stream, level, spacesPerLevel);
     }
     else if (d_type == e_TCP) {
         return d_tcp.object().print(stream, level, spacesPerLevel);

@@ -40,10 +40,13 @@ class Ipv6Packet
 {
     ntsa::Ipv6Header  d_header;
     ntsa::Ipv6Payload d_payload;
+    bslma::Allocator* d_allocator_p;
 
   public:
-    /// Create a new IPv6 packet having a default value.
-    Ipv6Packet();
+    /// Create a new IPv6 packet having a default value. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit Ipv6Packet(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new IPv6 packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -51,8 +54,11 @@ class Ipv6Packet
     Ipv6Packet(bslmf::MovableRef<Ipv6Packet> original) NTSCFG_NOEXCEPT;
 
     /// Create a new IPv6 packet having the same value as the specified
-    /// 'original' object.
-    Ipv6Packet(const Ipv6Packet& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    Ipv6Packet(const Ipv6Packet& original,
+               bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv6Packet();
@@ -88,6 +94,9 @@ class Ipv6Packet
     /// Return a reference to the non-modifiable payload.
     const ntsa::Ipv6Payload& payload() const;
 
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
+
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
     bool equals(const Ipv6Packet& other) const;
@@ -106,10 +115,9 @@ class Ipv6Packet
                         int           level          = 0,
                         int           spacesPerLevel = 6) const;
 
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(Ipv6Packet);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(Ipv6Packet);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -132,24 +140,28 @@ bool operator==(const Ipv6Packet& lhs, const Ipv6Packet& rhs);
 bool operator!=(const Ipv6Packet& lhs, const Ipv6Packet& rhs);
 
 NTSCFG_INLINE
-Ipv6Packet::Ipv6Packet()
+Ipv6Packet::Ipv6Packet(bslma::Allocator* basicAllocator)
 : d_header()
-, d_payload()
+, d_payload(basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
 NTSCFG_INLINE
 Ipv6Packet::Ipv6Packet(bslmf::MovableRef<Ipv6Packet> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
-  d_payload(NTSCFG_MOVE_FROM(original, d_payload))
+  d_payload(NTSCFG_MOVE_FROM(original, d_payload)),
+  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-Ipv6Packet::Ipv6Packet(const Ipv6Packet& original)
+Ipv6Packet::Ipv6Packet(const Ipv6Packet& original,
+                       bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
-, d_payload(original.d_payload)
+, d_payload(original.d_payload, basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -162,8 +174,9 @@ NTSCFG_INLINE
 Ipv6Packet& Ipv6Packet::operator=(bslmf::MovableRef<Ipv6Packet> other)
     NTSCFG_NOEXCEPT
 {
-    d_header  = NTSCFG_MOVE_FROM(other, d_header);
-    d_payload = NTSCFG_MOVE_FROM(other, d_payload);
+    d_header      = NTSCFG_MOVE_FROM(other, d_header);
+    d_payload     = NTSCFG_MOVE_FROM(other, d_payload);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -219,6 +232,12 @@ NTSCFG_INLINE
 const ntsa::Ipv6Payload& Ipv6Packet::payload() const
 {
     return d_payload;
+}
+
+NTSCFG_INLINE
+bslma::Allocator* Ipv6Packet::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

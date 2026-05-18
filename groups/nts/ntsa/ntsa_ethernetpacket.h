@@ -21,6 +21,8 @@ BSLS_IDENT("$Id: $")
 
 #include <ntsa_ethernetheader.h>
 #include <ntsa_ethernetpayload.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bsl_iosfwd.h>
@@ -40,8 +42,10 @@ class EthernetPacket
     ntsa::EthernetPayload d_payload;
 
   public:
-    /// Create a new Ethernet packet having a default value.
-    EthernetPacket();
+    /// Create a new Ethernet packet having a default value. Optionally specify
+    /// a 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit EthernetPacket(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new Ethernet packet having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -49,8 +53,10 @@ class EthernetPacket
     EthernetPacket(bslmf::MovableRef<EthernetPacket> original) NTSCFG_NOEXCEPT;
 
     /// Create a new Ethernet packet having the same value as the specified
-    /// 'original' object.
-    EthernetPacket(const EthernetPacket& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    EthernetPacket(const EthernetPacket& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~EthernetPacket();
@@ -81,6 +87,12 @@ class EthernetPacket
     /// Return a reference to the modifiable payload.
     ntsa::EthernetPayload& payload();
 
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+
     /// Return a reference to the non-modifiable header.
     const ntsa::EthernetHeader& header() const;
 
@@ -105,10 +117,9 @@ class EthernetPacket
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
 
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(EthernetPacket);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(EthernetPacket);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -131,9 +142,9 @@ bool operator==(const EthernetPacket& lhs, const EthernetPacket& rhs);
 bool operator!=(const EthernetPacket& lhs, const EthernetPacket& rhs);
 
 NTSCFG_INLINE
-EthernetPacket::EthernetPacket()
+EthernetPacket::EthernetPacket(bslma::Allocator* basicAllocator)
 : d_header()
-, d_payload()
+, d_payload(basicAllocator)
 {
 }
 
@@ -146,9 +157,9 @@ EthernetPacket::EthernetPacket(bslmf::MovableRef<EthernetPacket> original)
 }
 
 NTSCFG_INLINE
-EthernetPacket::EthernetPacket(const EthernetPacket& original)
+EthernetPacket::EthernetPacket(const EthernetPacket& original, bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
-, d_payload(original.d_payload)
+, d_payload(original.d_payload, basicAllocator)
 {
 }
 

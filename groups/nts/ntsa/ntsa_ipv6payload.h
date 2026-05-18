@@ -63,9 +63,13 @@ class Ipv6Payload
         bsls::ObjectBuffer<ntsa::UdpPacket>   d_udp;
     };
 
+    bslma::Allocator* d_allocator_p;
+
   public:
-    /// Create a new IPv6 payload having a default value.
-    Ipv6Payload();
+    /// Create a new IPv6 payload having a default value. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
+    /// currently installed default allocator is used.
+    explicit Ipv6Payload(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new IPv6 payload having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
@@ -73,8 +77,11 @@ class Ipv6Payload
     Ipv6Payload(bslmf::MovableRef<Ipv6Payload> original) NTSCFG_NOEXCEPT;
 
     /// Create a new IPv6 payload having the same value as the specified
-    /// 'original' object.
-    Ipv6Payload(const Ipv6Payload& original);
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    Ipv6Payload(const Ipv6Payload& original,
+                bslma::Allocator*  basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv6Payload();
@@ -160,6 +167,9 @@ class Ipv6Payload
     /// undefined unless 'isUdp()' is true.
     const ntsa::UdpPacket& udp() const;
 
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
+
     /// Return true if the representation is not defined, otherwise return
     /// false.
     bool isUndefined() const;
@@ -193,6 +203,10 @@ class Ipv6Payload
     bsl::ostream& print(bsl::ostream& stream,
                         int           level          = 0,
                         int           spacesPerLevel = 6) const;
+
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(Ipv6Payload);
 };
 
 /// Write the specified 'object' to the specified 'stream'. Return a modifiable
@@ -214,8 +228,9 @@ bool operator==(const Ipv6Payload& lhs, const Ipv6Payload& rhs);
 bool operator!=(const Ipv6Payload& lhs, const Ipv6Payload& rhs);
 
 NTSCFG_INLINE
-Ipv6Payload::Ipv6Payload()
+Ipv6Payload::Ipv6Payload(bslma::Allocator* basicAllocator)
 : d_type(e_UNDEFINED)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -259,6 +274,12 @@ const ntsa::UdpPacket& Ipv6Payload::udp() const
 {
     BSLS_ASSERT(isUdp());
     return d_udp.object();
+}
+
+NTSCFG_INLINE
+bslma::Allocator* Ipv6Payload::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

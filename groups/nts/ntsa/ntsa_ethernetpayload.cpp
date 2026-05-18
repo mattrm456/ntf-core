@@ -26,7 +26,8 @@ namespace BloombergLP {
 namespace ntsa {
 
 EthernetPayload::EthernetPayload(bslmf::MovableRef<EthernetPayload> original)
-    NTSCFG_NOEXCEPT : d_type(NTSCFG_MOVE_FROM(original, d_type))
+    NTSCFG_NOEXCEPT : d_type(NTSCFG_MOVE_FROM(original, d_type)),
+                      d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     if (d_type == e_RAW) {
         new (d_raw.buffer())
@@ -47,17 +48,21 @@ EthernetPayload::EthernetPayload(bslmf::MovableRef<EthernetPayload> original)
     NTSCFG_MOVE_RESET(original);
 }
 
-EthernetPayload::EthernetPayload(const EthernetPayload& original)
+EthernetPayload::EthernetPayload(const EthernetPayload& original,
+                                 bslma::Allocator*      basicAllocator)
 : d_type(original.d_type)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
     if (d_type == e_RAW) {
         new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
     }
     else if (d_type == e_IPV4) {
-        new (d_ipv4.buffer()) ntsa::Ipv4Packet(original.d_ipv4.object());
+        new (d_ipv4.buffer())
+            ntsa::Ipv4Packet(original.d_ipv4.object(), d_allocator_p);
     }
     else if (d_type == e_IPV6) {
-        new (d_ipv6.buffer()) ntsa::Ipv6Packet(original.d_ipv6.object());
+        new (d_ipv6.buffer())
+            ntsa::Ipv6Packet(original.d_ipv6.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -80,12 +85,13 @@ EthernetPayload::~EthernetPayload()
     }
 }
 
-EthernetPayload& EthernetPayload::operator=(bslmf::MovableRef<EthernetPayload> other)
-    NTSCFG_NOEXCEPT
+EthernetPayload& EthernetPayload::operator=(
+    bslmf::MovableRef<EthernetPayload> other) NTSCFG_NOEXCEPT
 {
     reset();
 
-    d_type = NTSCFG_MOVE_FROM(other, d_type);
+    d_type        = NTSCFG_MOVE_FROM(other, d_type);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     if (d_type == e_RAW) {
         new (d_raw.buffer())
@@ -122,10 +128,12 @@ EthernetPayload& EthernetPayload::operator=(const EthernetPayload& other)
         new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
     }
     else if (d_type == e_IPV4) {
-        new (d_ipv4.buffer()) ntsa::Ipv4Packet(other.d_ipv4.object());
+        new (d_ipv4.buffer())
+            ntsa::Ipv4Packet(other.d_ipv4.object(), d_allocator_p);
     }
     else if (d_type == e_IPV6) {
-        new (d_ipv6.buffer()) ntsa::Ipv6Packet(other.d_ipv6.object());
+        new (d_ipv6.buffer())
+            ntsa::Ipv6Packet(other.d_ipv6.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -204,7 +212,7 @@ ntsa::Ipv4Packet& EthernetPayload::makeIpv4()
     }
     else {
         reset();
-        new (d_ipv4.buffer()) ntsa::Ipv4Packet();
+        new (d_ipv4.buffer()) ntsa::Ipv4Packet(d_allocator_p);
         d_type = e_IPV4;
     }
 
@@ -218,7 +226,7 @@ ntsa::Ipv4Packet& EthernetPayload::makeIpv4(const ntsa::Ipv4Packet& value)
     }
     else {
         reset();
-        new (d_ipv4.buffer()) ntsa::Ipv4Packet(value);
+        new (d_ipv4.buffer()) ntsa::Ipv4Packet(value, d_allocator_p);
         d_type = e_IPV4;
     }
 
@@ -249,7 +257,7 @@ ntsa::Ipv6Packet& EthernetPayload::makeIpv6()
     }
     else {
         reset();
-        new (d_ipv6.buffer()) ntsa::Ipv6Packet();
+        new (d_ipv6.buffer()) ntsa::Ipv6Packet(d_allocator_p);
         d_type = e_IPV6;
     }
 
@@ -263,7 +271,7 @@ ntsa::Ipv6Packet& EthernetPayload::makeIpv6(const ntsa::Ipv6Packet& value)
     }
     else {
         reset();
-        new (d_ipv6.buffer()) ntsa::Ipv6Packet(value);
+        new (d_ipv6.buffer()) ntsa::Ipv6Packet(value, d_allocator_p);
         d_type = e_IPV6;
     }
 
@@ -324,8 +332,8 @@ bool EthernetPayload::equals(const EthernetPayload& other) const
 }
 
 bsl::ostream& EthernetPayload::print(bsl::ostream& stream,
-                                 int           level,
-                                 int           spacesPerLevel) const
+                                     int           level,
+                                     int           spacesPerLevel) const
 {
     if (d_type == e_RAW) {
         return bdlb::Print::hexDump(stream,

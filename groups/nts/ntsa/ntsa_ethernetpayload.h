@@ -63,18 +63,26 @@ class EthernetPayload
         bsls::ObjectBuffer<ntsa::Ipv6Packet>  d_ipv6;
     };
 
-public:
-    /// Create a new Ethernet payload having a default value.
-    EthernetPayload();
+    bslma::Allocator* d_allocator_p;
 
-    /// Create a new Ethernet payload  having the same value as the specified
+  public:
+    /// Create a new Ethernet payload having a default value. Optionally
+    /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
+    /// is 0, the currently installed default allocator is used.
+    explicit EthernetPayload(bslma::Allocator* basicAllocator = 0);
+
+    /// Create a new Ethernet payload having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    EthernetPayload(bslmf::MovableRef<EthernetPayload> original) NTSCFG_NOEXCEPT;
+    EthernetPayload(bslmf::MovableRef<EthernetPayload> original)
+        NTSCFG_NOEXCEPT;
 
-    /// Create a new Ethernet payload  having the same value as the specified
-    /// 'original' object.
-    EthernetPayload(const EthernetPayload& original);
+    /// Create a new Ethernet payload having the same value as the specified
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    EthernetPayload(const EthernetPayload& original,
+                    bslma::Allocator*      basicAllocator = 0);
 
     /// Destroy this object.
     ~EthernetPayload();
@@ -160,6 +168,9 @@ public:
     /// undefined unless 'isUdp()' is true.
     const ntsa::Ipv6Packet& ipv6() const;
 
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
+
     /// Return true if the representation is not defined, otherwise return
     /// false.
     bool isUndefined() const;
@@ -193,6 +204,10 @@ public:
     bsl::ostream& print(bsl::ostream& stream,
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
+
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(EthernetPayload);
 };
 
 /// Write the specified 'object' to the specified 'stream'. Return a modifiable
@@ -214,8 +229,9 @@ bool operator==(const EthernetPayload& lhs, const EthernetPayload& rhs);
 bool operator!=(const EthernetPayload& lhs, const EthernetPayload& rhs);
 
 NTSCFG_INLINE
-EthernetPayload::EthernetPayload()
+EthernetPayload::EthernetPayload(bslma::Allocator* basicAllocator)
 : d_type(e_UNDEFINED)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
@@ -259,6 +275,12 @@ const ntsa::Ipv6Packet& EthernetPayload::ipv6() const
 {
     BSLS_ASSERT(isIpv6());
     return d_ipv6.object();
+}
+
+NTSCFG_INLINE
+bslma::Allocator* EthernetPayload::allocator() const
+{
+    return d_allocator_p;
 }
 
 NTSCFG_INLINE

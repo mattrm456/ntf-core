@@ -20,8 +20,8 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
-#include <ntsa_ipv4header.h>
 #include <ntsa_ipv4extension.h>
+#include <ntsa_ipv4header.h>
 #include <ntsa_ipv4payload.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
@@ -61,7 +61,8 @@ class Ipv4Packet
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    Ipv4Packet(const Ipv4Packet& original, bslma::Allocator* basicAllocator = 0);
+    Ipv4Packet(const Ipv4Packet& original,
+               bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4Packet();
@@ -166,7 +167,8 @@ Ipv4Packet::Ipv4Packet(bslmf::MovableRef<Ipv4Packet> original) NTSCFG_NOEXCEPT
 }
 
 NTSCFG_INLINE
-Ipv4Packet::Ipv4Packet(const Ipv4Packet& original, bslma::Allocator* basicAllocator)
+Ipv4Packet::Ipv4Packet(const Ipv4Packet& original,
+                       bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
 , d_payload(original.d_payload)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))

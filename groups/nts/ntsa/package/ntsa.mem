@@ -17,7 +17,9 @@ ntsa_ethernetaddress
 ntsa_ethernetheader
 ntsa_ethernetpacket
 ntsa_ethernetpayload
+ntsa_ethernetpriority
 ntsa_ethernetprotocol
+ntsa_ethernettag
 ntsa_event
 ntsa_file
 ntsa_guid
@@ -40,6 +42,7 @@ ntsa_icmprouterresponse
 ntsa_icmptimeout
 ntsa_icmptype
 ntsa_icmpunreachable
+ntsa_igmpchecksum
 ntsa_igmpheader
 ntsa_igmpjoin
 ntsa_igmpleave

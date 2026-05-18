@@ -25,6 +25,30 @@ BSLS_IDENT_RCSID(ntsa_ethernetpacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
+ntsa::Error EthernetPacket::decode(ntsa::PacketDecoder* decoder)
+{
+    ntsa::Error error;
+
+    error = d_header.decode(decoder);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error EthernetPacket::encode(ntsa::PacketEncoder* encoder) const
+{
+    ntsa::Error error;
+
+    error = d_header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
 bool EthernetPacket::equals(const EthernetPacket& other) const
 {
     if (d_header != other.d_header) {

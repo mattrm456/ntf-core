@@ -26,7 +26,8 @@ namespace BloombergLP {
 namespace ntsa {
 
 Ipv6Payload::Ipv6Payload(bslmf::MovableRef<Ipv6Payload> original)
-    NTSCFG_NOEXCEPT : d_type(NTSCFG_MOVE_FROM(original, d_type))
+    NTSCFG_NOEXCEPT : d_type(NTSCFG_MOVE_FROM(original, d_type)),
+                      d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
     if (d_type == e_RAW) {
         new (d_raw.buffer())
@@ -47,17 +48,21 @@ Ipv6Payload::Ipv6Payload(bslmf::MovableRef<Ipv6Payload> original)
     NTSCFG_MOVE_RESET(original);
 }
 
-Ipv6Payload::Ipv6Payload(const Ipv6Payload& original)
+Ipv6Payload::Ipv6Payload(const Ipv6Payload& original,
+                         bslma::Allocator*  basicAllocator)
 : d_type(original.d_type)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
     if (d_type == e_RAW) {
         new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpPacket(original.d_tcp.object());
+        new (d_tcp.buffer())
+            ntsa::TcpPacket(original.d_tcp.object(), d_allocator_p);
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpPacket(original.d_udp.object());
+        new (d_udp.buffer())
+            ntsa::UdpPacket(original.d_udp.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -85,7 +90,8 @@ Ipv6Payload& Ipv6Payload::operator=(bslmf::MovableRef<Ipv6Payload> other)
 {
     reset();
 
-    d_type = NTSCFG_MOVE_FROM(other, d_type);
+    d_type        = NTSCFG_MOVE_FROM(other, d_type);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     if (d_type == e_RAW) {
         new (d_raw.buffer())
@@ -122,10 +128,12 @@ Ipv6Payload& Ipv6Payload::operator=(const Ipv6Payload& other)
         new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
     }
     else if (d_type == e_TCP) {
-        new (d_tcp.buffer()) ntsa::TcpPacket(other.d_tcp.object());
+        new (d_tcp.buffer())
+            ntsa::TcpPacket(other.d_tcp.object(), d_allocator_p);
     }
     else if (d_type == e_UDP) {
-        new (d_udp.buffer()) ntsa::UdpPacket(other.d_udp.object());
+        new (d_udp.buffer())
+            ntsa::UdpPacket(other.d_udp.object(), d_allocator_p);
     }
     else {
         BSLS_ASSERT(d_type == e_UNDEFINED);
@@ -204,7 +212,7 @@ ntsa::TcpPacket& Ipv6Payload::makeTcp()
     }
     else {
         reset();
-        new (d_tcp.buffer()) ntsa::TcpPacket();
+        new (d_tcp.buffer()) ntsa::TcpPacket(d_allocator_p);
         d_type = e_TCP;
     }
 
@@ -218,7 +226,7 @@ ntsa::TcpPacket& Ipv6Payload::makeTcp(const ntsa::TcpPacket& value)
     }
     else {
         reset();
-        new (d_tcp.buffer()) ntsa::TcpPacket(value);
+        new (d_tcp.buffer()) ntsa::TcpPacket(value, d_allocator_p);
         d_type = e_TCP;
     }
 
@@ -249,7 +257,7 @@ ntsa::UdpPacket& Ipv6Payload::makeUdp()
     }
     else {
         reset();
-        new (d_udp.buffer()) ntsa::UdpPacket();
+        new (d_udp.buffer()) ntsa::UdpPacket(d_allocator_p);
         d_type = e_UDP;
     }
 
@@ -263,7 +271,7 @@ ntsa::UdpPacket& Ipv6Payload::makeUdp(const ntsa::UdpPacket& value)
     }
     else {
         reset();
-        new (d_udp.buffer()) ntsa::UdpPacket(value);
+        new (d_udp.buffer()) ntsa::UdpPacket(value, d_allocator_p);
         d_type = e_UDP;
     }
 
