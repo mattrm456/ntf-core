@@ -26,13 +26,8 @@ BSLS_IDENT_RCSID(ntsa_icmppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
-                               const ntsa::Ipv4Address& sourceAddress,
-                               const ntsa::Ipv4Address& destinationAddress)
+ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder* decoder)
 {
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
     ntsa::Error error;
 
     const bsl::uint8_t* packetData = decoder->next();
@@ -133,27 +128,8 @@ ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
     return ntsa::Error();
 }
 
-ntsa::Error IcmpPacket::decode(ntsa::PacketDecoder*     decoder,
-                               const ntsa::Ipv6Address& sourceAddress,
-                               const ntsa::Ipv6Address& destinationAddress)
+ntsa::Error IcmpPacket::encode(ntsa::PacketEncoder* encoder) const
 {
-    NTSCFG_WARNING_UNUSED(decoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error IcmpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv4Address& sourceAddress,
-    const ntsa::Ipv4Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
     ntsa::Error error;
 
     ntsa::IcmpHeader header = d_header;
@@ -296,20 +272,6 @@ ntsa::Error IcmpPacket::encode(
     }
 
     return ntsa::Error();
-}
-
-ntsa::Error IcmpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv6Address& sourceAddress,
-    const ntsa::Ipv6Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(encoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 bool IcmpPacket::equals(const IcmpPacket& other) const

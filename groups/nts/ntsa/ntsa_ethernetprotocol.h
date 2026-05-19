@@ -38,10 +38,6 @@ struct EthernetProtocol {
         /// The protocol carried by the ethernet frame is undefined.
         e_UNDEFINED = 0,
 
-        /// The protocol carried by the ethernet frame is the Internet
-        /// Protocol, version 4 (IPv4).
-        e_IPV4 = 0x0800,
-
         /// The protocol carried by the ethernet frame is the Address
         /// Resolution Protocol (ARP).
         e_ARP = 0x0806,
@@ -49,6 +45,10 @@ struct EthernetProtocol {
         /// The protocol carried by the ethernet frame is the Reverse Address
         /// Resolution Protocol (RARP).
         e_RARP = 0x8035,
+
+        /// The protocol carried by the ethernet frame is the Internet
+        /// Protocol, version 4 (IPv4).
+        e_IPV4 = 0x0800,
 
         /// The protocol carried by the ethernet frame is the Internet
         /// Protocol, version 6 (IPv6).

@@ -161,11 +161,11 @@ class EthernetPayload
     const bdlbb::BlobBuffer& raw() const;
 
     /// Return a reference to the non-modifiable IPv4 packet. The behavior is
-    /// undefined unless 'isTcp()' is true.
+    /// undefined unless 'isIpv4()' is true.
     const ntsa::Ipv4Packet& ipv4() const;
 
     /// Return a reference to the non-modifiable IPv6 packet. The behavior is
-    /// undefined unless 'isUdp()' is true.
+    /// undefined unless 'isIpv6()' is true.
     const ntsa::Ipv6Packet& ipv6() const;
 
     /// Return the allocator.
@@ -266,7 +266,7 @@ const bdlbb::BlobBuffer& EthernetPayload::raw() const
 NTSCFG_INLINE
 const ntsa::Ipv4Packet& EthernetPayload::ipv4() const
 {
-    BSLS_ASSERT(isIpv6());
+    BSLS_ASSERT(isIpv4());
     return d_ipv4.object();
 }
 

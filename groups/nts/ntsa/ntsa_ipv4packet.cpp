@@ -47,9 +47,17 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
     {
         ntsa::IcmpPacket& icmp = d_payload.makeIcmp();
 
-        error = icmp.decode(decoder,
-                            d_header.sourceAddress(),
-                            d_header.destinationAddress());
+        error = icmp.decode(decoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_header.protocol() ==
+        static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_IGMP))
+    {
+        ntsa::IgmpPacket& igmp = d_payload.makeIgmp();
+
+        error = igmp.decode(decoder);
         if (error) {
             return error;
         }
@@ -116,9 +124,21 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoder* encoder) const
 
         const ntsa::IcmpPacket& icmp = d_payload.icmp();
 
-        error = icmp.encode(encoder,
-                            d_header.sourceAddress(),
-                            d_header.destinationAddress());
+        error = icmp.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isIgmp()) {
+        if (d_header.protocol() !=
+            static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_IGMP))
+        {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::IgmpPacket& igmp = d_payload.igmp();
+
+        error = igmp.encode(encoder);
         if (error) {
             return error;
         }

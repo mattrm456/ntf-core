@@ -20,10 +20,10 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
-#include <ntsa_ipv4address.h>
-#include <ntsa_ipv6address.h>
 #include <ntsa_igmpheader.h>
 #include <ntsa_igmppayload.h>
+#include <ntsa_ipv4address.h>
+#include <ntsa_ipv6address.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
@@ -61,7 +61,8 @@ class IgmpPacket
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    IgmpPacket(const IgmpPacket& original, bslma::Allocator* basicAllocator = 0);
+    IgmpPacket(const IgmpPacket& original,
+               bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~IgmpPacket();
@@ -92,24 +93,10 @@ class IgmpPacket
     ntsa::IgmpPayload& payload();
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder,
-                       const ntsa::Ipv4Address& sourceAddress,
-                       const ntsa::Ipv4Address& destinationAddress);
-
-    /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder*     decoder,
-                       const ntsa::Ipv6Address& sourceAddress,
-                       const ntsa::Ipv6Address& destinationAddress);
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
 
     /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
-                       const ntsa::Ipv4Address& sourceAddress,
-                       const ntsa::Ipv4Address& destinationAddress) const;
-
-    /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
-                       const ntsa::Ipv6Address& sourceAddress,
-                       const ntsa::Ipv6Address& destinationAddress) const;
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::IgmpHeader& header() const;
@@ -180,7 +167,8 @@ IgmpPacket::IgmpPacket(bslmf::MovableRef<IgmpPacket> original) NTSCFG_NOEXCEPT
 }
 
 NTSCFG_INLINE
-IgmpPacket::IgmpPacket(const IgmpPacket& original, bslma::Allocator* basicAllocator)
+IgmpPacket::IgmpPacket(const IgmpPacket& original,
+                       bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
 , d_payload(original.d_payload, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))

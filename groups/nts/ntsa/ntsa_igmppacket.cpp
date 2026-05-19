@@ -26,13 +26,8 @@ BSLS_IDENT_RCSID(ntsa_igmppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error IgmpPacket::decode(ntsa::PacketDecoder*     decoder,
-                               const ntsa::Ipv4Address& sourceAddress,
-                               const ntsa::Ipv4Address& destinationAddress)
+ntsa::Error IgmpPacket::decode(ntsa::PacketDecoder*     decoder)
 {
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
     ntsa::Error error;
 
     const bsl::uint8_t* packetData = decoder->next();
@@ -100,27 +95,9 @@ ntsa::Error IgmpPacket::decode(ntsa::PacketDecoder*     decoder,
     return ntsa::Error();
 }
 
-ntsa::Error IgmpPacket::decode(ntsa::PacketDecoder*     decoder,
-                               const ntsa::Ipv6Address& sourceAddress,
-                               const ntsa::Ipv6Address& destinationAddress)
-{
-    NTSCFG_WARNING_UNUSED(decoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
 ntsa::Error IgmpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv4Address& sourceAddress,
-    const ntsa::Ipv4Address& destinationAddress) const
+    ntsa::PacketEncoder*     encoder) const
 {
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
     ntsa::Error error;
 
     ntsa::IgmpHeader header = d_header;
@@ -213,20 +190,6 @@ ntsa::Error IgmpPacket::encode(
     }
 
     return ntsa::Error();
-}
-
-ntsa::Error IgmpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv6Address& sourceAddress,
-    const ntsa::Ipv6Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(encoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 bool IgmpPacket::equals(const IgmpPacket& other) const

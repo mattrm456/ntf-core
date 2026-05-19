@@ -88,6 +88,12 @@ class Ipv6Packet
     /// Return a reference to the modifiable payload.
     ntsa::Ipv6Payload& payload();
 
+    /// Decode the object from the specified 'decoder'. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+
+    /// Encode the object through the specified 'encoder'. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+
     /// Return a reference to the non-modifiable header.
     const ntsa::Ipv6Header& header() const;
 

@@ -80,7 +80,12 @@ ntsa_notificationqueue
 ntsa_notificationtype
 ntsa_packet
 ntsa_packetdecoder
+ntsa_packetdecodercontext
+ntsa_packetdecoderoptions
 ntsa_packetencoder
+ntsa_packetencodercontext
+ntsa_packetencoderoptions
+ntsa_packettype
 ntsa_port
 ntsa_portoptions
 ntsa_reactorconfig
