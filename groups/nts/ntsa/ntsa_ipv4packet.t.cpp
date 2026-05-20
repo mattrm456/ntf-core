@@ -139,8 +139,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoRequest)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -181,7 +185,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoRequest)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -205,7 +214,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoRequest)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -252,8 +266,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoResponse)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -294,7 +312,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoResponse)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -318,7 +341,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpEchoResponse)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -360,8 +388,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterRequest)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -398,7 +430,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterRequest)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -422,7 +459,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterRequest)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -465,8 +507,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterResponse)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -515,7 +561,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterResponse)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -539,7 +590,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRouterResponse)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -584,8 +640,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRedirect)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -618,8 +678,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRedirect)
     const ntsa::IcmpRedirect& redirect =
         incomingIcmpPacket.payload().redirect();
 
-    NTSCFG_TEST_EQ(redirect.gatewayAddress(),
-                   ntsa::Ipv4Address("10.0.0.2"));
+    NTSCFG_TEST_EQ(redirect.gatewayAddress(), ntsa::Ipv4Address("10.0.0.2"));
 
     NTSCFG_TEST_EQ(redirect.header().headerLength(), 20);
     NTSCFG_TEST_EQ(redirect.header().packetLength(), 40);
@@ -640,7 +699,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRedirect)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -664,7 +728,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpRedirect)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -709,8 +778,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpUnreachable)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -762,7 +835,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpUnreachable)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -786,7 +864,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpUnreachable)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -831,8 +914,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpTimeout)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -862,8 +949,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpTimeout)
 
     NTSCFG_TEST_TRUE(incomingIcmpPacket.payload().isTimeout());
 
-    const ntsa::IcmpTimeout& timeout =
-        incomingIcmpPacket.payload().timeout();
+    const ntsa::IcmpTimeout& timeout = incomingIcmpPacket.payload().timeout();
 
     NTSCFG_TEST_EQ(timeout.header().headerLength(), 20);
     NTSCFG_TEST_EQ(timeout.header().packetLength(), 84);
@@ -884,7 +970,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpTimeout)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -908,7 +999,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpTimeout)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -953,8 +1049,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpProblem)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -984,8 +1084,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpProblem)
 
     NTSCFG_TEST_TRUE(incomingIcmpPacket.payload().isProblem());
 
-    const ntsa::IcmpProblem& problem =
-        incomingIcmpPacket.payload().problem();
+    const ntsa::IcmpProblem& problem = incomingIcmpPacket.payload().problem();
 
     NTSCFG_TEST_EQ(problem.pointer(), 1);
 
@@ -1008,7 +1107,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpProblem)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -1032,7 +1136,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpProblem)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -1079,7 +1188,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyUdp)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error = incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -1125,7 +1239,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyUdp)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -1149,7 +1268,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyUdp)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -1204,8 +1328,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTcp)
     {
         ntsa::PacketDecoder decoder(&incomingBlobBuffer);
 
-        error =
-            incomingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = incomingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 
@@ -1279,7 +1407,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTcp)
 
         ntsa::PacketEncoder encoder(&outgoingBlobBuffer);
 
-        error = incomingIpv4Packet.encode(&encoder);
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        error = incomingIpv4Packet.encode(&encoderContext,
+                                          &encoder,
+                                          encoderOptions);
         NTSCFG_TEST_OK(error);
 
         error = encoder.flush();
@@ -1303,7 +1436,12 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTcp)
     {
         ntsa::PacketDecoder decoder(&outgoingBlobBuffer);
 
-        error = outgoingIpv4Packet.decode(&decoder);
+        ntsa::PacketDecoderContext decoderContext;
+        ntsa::PacketDecoderOptions decoderOptions;
+
+        error = outgoingIpv4Packet.decode(&decoderContext,
+                                          &decoder,
+                                          decoderOptions);
         NTSCFG_TEST_OK(error);
     }
 

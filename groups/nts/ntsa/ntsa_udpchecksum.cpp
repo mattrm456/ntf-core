@@ -51,7 +51,8 @@ void UdpChecksum::reset()
 
 void UdpChecksum::add(const ntsa::Ipv4Address& sourceAddress,
                       const ntsa::Ipv4Address& destinationAddress,
-                      bsl::size_t              length)
+                      bsl::size_t              length,
+                      bsl::uint8_t             protocol)
 {
     const bsl::uint8_t* src =
         reinterpret_cast<const bsl::uint8_t*>(&sourceAddress);
@@ -71,8 +72,39 @@ void UdpChecksum::add(const ntsa::Ipv4Address& sourceAddress,
     d_accumulator +=
         (static_cast<bsl::uint16_t>(dst[2]) << 8) | dst[3];
 
-    d_accumulator += static_cast<bsl::uint16_t>(UdpChecksum::k_PROTOCOL_UDP);
+    d_accumulator += static_cast<bsl::uint16_t>(protocol);
     d_accumulator += static_cast<bsl::uint16_t>(length);
+}
+
+void UdpChecksum::add(const ntsa::Ipv6Address& sourceAddress,
+                      const ntsa::Ipv6Address& destinationAddress,
+                      bsl::size_t              length,
+                      bsl::uint8_t             protocol)
+{
+    const bsl::uint8_t* src =
+        reinterpret_cast<const bsl::uint8_t*>(&sourceAddress);
+
+    const bsl::uint8_t* dst =
+        reinterpret_cast<const bsl::uint8_t*>(&destinationAddress);
+
+    for (bsl::size_t i = 0; i < 16; i += 4) {
+        d_accumulator +=
+            (static_cast<bsl::uint16_t>(src[i + 0]) << 8) | src[i + 1];
+
+        d_accumulator +=
+            (static_cast<bsl::uint16_t>(src[i + 2]) << 8) | src[i + 3];
+    }
+
+    for (bsl::size_t i = 0; i < 16; i += 4) {
+        d_accumulator +=
+            (static_cast<bsl::uint16_t>(dst[i + 0]) << 8) | dst[i + 1];
+
+        d_accumulator +=
+            (static_cast<bsl::uint16_t>(dst[i + 2]) << 8) | dst[i + 3];
+    }
+
+    d_accumulator += static_cast<bsl::uint16_t>(length);
+    d_accumulator += static_cast<bsl::uint16_t>(protocol) << 8;
 }
 
 void UdpChecksum::add(const void* data, bsl::size_t size)

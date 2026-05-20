@@ -56,7 +56,8 @@ class EthernetPacket
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    EthernetPacket(const EthernetPacket& original, bslma::Allocator* basicAllocator = 0);
+    EthernetPacket(const EthernetPacket& original,
+                   bslma::Allocator*     basicAllocator = 0);
 
     /// Destroy this object.
     ~EthernetPacket();
@@ -87,11 +88,19 @@ class EthernetPacket
     /// Return a reference to the modifiable payload.
     ntsa::EthernetPayload& payload();
 
-    /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+    /// Decode the object from the specified 'decoder' according to the
+    /// specified 'options'. Populate the specified 'context' with the
+    /// consequences of encoding the packet. Return the error.
+    ntsa::Error decode(ntsa::PacketDecoderContext*       context,
+                       ntsa::PacketDecoder*              decoder,
+                       const ntsa::PacketDecoderOptions& options);
 
-    /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
+    /// Encode the object through the specified 'encoder' according to the
+    /// specified 'options'. Populate the specified 'context' with consequences
+    /// of decoding the packet. Return the error.
+    ntsa::Error encode(ntsa::PacketEncoderContext*       context,
+                       ntsa::PacketEncoder*              encoder,
+                       const ntsa::PacketEncoderOptions& options) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::EthernetHeader& header() const;
@@ -157,7 +166,8 @@ EthernetPacket::EthernetPacket(bslmf::MovableRef<EthernetPacket> original)
 }
 
 NTSCFG_INLINE
-EthernetPacket::EthernetPacket(const EthernetPacket& original, bslma::Allocator* basicAllocator)
+EthernetPacket::EthernetPacket(const EthernetPacket& original,
+                               bslma::Allocator*     basicAllocator)
 : d_header(original.d_header)
 , d_payload(original.d_payload, basicAllocator)
 {
@@ -169,8 +179,8 @@ EthernetPacket::~EthernetPacket()
 }
 
 NTSCFG_INLINE
-EthernetPacket& EthernetPacket::operator=(bslmf::MovableRef<EthernetPacket> other)
-    NTSCFG_NOEXCEPT
+EthernetPacket& EthernetPacket::operator=(
+    bslmf::MovableRef<EthernetPacket> other) NTSCFG_NOEXCEPT
 {
     d_header  = NTSCFG_MOVE_FROM(other, d_header);
     d_payload = NTSCFG_MOVE_FROM(other, d_payload);

@@ -490,7 +490,7 @@ public:
     /// Set the flag indicating that zero-copy transmissions should be
     /// performed according to the specified 'value'.
     void setZeroCopy(bool value);
-    
+
     /// Return the flag indicating that timestamps for incoming data should be
     /// generated.
     bool timestampIncomingData() const;
@@ -499,7 +499,7 @@ public:
     /// generated.
     bool timestampOutgoingData() const;
 
-    /// Return the flag indicating that zero-copy transmission should be 
+    /// Return the flag indicating that zero-copy transmission should be
     /// performed.
     bool zeroCopy() const;
 
@@ -578,10 +578,10 @@ bool SocketUtilTest::supportsTimestamping(ntsa::Handle socket)
     for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
         const ntsa::Adapter& adapter = adapterList[i];
 
-        if (adapter.ipv4Address().has_value() && 
-            adapter.ipv4Address().value() == ntsa::Ipv4Address::loopback()) 
+        if (adapter.ipv4Address().has_value() &&
+            adapter.ipv4Address().value() == ntsa::Ipv4Address::loopback())
         {
-            if (adapter.txSoftwareTimestamps() && 
+            if (adapter.txSoftwareTimestamps() &&
                 adapter.rxSoftwareTimestamps())
             {
                 return true;
@@ -727,7 +727,7 @@ void SocketUtilTest::executeStreamSocketTestParameters(
     if (ntsu::AdapterUtil::supportsTransportLoopback(
             ntsa::Transport::e_LOCAL_STREAM))
     {
-        if (!parameters.timestampIncomingData() && 
+        if (!parameters.timestampIncomingData() &&
             !parameters.timestampOutgoingData() &&
             !parameters.zeroCopy())
         {
@@ -760,7 +760,7 @@ void SocketUtilTest::executeStreamSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampIncomingData(listener, 
+            error = ntsu::SocketOptionUtil::setTimestampIncomingData(listener,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -818,7 +818,7 @@ void SocketUtilTest::executeStreamSocketTestParameters(
 
         // Set the RX timestamping options for the client according to the
         // test parameters. Note that TX timestamping cannot be enabled on
-        // sockets before they are connected but must be explicitly set after 
+        // sockets before they are connected but must be explicitly set after
         // they are connected.
 
         if (parameters.timestampIncomingData()) {
@@ -826,7 +826,7 @@ void SocketUtilTest::executeStreamSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampIncomingData(client, 
+            error = ntsu::SocketOptionUtil::setTimestampIncomingData(client,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -844,7 +844,7 @@ void SocketUtilTest::executeStreamSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client, 
+            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -873,14 +873,14 @@ void SocketUtilTest::executeStreamSocketTestParameters(
         ntsu::SocketUtil::Guard serverGuard(server);
 
         // Set the TX timestamping options for the server according to the
-        // test parameters. 
+        // test parameters.
 
         if (parameters.timestampOutgoingData()) {
             if (!SocketUtilTest::supportsTimestamping(server)) {
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(server, 
+            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(server,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -929,13 +929,13 @@ void SocketUtilTest::executeStreamSocketTestParameters(
 
         if (parameters.zeroCopy()) {
             bool clientZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy, 
+            error = ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy,
                                                         client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientZeroCopy);
 
             bool serverZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy, 
+            error = ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy,
                                                         server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverZeroCopy);
@@ -1048,7 +1048,7 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
     if (ntsu::AdapterUtil::supportsTransportLoopback(
             ntsa::Transport::e_LOCAL_DATAGRAM))
     {
-        if (!parameters.timestampIncomingData() && 
+        if (!parameters.timestampIncomingData() &&
             !parameters.timestampOutgoingData() &&
             !parameters.zeroCopy())
         {
@@ -1079,7 +1079,7 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampIncomingData(server, 
+            error = ntsu::SocketOptionUtil::setTimestampIncomingData(server,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -1089,7 +1089,7 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(server, 
+            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(server,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -1160,7 +1160,7 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampIncomingData(client, 
+            error = ntsu::SocketOptionUtil::setTimestampIncomingData(client,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -1170,7 +1170,7 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client, 
+            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client,
                                                                      true);
             NTSCFG_TEST_OK(error);
         }
@@ -1255,13 +1255,13 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
 
         if (parameters.zeroCopy()) {
             bool clientZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy, 
+            error = ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy,
                                                         client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientZeroCopy);
 
             bool serverZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy, 
+            error = ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy,
                                                         server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverZeroCopy);
@@ -8562,7 +8562,7 @@ NTSCFG_TEST_FUNCTION(
     NTSCFG_TEST_OK(error);
 
     if (!SocketUtilTest::supportsTimestamping(client) ||
-        !SocketUtilTest::supportsTimestamping(server)) 
+        !SocketUtilTest::supportsTimestamping(server))
     {
         ntsu::SocketUtil::close(client);
         ntsu::SocketUtil::close(server);
@@ -8745,7 +8745,7 @@ NTSCFG_TEST_FUNCTION(
     parameters.setZeroCopy(true);
 
     SocketUtilTest::executeDatagramSocketTestParameters(
-        &SocketUtilTest::testDatagramSocketTxTimestampsAndZeroCopy, 
+        &SocketUtilTest::testDatagramSocketTxTimestampsAndZeroCopy,
         parameters);
 
 #endif
@@ -9107,7 +9107,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
     ntsa::Error error;
 
     if (!ntsu::AdapterUtil::supportsTransport(
-            ntsa::Transport::e_UDP_IPV4_RAW)) 
+            ntsa::Transport::e_UDP_IPV4_RAW))
     {
         return;
     }
@@ -9134,7 +9134,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
     NTSCFG_TEST_OK(error);
 
     NTSCFG_TEST_TRUE(clientEndpoint.isIp());
-    NTSCFG_TEST_EQ(clientEndpoint.ip().host().v4(), 
+    NTSCFG_TEST_EQ(clientEndpoint.ip().host().v4(),
                    ntsa::Ipv4Address::loopback());
     NTSCFG_TEST_NE(clientEndpoint.ip().port(), 0);
 
@@ -9156,7 +9156,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
     NTSCFG_TEST_OK(error);
 
     NTSCFG_TEST_TRUE(serverEndpoint.isIp());
-    NTSCFG_TEST_EQ(serverEndpoint.ip().host().v4(), 
+    NTSCFG_TEST_EQ(serverEndpoint.ip().host().v4(),
                    ntsa::Ipv4Address::loopback());
     NTSCFG_TEST_NE(serverEndpoint.ip().port(), 0);
 
@@ -9188,11 +9188,11 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
     receiveBuffer.setSize(receiveContext.bytesReceived());
 
     BALL_LOG_DEBUG_BLOCK {
-        BALL_LOG_OUTPUT_STREAM << "Received " 
-                               << receiveBuffer.size() 
+        BALL_LOG_OUTPUT_STREAM << "Received "
+                               << receiveBuffer.size()
                                << " bytes:\n";
-        bdlb::Print::hexDump(BALL_LOG_OUTPUT_STREAM, 
-                             receiveBuffer.data(), 
+        bdlb::Print::hexDump(BALL_LOG_OUTPUT_STREAM,
+                             receiveBuffer.data(),
                              receiveBuffer.size());
     }
 
@@ -9200,22 +9200,22 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawUdpIpv4Receive)
     error = ipv4Packet.decode(receiveBuffer);
     NTSCFG_TEST_OK(error);
 
-    NTSCFG_TEST_EQ(ipv4Packet.header().sourceAddress(), 
+    NTSCFG_TEST_EQ(ipv4Packet.header().sourceAddress(),
                    clientEndpoint.ip().host().v4());
 
-    NTSCFG_TEST_EQ(ipv4Packet.header().destinationAddress(), 
+    NTSCFG_TEST_EQ(ipv4Packet.header().destinationAddress(),
                    serverEndpoint.ip().host().v4());
 
     NTSCFG_TEST_TRUE(ipv4Packet.payload().isUdp());
 
-    BALL_LOG_DEBUG_BLOCK { 
-        BALL_LOG_OUTPUT_STREAM 
+    BALL_LOG_DEBUG_BLOCK {
+        BALL_LOG_OUTPUT_STREAM
             << "Received packet " << ipv4Packet << "\n";
 
         if (ipv4Packet.payload().udp().payload().size() > 0) {
-            BALL_LOG_OUTPUT_STREAM 
+            BALL_LOG_OUTPUT_STREAM
                 << bdlb::PrintStringHexDumper(
-                    ipv4Packet.payload().udp().payload().data(), 
+                    ipv4Packet.payload().udp().payload().data(),
                     ipv4Packet.payload().udp().payload().size());
         }
     }
@@ -9232,7 +9232,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
     ntsa::Error error;
 
     if (!ntsu::AdapterUtil::supportsTransport(
-            ntsa::Transport::e_UDP_IPV4_RAW)) 
+            ntsa::Transport::e_UDP_IPV4_RAW))
     {
         return;
     }
@@ -9259,7 +9259,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
     NTSCFG_TEST_OK(error);
 
     NTSCFG_TEST_TRUE(clientEndpoint.isIp());
-    NTSCFG_TEST_EQ(clientEndpoint.ip().host().v4(), 
+    NTSCFG_TEST_EQ(clientEndpoint.ip().host().v4(),
                    ntsa::Ipv4Address::loopback());
     NTSCFG_TEST_NE(clientEndpoint.ip().port(), 0);
 
@@ -9281,7 +9281,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
     NTSCFG_TEST_OK(error);
 
     NTSCFG_TEST_TRUE(serverEndpoint.isIp());
-    NTSCFG_TEST_EQ(serverEndpoint.ip().host().v4(), 
+    NTSCFG_TEST_EQ(serverEndpoint.ip().host().v4(),
                    ntsa::Ipv4Address::loopback());
     NTSCFG_TEST_NE(serverEndpoint.ip().port(), 0);
 
@@ -9291,9 +9291,9 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
         ntsa::Endpoint(
             ntsa::IpEndpoint(ntsa::Ipv4Address::loopback(), 56146)),
         clientSocket);
-    NTSCFG_TEST_ASSERT(error == ntsa::Error() || 
+    NTSCFG_TEST_ASSERT(error == ntsa::Error() ||
                        error == ntsa::Error(ntsa::Error::e_PENDING));
-        
+
 
 #if 0
     const char k_DATA[] = "Hello, world!";
@@ -9323,11 +9323,11 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
     receiveBuffer.setSize(receiveContext.bytesReceived());
 
     BALL_LOG_DEBUG_BLOCK {
-        BALL_LOG_OUTPUT_STREAM << "Received " 
-                               << receiveBuffer.size() 
+        BALL_LOG_OUTPUT_STREAM << "Received "
+                               << receiveBuffer.size()
                                << " bytes:\n";
-        bdlb::Print::hexDump(BALL_LOG_OUTPUT_STREAM, 
-                             receiveBuffer.data(), 
+        bdlb::Print::hexDump(BALL_LOG_OUTPUT_STREAM,
+                             receiveBuffer.data(),
                              receiveBuffer.size());
     }
 
@@ -9335,22 +9335,22 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyRawTcpIpv4Receive)
     error = ipv4Packet.decode(receiveBuffer);
     NTSCFG_TEST_OK(error);
 
-    NTSCFG_TEST_EQ(ipv4Packet.header().sourceAddress(), 
+    NTSCFG_TEST_EQ(ipv4Packet.header().sourceAddress(),
                    clientEndpoint.ip().host().v4());
 
-    NTSCFG_TEST_EQ(ipv4Packet.header().destinationAddress(), 
+    NTSCFG_TEST_EQ(ipv4Packet.header().destinationAddress(),
                    serverEndpoint.ip().host().v4());
 
     NTSCFG_TEST_TRUE(ipv4Packet.payload().isTcp());
 
-    BALL_LOG_DEBUG_BLOCK { 
-        BALL_LOG_OUTPUT_STREAM 
+    BALL_LOG_DEBUG_BLOCK {
+        BALL_LOG_OUTPUT_STREAM
             << "Received packet " << ipv4Packet << "\n";
 
         if (ipv4Packet.payload().tcp().payload().size() > 0) {
-            BALL_LOG_OUTPUT_STREAM 
+            BALL_LOG_OUTPUT_STREAM
                 << bdlb::PrintStringHexDumper(
-                    ipv4Packet.payload().tcp().payload().data(), 
+                    ipv4Packet.payload().tcp().payload().data(),
                     ipv4Packet.payload().tcp().payload().size());
         }
     }

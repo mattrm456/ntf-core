@@ -139,7 +139,10 @@ class TcpHeader
         k_MIN_OPTIONS_LENGTH = 0,
 
         /// The maximum length of all options, in bytes.
-        k_MAX_OPTIONS_LENGTH = 40
+        k_MAX_OPTIONS_LENGTH = 40,
+
+        /// The protocol number indicating TCP.
+        k_PROTOCOL_TCP = 6
     };
 
     /// Enumerates the flags.

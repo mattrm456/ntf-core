@@ -26,7 +26,9 @@ BSLS_IDENT_RCSID(ntsa_ipv4packet_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoderContext*       context,
+                               ntsa::PacketDecoder*              decoder,
+                               const ntsa::PacketDecoderOptions& options)
 {
     ntsa::Error error;
 
@@ -34,6 +36,37 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
     if (error) {
         return error;
     }
+
+    if (options.sourceIpAddress().has_value()) {
+        if (options.sourceIpAddress().value().isV4()) {
+            if (d_header.sourceAddress() !=
+                options.sourceIpAddress().value().v4())
+            {
+                return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+            }
+        }
+        else {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setSourceIpAddress(ntsa::IpAddress(d_header.sourceAddress()));
+
+    if (options.destinationIpAddress().has_value()) {
+        if (options.destinationIpAddress().value().isV4()) {
+            if (d_header.destinationAddress() !=
+                options.destinationIpAddress().value().v4())
+            {
+                return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+            }
+        }
+        else {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setDestinationIpAddress(
+        ntsa::IpAddress(d_header.destinationAddress()));
 
     const bsl::size_t extensionLength =
         d_header.headerLength() - ntsa::Ipv4Header::k_MIN_HEADER_LENGTH;
@@ -53,7 +86,7 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
         }
     }
     else if (d_header.protocol() ==
-        static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_IGMP))
+             static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_IGMP))
     {
         ntsa::IgmpPacket& igmp = d_payload.makeIgmp();
 
@@ -67,9 +100,7 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
     {
         ntsa::TcpPacket& tcp = d_payload.makeTcp();
 
-        error = tcp.decode(decoder,
-                           d_header.sourceAddress(),
-                           d_header.destinationAddress());
+        error = tcp.decode(context, decoder, options);
         if (error) {
             return error;
         }
@@ -79,9 +110,7 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
     {
         ntsa::UdpPacket& udp = d_payload.makeUdp();
 
-        error = udp.decode(decoder,
-                           d_header.sourceAddress(),
-                           d_header.destinationAddress());
+        error = udp.decode(context, decoder, options);
         if (error) {
             return error;
         }
@@ -97,9 +126,42 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoder* decoder)
     return ntsa::Error();
 }
 
-ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoder* encoder) const
+ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoderContext*       context,
+                               ntsa::PacketEncoder*              encoder,
+                               const ntsa::PacketEncoderOptions& options) const
 {
     ntsa::Error error;
+
+    if (options.sourceIpAddress().has_value()) {
+        if (options.sourceIpAddress().value().isV4()) {
+            if (d_header.sourceAddress() !=
+                options.sourceIpAddress().value().v4())
+            {
+                return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+            }
+        }
+        else {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setSourceIpAddress(ntsa::IpAddress(d_header.sourceAddress()));
+
+    if (options.destinationIpAddress().has_value()) {
+        if (options.destinationIpAddress().value().isV4()) {
+            if (d_header.destinationAddress() !=
+                options.destinationIpAddress().value().v4())
+            {
+                return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+            }
+        }
+        else {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setDestinationIpAddress(
+        ntsa::IpAddress(d_header.destinationAddress()));
 
     ntsa::Ipv4Header header = d_header;
 
@@ -152,9 +214,7 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoder* encoder) const
 
         const ntsa::TcpPacket& tcp = d_payload.tcp();
 
-        error = tcp.encode(encoder,
-                           d_header.sourceAddress(),
-                           d_header.destinationAddress());
+        error = tcp.encode(context, encoder, options);
         if (error) {
             return error;
         }
@@ -168,9 +228,7 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoder* encoder) const
 
         const ntsa::UdpPacket& udp = d_payload.udp();
 
-        error = udp.encode(encoder,
-                           d_header.sourceAddress(),
-                           d_header.destinationAddress());
+        error = udp.encode(context, encoder, options);
         if (error) {
             return error;
         }
@@ -185,7 +243,7 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoder* encoder) const
         }
     }
     else {
-        return ntsa::Error(ntsa::Error::e_INVALID);
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
 
     return ntsa::Error();

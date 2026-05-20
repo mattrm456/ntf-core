@@ -101,24 +101,14 @@ class TcpPacket
     ntsa::TcpPayload& payload();
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder*     decoder,
-                       const ntsa::Ipv4Address& sourceAddress,
-                       const ntsa::Ipv4Address& destinationAddress);
-
-    /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder*     decoder,
-                       const ntsa::Ipv6Address& sourceAddress,
-                       const ntsa::Ipv6Address& destinationAddress);
+    ntsa::Error decode(ntsa::PacketDecoderContext*       context,
+                       ntsa::PacketDecoder*              decoder,
+                       const ntsa::PacketDecoderOptions& options);
 
     /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
-                       const ntsa::Ipv4Address& sourceAddress,
-                       const ntsa::Ipv4Address& destinationAddress) const;
-
-    /// Encode the object through the specified 'encoder'. Return the error.
-    ntsa::Error encode(ntsa::PacketEncoder*     encoder,
-                       const ntsa::Ipv6Address& sourceAddress,
-                       const ntsa::Ipv6Address& destinationAddress) const;
+    ntsa::Error encode(ntsa::PacketEncoderContext*       context,
+                       ntsa::PacketEncoder*              encoder,
+                       const ntsa::PacketEncoderOptions& options) const;
 
     /// Return a reference to the non-modifiable header.
     const ntsa::TcpHeader& header() const;

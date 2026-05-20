@@ -19,6 +19,7 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_ipaddress.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
 #include <ntscfg_platform.h>
@@ -68,7 +69,16 @@ class TcpChecksum
     /// of the TCP packet, including the TCP header.
     void add(const ntsa::Ipv4Address& sourceAddress,
              const ntsa::Ipv4Address& destinationAddress,
-             bsl::size_t              length);
+             bsl::size_t              length,
+             bsl::uint8_t             protocol);
+
+    /// Add the pseudo header for a packet from the specified 'sourceAddress'
+    /// to the specified 'destinationAddress' having the specified 'length'
+    /// of the TCP packet, including the TCP header.
+    void add(const ntsa::Ipv6Address& sourceAddress,
+             const ntsa::Ipv6Address& destinationAddress,
+             bsl::size_t              length,
+             bsl::uint8_t             protocol);
 
     /// Add the specified 'data' having the specified 'size' to the checksum.
     void add(const void* data, bsl::size_t size);

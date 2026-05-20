@@ -26,9 +26,9 @@ BSLS_IDENT_RCSID(ntsa_tcppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error TcpPacket::decode(ntsa::PacketDecoder*     decoder,
-                              const ntsa::Ipv4Address& sourceAddress,
-                              const ntsa::Ipv4Address& destinationAddress)
+ntsa::Error TcpPacket::decode(ntsa::PacketDecoderContext*       context,
+                              ntsa::PacketDecoder*              decoder,
+                              const ntsa::PacketDecoderOptions& options)
 {
     ntsa::Error error;
 
@@ -38,6 +38,23 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoder*     decoder,
     if (error) {
         return error;
     }
+
+    if (options.sourceTcpPort().has_value()) {
+        if (d_header.sourcePort() != options.sourceTcpPort().value()) {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setSourceTcpPort(d_header.sourcePort());
+
+    if (options.destinationTcpPort().has_value()) {
+        if (d_header.destinationPort() != options.destinationTcpPort().value())
+        {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setDestinationTcpPort(d_header.destinationPort());
 
     const bsl::size_t extensionLength =
         d_header.dataOffset() -
@@ -70,7 +87,39 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoder*     decoder,
     }
 
     ntsa::TcpChecksum checksum;
-    checksum.add(sourceAddress, destinationAddress, packetLength);
+
+    if (!context->sourceIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!context->destinationIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (context->sourceIpAddress().value().isV4()) {
+        if (!context->destinationIpAddress().value().isV4()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v4(),
+                     context->destinationIpAddress().value().v4(),
+                     packetLength,
+                     ntsa::TcpHeader::k_PROTOCOL_TCP);
+    }
+    else if (context->sourceIpAddress().value().isV6()) {
+        if (!context->destinationIpAddress().value().isV6()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v6(),
+                     context->destinationIpAddress().value().v6(),
+                     packetLength,
+                     ntsa::TcpHeader::k_PROTOCOL_TCP);
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     checksum.add(decoder->next(), packetLength);
 
     const bsl::uint16_t checksumValue = checksum.value();
@@ -90,25 +139,28 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoder*     decoder,
     return ntsa::Error();
 }
 
-ntsa::Error TcpPacket::decode(ntsa::PacketDecoder*     decoder,
-                              const ntsa::Ipv6Address& sourceAddress,
-                              const ntsa::Ipv6Address& destinationAddress)
-{
-    NTSCFG_WARNING_UNUSED(decoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error TcpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv4Address& sourceAddress,
-    const ntsa::Ipv4Address& destinationAddress) const
+ntsa::Error TcpPacket::encode(ntsa::PacketEncoderContext*       context,
+                              ntsa::PacketEncoder*              encoder,
+                              const ntsa::PacketEncoderOptions& options) const
 {
     ntsa::Error error;
+
+    if (options.sourceTcpPort().has_value()) {
+        if (d_header.sourcePort() != options.sourceTcpPort().value()) {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setSourceTcpPort(d_header.sourcePort());
+
+    if (options.destinationTcpPort().has_value()) {
+        if (d_header.destinationPort() != options.destinationTcpPort().value())
+        {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setDestinationTcpPort(d_header.destinationPort());
 
     ntsa::TcpHeader header = d_header;
     header.setChecksum(0);
@@ -164,7 +216,39 @@ ntsa::Error TcpPacket::encode(
     }
 
     ntsa::TcpChecksum checksum;
-    checksum.add(sourceAddress, destinationAddress, packetLength);
+
+    if (!context->sourceIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!context->destinationIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (context->sourceIpAddress().value().isV4()) {
+        if (!context->destinationIpAddress().value().isV4()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v4(),
+                     context->destinationIpAddress().value().v4(),
+                     packetLength,
+                     ntsa::TcpHeader::k_PROTOCOL_TCP);
+    }
+    else if (context->sourceIpAddress().value().isV6()) {
+        if (!context->destinationIpAddress().value().isV6()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v6(),
+                     context->destinationIpAddress().value().v6(),
+                     packetLength,
+                     ntsa::TcpHeader::k_PROTOCOL_TCP);
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     checksum.add(encoder->next(), packetLength);
 
     header.setChecksum(checksum.value());
@@ -180,20 +264,6 @@ ntsa::Error TcpPacket::encode(
     }
 
     return ntsa::Error();
-}
-
-ntsa::Error TcpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv6Address& sourceAddress,
-    const ntsa::Ipv6Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(encoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 bool TcpPacket::equals(const TcpPacket& other) const

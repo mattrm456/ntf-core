@@ -26,18 +26,26 @@ BSLS_IDENT_RCSID(ntsa_ipv6packet_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error Ipv6Packet::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error Ipv6Packet::decode(ntsa::PacketDecoderContext*       context,
+                               ntsa::PacketDecoder*              decoder,
+                               const ntsa::PacketDecoderOptions& options)
 {
+    NTSCFG_WARNING_UNUSED(context);
     NTSCFG_WARNING_UNUSED(decoder);
+    NTSCFG_WARNING_UNUSED(options);
 
     NTSCFG_NOT_IMPLEMENTED();
 
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
-ntsa::Error Ipv6Packet::encode(ntsa::PacketEncoder* encoder) const
+ntsa::Error Ipv6Packet::encode(ntsa::PacketEncoderContext*       context,
+                               ntsa::PacketEncoder*              encoder,
+                               const ntsa::PacketEncoderOptions& options) const
 {
+    NTSCFG_WARNING_UNUSED(context);
     NTSCFG_WARNING_UNUSED(encoder);
+    NTSCFG_WARNING_UNUSED(options);
 
     NTSCFG_NOT_IMPLEMENTED();
 

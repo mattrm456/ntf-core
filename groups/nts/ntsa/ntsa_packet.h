@@ -238,16 +238,19 @@ class Packet
     /// undefined unless 'isUdp()' is true.
     ntsa::UdpPacket& udp();
 
-    /// Decode the packet from the specified 'buffer'. Return the error.
-    /// Note that decoding will fail unless the packet unless the packet type
-    /// is not undefined.
+    /// Decode the packet from the specified 'buffer' according to the
+    /// specified 'options'. Populate the specified 'context' with the
+    /// consequences of encoding the packet. Return the error. Note that
+    /// decoding will fail unless the packet unless the packet type is not
+    /// undefined.
     ntsa::Error decode(ntsa::PacketDecoderContext*       context,
                        const bdlbb::BlobBuffer&          buffer,
                        const ntsa::PacketDecoderOptions& options);
 
-    /// Encode the packet to the specified 'buffer'. Return the error. Note
-    /// that decoding will fail unless the packet unless the packet type is not
-    /// undefined.
+    /// Encode the packet to the specified 'buffer' according to the specified
+    /// 'options'. Populate the specified 'context' with consequences of
+    /// decoding the packet. Return the error. Note that decoding will fail
+    /// unless the packet unless the packet type is not undefined.
     ntsa::Error encode(ntsa::PacketEncoderContext*       context,
                        bdlbb::BlobBuffer*                buffer,
                        const ntsa::PacketEncoderOptions& options) const;

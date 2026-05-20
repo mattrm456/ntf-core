@@ -26,9 +26,9 @@ BSLS_IDENT_RCSID(ntsa_udppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error UdpPacket::decode(ntsa::PacketDecoder*     decoder,
-                              const ntsa::Ipv4Address& sourceAddress,
-                              const ntsa::Ipv4Address& destinationAddress)
+ntsa::Error UdpPacket::decode(ntsa::PacketDecoderContext*       context,
+                              ntsa::PacketDecoder*              decoder,
+                              const ntsa::PacketDecoderOptions& options)
 {
     ntsa::Error error;
 
@@ -38,6 +38,23 @@ ntsa::Error UdpPacket::decode(ntsa::PacketDecoder*     decoder,
     if (error) {
         return error;
     }
+
+    if (options.sourceUdpPort().has_value()) {
+        if (d_header.sourcePort() != options.sourceUdpPort().value()) {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setSourceUdpPort(d_header.sourcePort());
+
+    if (options.destinationUdpPort().has_value()) {
+        if (d_header.destinationPort() != options.destinationUdpPort().value())
+        {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setDestinationUdpPort(d_header.destinationPort());
 
     const bsl::size_t payloadSize = static_cast<bsl::size_t>(
         d_header.packetLength() - d_header.headerLength());
@@ -60,14 +77,48 @@ ntsa::Error UdpPacket::decode(ntsa::PacketDecoder*     decoder,
 
     const bsl::size_t finalPosition = decoder->position();
 
+    const bsl::size_t packetLength = d_header.packetLength();
+
     error = decoder->seek(headerPosition);
     if (error) {
         return error;
     }
 
     ntsa::UdpChecksum checksum;
-    checksum.add(sourceAddress, destinationAddress, d_header.packetLength());
-    checksum.add(decoder->next(), d_header.packetLength());
+
+    if (!context->sourceIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!context->destinationIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (context->sourceIpAddress().value().isV4()) {
+        if (!context->destinationIpAddress().value().isV4()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v4(),
+                     context->destinationIpAddress().value().v4(),
+                     packetLength,
+                     ntsa::UdpHeader::k_PROTOCOL_UDP);
+    }
+    else if (context->sourceIpAddress().value().isV6()) {
+        if (!context->destinationIpAddress().value().isV6()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v6(),
+                     context->destinationIpAddress().value().v6(),
+                     packetLength,
+                     ntsa::UdpHeader::k_PROTOCOL_UDP);
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    checksum.add(decoder->next(), packetLength);
 
     const bsl::uint16_t checksumValue = checksum.value();
 
@@ -86,25 +137,28 @@ ntsa::Error UdpPacket::decode(ntsa::PacketDecoder*     decoder,
     return ntsa::Error();
 }
 
-ntsa::Error UdpPacket::decode(ntsa::PacketDecoder*     decoder,
-                              const ntsa::Ipv6Address& sourceAddress,
-                              const ntsa::Ipv6Address& destinationAddress)
-{
-    NTSCFG_WARNING_UNUSED(decoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error UdpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv4Address& sourceAddress,
-    const ntsa::Ipv4Address& destinationAddress) const
+ntsa::Error UdpPacket::encode(ntsa::PacketEncoderContext*       context,
+                              ntsa::PacketEncoder*              encoder,
+                              const ntsa::PacketEncoderOptions& options) const
 {
     ntsa::Error error;
+
+    if (options.sourceUdpPort().has_value()) {
+        if (d_header.sourcePort() != options.sourceUdpPort().value()) {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setSourceUdpPort(d_header.sourcePort());
+
+    if (options.destinationUdpPort().has_value()) {
+        if (d_header.destinationPort() != options.destinationUdpPort().value())
+        {
+            return ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED);
+        }
+    }
+
+    context->setDestinationUdpPort(d_header.destinationPort());
 
     const bsl::size_t headerLength = d_header.headerLength();
     const bsl::size_t packetLength =
@@ -115,7 +169,39 @@ ntsa::Error UdpPacket::encode(
     header.setPacketLength(packetLength);
 
     ntsa::UdpChecksum checksum;
-    checksum.add(sourceAddress, destinationAddress, packetLength);
+
+    if (!context->sourceIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!context->destinationIpAddress().has_value()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (context->sourceIpAddress().value().isV4()) {
+        if (!context->destinationIpAddress().value().isV4()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v4(),
+                     context->destinationIpAddress().value().v4(),
+                     packetLength,
+                     ntsa::UdpHeader::k_PROTOCOL_UDP);
+    }
+    else if (context->sourceIpAddress().value().isV6()) {
+        if (!context->destinationIpAddress().value().isV6()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        checksum.add(context->sourceIpAddress().value().v6(),
+                     context->destinationIpAddress().value().v6(),
+                     packetLength,
+                     ntsa::UdpHeader::k_PROTOCOL_UDP);
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     checksum.add(&header, header.headerLength());
     if (d_payload.size() > 0) {
         checksum.add(d_payload.data(),
@@ -144,20 +230,6 @@ ntsa::Error UdpPacket::encode(
     }
 
     return ntsa::Error();
-}
-
-ntsa::Error UdpPacket::encode(
-    ntsa::PacketEncoder*     encoder,
-    const ntsa::Ipv6Address& sourceAddress,
-    const ntsa::Ipv6Address& destinationAddress) const
-{
-    NTSCFG_WARNING_UNUSED(encoder);
-    NTSCFG_WARNING_UNUSED(sourceAddress);
-    NTSCFG_WARNING_UNUSED(destinationAddress);
-
-    NTSCFG_NOT_IMPLEMENTED();
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
 bool UdpPacket::equals(const UdpPacket& other) const

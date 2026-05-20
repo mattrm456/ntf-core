@@ -256,7 +256,6 @@ void Packet::reset()
     d_type = ntsa::PacketType::e_UNDEFINED;
 }
 
-
 void Packet::makeType(ntsa::PacketType::Value type)
 {
     if (type == ntsa::PacketType::e_ETHERNET) {
@@ -602,27 +601,27 @@ ntsa::UdpPacket& Packet::makeUdp(bslmf::MovableRef<ntsa::UdpPacket> value)
 }
 
 ntsa::Error Packet::decode(ntsa::PacketDecoderContext*       context,
-                       const bdlbb::BlobBuffer&          buffer,
-                       const ntsa::PacketDecoderOptions& options)
+                           const bdlbb::BlobBuffer&          buffer,
+                           const ntsa::PacketDecoderOptions& options)
 {
     ntsa::Error error;
 
-    ntsa::PacketDecoder decoder(buffer);
+    ntsa::PacketDecoder decoder(&buffer);
 
     if (d_type == ntsa::PacketType::e_ETHERNET) {
-        error = d_ethernet.object().decode(&decoder);
+        error = d_ethernet.object().decode(context, &decoder, options);
         if (error) {
             return error;
         }
     }
     else if (d_type == ntsa::PacketType::e_IPV4) {
-        error = d_ipv4.object().decode(&decoder);
+        error = d_ipv4.object().decode(context, &decoder, options);
         if (error) {
             return error;
         }
     }
     else if (d_type == ntsa::PacketType::e_IPV6) {
-        error = d_ipv6.object().decode(&decoder);
+        error = d_ipv6.object().decode(context, &decoder, options);
         if (error) {
             return error;
         }
@@ -640,13 +639,13 @@ ntsa::Error Packet::decode(ntsa::PacketDecoderContext*       context,
         }
     }
     else if (d_type == ntsa::PacketType::e_TCP) {
-        error = d_tcp.object().decode(&decoder, ntsa::Ipv4Address(), ntsa::Ipv4Address());
+        error = d_tcp.object().decode(context, &decoder, options);
         if (error) {
             return error;
         }
     }
     else if (d_type == ntsa::PacketType::e_UDP) {
-        error = d_udp.object().decode(&decoder, ntsa::Ipv4Address(), ntsa::Ipv4Address());
+        error = d_udp.object().decode(context, &decoder, options);
         if (error) {
             return error;
         }
@@ -659,10 +658,58 @@ ntsa::Error Packet::decode(ntsa::PacketDecoderContext*       context,
 }
 
 ntsa::Error Packet::encode(ntsa::PacketEncoderContext*       context,
-                       bdlbb::BlobBuffer*                buffer,
-                       const ntsa::PacketEncoderOptions& options) const
+                           bdlbb::BlobBuffer*                buffer,
+                           const ntsa::PacketEncoderOptions& options) const
 {
-    NTSCFG_WARNING_UNUSED(buffer);
+    ntsa::Error error;
+
+    ntsa::PacketEncoder encoder(buffer);
+
+    if (d_type == ntsa::PacketType::e_ETHERNET) {
+        error = d_ethernet.object().encode(context, &encoder, options);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::PacketType::e_IPV4) {
+        error = d_ipv4.object().encode(context, &encoder, options);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::PacketType::e_IPV6) {
+        error = d_ipv6.object().encode(context, &encoder, options);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::PacketType::e_ICMP) {
+        error = d_icmp.object().encode(&encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::PacketType::e_IGMP) {
+        error = d_igmp.object().encode(&encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::PacketType::e_TCP) {
+        error = d_tcp.object().encode(context, &encoder, options);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_type == ntsa::PacketType::e_UDP) {
+        error = d_udp.object().encode(context, &encoder, options);
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
 
     return ntsa::Error();
 }
