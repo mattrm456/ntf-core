@@ -1153,6 +1153,9 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIcmpProblem)
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyIgmp)
 {
+    // Add support for Ipv4 options, especially the "router alert" option.
+
+    // Devise test cases for each IGMP message type.
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyUdp)

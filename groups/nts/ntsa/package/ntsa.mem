@@ -62,8 +62,13 @@ ntsa_ipv4checksum
 ntsa_ipv4endpoint
 ntsa_ipv4extension
 ntsa_ipv4header
+ntsa_ipv4option
+ntsa_ipv4optiontype
 ntsa_ipv4packet
 ntsa_ipv4payload
+ntsa_ipv4routeledger
+ntsa_ipv4routetimestamp
+ntsa_ipv4timestamp
 ntsa_ipv6address
 ntsa_ipv6checksum
 ntsa_ipv6endpoint
