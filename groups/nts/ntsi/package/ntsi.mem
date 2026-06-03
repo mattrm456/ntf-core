@@ -1,6 +1,7 @@
 ntsi_channel
 ntsi_datagramsocket
 ntsi_datagramsocketfactory
+ntsi_device
 ntsi_descriptor
 ntsi_listenersocket
 ntsi_listenersocketfactory

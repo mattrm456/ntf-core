@@ -309,7 +309,7 @@ void AdapterUtil::discoverAdapterList(bsl::vector<ntsa::Adapter>* result)
             const bsl::size_t ifaNameLength = bsl::strlen(ifaName);
 
             if (ifaNameLength < sizeof ethtoolIfr.ifr_ifrn.ifrn_name) {
-                bsl::strcpy(ethtoolIfr.ifr_ifrn.ifrn_name, 
+                bsl::strcpy(ethtoolIfr.ifr_ifrn.ifrn_name,
                             interfaceAddress->ifa_name);
 
                 struct ::ethtool_cmd ethtoolGset;
@@ -317,7 +317,7 @@ void AdapterUtil::discoverAdapterList(bsl::vector<ntsa::Adapter>* result)
 
                 ethtoolGset.cmd = ETHTOOL_GSET;
 
-                ethtoolIfr.ifr_ifru.ifru_data = 
+                ethtoolIfr.ifr_ifru.ifru_data =
                     reinterpret_cast<char*>(&ethtoolGset);
 
                 rc = ::ioctl(fd, SIOCETHTOOL, &ethtoolIfr);
@@ -332,7 +332,7 @@ void AdapterUtil::discoverAdapterList(bsl::vector<ntsa::Adapter>* result)
 
                 ethtoolTsInfo.cmd = ETHTOOL_GET_TS_INFO;
 
-                ethtoolIfr.ifr_ifru.ifru_data = 
+                ethtoolIfr.ifr_ifru.ifru_data =
                     reinterpret_cast<char*>(&ethtoolTsInfo);
 
                 rc = ::ioctl(fd, SIOCETHTOOL, &ethtoolIfr);
@@ -344,26 +344,26 @@ void AdapterUtil::discoverAdapterList(bsl::vector<ntsa::Adapter>* result)
                         e_SOF_TIMESTAMPING_RX_SOFTWARE = (1 << 3)
                     };
 
-                    if ((ethtoolTsInfo.so_timestamping & 
-                         e_SOF_TIMESTAMPING_TX_SOFTWARE) != 0) 
+                    if ((ethtoolTsInfo.so_timestamping &
+                         e_SOF_TIMESTAMPING_TX_SOFTWARE) != 0)
                     {
                         adapter.setTxSoftwareTimestamps(true);
                     }
 
-                    if ((ethtoolTsInfo.so_timestamping & 
-                         e_SOF_TIMESTAMPING_TX_HARDWARE) != 0) 
+                    if ((ethtoolTsInfo.so_timestamping &
+                         e_SOF_TIMESTAMPING_TX_HARDWARE) != 0)
                     {
                         adapter.setTxHardwareTimestamps(true);
                     }
 
-                    if ((ethtoolTsInfo.so_timestamping & 
-                         e_SOF_TIMESTAMPING_RX_SOFTWARE) != 0) 
+                    if ((ethtoolTsInfo.so_timestamping &
+                         e_SOF_TIMESTAMPING_RX_SOFTWARE) != 0)
                     {
                         adapter.setRxSoftwareTimestamps(true);
                     }
 
-                    if ((ethtoolTsInfo.so_timestamping & 
-                         e_SOF_TIMESTAMPING_RX_HARDWARE) != 0) 
+                    if ((ethtoolTsInfo.so_timestamping &
+                         e_SOF_TIMESTAMPING_RX_HARDWARE) != 0)
                     {
                         adapter.setRxHardwareTimestamps(true);
                     }
@@ -1087,8 +1087,8 @@ bool AdapterUtil::supportsIpv4Loopback()
     {
         const ntsa::Adapter& candidateAdapter = *it;
 
-        if (!candidateAdapter.ipv4Address().isNull() && 
-            candidateAdapter.ipv4Address().value().isLoopback()) 
+        if (!candidateAdapter.ipv4Address().isNull() &&
+            candidateAdapter.ipv4Address().value().isLoopback())
         {
             return true;
         }
@@ -1199,7 +1199,7 @@ bool AdapterUtil::supportsIpv6Loopback()
         const ntsa::Adapter& candidateAdapter = *it;
 
         if (!candidateAdapter.ipv6Address().isNull() &&
-            candidateAdapter.ipv6Address().value().isLoopback()) 
+            candidateAdapter.ipv6Address().value().isLoopback())
         {
             return true;
         }
@@ -1330,7 +1330,7 @@ bool AdapterUtil::supportsTcpLoopback()
 
 #if NTSCFG_BUILD_WITH_ADDRESS_FAMILY_IPV4
         if (!candidateAdapter.ipv4Address().isNull() &&
-            candidateAdapter.ipv4Address().value().isLoopback()) 
+            candidateAdapter.ipv4Address().value().isLoopback())
         {
             return true;
         }
@@ -1338,7 +1338,7 @@ bool AdapterUtil::supportsTcpLoopback()
 
 #if NTSCFG_BUILD_WITH_ADDRESS_FAMILY_IPV6
         if (!candidateAdapter.ipv6Address().isNull() &&
-            candidateAdapter.ipv6Address().value().isLoopback()) 
+            candidateAdapter.ipv6Address().value().isLoopback())
         {
             return true;
         }
@@ -1418,15 +1418,15 @@ bool AdapterUtil::supportsUdpLoopback()
 
 #if NTSCFG_BUILD_WITH_ADDRESS_FAMILY_IPV4
         if (!candidateAdapter.ipv4Address().isNull() &&
-            candidateAdapter.ipv4Address().value().isLoopback()) 
+            candidateAdapter.ipv4Address().value().isLoopback())
         {
             return true;
         }
 #endif
 
 #if NTSCFG_BUILD_WITH_ADDRESS_FAMILY_IPV6
-        if (!candidateAdapter.ipv6Address().isNull() && 
-            candidateAdapter.ipv6Address().value().isLoopback()) 
+        if (!candidateAdapter.ipv6Address().isNull() &&
+            candidateAdapter.ipv6Address().value().isLoopback())
         {
             return true;
         }
@@ -1715,11 +1715,11 @@ bool AdapterUtil::supportsRaw()
         return false;
     }
 
-    const bool found = 
+    const bool found =
         (data[k_CAP_NET_RAW_INDEX].effective & k_CAP_NET_RAW_MASK) != 0;
 
     return found;
-        
+
 #else
     return false;
 #endif

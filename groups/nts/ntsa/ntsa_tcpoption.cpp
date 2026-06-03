@@ -446,8 +446,19 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
             }
         }
         else {
-            BSLS_LOG_WARN("Unknown TCP option %d", static_cast<int>(type));
-            return ntsa::Error(ntsa::Error::e_INVALID);
+            BSLS_LOG_WARN("Unknown TCP option %d size = %zu",
+                           static_cast<int>(type),
+                           static_cast<bsl::size_t>(payloadSize));
+
+            reset();
+            d_type = ntsa::TcpOptionType::e_PADDING;
+
+            error = decoder->advance(payloadSize);
+            if (error) {
+                return error;
+            }
+
+            return ntsa::Error();
         }
     }
 
