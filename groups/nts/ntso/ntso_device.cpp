@@ -274,7 +274,7 @@ Bpf::Bpf(const ntsa::DeviceConfig& configuration,
          bslma::Allocator*         basicAllocator)
 : d_deviceName(basicAllocator)
 , d_deviceHandle(ntsa::k_INVALID_HANDLE)
-, d_deviceBufferSize(1500)
+, d_deviceBufferSize(1024 * 64)
 , d_deviceBufferFactory()
 , d_adapter(basicAllocator)
 , d_config(configuration, basicAllocator)
@@ -448,6 +448,7 @@ ntsa::Error Bpf::open(const ntsa::Adapter& adapter)
 
     // Enable promiscuous mode to read all traffic on the link.
 
+#if 0
     rc = ioctl(d_deviceHandle, BIOCPROMISC, NULL);
     if (rc < 0) {
         error = ntsa::Error::last();
@@ -456,6 +457,7 @@ ntsa::Error Bpf::open(const ntsa::Adapter& adapter)
                        error.text().c_str());
         return error;
     }
+#endif
 
     BSLS_LOG_INFO("BPF device driver opened "
                   "[ interface = %s device = %s "
@@ -661,10 +663,9 @@ ntsa::Error Bpf::dequeue(ntsa::Packet* result)
             }
             BSLS_LOG_ERROR("BPF device driver failed to decode packet: %s",
                            error.text().c_str());
-            // MRM: return error;
-            break;
+            return error;
         }
-
+        else
         {
             bsl::stringstream ss;
             ss << "Incoming packet = " << *result;

@@ -59,7 +59,11 @@ struct TcpOptionType {
         e_TIMESTAMP = 8,
 
         /// The fast open option type.
-        e_FAST_OPEN = 34
+        e_FAST_OPEN = 34,
+
+        /// The any option type, to represent unassigned or unrecognized
+        /// options.
+        e_UNASSIGNED = 255
     };
 
     /// Return the string representation exactly matching the enumerator name

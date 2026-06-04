@@ -64,6 +64,10 @@ TcpOption::TcpOption(const TcpOption& other, bslma::Allocator* basicAllocator)
     case ntsa::TcpOptionType::e_FAST_OPEN:
         new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
+    case ntsa::TcpOptionType::e_UNASSIGNED:
+        new (d_unassigned.buffer()) ntsa::TcpOptionValue(
+            other.d_unassigned.object(), d_allocator_p);
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
     }
@@ -74,6 +78,10 @@ TcpOption::~TcpOption()
     if (isSelectiveAck()) {
         typedef ntsa::TcpSequenceRangeVector Type;
         d_selectiveAck.object().~Type();
+    }
+    else if (isUnassigned()) {
+        typedef ntsa::TcpOptionValue Type;
+        d_unassigned.object().~Type();
     }
 }
 
@@ -109,6 +117,10 @@ TcpOption& TcpOption::operator=(const TcpOption& other)
     case ntsa::TcpOptionType::e_FAST_OPEN:
         new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
+    case ntsa::TcpOptionType::e_UNASSIGNED:
+        new (d_unassigned.buffer()) ntsa::TcpOptionValue(
+            other.d_unassigned.object(), d_allocator_p);
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
     }
@@ -123,6 +135,10 @@ void TcpOption::reset()
     if (isSelectiveAck()) {
         typedef ntsa::TcpSequenceRangeVector Type;
         d_selectiveAck.object().~Type();
+    }
+    else if (isUnassigned()) {
+        typedef ntsa::TcpOptionValue Type;
+        d_unassigned.object().~Type();
     }
 
     d_type = ntsa::TcpOptionType::e_UNDEFINED;
@@ -288,6 +304,35 @@ bdlb::Guid& TcpOption::makeFastOpen(const bdlb::Guid& value)
     return d_fastOpen.object();
 }
 
+ntsa::TcpOptionValue& TcpOption::makeUnassigned()
+{
+    if (d_type == ntsa::TcpOptionType::e_UNASSIGNED) {
+        d_unassigned.object().reset();
+    }
+    else {
+        this->reset();
+        new (d_unassigned.buffer()) ntsa::TcpOptionValue(d_allocator_p);
+        d_type = ntsa::TcpOptionType::e_UNASSIGNED;
+    }
+
+    return d_unassigned.object();
+}
+
+ntsa::TcpOptionValue& TcpOption::makeUnassigned(
+    const ntsa::TcpOptionValue& value)
+{
+    if (d_type == ntsa::TcpOptionType::e_UNASSIGNED) {
+        d_unassigned.object() = value;
+    }
+    else {
+        this->reset();
+        new (d_unassigned.buffer()) ntsa::TcpOptionValue(value, d_allocator_p);
+        d_type = ntsa::TcpOptionType::e_UNASSIGNED;
+    }
+
+    return d_unassigned.object();
+}
+
 bsl::size_t& TcpOption::maxSegmentSize()
 {
     BSLS_ASSERT(isMaxSegmentSize());
@@ -316,6 +361,12 @@ bdlb::Guid& TcpOption::fastOpen()
 {
     BSLS_ASSERT(isFastOpen());
     return d_fastOpen.object();
+}
+
+ntsa::TcpOptionValue& TcpOption::unassigned()
+{
+    BSLS_ASSERT(isUnassigned());
+    return d_unassigned.object();
 }
 
 ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
@@ -447,18 +498,20 @@ ntsa::Error TcpOption::decode(ntsa::PacketDecoder* decoder)
         }
         else {
             BSLS_LOG_WARN("Unknown TCP option %d size = %zu",
-                           static_cast<int>(type),
-                           static_cast<bsl::size_t>(payloadSize));
+                          static_cast<int>(type),
+                          static_cast<bsl::size_t>(payloadSize));
 
-            reset();
-            d_type = ntsa::TcpOptionType::e_PADDING;
+            ntsa::TcpOptionValue& unassigned = this->makeUnassigned();
 
-            error = decoder->advance(payloadSize);
+            unassigned.setKind(type);
+
+            bsl::vector<bsl::uint8_t> payloadData(payloadSize);
+            BSLS_ASSERT(payloadData.size() == payloadSize);
+
+            error = decoder->decodeRaw(&payloadData.front(), payloadSize);
             if (error) {
                 return error;
             }
-
-            return ntsa::Error();
         }
     }
 
@@ -687,6 +740,44 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
+    else if (d_type == ntsa::TcpOptionType::e_UNASSIGNED) {
+        const bsl::size_t payloadSize = d_unassigned.object().payload().size();
+
+        if (payloadSize == 0) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::TcpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(
+            static_cast<bsl::uint8_t>(d_unassigned.object().kind()));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeRaw(
+            &d_unassigned.object().payload().front(), payloadSize);
+        if (error) {
+            return error;
+        }
+    }
     else if (d_type != ntsa::TcpOptionType::e_PADDING &&
              d_type != ntsa::TcpOptionType::e_UNDEFINED)
     {
@@ -726,6 +817,12 @@ const bdlb::Guid& TcpOption::fastOpen() const
     return d_fastOpen.object();
 }
 
+const ntsa::TcpOptionValue& TcpOption::unassigned() const
+{
+    BSLS_ASSERT(isUnassigned());
+    return d_unassigned.object();
+}
+
 ntsa::TcpOptionType::Value TcpOption::type() const
 {
     return d_type;
@@ -750,6 +847,8 @@ const char* TcpOption::name() const
         return "timestamp";
     case ntsa::TcpOptionType::e_FAST_OPEN:
         return "fastOpen";
+    case ntsa::TcpOptionType::e_UNASSIGNED:
+        return "unassigned";
     default:
         return "???";
     }
@@ -795,6 +894,11 @@ bool TcpOption::isFastOpen() const
     return d_type == ntsa::TcpOptionType::e_FAST_OPEN;
 }
 
+bool TcpOption::isUnassigned() const
+{
+    return d_type == ntsa::TcpOptionType::e_UNASSIGNED;
+}
+
 bool TcpOption::equals(const TcpOption& other) const
 {
     if (d_type != other.d_type) {
@@ -816,6 +920,8 @@ bool TcpOption::equals(const TcpOption& other) const
         return d_timestamp.object() == other.d_timestamp.object();
     case ntsa::TcpOptionType::e_FAST_OPEN:
         return d_fastOpen.object() == other.d_fastOpen.object();
+    case ntsa::TcpOptionType::e_UNASSIGNED:
+        return d_unassigned.object() == other.d_unassigned.object();
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
         return true;
@@ -843,6 +949,8 @@ bool TcpOption::less(const TcpOption& other) const
         return d_timestamp.object() < other.d_timestamp.object();
     case ntsa::TcpOptionType::e_FAST_OPEN:
         return d_fastOpen.object() < other.d_fastOpen.object();
+    case ntsa::TcpOptionType::e_UNASSIGNED:
+        return d_unassigned.object() < other.d_unassigned.object();
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
         return false;
@@ -878,6 +986,9 @@ bsl::ostream& TcpOption::print(bsl::ostream& stream,
     case ntsa::TcpOptionType::e_FAST_OPEN:
         printer.printAttribute("fastOpen", d_fastOpen.object());
         break;
+    case ntsa::TcpOptionType::e_UNASSIGNED:
+        printer.printAttribute("unassigned", d_unassigned.object());
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
         stream << "UNDEFINED";
@@ -911,6 +1022,9 @@ void TcpOption::print(bslim::Printer* printer) const
     }
     else if (d_type == ntsa::TcpOptionType::e_FAST_OPEN) {
         printer->printAttribute("fastOpen", d_fastOpen.object());
+    }
+    else if (d_type == ntsa::TcpOptionType::e_UNASSIGNED) {
+        printer->printAttribute("unassigned", d_unassigned.object());
     }
 }
 

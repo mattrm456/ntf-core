@@ -44,8 +44,8 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verify)
     ntsa::Error error;
 
     ntsa::DeviceConfig deviceConfig(NTSCFG_TEST_ALLOCATOR);
-    // deviceConfig.setAdapterName("en0");
-    deviceConfig.setIpv4Address(ntsa::Ipv4Address::loopback());
+    deviceConfig.setAdapterName("en0");
+    // deviceConfig.setIpv4Address(ntsa::Ipv4Address::loopback());
 
     bsl::shared_ptr<ntsi::Device> device = ntso::DeviceUtil::createDevice(
         deviceConfig, NTSCFG_TEST_ALLOCATOR);
@@ -53,7 +53,7 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verify)
     error = device->open();
     NTSCFG_TEST_OK(error);
 
-    bslmt::ThreadUtil::sleep(bsls::TimeInterval(10));
+    bslmt::ThreadUtil::sleep(bsls::TimeInterval(2));
 
     NTSCFG_TEST_LOG_DEBUG << "Closing device" << NTSCFG_TEST_LOG_END;
 

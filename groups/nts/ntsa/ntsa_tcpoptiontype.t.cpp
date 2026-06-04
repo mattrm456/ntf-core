@@ -52,15 +52,16 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionTypeTest::verifyFromInt)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  0,  0, T::e_UNDEFINED               },
-        {  0,  1, T::e_PADDING                 },
-        {  0,  2, T::e_MAX_SEGMENT_SIZE        },
-        {  0,  3, T::e_WINDOW_SCALE            },
-        {  0,  4, T::e_SELECTIVE_ACK_PERMITTED },
-        {  0,  5, T::e_SELECTIVE_ACK           },
-        {  0,  8, T::e_TIMESTAMP               },
-        {  0, 34, T::e_FAST_OPEN               },
-        { -1, -1, T::e_UNDEFINED               }
+        {  0,   0, T::e_UNDEFINED               },
+        {  0,   1, T::e_PADDING                 },
+        {  0,   2, T::e_MAX_SEGMENT_SIZE        },
+        {  0,   3, T::e_WINDOW_SCALE            },
+        {  0,   4, T::e_SELECTIVE_ACK_PERMITTED },
+        {  0,   5, T::e_SELECTIVE_ACK           },
+        {  0,   8, T::e_TIMESTAMP               },
+        {  0,  34, T::e_FAST_OPEN               },
+        {  0, 255, T::e_UNASSIGNED              },
+        { -1,  -1, T::e_UNDEFINED               }
     };
     // clang-format on
 
@@ -100,6 +101,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionTypeTest::verifyFromString)
         {  0,  "SELECTIVE_ACK",           T::e_SELECTIVE_ACK           },
         {  0,  "TIMESTAMP",               T::e_TIMESTAMP               },
         {  0,  "FAST_OPEN",               T::e_FAST_OPEN               },
+        {  0,  "UNASSIGNED",              T::e_UNASSIGNED              },
         { -1,  "!",                       T::e_UNDEFINED               }
     };
     // clang-format on
@@ -129,14 +131,15 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionTypeTest::verifyPrint)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  "UNDEFINED",                0 },
-        {  "PADDING",                  1 },
-        {  "MAX_SEGMENT_SIZE",         2 },
-        {  "WINDOW_SCALE",             3 },
-        {  "SELECTIVE_ACK_PERMITTED",  4 },
-        {  "SELECTIVE_ACK",            5 },
-        {  "TIMESTAMP",                8 },
-        {  "FAST_OPEN",               34 },
+        {  "UNDEFINED",                 0 },
+        {  "PADDING",                   1 },
+        {  "MAX_SEGMENT_SIZE",          2 },
+        {  "WINDOW_SCALE",              3 },
+        {  "SELECTIVE_ACK_PERMITTED",   4 },
+        {  "SELECTIVE_ACK",             5 },
+        {  "TIMESTAMP",                 8 },
+        {  "FAST_OPEN",                34 },
+        {  "UNASSIGNED",              255 },
     };
     // clang-format on
 

@@ -65,6 +65,7 @@ ntsa_ipv4extension
 ntsa_ipv4header
 ntsa_ipv4option
 ntsa_ipv4optiontype
+ntsa_ipv4optionvalue
 ntsa_ipv4packet
 ntsa_ipv4payload
 ntsa_ipv4routeledger
@@ -116,6 +117,7 @@ ntsa_tcpextension
 ntsa_tcpheader
 ntsa_tcpoption
 ntsa_tcpoptiontype
+ntsa_tcpoptionvalue
 ntsa_tcppacket
 ntsa_tcppayload
 ntsa_tcpsequencenumber
@@ -130,6 +132,7 @@ ntsa_udpfragmentation
 ntsa_udpheader
 ntsa_udpoption
 ntsa_udpoptiontype
+ntsa_udpoptionvalue
 ntsa_udppacket
 ntsa_udppayload
 ntsa_udpreassembly

@@ -62,7 +62,11 @@ struct UdpOptionType {
         e_ECHO_RESPONSE = 7,
 
         /// The timestamp option type.
-        e_TIMESTAMP = 8
+        e_TIMESTAMP = 8,
+
+        /// The any option type, to represent unassigned or unrecognized
+        /// options.
+        e_UNASSIGNED = 255
     };
 
     /// Return the string representation exactly matching the enumerator name

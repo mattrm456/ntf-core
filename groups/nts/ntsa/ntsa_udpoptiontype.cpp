@@ -37,6 +37,7 @@ int UdpOptionType::fromInt(UdpOptionType::Value* result, int number)
     case UdpOptionType::e_ECHO_REQUEST:
     case UdpOptionType::e_ECHO_RESPONSE:
     case UdpOptionType::e_TIMESTAMP:
+    case UdpOptionType::e_UNASSIGNED:
         *result = static_cast<UdpOptionType::Value>(number);
         return 0;
     default:
@@ -84,6 +85,10 @@ int UdpOptionType::fromString(UdpOptionType::Value*  result,
         *result = e_TIMESTAMP;
         return 0;
     }
+    if (bdlb::String::areEqualCaseless(string, "UNASSIGNED")) {
+        *result = e_UNASSIGNED;
+        return 0;
+    }
 
     *result = e_UNDEFINED;
     return -1;
@@ -118,6 +123,9 @@ const char* UdpOptionType::toString(UdpOptionType::Value value)
     } break;
     case e_TIMESTAMP: {
         return "TIMESTAMP";
+    } break;
+    case e_UNASSIGNED: {
+        return "UNASSIGNED";
     } break;
     }
 

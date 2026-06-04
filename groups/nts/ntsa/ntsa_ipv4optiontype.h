@@ -62,7 +62,11 @@ struct Ipv4OptionType {
 
         /// The strict source route option type. This option forces the packet
         /// to follow a rigidly defined list of routers.
-        e_SOURCE_ROUTE_TIGHT = 137
+        e_SOURCE_ROUTE_TIGHT = 137,
+
+        /// The any option type, to represent unassigned or unrecognized
+        /// options.
+        e_UNASSIGNED = 255
     };
 
     /// Return the string representation exactly matching the enumerator name

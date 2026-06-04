@@ -36,6 +36,7 @@ int TcpOptionType::fromInt(TcpOptionType::Value* result, int number)
     case TcpOptionType::e_SELECTIVE_ACK:
     case TcpOptionType::e_TIMESTAMP:
     case TcpOptionType::e_FAST_OPEN:
+    case TcpOptionType::e_UNASSIGNED:
         *result = static_cast<TcpOptionType::Value>(number);
         return 0;
     default:
@@ -79,6 +80,10 @@ int TcpOptionType::fromString(TcpOptionType::Value*  result,
         *result = e_FAST_OPEN;
         return 0;
     }
+    if (bdlb::String::areEqualCaseless(string, "UNASSIGNED")) {
+        *result = e_UNASSIGNED;
+        return 0;
+    }
 
     *result = e_UNDEFINED;
     return -1;
@@ -110,6 +115,9 @@ const char* TcpOptionType::toString(TcpOptionType::Value value)
     } break;
     case e_FAST_OPEN: {
         return "FAST_OPEN";
+    } break;
+    case e_UNASSIGNED: {
+        return "UNASSIGNED";
     } break;
     }
 

@@ -59,6 +59,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4OptionTypeTest::verifyFromInt)
         {  0,   7, T::e_RECORD_ROUTE       },
         {  0, 131, T::e_SOURCE_ROUTE_LOOSE },
         {  0, 137, T::e_SOURCE_ROUTE_TIGHT },
+        {  0, 255, T::e_UNASSIGNED         },
         { -1,  -1, T::e_UNDEFINED          }
     };
     // clang-format on
@@ -98,6 +99,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4OptionTypeTest::verifyFromString)
         {  0,  "RECORD_ROUTE",       T::e_RECORD_ROUTE       },
         {  0,  "SOURCE_ROUTE_LOOSE", T::e_SOURCE_ROUTE_LOOSE },
         {  0,  "SOURCE_ROUTE_TIGHT", T::e_SOURCE_ROUTE_TIGHT },
+        {  0,  "UNASSIGNED",         T::e_UNASSIGNED         },
         { -1,  "!",                  T::e_UNDEFINED          }
     };
     // clang-format on
@@ -133,7 +135,8 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4OptionTypeTest::verifyPrint)
         {  "RECORD_ROUTE",         7 },
         {  "TIMESTAMP",           68 },
         {  "SOURCE_ROUTE_LOOSE", 131 },
-        {  "SOURCE_ROUTE_TIGHT", 137 }
+        {  "SOURCE_ROUTE_TIGHT", 137 },
+        {  "UNASSIGNED",         255 }
     };
     // clang-format on
 

@@ -35,6 +35,7 @@ int Ipv4OptionType::fromInt(Ipv4OptionType::Value* result, int number)
     case Ipv4OptionType::e_RECORD_ROUTE:
     case Ipv4OptionType::e_SOURCE_ROUTE_LOOSE:
     case Ipv4OptionType::e_SOURCE_ROUTE_TIGHT:
+    case Ipv4OptionType::e_UNASSIGNED:
         *result = static_cast<Ipv4OptionType::Value>(number);
         return 0;
     default:
@@ -74,6 +75,10 @@ int Ipv4OptionType::fromString(Ipv4OptionType::Value*  result,
         *result = e_SOURCE_ROUTE_TIGHT;
         return 0;
     }
+    if (bdlb::String::areEqualCaseless(string, "UNASSIGNED")) {
+        *result = e_UNASSIGNED;
+        return 0;
+    }
 
     *result = e_UNDEFINED;
     return -1;
@@ -102,6 +107,9 @@ const char* Ipv4OptionType::toString(Ipv4OptionType::Value value)
     } break;
     case e_SOURCE_ROUTE_TIGHT: {
         return "SOURCE_ROUTE_TIGHT";
+    } break;
+    case e_UNASSIGNED: {
+        return "UNASSIGNED";
     } break;
     }
 

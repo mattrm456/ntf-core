@@ -22,6 +22,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_buffer.h>
 #include <ntsa_error.h>
 #include <ntsa_ipv4optiontype.h>
+#include <ntsa_ipv4optionvalue.h>
 #include <ntsa_ipv4routesequence.h>
 #include <ntsa_ipv4routeledger.h>
 #include <ntsa_packetdecoder.h>
@@ -70,6 +71,9 @@ namespace ntsa {
 /// @li @b strictSourceRoute:
 /// The option to force the packet to follow a rigidly defined list of routers.
 ///
+/// @li @b unassigned:
+/// The option whose kind is not officially registered.
+///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
@@ -78,7 +82,7 @@ class Ipv4Option
 {
     union {
         /// The "timestamp" representation.
-        bsls::ObjectBuffer<ntsa::Ipv4RouteLedger>   d_timestamp;
+        bsls::ObjectBuffer<ntsa::Ipv4RouteLedger> d_timestamp;
 
         /// The "recordRoute" representation.
         bsls::ObjectBuffer<ntsa::Ipv4RouteSequence> d_recordRoute;
@@ -88,6 +92,9 @@ class Ipv4Option
 
         /// The "sourceRouteTight" representation.
         bsls::ObjectBuffer<ntsa::Ipv4RouteSequence> d_sourceRouteTight;
+
+        /// The option whose kind is not officially registered.
+        bsls::ObjectBuffer<ntsa::Ipv4OptionValue> d_unassigned;
     };
 
     /// The option type.
@@ -167,6 +174,14 @@ class Ipv4Option
     ntsa::Ipv4RouteSequence& makeSourceRouteTight(
         const ntsa::Ipv4RouteSequence& value);
 
+    /// Select the "unassigned" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::Ipv4OptionValue& makeUnassigned();
+
+    /// Select the "unassigned" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::Ipv4OptionValue& makeUnassigned(const ntsa::Ipv4OptionValue& value);
+
     /// Return a reference to the modifiable "timestamp" representation. The
     /// behavior is undefined unless 'isTimestamp()' is true.
     ntsa::Ipv4RouteLedger& timestamp();
@@ -182,6 +197,10 @@ class Ipv4Option
     /// Return a reference to the modifiable "sourceRouteTight" representation.
     /// The behavior is undefined unless 'isSourceRouteTight()' is true.
     ntsa::Ipv4RouteSequence& sourceRouteTight();
+
+    /// Return a reference to the modifiable "unassigned" representation. The
+    /// behavior is undefined unless 'isUnassigned()' is true.
+    ntsa::Ipv4OptionValue& unassigned();
 
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
@@ -206,6 +225,10 @@ class Ipv4Option
     /// representation. The behavior is undefined unless 'isSourceRouteTight()'
     /// is true.
     const ntsa::Ipv4RouteSequence& sourceRouteTight() const;
+
+    /// Return a reference to the non-modifiable "unassigned" representation.
+    /// The behavior is undefined unless 'isUnassigned()' is true.
+    const ntsa::Ipv4OptionValue& unassigned() const;
 
     /// Return the type of the option representation.
     ntsa::Ipv4OptionType::Value type() const;
@@ -240,6 +263,10 @@ class Ipv4Option
     /// Return true if the "sourceRouteTight" representation is currently
     /// selected, otherwise return false.
     bool isSourceRouteTight() const;
+
+    /// Return true if the "unassigned" representation is currently selected,
+    /// otherwise return false.
+    bool isUnassigned() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.

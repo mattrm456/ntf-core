@@ -71,6 +71,10 @@ UdpOption::UdpOption(const UdpOption& other, bslma::Allocator* basicAllocator)
         new (d_timestamp.buffer())
             ntsa::UdpTimePointInterval(other.d_timestamp.object());
         break;
+    case ntsa::UdpOptionType::e_UNASSIGNED:
+        new (d_unassigned.buffer()) ntsa::UdpOptionValue(
+            other.d_unassigned.object(), d_allocator_p);
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
     }
@@ -85,6 +89,10 @@ UdpOption::~UdpOption()
     else if (isReassembly()) {
         typedef ntsa::UdpReassembly Type;
         d_reassembly.object().~Type();
+    }
+    else if (isUnassigned()) {
+        typedef ntsa::UdpOptionValue Type;
+        d_unassigned.object().~Type();
     }
 }
 
@@ -127,6 +135,10 @@ UdpOption& UdpOption::operator=(const UdpOption& other)
         new (d_timestamp.buffer())
             ntsa::UdpTimePointInterval(other.d_timestamp.object());
         break;
+    case ntsa::UdpOptionType::e_UNASSIGNED:
+        new (d_unassigned.buffer()) ntsa::UdpOptionValue(
+            other.d_unassigned.object(), d_allocator_p);
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
     }
@@ -145,6 +157,10 @@ void UdpOption::reset()
     else if (isReassembly()) {
         typedef ntsa::UdpReassembly Type;
         d_reassembly.object().~Type();
+    }
+    else if (isUnassigned()) {
+        typedef ntsa::UdpOptionValue Type;
+        d_unassigned.object().~Type();
     }
 
     d_type = ntsa::UdpOptionType::e_UNDEFINED;
@@ -357,6 +373,35 @@ ntsa::UdpTimePointInterval& UdpOption::makeTimestamp(
     return d_timestamp.object();
 }
 
+ntsa::UdpOptionValue& UdpOption::makeUnassigned()
+{
+    if (d_type == ntsa::UdpOptionType::e_UNASSIGNED) {
+        d_unassigned.object().reset();
+    }
+    else {
+        this->reset();
+        new (d_unassigned.buffer()) ntsa::UdpOptionValue(d_allocator_p);
+        d_type = ntsa::UdpOptionType::e_UNASSIGNED;
+    }
+
+    return d_unassigned.object();
+}
+
+ntsa::UdpOptionValue& UdpOption::makeUnassigned(
+    const ntsa::UdpOptionValue& value)
+{
+    if (d_type == ntsa::UdpOptionType::e_UNASSIGNED) {
+        d_unassigned.object() = value;
+    }
+    else {
+        this->reset();
+        new (d_unassigned.buffer()) ntsa::UdpOptionValue(value, d_allocator_p);
+        d_type = ntsa::UdpOptionType::e_UNASSIGNED;
+    }
+
+    return d_unassigned.object();
+}
+
 bsl::uint32_t& UdpOption::additionalChecksum()
 {
     BSLS_ASSERT(isAdditionalChecksum());
@@ -397,6 +442,12 @@ ntsa::UdpTimePointInterval& UdpOption::timestamp()
 {
     BSLS_ASSERT(isTimestamp());
     return d_timestamp.object();
+}
+
+ntsa::UdpOptionValue& UdpOption::unassigned()
+{
+    BSLS_ASSERT(isUnassigned());
+    return d_unassigned.object();
 }
 
 ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
@@ -576,8 +627,21 @@ ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
             timestamp.setRx(ntsa::UdpTimePoint(rx));
         }
         else {
-            BSLS_LOG_WARN("Unknown UDP option %d", static_cast<int>(type));
-            return ntsa::Error(ntsa::Error::e_INVALID);
+            BSLS_LOG_WARN("Unknown UDP option %d size = %zu",
+                          static_cast<int>(type),
+                          static_cast<bsl::size_t>(payloadSize));
+
+            ntsa::UdpOptionValue& unassigned = this->makeUnassigned();
+
+            unassigned.setKind(type);
+
+            bsl::vector<bsl::uint8_t> payloadData(payloadSize);
+            BSLS_ASSERT(payloadData.size() == payloadSize);
+
+            error = decoder->decodeRaw(&payloadData.front(), payloadSize);
+            if (error) {
+                return error;
+            }
         }
     }
 
@@ -840,6 +904,44 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
     }
+    else if (d_type == ntsa::UdpOptionType::e_UNASSIGNED) {
+        const bsl::size_t payloadSize = d_unassigned.object().payload().size();
+
+        if (payloadSize == 0) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::UdpOptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(
+            static_cast<bsl::uint8_t>(d_unassigned.object().kind()));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeRaw(
+            &d_unassigned.object().payload().front(), payloadSize);
+        if (error) {
+            return error;
+        }
+    }
     else if (d_type != ntsa::UdpOptionType::e_PADDING &&
              d_type != ntsa::UdpOptionType::e_UNDEFINED)
     {
@@ -891,6 +993,12 @@ const ntsa::UdpTimePointInterval& UdpOption::timestamp() const
     return d_timestamp.object();
 }
 
+const ntsa::UdpOptionValue& UdpOption::unassigned() const
+{
+    BSLS_ASSERT(isUnassigned());
+    return d_unassigned.object();
+}
+
 ntsa::UdpOptionType::Value UdpOption::type() const
 {
     return d_type;
@@ -917,6 +1025,8 @@ const char* UdpOption::name() const
         return "echoResponse";
     case ntsa::UdpOptionType::e_TIMESTAMP:
         return "timestamp";
+    case ntsa::UdpOptionType::e_UNASSIGNED:
+        return "unassigned";
     default:
         return "???";
     }
@@ -967,6 +1077,11 @@ bool UdpOption::isTimestamp() const
     return d_type == ntsa::UdpOptionType::e_TIMESTAMP;
 }
 
+bool UdpOption::isUnassigned() const
+{
+    return d_type == ntsa::UdpOptionType::e_UNASSIGNED;
+}
+
 bool UdpOption::equals(const UdpOption& other) const
 {
     if (d_type != other.d_type) {
@@ -991,6 +1106,8 @@ bool UdpOption::equals(const UdpOption& other) const
         return d_echoResponse.object() == other.d_echoResponse.object();
     case ntsa::UdpOptionType::e_TIMESTAMP:
         return d_timestamp.object() == other.d_timestamp.object();
+    case ntsa::UdpOptionType::e_UNASSIGNED:
+        return d_unassigned.object() == other.d_unassigned.object();
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         return true;
@@ -1021,6 +1138,8 @@ bool UdpOption::less(const UdpOption& other) const
         return d_echoResponse.object() < other.d_echoResponse.object();
     case ntsa::UdpOptionType::e_TIMESTAMP:
         return d_timestamp.object() < other.d_timestamp.object();
+    case ntsa::UdpOptionType::e_UNASSIGNED:
+        return d_unassigned.object() < other.d_unassigned.object();
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         return false;
@@ -1060,6 +1179,9 @@ bsl::ostream& UdpOption::print(bsl::ostream& stream,
     case ntsa::UdpOptionType::e_TIMESTAMP:
         printer.printAttribute("timestamp", d_timestamp.object());
         break;
+    case ntsa::UdpOptionType::e_UNASSIGNED:
+        printer.printAttribute("unassigned", d_unassigned.object());
+        break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
         stream << "UNDEFINED";
@@ -1097,6 +1219,9 @@ void UdpOption::print(bslim::Printer* printer) const
     }
     else if (d_type == ntsa::UdpOptionType::e_TIMESTAMP) {
         printer->printAttribute("timestamp", d_timestamp.object());
+    }
+    else if (d_type == ntsa::UdpOptionType::e_UNASSIGNED) {
+        printer->printAttribute("unassigned", d_unassigned.object());
     }
 }
 

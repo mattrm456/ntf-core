@@ -75,10 +75,10 @@ class Ipv4Timestamp
     void setTimestamp(bsl::uint32_t value);
 
     /// Return the address.
-    const bdlb::NullableValue<ntsa::Ipv4Address>&  address() const;
+    const bdlb::NullableValue<ntsa::Ipv4Address>& address() const;
 
     /// Return the timestamp.
-    const bdlb::NullableValue<bsl::uint32_t>&  timestamp() const;
+    const bdlb::NullableValue<bsl::uint32_t>& timestamp() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.

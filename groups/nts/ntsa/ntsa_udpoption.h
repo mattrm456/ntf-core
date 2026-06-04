@@ -27,6 +27,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_udpreassembly.h>
 #include <ntsa_udptimepoint.h>
 #include <ntsa_udpoptiontype.h>
+#include <ntsa_udpoptionvalue.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -54,25 +55,28 @@ namespace ntsa {
 /// This class is composed of the following attributes.
 ///
 /// @li @b additionalChecksum:
-/// TODO
+/// The additional checksum option.
 ///
 /// @li @b fragmentation:
-/// TODO
+/// The fragmentation option.
 ///
 /// @li @b maxDatagramSize:
-/// TODO
+/// The maximum datagram size option.
 ///
-/// @li @b maxReassembledDatagramSize:
-/// TODO
+/// @li @b reassembly:
+/// The maximum reassembled datagram characteristics option.
 ///
 /// @li @b echoRequest:
-/// TODO
+/// The echo request option.
 ///
 /// @li @b echoResponse:
-/// TODO
+/// The echo response option.
 ///
 /// @li @b timestamp:
-/// TODO
+/// The timestamp option.
+///
+/// @li @b unassigned:
+/// The option whose kind is not officially registered.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -81,17 +85,36 @@ namespace ntsa {
 class UdpOption
 {
     union {
-        bsls::ObjectBuffer<bsl::uint32_t>              d_additionalChecksum;
-        bsls::ObjectBuffer<ntsa::UdpFragmentation>     d_fragmentation;
-        bsls::ObjectBuffer<bsl::uint32_t>              d_maxDatagramSize;
-        bsls::ObjectBuffer<ntsa::UdpReassembly>        d_reassembly;
-        bsls::ObjectBuffer<bsl::uint32_t>              d_echoRequest;
-        bsls::ObjectBuffer<bsl::uint32_t>              d_echoResponse;
+        /// The additional checksum option.
+        bsls::ObjectBuffer<bsl::uint32_t> d_additionalChecksum;
+
+        /// The fragmentation option.
+        bsls::ObjectBuffer<ntsa::UdpFragmentation> d_fragmentation;
+
+        /// The maximum datagram size option.
+        bsls::ObjectBuffer<bsl::uint32_t> d_maxDatagramSize;
+
+        /// The maximum reassembled datagram characteristics option.
+        bsls::ObjectBuffer<ntsa::UdpReassembly> d_reassembly;
+
+        /// The echo request option.
+        bsls::ObjectBuffer<bsl::uint32_t> d_echoRequest;
+
+        /// The echo response option.
+        bsls::ObjectBuffer<bsl::uint32_t> d_echoResponse;
+
+        /// The timestamp option.
         bsls::ObjectBuffer<ntsa::UdpTimePointInterval> d_timestamp;
+
+        /// The option whose kind is not officially registered.
+        bsls::ObjectBuffer<ntsa::UdpOptionValue> d_unassigned;
     };
 
+    /// The option type.
     ntsa::UdpOptionType::Value d_type;
-    bslma::Allocator*          d_allocator_p;
+
+    /// The memory allocator.
+    bslma::Allocator* d_allocator_p;
 
   private:
     /// Return the number of padding bytes that should preceed an option having
@@ -184,6 +207,14 @@ class UdpOption
     ntsa::UdpTimePointInterval& makeTimestamp(
         const ntsa::UdpTimePointInterval& value);
 
+    /// Select the "unassigned" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::UdpOptionValue& makeUnassigned();
+
+    /// Select the "unassigned" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::UdpOptionValue& makeUnassigned(const ntsa::UdpOptionValue& value);
+
     /// Return a reference to the modifiable "additionalChecksum"
     /// representation. The behavior is undefined unless
     /// 'isAdditionalChecksum()' is true.
@@ -212,6 +243,10 @@ class UdpOption
     /// Return a reference to the modifiable "timestamp" representation. The
     /// behavior is undefined unless 'isTimestamp()' is true.
     ntsa::UdpTimePointInterval& timestamp();
+
+    /// Return a reference to the modifiable "unassigned" representation. The
+    /// behavior is undefined unless 'isUnassigned()' is true.
+    ntsa::UdpOptionValue& unassigned();
 
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
@@ -247,6 +282,10 @@ class UdpOption
     /// Return a reference to the modifiable "timestamp" representation. The
     /// behavior is undefined unless 'isTimestamp()' is true.
     const ntsa::UdpTimePointInterval& timestamp() const;
+
+    /// Return a reference to the non-modifiable "unassigned" representation.
+    /// The behavior is undefined unless 'isUnassigned()' is true.
+    const ntsa::UdpOptionValue& unassigned() const;
 
     /// Return the type of the option representation.
     ntsa::UdpOptionType::Value type() const;
@@ -289,6 +328,10 @@ class UdpOption
     /// Return true if the "timestamp" representation is currently selected,
     /// otherwise return false.
     bool isTimestamp() const;
+
+    /// Return true if the "unassigned" representation is currently selected,
+    /// otherwise return false.
+    bool isUnassigned() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.

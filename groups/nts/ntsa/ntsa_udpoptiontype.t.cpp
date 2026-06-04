@@ -52,16 +52,17 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpOptionTypeTest::verifyFromInt)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  0,  0, T::e_UNDEFINED                     },
-        {  0,  1, T::e_PADDING                       },
-        {  0,  2, T::e_ADDITIONAL_PAYLOAD_CHECKSUM   },
-        {  0,  3, T::e_FRAGMENTATION                 },
-        {  0,  4, T::e_MAX_DATAGRAM_SIZE             },
-        {  0,  5, T::e_MAX_REASSEMBLED_DATAGRAM_SIZE },
-        {  0,  6, T::e_ECHO_REQUEST                  },
-        {  0,  7, T::e_ECHO_RESPONSE                 },
-        {  0,  8, T::e_TIMESTAMP                     },
-        { -1, -1, T::e_UNDEFINED                     }
+        {  0,   0, T::e_UNDEFINED                     },
+        {  0,   1, T::e_PADDING                       },
+        {  0,   2, T::e_ADDITIONAL_PAYLOAD_CHECKSUM   },
+        {  0,   3, T::e_FRAGMENTATION                 },
+        {  0,   4, T::e_MAX_DATAGRAM_SIZE             },
+        {  0,   5, T::e_MAX_REASSEMBLED_DATAGRAM_SIZE },
+        {  0,   6, T::e_ECHO_REQUEST                  },
+        {  0,   7, T::e_ECHO_RESPONSE                 },
+        {  0,   8, T::e_TIMESTAMP                     },
+        {  0, 255, T::e_UNASSIGNED                    },
+        { -1,  -1, T::e_UNDEFINED                     }
     };
     // clang-format on
 
@@ -111,6 +112,8 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpOptionTypeTest::verifyFromString)
            T::e_ECHO_RESPONSE },
         {  0,  "TIMESTAMP",
            T::e_TIMESTAMP },
+        {  0,  "UNASSIGNED",
+           T::e_UNASSIGNED },
         { -1,  "!",
            T::e_UNDEFINED }
     };
@@ -141,15 +144,16 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpOptionTypeTest::verifyPrint)
     };
 
     const TestData k_TEST_DATA[] = {
-        {  "UNDEFINED",                     0 },
-        {  "PADDING",                       1 },
-        {  "ADDITIONAL_PAYLOAD_CHECKSUM",   2 },
-        {  "FRAGMENTATION",                 3 },
-        {  "MAX_DATAGRAM_SIZE",             4 },
-        {  "MAX_REASSEMBLED_DATAGRAM_SIZE", 5 },
-        {  "ECHO_REQUEST",                  6 },
-        {  "ECHO_RESPONSE",                 7 },
-        {  "TIMESTAMP",                     8 },
+        {  "UNDEFINED",                       0 },
+        {  "PADDING",                         1 },
+        {  "ADDITIONAL_PAYLOAD_CHECKSUM",     2 },
+        {  "FRAGMENTATION",                   3 },
+        {  "MAX_DATAGRAM_SIZE",               4 },
+        {  "MAX_REASSEMBLED_DATAGRAM_SIZE",   5 },
+        {  "ECHO_REQUEST",                    6 },
+        {  "ECHO_RESPONSE",                   7 },
+        {  "TIMESTAMP",                       8 },
+        {  "UNASSIGNED",                    255 },
     };
     // clang-format on
 

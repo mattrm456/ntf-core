@@ -24,6 +24,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntsa_tcpoptiontype.h>
+#include <ntsa_tcpoptionvalue.h>
 #include <ntsa_tcpsequencenumber.h>
 #include <ntsa_tcptimepoint.h>
 #include <ntscfg_platform.h>
@@ -53,22 +54,25 @@ namespace ntsa {
 /// This class is composed of the following attributes.
 ///
 /// @li @b maxSegmentSize:
-/// TODO
+/// The maximum segment size.
 ///
 /// @li @b windowScale:
-/// TODO
+/// The window scale factor.
 ///
 /// @li @b selectiveAckPermitted:
-/// TODO
+/// The flag that indicates selective acknowledgements are permitted.
 ///
 /// @li @b selectiveAck:
-/// TODO
+/// The selective acknowledgement.
 ///
 /// @li @b timestamp:
-/// TODO
+/// The timestamp.
 ///
 /// @li @b fastOpen:
-/// TODO
+/// The fast open cookie.
+///
+/// @li @b unassigned:
+/// The option whose kind is not officially registered.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -77,15 +81,30 @@ namespace ntsa {
 class TcpOption
 {
     union {
-        bsls::ObjectBuffer<bsl::size_t>                  d_maxSegmentSize;
-        bsls::ObjectBuffer<bsl::size_t>                  d_windowScale;
+        /// The maximum segment size option.
+        bsls::ObjectBuffer<bsl::size_t> d_maxSegmentSize;
+
+        /// The window scale option.
+        bsls::ObjectBuffer<bsl::size_t> d_windowScale;
+
+        /// The selective acknowledgement option.
         bsls::ObjectBuffer<ntsa::TcpSequenceRangeVector> d_selectiveAck;
-        bsls::ObjectBuffer<ntsa::TcpTimePointInterval>   d_timestamp;
-        bsls::ObjectBuffer<bdlb::Guid>                   d_fastOpen;
+
+        /// The timestamp option.
+        bsls::ObjectBuffer<ntsa::TcpTimePointInterval> d_timestamp;
+
+        /// The fast open option.
+        bsls::ObjectBuffer<bdlb::Guid> d_fastOpen;
+
+        /// The option whose kind is not officially registered.
+        bsls::ObjectBuffer<ntsa::TcpOptionValue> d_unassigned;
     };
 
+    /// The option type.
     ntsa::TcpOptionType::Value d_type;
-    bslma::Allocator*          d_allocator_p;
+
+    /// The memory allocator.
+    bslma::Allocator* d_allocator_p;
 
   private:
     /// Return the number of padding bytes that should preceed an option having
@@ -97,7 +116,7 @@ class TcpOption
   public:
     /// Create a new TCP option having an undefined type. Optionally specify a
     /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0, the
-    // currently installed default allocator is used.
+    /// currently installed default allocator is used.
     explicit TcpOption(bslma::Allocator* basicAllocator = 0);
 
     /// Create a new TCP option having the same value as the specified 'other'
@@ -164,6 +183,14 @@ class TcpOption
     /// 'value'. Return a reference to the modifiable representation.
     bdlb::Guid& makeFastOpen(const bdlb::Guid& value);
 
+    /// Select the "unassigned" representation. Return a reference to the
+    /// modifiable representation.
+    ntsa::TcpOptionValue& makeUnassigned();
+
+    /// Select the "unassigned" representation initially having the specified
+    /// 'value'. Return a reference to the modifiable representation.
+    ntsa::TcpOptionValue& makeUnassigned(const ntsa::TcpOptionValue& value);
+
     /// Return a reference to the modifiable "maxSegmentSize" representation.
     /// The behavior is undefined unless 'isMaxSegmentSize()' is true.
     bsl::size_t& maxSegmentSize();
@@ -183,6 +210,10 @@ class TcpOption
     /// Return a reference to the modifiable "fastOpen" representation. The
     /// behavior is undefined unless 'isFastOpen()' is true.
     bdlb::Guid& fastOpen();
+
+    /// Return a reference to the modifiable "unassigned" representation. The
+    /// behavior is undefined unless 'isUnassigned()' is true.
+    ntsa::TcpOptionValue& unassigned();
 
     /// Decode the object from the specified 'decoder'. Return the error.
     ntsa::Error decode(ntsa::PacketDecoder* decoder);
@@ -210,6 +241,10 @@ class TcpOption
     /// Return a reference to the non-modifiable "fastOpen" representation. The
     /// behavior is undefined unless 'isFastOpen()' is true.
     const bdlb::Guid& fastOpen() const;
+
+    /// Return a reference to the non-modifiable "unassigned" representation.
+    /// The behavior is undefined unless 'isUnassigned()' is true.
+    const ntsa::TcpOptionValue& unassigned() const;
 
     /// Return the type of the option representation.
     ntsa::TcpOptionType::Value type() const;
@@ -248,6 +283,10 @@ class TcpOption
     /// Return true if the "fastOpen" representation is currently selected,
     /// otherwise return false.
     bool isFastOpen() const;
+
+    /// Return true if the "unassigned" representation is currently selected,
+    /// otherwise return false.
+    bool isUnassigned() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
