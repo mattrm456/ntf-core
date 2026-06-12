@@ -19,6 +19,7 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_arppacket.h>
 #include <ntsa_ipv4packet.h>
 #include <ntsa_ipv6packet.h>
 #include <ntscfg_platform.h>
@@ -48,17 +49,25 @@ class EthernetPayload
         /// The payload type is represented as a raw sequence of bytes.
         e_RAW = 1,
 
-        /// The payload type is an IPv4 packet.
-        e_IPV4 = 2,
+        /// The payload type is an Address Resolution Protocol (ARP) packet.
+        e_ARP = 2,
 
-        /// The payload type is an IPv6 packet.
-        e_IPV6 = 3
+        /// The payload type is a Reverse Address Resolution (RARP) packet.
+        e_RARP = 3,
+
+        /// The payload type is an Internet Protocol version 4 (IPv4) packet.
+        e_IPV4 = 4,
+
+        /// The payload type is an Internet Protocol version 6 (IPv6) packet.
+        e_IPV6 = 5
     };
 
     Type d_type;
 
     union {
         bsls::ObjectBuffer<bdlbb::BlobBuffer> d_raw;
+        bsls::ObjectBuffer<ntsa::ArpPacket>   d_arp;
+        bsls::ObjectBuffer<ntsa::ArpPacket>   d_rarp;
         bsls::ObjectBuffer<ntsa::Ipv4Packet>  d_ipv4;
         bsls::ObjectBuffer<ntsa::Ipv6Packet>  d_ipv6;
     };
@@ -116,6 +125,34 @@ class EthernetPayload
     bdlbb::BlobBuffer& makeRaw(bslmf::MovableRef<bdlbb::BlobBuffer> value)
         NTSCFG_NOEXCEPT;
 
+    /// Make the representation of the payload an ARP packet. Return a
+    /// reference to the modifable representation.
+    ntsa::ArpPacket& makeArp();
+
+    /// Make the representation of the payload an ARP packet having the
+    /// specified 'value'. Return a reference to the modifable representation.
+    ntsa::ArpPacket& makeArp(const ntsa::ArpPacket& value);
+
+    /// Make the representation of the payload an ARP packet having the
+    /// specified 'value'. Assign an unspecified but valid value to the
+    /// 'value'. Return a reference to the modifable representation.
+    ntsa::ArpPacket& makeArp(bslmf::MovableRef<ntsa::ArpPacket> value)
+        NTSCFG_NOEXCEPT;
+
+    /// Make the representation of the payload a RARP packet. Return a
+    /// reference to the modifable representation.
+    ntsa::ArpPacket& makeRarp();
+
+    /// Make the representation of the payload a RARP packet having the
+    /// specified 'value'. Return a reference to the modifable representation.
+    ntsa::ArpPacket& makeRarp(const ntsa::ArpPacket& value);
+
+    /// Make the representation of the payload a RARP packet having the
+    /// specified 'value'. Assign an unspecified but valid value to the
+    /// 'value'. Return a reference to the modifable representation.
+    ntsa::ArpPacket& makeRarp(bslmf::MovableRef<ntsa::ArpPacket> value)
+        NTSCFG_NOEXCEPT;
+
     /// Make the representation of the payload an IPv4 packet. Return a
     /// reference to the modifable representation.
     ntsa::Ipv4Packet& makeIpv4();
@@ -148,6 +185,14 @@ class EthernetPayload
     /// behavior is undefined unless 'isRaw()' is true.
     bdlbb::BlobBuffer& raw();
 
+    /// Return a reference to the modifiable ARP packet. The behavior is
+    /// undefined unless 'isArp()' is true.
+    ntsa::ArpPacket& arp();
+
+    /// Return a reference to the modifiable RARP packet. The behavior is
+    /// undefined unless 'isRarp()' is true.
+    ntsa::ArpPacket& rarp();
+
     /// Return a reference to the modifiable IPv4 packet. The behavior is
     /// undefined unless 'isIpv4()' is true.
     ntsa::Ipv4Packet& ipv4();
@@ -159,6 +204,14 @@ class EthernetPayload
     /// Return a reference to the non-modifiable raw sequence of bytes. The
     /// behavior is undefined unless 'isRaw()' is true.
     const bdlbb::BlobBuffer& raw() const;
+
+    /// Return a reference to the non-modifiable ARP packet. The behavior is
+    /// undefined unless 'isArp()' is true.
+    const ntsa::ArpPacket& arp() const;
+
+    /// Return a reference to the non-modifiable RARP packet. The behavior is
+    /// undefined unless 'isRarp()' is true.
+    const ntsa::ArpPacket& rarp() const;
 
     /// Return a reference to the non-modifiable IPv4 packet. The behavior is
     /// undefined unless 'isIpv4()' is true.
@@ -178,6 +231,14 @@ class EthernetPayload
     /// Return true if the representation is a raw sequence of bytes, otherwise
     /// return false.
     bool isRaw() const;
+
+    /// Return true if the representation is an ARP packet, otherwise return
+    /// false.
+    bool isArp() const;
+
+    /// Return true if the representation is a RARP packet, otherwise return
+    /// false.
+    bool isRarp() const;
 
     /// Return true if the representation is an IPv4 packet, otherwise return
     /// false.
@@ -243,6 +304,20 @@ bdlbb::BlobBuffer& EthernetPayload::raw()
 }
 
 NTSCFG_INLINE
+ntsa::ArpPacket& EthernetPayload::arp()
+{
+    BSLS_ASSERT(isArp());
+    return d_arp.object();
+}
+
+NTSCFG_INLINE
+ntsa::ArpPacket& EthernetPayload::rarp()
+{
+    BSLS_ASSERT(isRarp());
+    return d_rarp.object();
+}
+
+NTSCFG_INLINE
 ntsa::Ipv4Packet& EthernetPayload::ipv4()
 {
     BSLS_ASSERT(isIpv4());
@@ -261,6 +336,20 @@ const bdlbb::BlobBuffer& EthernetPayload::raw() const
 {
     BSLS_ASSERT(isRaw());
     return d_raw.object();
+}
+
+NTSCFG_INLINE
+const ntsa::ArpPacket& EthernetPayload::arp() const
+{
+    BSLS_ASSERT(isArp());
+    return d_arp.object();
+}
+
+NTSCFG_INLINE
+const ntsa::ArpPacket& EthernetPayload::rarp() const
+{
+    BSLS_ASSERT(isRarp());
+    return d_rarp.object();
 }
 
 NTSCFG_INLINE
@@ -293,6 +382,18 @@ NTSCFG_INLINE
 bool EthernetPayload::isRaw() const
 {
     return d_type == e_RAW;
+}
+
+NTSCFG_INLINE
+bool EthernetPayload::isArp() const
+{
+    return d_type == e_ARP;
+}
+
+NTSCFG_INLINE
+bool EthernetPayload::isRarp() const
+{
+    return d_type == e_RARP;
 }
 
 NTSCFG_INLINE

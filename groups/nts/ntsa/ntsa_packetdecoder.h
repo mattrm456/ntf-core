@@ -137,6 +137,10 @@ class PacketDecoder
     /// 'amount'. Return the error.
     ntsa::Error rewind(bsl::size_t amount);
 
+    /// Reduce the perceived length of the decodable data by the specified
+    /// 'amount'.
+    ntsa::Error truncate(bsl::size_t amount);
+
     /// Return the address of the next byte to be decoded.
     const bsl::uint8_t* next() const;
 
@@ -495,6 +499,22 @@ ntsa::Error PacketDecoder::rewind(bsl::size_t amount)
     if (d_current - amount >= d_begin) {
         d_current -= amount;
         d_size     = static_cast<bsl::size_t>(d_end - d_current);
+        return ntsa::Error();
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+}
+
+NTSCFG_INLINE
+ntsa::Error PacketDecoder::truncate(bsl::size_t amount)
+{
+    if (amount <= static_cast<bsl::size_t>(d_end - d_begin) &&
+        amount <= d_size)
+    {
+        d_end -= amount;
+        d_size -= amount;
+
         return ntsa::Error();
     }
     else {

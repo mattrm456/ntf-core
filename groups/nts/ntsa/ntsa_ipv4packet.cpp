@@ -75,6 +75,17 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoderContext*       context,
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
 
+    const bsl::size_t remaining = decoder->size() - decoder->position();
+    const bsl::size_t payloadLength =
+        d_header.packetLength() - d_header.headerLength();
+
+    if (remaining > payloadLength) {
+        error = decoder->truncate(remaining - payloadLength);
+        if (error) {
+            return error;
+        }
+    }
+
     if (d_header.protocol() ==
         static_cast<bsl::uint8_t>(ntsa::Ipv4Header::k_PROTOCOL_ICMP))
     {

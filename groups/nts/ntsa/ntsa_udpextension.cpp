@@ -35,7 +35,8 @@ void UdpExtension::add(bslmf::MovableRef<ntsa::UdpOption> option)
     d_vector.push_back(NTSCFG_MOVE_ACCESS(option));
 }
 
-ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder,
+                                 bsl::size_t          size)
 {
     ntsa::Error error;
 
@@ -63,7 +64,13 @@ ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder)
         return error;
     }
 
+    const bsl::size_t optionsPosition = decoder->position();
+
+    bsl::size_t n = 0;
+
     while (true) {
+        const bsl::size_t p0 = decoder->position();
+
         ntsa::UdpOption option(d_allocator_p);
         error = option.decode(decoder);
         if (error) {
@@ -76,6 +83,17 @@ ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder)
         }
 
         d_vector.push_back(NTSCFG_MOVE(option));
+
+         const bsl::size_t p1 = decoder->position();
+
+        n += static_cast<bsl::size_t>(p1 - p0);
+
+        if (n == size) {
+            break;
+        }
+        else if (n > size) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
     }
 
     const bsl::size_t finalPosition = decoder->position();

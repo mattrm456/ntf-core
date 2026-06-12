@@ -70,6 +70,22 @@ ntsa::Error EthernetPacket::decode(ntsa::PacketDecoderContext*       context,
             return error;
         }
     }
+    else if (d_header.protocol() == ntsa::EthernetProtocol::e_ARP) {
+        ntsa::ArpPacket& arp = d_payload.makeArp();
+
+        error = arp.decode(decoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_header.protocol() == ntsa::EthernetProtocol::e_RARP) {
+        ntsa::ArpPacket& rarp = d_payload.makeRarp();
+
+        error = rarp.decode(decoder);
+        if (error) {
+            return error;
+        }
+    }
     else {
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
@@ -125,6 +141,30 @@ ntsa::Error EthernetPacket::encode(
         const ntsa::Ipv6Packet& ipv6 = d_payload.ipv6();
 
         error = ipv6.encode(context, encoder, options);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isArp()) {
+        if (d_header.protocol() != ntsa::EthernetProtocol::e_ARP) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::ArpPacket& arp = d_payload.arp();
+
+        error = arp.encode(encoder);
+        if (error) {
+            return error;
+        }
+    }
+    else if (d_payload.isRarp()) {
+        if (d_header.protocol() != ntsa::EthernetProtocol::e_RARP) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const ntsa::ArpPacket& rarp = d_payload.rarp();
+
+        error = rarp.encode(encoder);
         if (error) {
             return error;
         }

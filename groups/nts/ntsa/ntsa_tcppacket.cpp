@@ -61,7 +61,7 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoderContext*       context,
         static_cast<bsl::size_t>(ntsa::TcpHeader::k_MIN_HEADER_LENGTH);
 
     if (extensionLength > 0) {
-        error = d_extension.decode(decoder);
+        error = d_extension.decode(decoder, extensionLength);
         if (error) {
             return error;
         }

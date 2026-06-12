@@ -69,7 +69,7 @@ ntsa::Error UdpPacket::decode(ntsa::PacketDecoderContext*       context,
     const bsl::size_t extensionLength = decoder->size() - decoder->position();
 
     if (extensionLength > 0) {
-        error = d_extension.decode(decoder);
+        error = d_extension.decode(decoder, extensionLength);
         if (error) {
             return error;
         }

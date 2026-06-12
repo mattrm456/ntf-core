@@ -33,6 +33,14 @@ EthernetPayload::EthernetPayload(bslmf::MovableRef<EthernetPayload> original)
         new (d_raw.buffer())
             bdlbb::BlobBuffer(NTSCFG_MOVE_FROM(original, d_raw.object()));
     }
+    else if (d_type == e_ARP) {
+        new (d_arp.buffer())
+            ntsa::ArpPacket(NTSCFG_MOVE_FROM(original, d_arp.object()));
+    }
+    else if (d_type == e_RARP) {
+        new (d_rarp.buffer())
+            ntsa::ArpPacket(NTSCFG_MOVE_FROM(original, d_rarp.object()));
+    }
     else if (d_type == e_IPV4) {
         new (d_ipv4.buffer())
             ntsa::Ipv4Packet(NTSCFG_MOVE_FROM(original, d_ipv4.object()));
@@ -56,6 +64,14 @@ EthernetPayload::EthernetPayload(const EthernetPayload& original,
     if (d_type == e_RAW) {
         new (d_raw.buffer()) bdlbb::BlobBuffer(original.d_raw.object());
     }
+    else if (d_type == e_ARP) {
+        new (d_arp.buffer())
+            ntsa::ArpPacket(original.d_arp.object(), d_allocator_p);
+    }
+    else if (d_type == e_RARP) {
+        new (d_rarp.buffer())
+            ntsa::ArpPacket(original.d_rarp.object(), d_allocator_p);
+    }
     else if (d_type == e_IPV4) {
         new (d_ipv4.buffer())
             ntsa::Ipv4Packet(original.d_ipv4.object(), d_allocator_p);
@@ -74,6 +90,14 @@ EthernetPayload::~EthernetPayload()
     if (d_type == e_RAW) {
         typedef bdlbb::BlobBuffer Type;
         d_raw.object().~Type();
+    }
+    else if (d_type == e_ARP) {
+        typedef ntsa::ArpPacket Type;
+        d_arp.object().~Type();
+    }
+    else if (d_type == e_RARP) {
+        typedef ntsa::ArpPacket Type;
+        d_rarp.object().~Type();
     }
     else if (d_type == e_IPV4) {
         typedef ntsa::Ipv4Packet Type;
@@ -96,6 +120,14 @@ EthernetPayload& EthernetPayload::operator=(
     if (d_type == e_RAW) {
         new (d_raw.buffer())
             bdlbb::BlobBuffer(NTSCFG_MOVE_FROM(other, d_raw.object()));
+    }
+    else if (d_type == e_ARP) {
+        new (d_arp.buffer())
+            ntsa::ArpPacket(NTSCFG_MOVE_FROM(other, d_arp.object()));
+    }
+    else if (d_type == e_RARP) {
+        new (d_rarp.buffer())
+            ntsa::ArpPacket(NTSCFG_MOVE_FROM(other, d_rarp.object()));
     }
     else if (d_type == e_IPV4) {
         new (d_ipv4.buffer())
@@ -127,6 +159,14 @@ EthernetPayload& EthernetPayload::operator=(const EthernetPayload& other)
     if (d_type == e_RAW) {
         new (d_raw.buffer()) bdlbb::BlobBuffer(other.d_raw.object());
     }
+    else if (d_type == e_ARP) {
+        new (d_arp.buffer())
+            ntsa::ArpPacket(other.d_arp.object(), d_allocator_p);
+    }
+    else if (d_type == e_RARP) {
+        new (d_rarp.buffer())
+            ntsa::ArpPacket(other.d_rarp.object(), d_allocator_p);
+    }
     else if (d_type == e_IPV4) {
         new (d_ipv4.buffer())
             ntsa::Ipv4Packet(other.d_ipv4.object(), d_allocator_p);
@@ -147,6 +187,14 @@ void EthernetPayload::reset()
     if (d_type == e_RAW) {
         typedef bdlbb::BlobBuffer Type;
         d_raw.object().~Type();
+    }
+    else if (d_type == e_ARP) {
+        typedef ntsa::ArpPacket Type;
+        d_arp.object().~Type();
+    }
+    else if (d_type == e_RARP) {
+        typedef ntsa::ArpPacket Type;
+        d_rarp.object().~Type();
     }
     else if (d_type == e_IPV4) {
         typedef ntsa::Ipv4Packet Type;
@@ -203,6 +251,96 @@ bdlbb::BlobBuffer& EthernetPayload::makeRaw(
     NTSCFG_MOVE_RESET(value);
 
     return d_raw.object();
+}
+
+ntsa::ArpPacket& EthernetPayload::makeArp()
+{
+    if (d_type == e_ARP) {
+        d_arp.object().reset();
+    }
+    else {
+        reset();
+        new (d_arp.buffer()) ntsa::ArpPacket(d_allocator_p);
+        d_type = e_ARP;
+    }
+
+    return d_arp.object();
+}
+
+ntsa::ArpPacket& EthernetPayload::makeArp(const ntsa::ArpPacket& value)
+{
+    if (d_type == e_ARP) {
+        d_arp.object() = value;
+    }
+    else {
+        reset();
+        new (d_arp.buffer()) ntsa::ArpPacket(value, d_allocator_p);
+        d_type = e_ARP;
+    }
+
+    return d_arp.object();
+}
+
+ntsa::ArpPacket& EthernetPayload::makeArp(
+    bslmf::MovableRef<ntsa::ArpPacket> value) NTSCFG_NOEXCEPT
+{
+    if (d_type == e_ARP) {
+        d_arp.object() = NTSCFG_MOVE(value);
+    }
+    else {
+        reset();
+        new (d_arp.buffer()) ntsa::ArpPacket(NTSCFG_MOVE(value));
+        d_type = e_ARP;
+    }
+
+    NTSCFG_MOVE_RESET(value);
+
+    return d_arp.object();
+}
+
+ntsa::ArpPacket& EthernetPayload::makeRarp()
+{
+    if (d_type == e_RARP) {
+        d_rarp.object().reset();
+    }
+    else {
+        reset();
+        new (d_rarp.buffer()) ntsa::ArpPacket(d_allocator_p);
+        d_type = e_RARP;
+    }
+
+    return d_rarp.object();
+}
+
+ntsa::ArpPacket& EthernetPayload::makeRarp(const ntsa::ArpPacket& value)
+{
+    if (d_type == e_RARP) {
+        d_rarp.object() = value;
+    }
+    else {
+        reset();
+        new (d_rarp.buffer()) ntsa::ArpPacket(value, d_allocator_p);
+        d_type = e_RARP;
+    }
+
+    return d_rarp.object();
+}
+
+ntsa::ArpPacket& EthernetPayload::makeRarp(
+    bslmf::MovableRef<ntsa::ArpPacket> value) NTSCFG_NOEXCEPT
+{
+    if (d_type == e_RARP) {
+        d_rarp.object() = NTSCFG_MOVE(value);
+    }
+    else {
+        reset();
+        new (d_rarp.buffer()) ntsa::ArpPacket(NTSCFG_MOVE(value));
+        d_type = e_RARP;
+    }
+
+    NTSCFG_MOVE_RESET(value);
+
+    return d_rarp.object();
 }
 
 ntsa::Ipv4Packet& EthernetPayload::makeIpv4()
@@ -314,6 +452,16 @@ bool EthernetPayload::equals(const EthernetPayload& other) const
             return false;
         }
     }
+    else if (d_type == e_ARP) {
+        if (!d_arp.object().equals(other.d_arp.object())) {
+            return false;
+        }
+    }
+    else if (d_type == e_RARP) {
+        if (!d_rarp.object().equals(other.d_rarp.object())) {
+            return false;
+        }
+    }
     else if (d_type == e_IPV4) {
         if (!d_ipv4.object().equals(other.d_ipv4.object())) {
             return false;
@@ -339,6 +487,12 @@ bsl::ostream& EthernetPayload::print(bsl::ostream& stream,
         return bdlb::Print::hexDump(stream,
                                     d_raw.object().data(),
                                     d_raw.object().size());
+    }
+    else if (d_type == e_ARP) {
+        return d_arp.object().print(stream, level, spacesPerLevel);
+    }
+    else if (d_type == e_RARP) {
+        return d_rarp.object().print(stream, level, spacesPerLevel);
     }
     else if (d_type == e_IPV4) {
         return d_ipv4.object().print(stream, level, spacesPerLevel);

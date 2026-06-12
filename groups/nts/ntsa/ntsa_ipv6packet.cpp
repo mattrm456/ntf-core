@@ -34,9 +34,14 @@ ntsa::Error Ipv6Packet::decode(ntsa::PacketDecoderContext*       context,
     NTSCFG_WARNING_UNUSED(decoder);
     NTSCFG_WARNING_UNUSED(options);
 
-    NTSCFG_NOT_IMPLEMENTED();
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    error = d_header.decode(decoder);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error Ipv6Packet::encode(ntsa::PacketEncoderContext*       context,

@@ -274,7 +274,7 @@ Bpf::Bpf(const ntsa::DeviceConfig& configuration,
          bslma::Allocator*         basicAllocator)
 : d_deviceName(basicAllocator)
 , d_deviceHandle(ntsa::k_INVALID_HANDLE)
-, d_deviceBufferSize(1024 * 64)
+, d_deviceBufferSize(32768)
 , d_deviceBufferFactory()
 , d_adapter(basicAllocator)
 , d_config(configuration, basicAllocator)
@@ -612,7 +612,7 @@ ntsa::Error Bpf::dequeue(ntsa::Packet* result)
     char *metaFrameEnd = metaFrame + buffer.size();
 
     while (metaFrame < metaFrameEnd) {
-        struct bpf_hdr *bpf = reinterpret_cast<struct bpf_hdr*>(buffer.data());
+        struct bpf_hdr *bpf = reinterpret_cast<struct bpf_hdr*>(metaFrame);
 
         BSLS_LOG_DEBUG("BPF device read packet meta-data "
                        "[ caplen = %zu datalen = %zu hdrlen = %zu ]",
@@ -670,7 +670,7 @@ ntsa::Error Bpf::dequeue(ntsa::Packet* result)
             bsl::stringstream ss;
             ss << "Incoming packet = " << *result;
 
-            BSLS_LOG_DEBUG("%s", ss.str().c_str());
+            BSLS_LOG_INFO("%s", ss.str().c_str());
         }
 
         metaFrame += BPF_WORDALIGN(bpf->bh_hdrlen + bpf->bh_caplen);

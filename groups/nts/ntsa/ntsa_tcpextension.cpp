@@ -34,13 +34,18 @@ void TcpExtension::add(bslmf::MovableRef<ntsa::TcpOption> option)
     d_vector.push_back(NTSCFG_MOVE_ACCESS(option));
 }
 
-ntsa::Error TcpExtension::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error TcpExtension::decode(ntsa::PacketDecoder* decoder,
+                                 bsl::size_t          size)
 {
     ntsa::Error error;
 
     reset();
 
+    bsl::size_t n = 0;
+
     while (true) {
+        const bsl::size_t p0 = decoder->position();
+
         ntsa::TcpOption option(d_allocator_p);
         error = option.decode(decoder);
         if (error) {
@@ -53,6 +58,17 @@ ntsa::Error TcpExtension::decode(ntsa::PacketDecoder* decoder)
         }
 
         d_vector.push_back(NTSCFG_MOVE(option));
+
+        const bsl::size_t p1 = decoder->position();
+
+        n += static_cast<bsl::size_t>(p1 - p0);
+
+        if (n == size) {
+            break;
+        }
+        else if (n > size) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
     }
 
     return ntsa::Error();

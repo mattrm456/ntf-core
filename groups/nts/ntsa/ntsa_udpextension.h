@@ -103,7 +103,7 @@ class UdpExtension
     void add(bslmf::MovableRef<ntsa::UdpOption> option);
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+    ntsa::Error decode(ntsa::PacketDecoder* decoder, bsl::size_t size);
 
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;

@@ -1,6 +1,12 @@
 ntsa_adapter
 ntsa_abstract
 ntsa_allocator
+ntsa_arpheader
+ntsa_arppacket
+ntsa_arppayload
+ntsa_arprequest
+ntsa_arpresponse
+ntsa_arptype
 ntsa_backoff
 ntsa_buffer
 ntsa_circular
