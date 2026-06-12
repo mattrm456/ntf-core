@@ -141,7 +141,7 @@ void ArpHeader::print(bslim::Printer* printer) const
     const bsl::uint16_t operation = this->operation();
 
     ntsa::ArpType::Value type = ntsa::ArpType::e_UNDEFINED;
-    if (ntsa::ArpType::fromInt(&type, static_cast<int>(operation)) != 0) {
+    if (ntsa::ArpType::fromInt(&type, static_cast<int>(operation)) == 0) {
         printer->printAttribute("operation", type);
     }
     else {

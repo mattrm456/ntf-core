@@ -1372,6 +1372,7 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4PacketTest::verifyTcp)
     NTSCFG_TEST_EQ(incomingIpv4Packet.header().id(), 64493);
     NTSCFG_TEST_EQ(incomingIpv4Packet.header().fragmentOffset(), 0);
     NTSCFG_TEST_EQ(incomingIpv4Packet.header().preserve(), true);
+
     NTSCFG_TEST_EQ(incomingIpv4Packet.header().timeToLive(), 64);
     NTSCFG_TEST_EQ(incomingIpv4Packet.header().protocol(), 6);
     NTSCFG_TEST_EQ(incomingIpv4Packet.header().checksum(), 16588);

@@ -26,8 +26,6 @@ namespace BloombergLP {
 namespace ntsa {
 
 // Provide tests for 'ntsa::TcpExtension'.
-//
-// maxSegmentSize = 65495 selectiveAckPermitted = true timestamp = [ tx = 3711540824 rx = 0 ] padding = true windowScale = 11
 class TcpExtensionTest
 {
   public:
@@ -92,7 +90,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpExtensionTest::verifyUsage)
         extension.add(option);
     }
 
-    // NTSCFG_TEST_LOG_TRACE << "Options = " << extension << " length = " << extension.size() << NTSCFG_TEST_LOG_END;
+    NTSCFG_TEST_LOG_TRACE << "Options = " << extension << NTSCFG_TEST_LOG_END;
 }
 
 }  // close namespace ntsa
