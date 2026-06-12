@@ -48,10 +48,29 @@ class Ipv4RouteLedger
     /// The index of the next entry in the ledger.
     bsl::size_t d_index;
 
+    /// The number of overflowed entries.
+    bsl::size_t d_overflow;
+
+    /// The flags.
+    bsl::size_t d_flags;
+
     /// The entries in the ledger.
     bsl::vector<ntsa::Ipv4Timestamp> d_vector;
 
   public:
+    /// Enumerates the constants used by this implementation.
+    enum Constant {
+        /// Only timestamps are recorded.
+        k_TIMESTAMP_ONLY = 0,
+
+        /// Both timestamps and addresses are recorded.
+        k_TIMESTAMP_AND_ADDRESS = 1,
+
+        /// A timestamp should only be recorded if its outbound interface
+        /// matches a prespecified IP address in the list.
+        k_TIMESTAMP_AND_ADDRESS_PRESPECIFIED = 3
+    };
+
     /// Create a new IPv4 route ledger having a default value. Optionally
     /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
     /// is 0, the currently installed default allocator is used.
@@ -84,18 +103,24 @@ class Ipv4RouteLedger
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
-    /// Set the index of the next entry.
+    /// Set the index of the next entry to the specified 'value'.
     void setIndex(bsl::size_t value);
 
-    /// Set the maximum number of entries.
+    /// Set the maximum number of entries to the specified 'value'.
     void setCount(bsl::size_t value);
+
+    /// Set the number of overflowed entries to the specified 'value'.
+    void setOverflow(bsl::size_t value);
+
+    /// Set the flags to the specified 'value'.
+    void setFlags(bsl::size_t value);
 
     /// Return a reference to the modifiable entry at the specified 'index'.
     /// The behavior is undefined unless 'index' is less than 'count()'.
     ntsa::Ipv4Timestamp& entry(std::size_t index);
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+    ntsa::Error decode(ntsa::PacketDecoder* decoder, bsl::size_t size);
 
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
@@ -106,10 +131,19 @@ class Ipv4RouteLedger
     /// Return the maximum number of entries.
     bsl::size_t count() const;
 
+    /// Return the number of overflowed entries.
+    bsl::size_t overflow() const;
+
+    /// Return the flags.
+    bsl::size_t flags() const;
+
     /// Return a reference to the non-modifiable entry at the specified
     /// 'index'. The behavior is undefined unless 'index' is less than
     /// 'count()'.
     const ntsa::Ipv4Timestamp& entry(std::size_t index) const;
+
+    /// Return the encoded payload size of this option.
+    bsl::size_t payloadSize() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -180,6 +214,8 @@ void hashAppend(HASH_ALGORITHM& algorithm, const Ipv4RouteLedger& value);
 NTSCFG_INLINE
 Ipv4RouteLedger::Ipv4RouteLedger(bslma::Allocator* basicAllocator)
 : d_index(0)
+, d_overflow(0)
+, d_flags(0)
 , d_vector(basicAllocator)
 {
 }
@@ -187,6 +223,8 @@ Ipv4RouteLedger::Ipv4RouteLedger(bslma::Allocator* basicAllocator)
 NTSCFG_INLINE
 Ipv4RouteLedger::Ipv4RouteLedger(bslmf::MovableRef<Ipv4RouteLedger> original) NTSCFG_NOEXCEPT
 : d_index(NTSCFG_MOVE_FROM(original, d_index))
+, d_overflow(NTSCFG_MOVE_FROM(original, d_overflow))
+, d_flags(NTSCFG_MOVE_FROM(original, d_flags))
 , d_vector(NTSCFG_MOVE_FROM(original, d_vector))
 {
 }
@@ -195,6 +233,8 @@ NTSCFG_INLINE
 Ipv4RouteLedger::Ipv4RouteLedger(const Ipv4RouteLedger& original,
                        bslma::Allocator* basicAllocator)
 : d_index(original.d_index)
+, d_overflow(original.d_overflow)
+, d_flags(original.d_flags)
 , d_vector(original.d_vector, basicAllocator)
 {
 }
@@ -208,8 +248,10 @@ NTSCFG_INLINE
 Ipv4RouteLedger& Ipv4RouteLedger::operator=(bslmf::MovableRef<Ipv4RouteLedger> other)
     NTSCFG_NOEXCEPT
 {
-    d_index   = NTSCFG_MOVE_FROM(other, d_index);
-    d_vector = NTSCFG_MOVE_FROM(other, d_vector);
+    d_index    = NTSCFG_MOVE_FROM(other, d_index);
+    d_overflow = NTSCFG_MOVE_FROM(other, d_overflow);
+    d_flags    = NTSCFG_MOVE_FROM(other, d_flags);
+    d_vector   = NTSCFG_MOVE_FROM(other, d_vector);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -219,8 +261,10 @@ Ipv4RouteLedger& Ipv4RouteLedger::operator=(bslmf::MovableRef<Ipv4RouteLedger> o
 NTSCFG_INLINE
 Ipv4RouteLedger& Ipv4RouteLedger::operator=(const Ipv4RouteLedger& other)
 {
-    d_index   = other.d_index;
-    d_vector = other.d_vector;
+    d_index    = other.d_index;
+    d_overflow = other.d_overflow;
+    d_flags    = other.d_flags;
+    d_vector   = other.d_vector;
 
     return *this;
 }
@@ -232,7 +276,6 @@ void Ipv4RouteLedger::reset()
     d_vector.clear();
 }
 
-
 NTSCFG_INLINE
 void Ipv4RouteLedger::setIndex(bsl::size_t value)
 {
@@ -243,6 +286,18 @@ NTSCFG_INLINE
 void Ipv4RouteLedger::setCount(bsl::size_t value)
 {
     d_vector.resize(value);
+}
+
+NTSCFG_INLINE
+void Ipv4RouteLedger::setOverflow(bsl::size_t value)
+{
+    d_overflow = value;
+}
+
+NTSCFG_INLINE
+void Ipv4RouteLedger::setFlags(bsl::size_t value)
+{
+    d_flags = value;
 }
 
 NTSCFG_INLINE
@@ -264,6 +319,18 @@ bsl::size_t Ipv4RouteLedger::count() const
 }
 
 NTSCFG_INLINE
+bsl::size_t Ipv4RouteLedger::overflow() const
+{
+    return d_overflow;
+}
+
+NTSCFG_INLINE
+bsl::size_t Ipv4RouteLedger::flags() const
+{
+    return d_flags;
+}
+
+NTSCFG_INLINE
 const ntsa::Ipv4Timestamp& Ipv4RouteLedger::entry(std::size_t index) const
 {
     return d_vector[index];
@@ -274,6 +341,8 @@ NTSCFG_INLINE void Ipv4RouteLedger::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
     hashAppend(algorithm, d_index);
+    hashAppend(algorithm, d_overflow);
+    hashAppend(algorithm, d_flags);
     hashAppend(algorithm, d_vector);
 }
 

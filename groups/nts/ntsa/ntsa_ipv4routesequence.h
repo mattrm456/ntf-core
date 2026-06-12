@@ -96,7 +96,7 @@ class Ipv4RouteSequence
     ntsa::Ipv4Address& entry(std::size_t index);
 
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+    ntsa::Error decode(ntsa::PacketDecoder* decoder, bsl::size_t size);
 
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
@@ -111,6 +111,9 @@ class Ipv4RouteSequence
     /// 'index'. The behavior is undefined unless 'index' is less than
     /// 'count()'.
     const ntsa::Ipv4Address& entry(std::size_t index) const;
+
+    /// Return the encoded payload size of this option.
+    bsl::size_t payloadSize() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.

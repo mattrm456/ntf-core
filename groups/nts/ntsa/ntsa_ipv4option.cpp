@@ -395,16 +395,38 @@ ntsa::Error Ipv4Option::decode(ntsa::PacketDecoder* decoder)
             this->makeAlert();
         }
         else if (type == ntsa::Ipv4OptionType::e_TIMESTAMP) {
-            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+            ntsa::Ipv4RouteLedger& routeLedger = this->makeTimestamp();
+
+            error = routeLedger.decode(decoder, payloadSize);
+            if (error) {
+                return error;
+            }
         }
         else if (type == ntsa::Ipv4OptionType::e_RECORD_ROUTE) {
-            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+            ntsa::Ipv4RouteSequence& routeSequence = this->makeRecordRoute();
+
+            error = routeSequence.decode(decoder, payloadSize);
+            if (error) {
+                return error;
+            }
         }
         else if (type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_LOOSE) {
-            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+            ntsa::Ipv4RouteSequence& routeSequence =
+                this->makeSourceRouteLoose();
+
+            error = routeSequence.decode(decoder, payloadSize);
+            if (error) {
+                return error;
+            }
         }
         else if (type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_TIGHT) {
-            return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+            ntsa::Ipv4RouteSequence& routeSequence =
+                this->makeSourceRouteTight();
+
+            error = routeSequence.decode(decoder, payloadSize);
+            if (error) {
+                return error;
+            }
         }
         else {
             BSLS_LOG_WARN("Unknown IPv4 option %d size = %zu",
@@ -465,16 +487,142 @@ ntsa::Error Ipv4Option::encode(ntsa::PacketEncoder* encoder, bool final) const
         }
     }
     else if (d_type == ntsa::Ipv4OptionType::e_TIMESTAMP) {
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        const ntsa::Ipv4RouteLedger& routeLedger = this->timestamp();
+
+        const bsl::size_t payloadSize = routeLedger.payloadSize();
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::Ipv4OptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = routeLedger.encode(encoder);
+        if (error) {
+            return error;
+        }
     }
     else if (d_type == ntsa::Ipv4OptionType::e_RECORD_ROUTE) {
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        const ntsa::Ipv4RouteSequence& routeSequence = this->recordRoute();
+
+        const bsl::size_t payloadSize = routeSequence.payloadSize();
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::Ipv4OptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = routeSequence.encode(encoder);
+        if (error) {
+            return error;
+        }
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_LOOSE) {
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        const ntsa::Ipv4RouteSequence& routeSequence =
+            this->sourceRouteLoose();
+
+        const bsl::size_t payloadSize = routeSequence.payloadSize();
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::Ipv4OptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = routeSequence.encode(encoder);
+        if (error) {
+            return error;
+        }
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_TIGHT) {
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        const ntsa::Ipv4RouteSequence& routeSequence =
+            this->sourceRouteTight();
+
+        const bsl::size_t payloadSize = routeSequence.payloadSize();
+
+        const bsl::size_t optionSize =
+            sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
+
+        const bsl::size_t paddingSize =
+            final ? this->paddingSize(encoder->next(), optionSize) : 0;
+
+        for (bsl::size_t i = 0; i < paddingSize; ++i) {
+            error = encoder->encodeUint8(
+                static_cast<bsl::uint8_t>(ntsa::Ipv4OptionType::e_PADDING));
+            if (error) {
+                return error;
+            }
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(d_type));
+        if (error) {
+            return error;
+        }
+
+        error = encoder->encodeUint8(static_cast<bsl::uint8_t>(optionSize));
+        if (error) {
+            return error;
+        }
+
+        error = routeSequence.encode(encoder);
+        if (error) {
+            return error;
+        }
     }
     else if (d_type == ntsa::Ipv4OptionType::e_UNASSIGNED) {
         const bsl::size_t payloadSize = d_unassigned.object().payload().size();

@@ -24,15 +24,51 @@ BSLS_IDENT_RCSID(ntsa_ipv4extension_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error Ipv4Extension::decode(ntsa::PacketDecoder* decoder)
+void Ipv4Extension::add(const ntsa::Ipv4Option& option)
+{
+    d_vector.push_back(option);
+}
+
+void Ipv4Extension::add(bslmf::MovableRef<ntsa::Ipv4Option> option)
+{
+    d_vector.push_back(NTSCFG_MOVE_ACCESS(option));
+}
+
+ntsa::Error Ipv4Extension::decode(ntsa::PacketDecoder* decoder,
+                                  bsl::size_t          size)
 {
     ntsa::Error error;
 
     reset();
 
-    error = decoder->decodeRaw(d_options, sizeof d_options);
-    if (error) {
-        return error;
+    bsl::size_t n = 0;
+
+    while (true) {
+        const bsl::size_t p0 = decoder->position();
+
+        ntsa::Ipv4Option option(d_allocator_p);
+        error = option.decode(decoder);
+        if (error) {
+            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                return ntsa::Error();
+            }
+            else {
+                return error;
+            }
+        }
+
+        d_vector.push_back(NTSCFG_MOVE(option));
+
+        const bsl::size_t p1 = decoder->position();
+
+        n += static_cast<bsl::size_t>(p1 - p0);
+
+        if (n == size) {
+            break;
+        }
+        else if (n > size) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
     }
 
     return ntsa::Error();
@@ -42,18 +78,37 @@ ntsa::Error Ipv4Extension::encode(ntsa::PacketEncoder* encoder) const
 {
     ntsa::Error error;
 
-    error = encoder->encodeRaw(d_options, sizeof d_options);
-    if (error) {
-        return error;
+    const bsl::size_t numOptions = d_vector.size();
+
+    for (bsl::size_t i = 0; i < numOptions; ++i) {
+        const bool isFinal = i == numOptions - 1;
+        d_vector[i].encode(encoder, isFinal);
     }
 
     return ntsa::Error();
 }
 
-bsl::ostream& Ipv4Extension::print(bsl::ostream& stream,
-                                  int           level,
-                                  int           spacesPerLevel) const
+void Ipv4Extension::load(ntsa::Ipv4OptionVector* result) const
 {
+    *result = d_vector;
+}
+
+bool Ipv4Extension::equals(const Ipv4Extension& other) const
+{
+    return d_vector == other.d_vector;
+}
+
+bool Ipv4Extension::less(const Ipv4Extension& other) const
+{
+    return d_vector < other.d_vector;
+}
+
+bsl::ostream& Ipv4Extension::print(bsl::ostream& stream,
+                                   int           level,
+                                   int           spacesPerLevel) const
+{
+    ntsa::Error error;
+
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
     this->print(&printer);
@@ -64,7 +119,9 @@ bsl::ostream& Ipv4Extension::print(bsl::ostream& stream,
 
 void Ipv4Extension::print(bslim::Printer* printer) const
 {
-    NTSCFG_WARNING_UNUSED(printer);
+    for (bsl::size_t i = 0; i < d_vector.size(); ++i) {
+        d_vector[i].print(printer);
+    }
 }
 
 }  // close package namespace

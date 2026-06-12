@@ -25,7 +25,8 @@ BSLS_IDENT_RCSID(ntsa_ipv4routesequence_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error Ipv4RouteSequence::decode(ntsa::PacketDecoder* decoder)
+ntsa::Error Ipv4RouteSequence::decode(ntsa::PacketDecoder* decoder,
+                                      bsl::size_t          size)
 {
     NTSCFG_WARNING_UNUSED(decoder);
 
@@ -39,6 +40,11 @@ ntsa::Error Ipv4RouteSequence::encode(ntsa::PacketEncoder* encoder) const
     NTSCFG_WARNING_UNUSED(encoder);
 
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+bsl::size_t Ipv4RouteSequence::payloadSize() const
+{
+    return 0; // TODO
 }
 
 bool Ipv4RouteSequence::equals(const Ipv4RouteSequence& other) const

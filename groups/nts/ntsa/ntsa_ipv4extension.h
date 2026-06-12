@@ -19,21 +19,22 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_error.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
+#include <ntsa_ipv4header.h>
+#include <ntsa_ipv4option.h>
+#include <ntsa_ipv4optiontype.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
-#include <bdlbb_blob.h>
-#include <bslh_hash.h>
 #include <bslim_printer.h>
-#include <bsls_assert.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
+#include <bsl_vector.h>
 
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide Internet Protocol version 4 (IPv4) extensions.
+/// Provide an Internet Protocol version 4 (IPv4) header extension area.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -43,7 +44,7 @@ class Ipv4Extension
 {
   public:
     /// Enumerate the constants used by the implementation.
-    enum Constant {
+    enum Constants {
         /// The minimum length of all options, in bytes.
         k_MIN_OPTIONS_LENGTH = 0,
 
@@ -52,21 +53,32 @@ class Ipv4Extension
     };
 
   private:
-    /// The options.
-    bsl::uint8_t d_options[k_MAX_OPTIONS_LENGTH];
+    /// Define a type alias for a vector of options.
+    typedef bsl::vector<ntsa::Ipv4Option> OptionVector;
+
+    /// The options vector.
+    OptionVector d_vector;
+
+    /// The memory allocator.
+    bslma::Allocator* d_allocator_p;
 
   public:
-    /// Create a new ICMP redirect having a default value.
-    Ipv4Extension();
+    /// Create a new IPv4 extension area having a default value. Optionally
+    /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
+    /// is 0, the currently installed default allocator is used.
+    explicit Ipv4Extension(bslma::Allocator* basicAllocator = 0);
 
-    /// Create a new ICMP redirect having the same value as the specified
+    /// Create a new IPv4 extension area having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
     Ipv4Extension(bslmf::MovableRef<Ipv4Extension> original) NTSCFG_NOEXCEPT;
 
-    /// Create a new ICMP redirect having the same value as the specified
-    /// 'original' object.
-    Ipv4Extension(const Ipv4Extension& original);
+    /// Create a new IPv4 extension area having the same value as the specified
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    Ipv4Extension(const Ipv4Extension& original,
+                  bslma::Allocator*   basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4Extension();
@@ -77,25 +89,40 @@ class Ipv4Extension
     Ipv4Extension& operator=(bslmf::MovableRef<Ipv4Extension> other)
         NTSCFG_NOEXCEPT;
 
-    /// Assign the value of the specified 'other' object to this object.
-    /// Return a reference to this modifiable object.
+    /// Assign the value of the specified 'other' object to this object. Return
+    /// a reference to this modifiable object.
     Ipv4Extension& operator=(const Ipv4Extension& other);
 
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
+    /// Add the specified 'option'.
+    void add(const ntsa::Ipv4Option& option);
+
+    /// Add the specified 'option'.
+    void add(bslmf::MovableRef<ntsa::Ipv4Option> option);
+
     /// Decode the object from the specified 'decoder'. Return the error.
-    ntsa::Error decode(ntsa::PacketDecoder* decoder);
+    ntsa::Error decode(ntsa::PacketDecoder* decoder, bsl::size_t size);
 
     /// Encode the object through the specified 'encoder'. Return the error.
     ntsa::Error encode(ntsa::PacketEncoder* encoder) const;
 
-    /// Return true if this object has the same value as the specified 'other'
-    /// object, otherwise return false.
+    /// Load into the specified 'result' each option.
+    void load(ntsa::Ipv4OptionVector* result) const;
+
+    /// Return true if no options are defined, otherwise return false.
+    bool empty() const;
+
+    /// Return the allocator.
+    bslma::Allocator* allocator() const;
+
+    /// Return true if this object has the same value as the specified
+    /// 'other' object, otherwise return false.
     bool equals(const Ipv4Extension& other) const;
 
-    /// Return true if the value of this object is less than the value of the
-    /// specified 'other' object, otherwise return false.
+    /// Return true if the value of this object is less than the value of
+    /// the specified 'other' object, otherwise return false.
     bool less(const Ipv4Extension& other) const;
 
     /// Contribute the values of the salient attributes of this object to the
@@ -120,23 +147,14 @@ class Ipv4Extension
     /// Print this object using the specified 'printer'.
     void print(bslim::Printer* printer) const;
 
-    /// This type's default constructor is equivalent to setting each byte of
-    /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(Ipv4Extension);
-
-    /// This type's copy-constructor and copy-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(Ipv4Extension);
-
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(Ipv4Extension);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(Ipv4Extension);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
-/// into the specified 'stream'. Return a reference to the modifiable 'stream'.
+/// into the specified 'stream'. Return a reference to the modifiable
+/// 'stream'.
 ///
 /// @related ntsa::Ipv4Extension
 bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4Extension& object);
@@ -167,29 +185,25 @@ template <typename HASH_ALGORITHM>
 void hashAppend(HASH_ALGORITHM& algorithm, const Ipv4Extension& value);
 
 NTSCFG_INLINE
-Ipv4Extension::Ipv4Extension()
+Ipv4Extension::Ipv4Extension(bslma::Allocator* basicAllocator)
+: d_vector(basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-    BSLMF_ASSERT(sizeof(*this) == k_MAX_OPTIONS_LENGTH);
-
-    NTSCFG_MEMORY_ZERO(this, sizeof *this);
 }
 
 NTSCFG_INLINE
 Ipv4Extension::Ipv4Extension(bslmf::MovableRef<Ipv4Extension> original)
     NTSCFG_NOEXCEPT
+: d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
+  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
-    NTSCFG_MEMORY_COPY(
-        this,
-        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(original)),
-        sizeof *this);
-
-    NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-Ipv4Extension::Ipv4Extension(const Ipv4Extension& original)
+Ipv4Extension::Ipv4Extension(const Ipv4Extension& original, bslma::Allocator* basicAllocator)
+: d_vector(original.d_vector, basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 NTSCFG_INLINE
@@ -201,10 +215,8 @@ NTSCFG_INLINE
 Ipv4Extension& Ipv4Extension::operator=(bslmf::MovableRef<Ipv4Extension> other)
     NTSCFG_NOEXCEPT
 {
-    NTSCFG_MEMORY_COPY(
-        this,
-        BSLS_UTIL_ADDRESSOF(bslmf::MovableRefUtil::access(other)),
-        sizeof *this);
+    d_vector      = NTSCFG_MOVE_FROM(other, d_vector);
+    d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -214,7 +226,7 @@ Ipv4Extension& Ipv4Extension::operator=(bslmf::MovableRef<Ipv4Extension> other)
 NTSCFG_INLINE
 Ipv4Extension& Ipv4Extension::operator=(const Ipv4Extension& other)
 {
-    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
+    d_vector = other.d_vector;
 
     return *this;
 }
@@ -222,26 +234,26 @@ Ipv4Extension& Ipv4Extension::operator=(const Ipv4Extension& other)
 NTSCFG_INLINE
 void Ipv4Extension::reset()
 {
-    NTSCFG_MEMORY_ZERO(this, sizeof *this);
+    d_vector.clear();
 }
 
 NTSCFG_INLINE
-bool Ipv4Extension::equals(const Ipv4Extension& other) const
+bool Ipv4Extension::empty() const
 {
-    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) == 0;
+    return d_vector.empty();
 }
 
 NTSCFG_INLINE
-bool Ipv4Extension::less(const Ipv4Extension& other) const
+bslma::Allocator* Ipv4Extension::allocator() const
 {
-    return NTSCFG_MEMORY_COMPARE(this, &other, sizeof *this) < 0;
+    return d_allocator_p;
 }
 
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void Ipv4Extension::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
-    algorithm(d_options, sizeof d_options);
+    hashAppend(algorithm, d_vector);
 }
 
 NTSCFG_INLINE

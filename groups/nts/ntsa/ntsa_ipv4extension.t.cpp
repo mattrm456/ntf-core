@@ -38,27 +38,84 @@ class Ipv4ExtensionTest
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4ExtensionTest::verifyTypeTraits)
 {
-    const bool isBitwiseInitializable =
-        NTSCFG_TYPE_CHECK_BITWISE_INITIALIZABLE(ntsa::Ipv4Extension);
+    const bool isAllocateAware =
+        NTSCFG_TYPE_CHECK_ALLOCATOR_AWARE(ntsa::Ipv4Extension);
 
-    NTSCFG_TEST_TRUE(isBitwiseInitializable);
-
-    const bool isBitwiseMovable =
-        NTSCFG_TYPE_CHECK_BITWISE_MOVABLE(ntsa::Ipv4Extension);
-
-    NTSCFG_TEST_TRUE(isBitwiseMovable);
-
-    const bool isBitwiseCopyable =
-        NTSCFG_TYPE_CHECK_BITWISE_COPYABLE(ntsa::Ipv4Extension);
-
-    NTSCFG_TEST_TRUE(isBitwiseCopyable);
+    NTSCFG_TEST_TRUE(isAllocateAware);
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4ExtensionTest::verifyUsage)
 {
     ntsa::Ipv4Extension extension;
 
-    NTSCFG_TEST_LOG_DEBUG << "Extension = " << extension << NTSCFG_TEST_LOG_END;
+    {
+        ntsa::Ipv4Option option(NTSCFG_TEST_ALLOCATOR);
+        option.makeAlert();
+
+        extension.add(option);
+    }
+
+    {
+        ntsa::Ipv4Option option(NTSCFG_TEST_ALLOCATOR);
+
+        ntsa::Ipv4RouteLedger& routeLedger = option.makeTimestamp();
+
+        routeLedger.setCount(2);
+        routeLedger.setIndex(1);
+        routeLedger.setFlags(ntsa::Ipv4RouteLedger::k_TIMESTAMP_AND_ADDRESS);
+
+        routeLedger.entry(0).setAddress(ntsa::Ipv4Address::loopback());
+        routeLedger.entry(0).setTimestamp(123);
+
+        extension.add(option);
+    }
+
+    {
+        ntsa::Ipv4Option option(NTSCFG_TEST_ALLOCATOR);
+
+        ntsa::Ipv4RouteSequence& routeSequence = option.makeRecordRoute();
+
+        routeSequence.setCount(3);
+        routeSequence.setIndex(1);
+
+        routeSequence.entry(0) = ntsa::Ipv4Address("192.168.1.111");
+        routeSequence.entry(1) = ntsa::Ipv4Address("192.168.1.112");
+        routeSequence.entry(2) = ntsa::Ipv4Address("192.168.1.113");
+
+        extension.add(option);
+    }
+
+    {
+        ntsa::Ipv4Option option(NTSCFG_TEST_ALLOCATOR);
+
+        ntsa::Ipv4RouteSequence& routeSequence = option.makeSourceRouteTight();
+
+        routeSequence.setCount(3);
+        routeSequence.setIndex(1);
+
+        routeSequence.entry(0) = ntsa::Ipv4Address("192.168.2.121");
+        routeSequence.entry(1) = ntsa::Ipv4Address("192.168.2.122");
+        routeSequence.entry(2) = ntsa::Ipv4Address("192.168.2.123");
+
+        extension.add(option);
+    }
+
+    {
+        ntsa::Ipv4Option option(NTSCFG_TEST_ALLOCATOR);
+
+        ntsa::Ipv4RouteSequence& routeSequence = option.makeSourceRouteLoose();
+
+        routeSequence.setCount(3);
+        routeSequence.setIndex(1);
+
+        routeSequence.entry(0) = ntsa::Ipv4Address("192.168.3.131");
+        routeSequence.entry(1) = ntsa::Ipv4Address("192.168.3.132");
+        routeSequence.entry(2) = ntsa::Ipv4Address("192.168.3.133");
+
+        extension.add(option);
+    }
+
+    NTSCFG_TEST_LOG_TRACE << "Options = " << extension << NTSCFG_TEST_LOG_END;
 }
 
 }  // close namespace ntsa
