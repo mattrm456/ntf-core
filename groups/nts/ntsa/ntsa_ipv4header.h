@@ -193,31 +193,10 @@ class Ipv4Header
     /// packet.
     bdlb::BigEndianUint16 d_id;
 
-#if defined(BSLS_PLATFORM_IS_LITTLE_ENDIAN)
-
-    /// The offset of a particular fragment relative to the beginning of the
-    /// original unfragmented IP packet.
-    uint16_t d_fragmentOffset : 13;
-
-    /// Flags used to control or identify fragments. From most significat bit
-    /// to least significant bit: bit 0 is reserved, must be zero; bit 1
-    /// indicates the IP packet must not be fragmented; bit 2 indicates more
-    /// fragments are forthcoming.
-    uint16_t d_fragmentFlags : 3;
-
-#else
-
-    /// Flags used to control or identify fragments. From most significat bit
-    /// to least significant bit: bit 0 is reserved, must be zero; bit 1
-    /// indicates the IP packet must not be fragmented; bit 2 indicates more
-    /// fragments are forthcoming.
-    uint16_t d_fragmentFlags : 3;
-
-    /// The offset of a particular fragment relative to the beginning of the
-    /// original unfragmented IP packet.
-    uint16_t d_fragmentOffset : 13;
-
-#endif
+    /// The flags and fragment offset, stored in network byte order. The high
+    /// 3 bits are the flags (bit 15 reserved, bit 14 is DF, bit 13 is MF) and
+    /// the low 13 bits are the fragment offset in units of 8 octets.
+    bdlb::BigEndianUint16 d_flagsAndOffset;
 
     /// The time-to-live of the IP packet.
     bsl::uint8_t d_timeToLive;
@@ -591,23 +570,27 @@ void Ipv4Header::setId(bsl::uint16_t value)
 NTSCFG_INLINE
 void Ipv4Header::setPreserve(bool value)
 {
+    bsl::uint16_t fao = static_cast<bsl::uint16_t>(d_flagsAndOffset);
     if (value) {
-        d_fragmentFlags |= (1 << 1);
+        fao = static_cast<bsl::uint16_t>(fao | 0x4000);
     }
     else {
-        d_fragmentFlags &= ~(1 << 1);
+        fao = static_cast<bsl::uint16_t>(fao & ~0x4000);
     }
+    d_flagsAndOffset = fao;
 }
 
 NTSCFG_INLINE
 void Ipv4Header::setMore(bool value)
 {
+    bsl::uint16_t fao = static_cast<bsl::uint16_t>(d_flagsAndOffset);
     if (value) {
-        d_fragmentFlags |= (1 << 2);
+        fao = static_cast<bsl::uint16_t>(fao | 0x2000);
     }
     else {
-        d_fragmentFlags &= ~(1 << 2);
+        fao = static_cast<bsl::uint16_t>(fao & ~0x2000);
     }
+    d_flagsAndOffset = fao;
 }
 
 NTSCFG_INLINE
@@ -615,7 +598,9 @@ void Ipv4Header::setFragmentOffset(bsl::uint16_t value)
 {
     BSLS_ASSERT(value <= static_cast<bsl::uint16_t>(k_MAX_FRAGMENT_OFFSET));
 
-    d_fragmentOffset = value;
+    bsl::uint16_t fao = static_cast<bsl::uint16_t>(d_flagsAndOffset);
+    fao = static_cast<bsl::uint16_t>((fao & 0xE000) | (value & 0x1FFF));
+    d_flagsAndOffset = fao;
 }
 
 NTSCFG_INLINE
@@ -691,19 +676,20 @@ bsl::uint16_t Ipv4Header::id() const
 NTSCFG_INLINE
 bool Ipv4Header::preserve() const
 {
-    return ((d_fragmentFlags & (1 << 1)) != 0);
+    return (static_cast<bsl::uint16_t>(d_flagsAndOffset) & 0x4000) != 0;
 }
 
 NTSCFG_INLINE
 bool Ipv4Header::more() const
 {
-    return ((d_fragmentFlags & (1 << 2)) != 0);
+    return (static_cast<bsl::uint16_t>(d_flagsAndOffset) & 0x2000) != 0;
 }
 
 NTSCFG_INLINE
 bsl::uint16_t Ipv4Header::fragmentOffset() const
 {
-    return static_cast<bsl::uint16_t>(d_fragmentOffset);
+    return static_cast<bsl::uint16_t>(
+        static_cast<bsl::uint16_t>(d_flagsAndOffset) & 0x1FFF);
 }
 
 NTSCFG_INLINE
