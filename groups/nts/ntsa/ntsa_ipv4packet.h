@@ -22,6 +22,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_error.h>
 #include <ntsa_ipv4extension.h>
 #include <ntsa_ipv4header.h>
+#include <ntsa_ipv4option.h>
 #include <ntsa_ipv4payload.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
@@ -42,9 +43,10 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class Ipv4Packet
 {
-    ntsa::Ipv4Header  d_header;
-    ntsa::Ipv4Payload d_payload;
-    bslma::Allocator* d_allocator_p;
+    ntsa::Ipv4Header    d_header;
+    ntsa::Ipv4Extension d_extension;
+    ntsa::Ipv4Payload   d_payload;
+    bslma::Allocator*   d_allocator_p;
 
   public:
     /// Create a new IPv4 packet having a default value. Optionally specify a
@@ -83,11 +85,17 @@ class Ipv4Packet
     /// Set the header to the specified 'value'.
     void setHeader(const ntsa::Ipv4Header& value);
 
+    /// Set the extension to the specified 'value'.
+    void setExtension(const ntsa::Ipv4Extension& value);
+
     /// Set the payload to the specified 'value'.
     void setPayload(const ntsa::Ipv4Payload& value);
 
     /// Return a reference to the modifiable header.
     ntsa::Ipv4Header& header();
+
+    /// Return a reference to the modifiable extension.
+    ntsa::Ipv4Extension& extension();
 
     /// Return a reference to the modifiable payload.
     ntsa::Ipv4Payload& payload();
@@ -108,6 +116,9 @@ class Ipv4Packet
 
     /// Return a reference to the non-modifiable header.
     const ntsa::Ipv4Header& header() const;
+
+    /// Return a reference to the non-modifiable extension.
+    const ntsa::Ipv4Extension& extension() const;
 
     /// Return a reference to the non-modifiable payload.
     const ntsa::Ipv4Payload& payload() const;
@@ -160,6 +171,7 @@ bool operator!=(const Ipv4Packet& lhs, const Ipv4Packet& rhs);
 NTSCFG_INLINE
 Ipv4Packet::Ipv4Packet(bslma::Allocator* basicAllocator)
 : d_header()
+, d_extension(basicAllocator)
 , d_payload()
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -168,6 +180,7 @@ Ipv4Packet::Ipv4Packet(bslma::Allocator* basicAllocator)
 NTSCFG_INLINE
 Ipv4Packet::Ipv4Packet(bslmf::MovableRef<Ipv4Packet> original) NTSCFG_NOEXCEPT
 : d_header(NTSCFG_MOVE_FROM(original, d_header)),
+  d_extension(NTSCFG_MOVE_FROM(original, d_extension)),
   d_payload(NTSCFG_MOVE_FROM(original, d_payload)),
   d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
@@ -178,6 +191,7 @@ NTSCFG_INLINE
 Ipv4Packet::Ipv4Packet(const Ipv4Packet& original,
                        bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
+, d_extension(original.d_extension, basicAllocator)
 , d_payload(original.d_payload)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -193,6 +207,7 @@ Ipv4Packet& Ipv4Packet::operator=(bslmf::MovableRef<Ipv4Packet> other)
     NTSCFG_NOEXCEPT
 {
     d_header      = NTSCFG_MOVE_FROM(other, d_header);
+    d_extension   = NTSCFG_MOVE_FROM(other, d_extension);
     d_payload     = NTSCFG_MOVE_FROM(other, d_payload);
     d_allocator_p = NTSCFG_MOVE_FROM(other, d_allocator_p);
 
@@ -204,8 +219,10 @@ Ipv4Packet& Ipv4Packet::operator=(bslmf::MovableRef<Ipv4Packet> other)
 NTSCFG_INLINE
 Ipv4Packet& Ipv4Packet::operator=(const Ipv4Packet& other)
 {
-    d_header  = other.d_header;
-    d_payload = other.d_payload;
+    d_header    = other.d_header;
+    d_extension = other.d_extension;
+    d_payload   = other.d_payload;
+
     return *this;
 }
 
@@ -213,6 +230,7 @@ NTSCFG_INLINE
 void Ipv4Packet::reset()
 {
     d_header.reset();
+    d_extension.reset();
     d_payload.reset();
 }
 
@@ -220,6 +238,12 @@ NTSCFG_INLINE
 void Ipv4Packet::setHeader(const ntsa::Ipv4Header& value)
 {
     d_header = value;
+}
+
+NTSCFG_INLINE
+void Ipv4Packet::setExtension(const ntsa::Ipv4Extension& value)
+{
+    d_extension = value;
 }
 
 NTSCFG_INLINE
@@ -235,6 +259,12 @@ ntsa::Ipv4Header& Ipv4Packet::header()
 }
 
 NTSCFG_INLINE
+ntsa::Ipv4Extension& Ipv4Packet::extension()
+{
+    return d_extension;
+}
+
+NTSCFG_INLINE
 ntsa::Ipv4Payload& Ipv4Packet::payload()
 {
     return d_payload;
@@ -244,6 +274,12 @@ NTSCFG_INLINE
 const ntsa::Ipv4Header& Ipv4Packet::header() const
 {
     return d_header;
+}
+
+NTSCFG_INLINE
+const ntsa::Ipv4Extension& Ipv4Packet::extension() const
+{
+    return d_extension;
 }
 
 NTSCFG_INLINE

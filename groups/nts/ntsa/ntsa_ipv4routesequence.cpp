@@ -28,23 +28,88 @@ namespace ntsa {
 ntsa::Error Ipv4RouteSequence::decode(ntsa::PacketDecoder* decoder,
                                       bsl::size_t          size)
 {
-    NTSCFG_WARNING_UNUSED(decoder);
+    ntsa::Error error;
 
     reset();
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    if (size < 2) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    bsl::uint8_t pointer = 0;
+    error = decoder->decodeUint8(&pointer);
+    if (error) {
+        return error;
+    }
+
+    const bsl::size_t entryVectorBytes = size - 2;
+
+    if (entryVectorBytes == 0) {
+        return ntsa::Error();
+    }
+
+    const bsl::size_t entrySize = sizeof(bsl::uint32_t);
+
+    if (pointer % entrySize != 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    this->setIndex(pointer / entrySize);
+
+    if (entryVectorBytes % entrySize != 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t entryCount = entryVectorBytes / entrySize;
+
+    this->setCount(entryCount);
+
+    for (bsl::size_t i = 0; i < entryCount; ++i) {
+        ntsa::Ipv4Address address;
+        error = decoder->decodeRaw(&d_vector[i], sizeof d_vector[i]);
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error Ipv4RouteSequence::encode(ntsa::PacketEncoder* encoder) const
 {
-    NTSCFG_WARNING_UNUSED(encoder);
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    if (d_index > 9) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (d_vector.size() > 9) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t entrySize = sizeof(bsl::uint32_t);
+
+    const bsl::uint8_t pointer =
+        static_cast<bsl::uint8_t>(d_index * entrySize);
+
+    error = encoder->encodeUint8(pointer);
+    if (error) {
+        return error;
+    }
+
+    for (bsl::size_t i = 0; i < d_vector.size(); ++i) {
+        error = encoder->encodeRaw(&d_vector[i], sizeof d_vector[i]);
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 bsl::size_t Ipv4RouteSequence::payloadSize() const
 {
-    return 0; // TODO
+    return d_vector.size() * sizeof(ntsa::Ipv4Address);
 }
 
 bool Ipv4RouteSequence::equals(const Ipv4RouteSequence& other) const

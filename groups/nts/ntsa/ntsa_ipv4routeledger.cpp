@@ -53,7 +53,6 @@ ntsa::Error Ipv4RouteLedger::decode(ntsa::PacketDecoder* decoder,
 
     const bsl::size_t entryVectorBytes = size - 2;
 
-    this->setIndex(pointer);
     this->setOverflow(overflow);
     this->setFlags(flags);
 
@@ -63,6 +62,12 @@ ntsa::Error Ipv4RouteLedger::decode(ntsa::PacketDecoder* decoder,
 
     if (flags == k_TIMESTAMP_ONLY) {
         const bsl::size_t entrySize = sizeof(bsl::uint32_t);
+
+        if (pointer % entrySize != 0) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        this->setIndex(pointer / entrySize);
 
         if (entryVectorBytes % entrySize != 0) {
             return ntsa::Error(ntsa::Error::e_INVALID);
@@ -87,6 +92,12 @@ ntsa::Error Ipv4RouteLedger::decode(ntsa::PacketDecoder* decoder,
     {
         const bsl::size_t entrySize =
             sizeof(bsl::uint32_t) + sizeof(ntsa::Ipv4Address);
+
+        if (pointer % entrySize != 0) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        this->setIndex(pointer / entrySize);
 
         if (entryVectorBytes % entrySize != 0) {
             return ntsa::Error(ntsa::Error::e_INVALID);
@@ -124,38 +135,38 @@ ntsa::Error Ipv4RouteLedger::encode(ntsa::PacketEncoder* encoder) const
 {
     ntsa::Error error;
 
-    if (d_index > 255) {
+    if (d_index > 9) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    const bsl::uint8_t pointer = static_cast<bsl::uint8_t>(d_index);
-
-    error = encoder->encodeUint8(pointer);
-    if (error) {
-        return error;
-    }
-
-    if (d_flags != k_TIMESTAMP_ONLY &&
-        d_flags != k_TIMESTAMP_AND_ADDRESS &&
-        d_flags != k_TIMESTAMP_AND_ADDRESS_PRESPECIFIED)
-    {
+    if (d_vector.size() > 9) {
         return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (d_overflow > 15) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    bsl::uint8_t overflowAndFlags = static_cast<bsl::uint8_t>(d_flags);
-    overflowAndFlags <<= 4;
-    overflowAndFlags |= d_overflow;
-
-    error = encoder->encodeUint8(overflowAndFlags);
-    if (error) {
-        return error;
     }
 
     if (d_flags == k_TIMESTAMP_ONLY) {
+        const bsl::size_t entrySize = sizeof(bsl::uint32_t);
+
+        const bsl::uint8_t pointer =
+            static_cast<bsl::uint8_t>(d_index * entrySize);
+
+        error = encoder->encodeUint8(pointer);
+        if (error) {
+            return error;
+        }
+
+        if (d_overflow > 15) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        bsl::uint8_t overflowAndFlags = static_cast<bsl::uint8_t>(d_flags);
+        overflowAndFlags <<= 4;
+        overflowAndFlags |= d_overflow;
+
+        error = encoder->encodeUint8(overflowAndFlags);
+        if (error) {
+            return error;
+        }
+
         for (bsl::size_t i = 0; i < d_vector.size(); ++i) {
             bdlb::BigEndianUint32 timestamp;
             if (d_vector[i].timestamp().has_value()) {
@@ -171,6 +182,30 @@ ntsa::Error Ipv4RouteLedger::encode(ntsa::PacketEncoder* encoder) const
     else if (d_flags == k_TIMESTAMP_AND_ADDRESS ||
              d_flags == k_TIMESTAMP_AND_ADDRESS_PRESPECIFIED)
     {
+        const bsl::size_t entrySize =
+            sizeof(bsl::uint32_t) + sizeof(ntsa::Ipv4Address);
+
+        const bsl::uint8_t pointer =
+            static_cast<bsl::uint8_t>(d_index * entrySize);
+
+        error = encoder->encodeUint8(pointer);
+        if (error) {
+            return error;
+        }
+
+        if (d_overflow > 15) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        bsl::uint8_t overflowAndFlags = static_cast<bsl::uint8_t>(d_flags);
+        overflowAndFlags <<= 4;
+        overflowAndFlags |= d_overflow;
+
+        error = encoder->encodeUint8(overflowAndFlags);
+        if (error) {
+            return error;
+        }
+
         for (bsl::size_t i = 0; i < d_vector.size(); ++i) {
             bdlb::BigEndianUint32 timestamp;
             if (d_vector[i].timestamp().has_value()) {

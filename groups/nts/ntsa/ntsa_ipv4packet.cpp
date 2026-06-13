@@ -32,6 +32,8 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoderContext*       context,
 {
     ntsa::Error error;
 
+    const bsl::size_t headerPosition = decoder->position();
+
     error = d_header.decode(decoder);
     if (error) {
         return error;
@@ -68,11 +70,51 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoderContext*       context,
     context->setDestinationIpAddress(
         ntsa::IpAddress(d_header.destinationAddress()));
 
+    const bsl::size_t extensionPosition = decoder->position();
+
     const bsl::size_t extensionLength =
         d_header.headerLength() - ntsa::Ipv4Header::k_MIN_HEADER_LENGTH;
 
+    if (extensionLength > ntsa::Ipv4Extension::k_MAX_OPTIONS_LENGTH) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
     if (extensionLength > 0) {
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+        error = d_extension.decode(decoder, extensionLength);
+        if (error) {
+            return error;
+        }
+    }
+
+    const bsl::size_t payloadPosition = decoder->position();
+
+    const bsl::size_t extensionLengthDecoded =
+        payloadPosition - extensionPosition;
+
+    if (extensionLengthDecoded != extensionLength) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    error = decoder->seek(headerPosition);
+    if (error) {
+        return error;
+    }
+
+    ntsa::Ipv4Checksum checksum;
+    checksum.add(decoder->next(), d_header.headerLength());
+
+    const bsl::uint16_t checksumValue = checksum.value();
+
+    if (checksumValue != 0xFFFF) {
+        BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
+                      static_cast<bsl::size_t>(d_header.checksum()),
+                      static_cast<bsl::size_t>(checksumValue));
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    error = decoder->seek(payloadPosition);
+    if (error) {
+        return error;
     }
 
     const bsl::size_t remaining = decoder->size() - decoder->position();
@@ -175,7 +217,6 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoderContext*       context,
         ntsa::IpAddress(d_header.destinationAddress()));
 
     ntsa::Ipv4Header header = d_header;
-
     header.setChecksum(0);
 
     ntsa::Ipv4Checksum checksum;
@@ -183,7 +224,7 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoderContext*       context,
 
     header.setChecksum(checksum.value());
 
-    error = d_header.encode(encoder);
+    error = header.encode(encoder);
     if (error) {
         return error;
     }
