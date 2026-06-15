@@ -75,63 +75,65 @@ ntsa::Error UdpPacket::decode(ntsa::PacketDecoderContext*       context,
         }
     }
 
-    const bsl::size_t finalPosition = decoder->position();
+    if (d_header.checksum() != 0 && !options.ignoreChecksum()) {
+        const bsl::size_t finalPosition = decoder->position();
 
-    const bsl::size_t packetLength = d_header.packetLength();
+        const bsl::size_t packetLength = d_header.packetLength();
 
-    error = decoder->seek(headerPosition);
-    if (error) {
-        return error;
-    }
+        error = decoder->seek(headerPosition);
+        if (error) {
+            return error;
+        }
 
-    ntsa::UdpChecksum checksum;
+        ntsa::UdpChecksum checksum;
 
-    if (!context->sourceIpAddress().has_value()) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (!context->destinationIpAddress().has_value()) {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    if (context->sourceIpAddress().value().isV4()) {
-        if (!context->destinationIpAddress().value().isV4()) {
+        if (!context->sourceIpAddress().has_value()) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        checksum.add(context->sourceIpAddress().value().v4(),
-                     context->destinationIpAddress().value().v4(),
-                     packetLength,
-                     ntsa::UdpHeader::k_PROTOCOL_UDP);
-    }
-    else if (context->sourceIpAddress().value().isV6()) {
-        if (!context->destinationIpAddress().value().isV6()) {
+        if (!context->destinationIpAddress().has_value()) {
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        checksum.add(context->sourceIpAddress().value().v6(),
-                     context->destinationIpAddress().value().v6(),
-                     packetLength,
-                     ntsa::UdpHeader::k_PROTOCOL_UDP);
-    }
-    else {
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
+        if (context->sourceIpAddress().value().isV4()) {
+            if (!context->destinationIpAddress().value().isV4()) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
 
-    checksum.add(decoder->next(), packetLength);
+            checksum.add(context->sourceIpAddress().value().v4(),
+                        context->destinationIpAddress().value().v4(),
+                        packetLength,
+                        ntsa::UdpHeader::k_PROTOCOL_UDP);
+        }
+        else if (context->sourceIpAddress().value().isV6()) {
+            if (!context->destinationIpAddress().value().isV6()) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
 
-    const bsl::uint16_t checksumValue = checksum.value();
+            checksum.add(context->sourceIpAddress().value().v6(),
+                        context->destinationIpAddress().value().v6(),
+                        packetLength,
+                        ntsa::UdpHeader::k_PROTOCOL_UDP);
+        }
+        else {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
 
-    if (checksumValue != 0xFFFF) {
-        BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
-                      static_cast<bsl::size_t>(d_header.checksum()),
-                      static_cast<bsl::size_t>(checksumValue));
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
+        checksum.add(decoder->next(), packetLength);
 
-    error = decoder->seek(finalPosition);
-    if (error) {
-        return error;
+        const bsl::uint16_t checksumValue = checksum.value();
+
+        if (checksumValue != 0xFFFF) {
+            BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
+                        static_cast<bsl::size_t>(d_header.checksum()),
+                        static_cast<bsl::size_t>(checksumValue));
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        error = decoder->seek(finalPosition);
+        if (error) {
+            return error;
+        }
     }
 
     return ntsa::Error();

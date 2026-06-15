@@ -32,10 +32,38 @@ class DeviceTest
 {
   public:
     // Concern: TODO.
-    static void verify();
+    static void verifyLoopback();
+
+    // Concern: TODO.
+    static void verifyEn0();
 };
 
-NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verify)
+NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyLoopback)
+{
+    if (!ntso::DeviceUtil::isSupported()) {
+        return;
+    }
+
+    ntsa::Error error;
+
+    ntsa::DeviceConfig deviceConfig(NTSCFG_TEST_ALLOCATOR);
+    deviceConfig.setIpv4Address(ntsa::Ipv4Address::loopback());
+
+    bsl::shared_ptr<ntsi::Device> device = ntso::DeviceUtil::createDevice(
+        deviceConfig, NTSCFG_TEST_ALLOCATOR);
+
+    error = device->open();
+    NTSCFG_TEST_OK(error);
+
+    bslmt::ThreadUtil::sleep(bsls::TimeInterval(10));
+
+    NTSCFG_TEST_LOG_DEBUG << "Closing device" << NTSCFG_TEST_LOG_END;
+
+    error = device->close();
+    NTSCFG_TEST_OK(error);
+}
+
+NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyEn0)
 {
     if (!ntso::DeviceUtil::isSupported()) {
         return;
@@ -45,7 +73,6 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verify)
 
     ntsa::DeviceConfig deviceConfig(NTSCFG_TEST_ALLOCATOR);
     deviceConfig.setAdapterName("en0");
-    // deviceConfig.setIpv4Address(ntsa::Ipv4Address::loopback());
 
     bsl::shared_ptr<ntsi::Device> device = ntso::DeviceUtil::createDevice(
         deviceConfig, NTSCFG_TEST_ALLOCATOR);
@@ -53,7 +80,7 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verify)
     error = device->open();
     NTSCFG_TEST_OK(error);
 
-    bslmt::ThreadUtil::sleep(bsls::TimeInterval(2));
+    bslmt::ThreadUtil::sleep(bsls::TimeInterval(10));
 
     NTSCFG_TEST_LOG_DEBUG << "Closing device" << NTSCFG_TEST_LOG_END;
 

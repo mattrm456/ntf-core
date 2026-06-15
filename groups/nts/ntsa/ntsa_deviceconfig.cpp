@@ -29,6 +29,8 @@ DeviceConfig::DeviceConfig(bslma::Allocator* basicAllocator)
 , d_ethernetAddress()
 , d_ipv4Address()
 , d_ipv6Address()
+, d_tcpPort()
+, d_udpPort()
 , d_outgoingEnabled()
 , d_outgoingMinThreads()
 , d_outgoingMaxThreads()
@@ -47,6 +49,8 @@ DeviceConfig::DeviceConfig(const DeviceConfig& original,
 , d_ethernetAddress(original.d_ethernetAddress)
 , d_ipv4Address(original.d_ipv4Address)
 , d_ipv6Address(original.d_ipv6Address)
+, d_tcpPort(original.d_tcpPort)
+, d_udpPort(original.d_udpPort)
 , d_outgoingEnabled(original.d_outgoingEnabled)
 , d_outgoingMinThreads(original.d_outgoingMinThreads)
 , d_outgoingMaxThreads(original.d_outgoingMaxThreads)
@@ -70,6 +74,8 @@ DeviceConfig& DeviceConfig::operator=(const DeviceConfig& other)
         d_ethernetAddress       = other.d_ethernetAddress;
         d_ipv4Address           = other.d_ipv4Address;
         d_ipv6Address           = other.d_ipv6Address;
+        d_tcpPort               = other.d_tcpPort;
+        d_udpPort               = other.d_udpPort;
         d_outgoingEnabled       = other.d_outgoingEnabled;
         d_outgoingMinThreads    = other.d_outgoingMinThreads;
         d_outgoingMaxThreads    = other.d_outgoingMaxThreads;
@@ -90,6 +96,8 @@ void DeviceConfig::reset()
     d_ethernetAddress.reset();
     d_ipv4Address.reset();
     d_ipv6Address.reset();
+    d_tcpPort.reset();
+    d_udpPort.reset();
     d_outgoingEnabled.reset();
     d_outgoingMinThreads.reset();
     d_outgoingMaxThreads.reset();
@@ -123,6 +131,16 @@ void DeviceConfig::setIpv4Address(const ntsa::Ipv4Address& value)
 void DeviceConfig::setIpv6Address(const ntsa::Ipv6Address& value)
 {
     d_ipv6Address = value;
+}
+
+void DeviceConfig::setTcpPort(ntsa::Port value)
+{
+    d_tcpPort = value;
+}
+
+void DeviceConfig::setUdpPort(ntsa::Port value)
+{
+    d_udpPort = value;
 }
 
 void DeviceConfig::setOutgoingEnabled(bool value)
@@ -191,6 +209,16 @@ const bdlb::NullableValue<ntsa::Ipv6Address>& DeviceConfig::ipv6Address() const
     return d_ipv6Address;
 }
 
+const bdlb::NullableValue<ntsa::Port>& DeviceConfig::tcpPort() const
+{
+    return d_tcpPort;
+}
+
+const bdlb::NullableValue<ntsa::Port>& DeviceConfig::udpPort() const
+{
+    return d_udpPort;
+}
+
 const bdlb::NullableValue<bool>& DeviceConfig::outgoingEnabled() const
 {
     return d_outgoingEnabled;
@@ -244,6 +272,8 @@ bool DeviceConfig::equals(const DeviceConfig& other) const
            d_ethernetAddress    == other.d_ethernetAddress    &&
            d_ipv4Address        == other.d_ipv4Address        &&
            d_ipv6Address        == other.d_ipv6Address        &&
+           d_tcpPort            == other.d_tcpPort            &&
+           d_udpPort            == other.d_udpPort            &&
            d_outgoingEnabled    == other.d_outgoingEnabled    &&
            d_outgoingMinThreads == other.d_outgoingMinThreads &&
            d_outgoingMaxThreads == other.d_outgoingMaxThreads &&
@@ -293,6 +323,22 @@ bool DeviceConfig::less(const DeviceConfig& other) const
     }
 
     if (other.d_ipv6Address < d_ipv6Address) {
+        return false;
+    }
+
+    if (d_tcpPort < other.d_tcpPort) {
+        return true;
+    }
+
+    if (other.d_tcpPort < d_tcpPort) {
+        return false;
+    }
+
+    if (d_udpPort < other.d_udpPort) {
+        return true;
+    }
+
+    if (other.d_udpPort < d_udpPort) {
         return false;
     }
 
@@ -379,6 +425,14 @@ bsl::ostream& DeviceConfig::print(bsl::ostream& stream,
 
     if (!d_ipv6Address.isNull()) {
         printer.printAttribute("ipv6Address", d_ipv6Address.value());
+    }
+
+    if (!d_tcpPort.isNull()) {
+        printer.printAttribute("tcpPort", d_tcpPort.value());
+    }
+
+    if (!d_udpPort.isNull()) {
+        printer.printAttribute("udpPort", d_udpPort.value());
     }
 
     if (!d_outgoingEnabled.isNull()) {

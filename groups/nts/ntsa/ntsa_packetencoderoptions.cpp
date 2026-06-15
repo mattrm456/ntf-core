@@ -33,7 +33,8 @@ bool PacketEncoderOptions::equals(const PacketEncoderOptions& other) const
                other.d_destinationEthernetAddress &&
            d_destinationIpAddress == other.d_destinationIpAddress &&
            d_destinationTcpPort == other.d_destinationTcpPort &&
-           d_destinationUdpPort == other.d_destinationUdpPort;
+           d_destinationUdpPort == other.d_destinationUdpPort &&
+           d_flags == other.d_flags;
 }
 
 bool PacketEncoderOptions::less(const PacketEncoderOptions& other) const
@@ -94,7 +95,15 @@ bool PacketEncoderOptions::less(const PacketEncoderOptions& other) const
         return false;
     }
 
-    return d_destinationUdpPort < other.d_destinationUdpPort;
+    if (d_destinationUdpPort < other.d_destinationUdpPort) {
+        return true;
+    }
+
+    if (other.d_destinationUdpPort < d_destinationUdpPort) {
+        return false;
+    }
+
+    return d_flags < other.d_flags;
 }
 
 bsl::ostream& PacketEncoderOptions::print(bsl::ostream& stream,
@@ -139,6 +148,10 @@ bsl::ostream& PacketEncoderOptions::print(bsl::ostream& stream,
     if (d_destinationUdpPort.has_value()) {
         printer.printAttribute("destinationUdpPort",
                                d_destinationUdpPort.value());
+    }
+
+    if (d_flags != 0) {
+        printer.printAttribute("flags", d_flags);
     }
 
     printer.end();

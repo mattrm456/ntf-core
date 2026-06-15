@@ -22,6 +22,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
 #include <ntsa_ethernetaddress.h>
+#include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_nullablevalue.h>
@@ -90,6 +91,8 @@ class DeviceConfig
     bdlb::NullableValue<ntsa::EthernetAddress> d_ethernetAddress;
     bdlb::NullableValue<ntsa::Ipv4Address>     d_ipv4Address;
     bdlb::NullableValue<ntsa::Ipv6Address>     d_ipv6Address;
+    bdlb::NullableValue<ntsa::Port>            d_tcpPort;
+    bdlb::NullableValue<ntsa::Port>            d_udpPort;
     bdlb::NullableValue<bool>                  d_outgoingEnabled;
     bdlb::NullableValue<bsl::size_t>           d_outgoingMinThreads;
     bdlb::NullableValue<bsl::size_t>           d_outgoingMaxThreads;
@@ -142,6 +145,12 @@ class DeviceConfig
     /// Set the IPv6 address of the adapter to the specified 'value'.
     void setIpv6Address(const ntsa::Ipv6Address& value);
 
+    /// Set the TCP port to the specified 'value'.
+    void setTcpPort(ntsa::Port value);
+
+    /// Set the UDP port to the specified 'value'.
+    void setUdpPort(ntsa::Port value);
+
     /// Set the flag that indicates outgoing packets are enabled according to
     /// the specified 'value'.
     void setOutgoingEnabled(bool value);
@@ -186,6 +195,12 @@ class DeviceConfig
 
     /// Return the IPv6 address of the adapter.
     const bdlb::NullableValue<ntsa::Ipv6Address>& ipv6Address() const;
+
+    /// Return the TCP port.
+    const bdlb::NullableValue<ntsa::Port>& tcpPort() const;
+
+    /// Return the UDP port.
+    const bdlb::NullableValue<ntsa::Port>& udpPort() const;
 
     /// Return the flag that indicates outgoing packets are enabled.
     const bdlb::NullableValue<bool>& outgoingEnabled() const;
@@ -280,6 +295,8 @@ void hashAppend(HASH_ALGORITHM& algorithm, const DeviceConfig& value)
     hashAppend(algorithm, value.ethernetAddress());
     hashAppend(algorithm, value.ipv4Address());
     hashAppend(algorithm, value.ipv6Address());
+    hashAppend(algorithm, value.tcpPort());
+    hashAppend(algorithm, value.udpPort());
     hashAppend(algorithm, value.outgoingEnabled());
     hashAppend(algorithm, value.outgoingMinThreads());
     hashAppend(algorithm, value.outgoingMaxThreads());

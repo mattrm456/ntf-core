@@ -29,6 +29,7 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #include <ntsa_packetencoder.h>
 #include <ntsa_packetencodercontext.h>
 #include <ntsa_packetencoderoptions.h>
+#include <ntsa_packetqueue.h>
 #include <ntscfg_limits.h>
 #include <ntscfg_platform.h>
 #include <ntsu_adapterutil.h>
@@ -133,6 +134,29 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #pragma comment(lib, "ws2_32")
 #endif
 
+#define NTSO_DEVICE_LOG_PACKET_DECODER_ERROR(buffer, packet, error) \
+    do { \
+        bsl::stringstream ss; \
+        ss << "Device driver failed to decode packet " \
+           << (packet) \
+           << ": " \
+           << (error) \
+           << "\n" \
+           << bdlb::PrintStringHexDumper((buffer).data(), (buffer).size()); \
+        \
+        BSLS_LOG_DEBUG("%s", ss.str().c_str()); \
+    } \
+    while (false)
+
+#define NTSO_DEVICE_LOG_PACKET_INCOMING(packet) \
+    do { \
+        bsl::stringstream ss; \
+        ss << "Incoming packet = " << (packet); \
+        \
+        BSLS_LOG_INFO("%s", ss.str().c_str()); \
+    } \
+    while (false)
+
 namespace BloombergLP {
 namespace ntso {
 
@@ -157,15 +181,17 @@ public:
     /// into the specified `buffer`.
     virtual void allocate(bdlbb::BlobBuffer *buffer) = 0;
 
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(const ntsa::Packet& packet) = 0;
+    /// Block until at least one packet can be enqueued for transmission then
+    /// enqueue the specified 'packet' for transmission. Return the error.
+    virtual ntsa::Error send(const ntsa::Packet& packet) = 0;
 
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(bslmf::MovableRef<ntsa::Packet> packet) = 0;
+    /// Block until at least one packet can be enqueued for transmission then
+    /// enqueue the specified 'packet' for transmission. Return the error.
+    virtual ntsa::Error send(bslmf::MovableRef<ntsa::Packet> packet) = 0;
 
-    /// Load into the specified 'result' the next packet received. Return the
-    /// error.
-    virtual ntsa::Error dequeue(ntsa::Packet* result) = 0;
+    /// Block until at least one packet has been received then enqueue to the
+    /// specified 'packetQueue' each packet received. Return the error.
+    virtual ntsa::Error receive(ntsa::PacketQueue* packetQueue) = 0;
 
     /// Shutdown transmission and reception according to the specified 'mode'.
     /// Return the error.
@@ -218,6 +244,10 @@ class Bpf : public ntso::DeviceDriver
     /// The blob buffer factory.
     bsl::shared_ptr<bdlbb::BlobBufferFactory> d_deviceBufferFactory;
 
+    /// The flag indicating the device is a loopback device and the packet
+    /// format is DT_NULL.
+    bool d_loopback;
+
     /// The adapter.
     ntsa::Adapter d_adapter;
 
@@ -245,16 +275,18 @@ public:
     /// into the specified `buffer`.
     void allocate(bdlbb::BlobBuffer *buffer) BSLS_KEYWORD_OVERRIDE;
 
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    ntsa::Error enqueue(const ntsa::Packet& packet) BSLS_KEYWORD_OVERRIDE;
+    /// Block until at least one packet can be enqueued for transmission then
+    /// enqueue the specified 'packet' for transmission. Return the error.
+    ntsa::Error send(const ntsa::Packet& packet) BSLS_KEYWORD_OVERRIDE;
 
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    ntsa::Error enqueue(bslmf::MovableRef<ntsa::Packet> packet)
+    /// Block until at least one packet can be enqueued for transmission then
+    /// enqueue the specified 'packet' for transmission. Return the error.
+    ntsa::Error send(bslmf::MovableRef<ntsa::Packet> packet)
                         BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'result' the next packet received. Return the
-    /// error.
-    ntsa::Error dequeue(ntsa::Packet* result) BSLS_KEYWORD_OVERRIDE;
+    /// Block until at least one packet has been received then enqueue to the
+    /// specified 'packetQueue' each packet received. Return the error.
+    ntsa::Error receive(ntsa::PacketQueue* packetQueue) BSLS_KEYWORD_OVERRIDE;
 
     /// Shutdown transmission and reception according to the specified 'mode'.
     /// Return the error.
@@ -276,6 +308,7 @@ Bpf::Bpf(const ntsa::DeviceConfig& configuration,
 , d_deviceHandle(ntsa::k_INVALID_HANDLE)
 , d_deviceBufferSize(32768)
 , d_deviceBufferFactory()
+, d_loopback(false)
 , d_adapter(basicAllocator)
 , d_config(configuration, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
@@ -297,6 +330,12 @@ ntsa::Error Bpf::open(const ntsa::Adapter& adapter)
     }
 
     d_adapter = adapter;
+
+    if (d_adapter.ipv4Address().has_value() &&
+        d_adapter.ipv4Address().value().isLoopback())
+    {
+        d_loopback = true;
+    }
 
     // Open the device handle.
 
@@ -475,7 +514,7 @@ void Bpf::allocate(bdlbb::BlobBuffer *buffer)
     d_deviceBufferFactory->allocate(buffer);
 }
 
-ntsa::Error Bpf::enqueue(const ntsa::Packet& packet)
+ntsa::Error Bpf::send(const ntsa::Packet& packet)
 {
     ntsa::Error error;
 
@@ -484,6 +523,11 @@ ntsa::Error Bpf::enqueue(const ntsa::Packet& packet)
 
     ntsa::PacketEncoderContext encoderContext;
     ntsa::PacketEncoderOptions encoderOptions;
+
+    if (d_loopback) {
+        encoderOptions.setLoopback(true);
+        encoderOptions.setIgnoreChecksum(true);
+    }
 
     error = packet.encode(&encoderContext, &buffer, encoderOptions);
     if (error) {
@@ -519,7 +563,7 @@ ntsa::Error Bpf::enqueue(const ntsa::Packet& packet)
     return ntsa::Error();
 }
 
-ntsa::Error Bpf::enqueue(bslmf::MovableRef<ntsa::Packet> packet)
+ntsa::Error Bpf::send(bslmf::MovableRef<ntsa::Packet> packet)
 {
     ntsa::Error error;
 
@@ -528,6 +572,11 @@ ntsa::Error Bpf::enqueue(bslmf::MovableRef<ntsa::Packet> packet)
 
     ntsa::PacketEncoderContext encoderContext;
     ntsa::PacketEncoderOptions encoderOptions;
+
+    if (d_loopback) {
+        encoderOptions.setLoopback(true);
+        encoderOptions.setIgnoreChecksum(true);
+    }
 
     error = packet.encode(&encoderContext, &buffer, encoderOptions);
     if (error) {
@@ -565,7 +614,7 @@ ntsa::Error Bpf::enqueue(bslmf::MovableRef<ntsa::Packet> packet)
     return ntsa::Error();
 }
 
-ntsa::Error Bpf::dequeue(ntsa::Packet* result)
+ntsa::Error Bpf::receive(ntsa::PacketQueue* packetQueue)
 {
     ntsa::Error error;
 
@@ -597,17 +646,6 @@ ntsa::Error Bpf::dequeue(ntsa::Packet* result)
 
     buffer.setSize(static_cast<int>(bytesRead));
 
-    // MRM
-#if 0
-    {
-        bsl::stringstream ss;
-        ss << "BPF device driver read data =\n" << bdlb::PrintStringHexDumper(
-            buffer.data(), buffer.size());
-
-        BSLS_LOG_DEBUG("%s", ss.str().c_str());
-    }
-#endif
-
     char *metaFrame = buffer.data();
     char *metaFrameEnd = metaFrame + buffer.size();
 
@@ -630,47 +668,90 @@ ntsa::Error Bpf::dequeue(ntsa::Packet* result)
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        bdlbb::BlobBuffer ethernetBuffer(
-            bsl::shared_ptr<char>(
-                buffer.buffer(),
-                metaFrame + bpf->bh_hdrlen),
-            static_cast<int>(bpf->bh_datalen));
+        char*       packetData = metaFrame + bpf->bh_hdrlen;
+        bsl::size_t packetSize = static_cast<bsl::size_t>(bpf->bh_datalen);
 
-        {
-            bsl::stringstream ss;
-            ss << "BPF device driver read packet =\n"
-               << bdlb::PrintStringHexDumper(
-                    ethernetBuffer.data(), ethernetBuffer.size());
+        if (d_loopback) {
+            bsl::uint32_t packetType;
+            NTSCFG_MEMORY_COPY(&packetType, packetData, sizeof packetType);
 
-            BSLS_LOG_DEBUG("%s", ss.str().c_str());
-        }
+            packetData += sizeof(bsl::uint32_t);
+            packetSize -= sizeof(bsl::uint32_t);
 
-        ntsa::PacketDecoderContext decoderContext;
-        ntsa::PacketDecoderOptions decoderOptions;
+            bdlbb::BlobBuffer packetBuffer(
+                bsl::shared_ptr<char>(
+                    buffer.buffer(),
+                    packetData),
+                static_cast<int>(packetSize));
 
-        result->makeEthernet();
+            ntsa::PacketDecoderContext decoderContext;
+            ntsa::PacketDecoderOptions decoderOptions;
 
-        error = result->decode(
-            &decoderContext, ethernetBuffer, decoderOptions);
-        if (error) {
-            {
-                // MRM
-                bsl::stringstream ss;
-                ss << "BPF device driver failed to decode packet = "
-                   << *result;
+            decoderOptions.setLoopback(true);
+            decoderOptions.setIgnoreChecksum(true);
 
-                BSLS_LOG_ERROR(ss.str().c_str());
+            if (packetType == PF_INET) {
+                ntsa::Packet packet;
+                packet.makeEthernet();
+                packet.ethernet().header().setProtocol(
+                    ntsa::EthernetProtocol::e_IPV4);
+
+                packet.ethernet().payload().makeIpv4();
+
+                ntsa::PacketDecoder decoder(&packetBuffer);
+
+                error = packet.ethernet().payload().ipv4().decode(
+                    &decoderContext, &decoder, decoderOptions);
+                if (error) {
+                    NTSO_DEVICE_LOG_PACKET_DECODER_ERROR(
+                        packetBuffer, packet, error);
+                    return error;
+                }
+
+                NTSO_DEVICE_LOG_PACKET_INCOMING(packet);
+
+                error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+                if (error) {
+                    return error;
+                }
             }
-            BSLS_LOG_ERROR("BPF device driver failed to decode packet: %s",
-                           error.text().c_str());
-            return error;
+            else if (packetType == PF_INET6) {
+                BSLS_LOG_INFO(
+                    "BPF device driver dropping loopback IPv6 packet");
+            }
+            else {
+                BSLS_LOG_ERROR("BPF device driver failed to decode packet: "
+                               "unsupported loopback device packet type: %zu",
+                               static_cast<bsl::size_t>(packetType));
+            }
         }
-        else
-        {
-            bsl::stringstream ss;
-            ss << "Incoming packet = " << *result;
+        else {
+            bdlbb::BlobBuffer packetBuffer(
+                bsl::shared_ptr<char>(
+                    buffer.buffer(),
+                    packetData),
+                static_cast<int>(packetSize));
 
-            BSLS_LOG_INFO("%s", ss.str().c_str());
+            ntsa::PacketDecoderContext decoderContext;
+            ntsa::PacketDecoderOptions decoderOptions;
+
+            ntsa::Packet packet;
+            packet.makeEthernet();
+
+            error = packet.decode(
+                &decoderContext, packetBuffer, decoderOptions);
+            if (error) {
+                NTSO_DEVICE_LOG_PACKET_DECODER_ERROR(
+                    packetBuffer, packet, error);
+                return error;
+            }
+
+            NTSO_DEVICE_LOG_PACKET_INCOMING(packet);
+
+            error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+            if (error) {
+                return error;
+            }
         }
 
         metaFrame += BPF_WORDALIGN(bpf->bh_hdrlen + bpf->bh_caplen);
@@ -781,7 +862,7 @@ class Device : public ntsi::Device
     bsl::shared_ptr<ntso::DeviceDriver> d_driver;
 
     /// The outgoing packet queue.
-    bdlcc::FixedQueue<ntsa::Packet> d_outgoingPacketQueue;
+    ntsa::PacketQueue d_outgoingPacketQueue;
 
     /// The thread group processing outgoing packets.
     bslmt::ThreadGroup d_outgoingThreadGroup;
@@ -790,7 +871,7 @@ class Device : public ntsi::Device
     bsls::AtomicInt d_outgoingState;
 
     /// The incoming packet queue.
-    bdlcc::FixedQueue<ntsa::Packet> d_incomingPacketQueue;
+    ntsa::PacketQueue d_incomingPacketQueue;
 
     /// The thread group processing incoming packets.
     bslmt::ThreadGroup d_incomingThreadGroup;
@@ -924,8 +1005,6 @@ ntsa::Error Device::openOutgoingPacketQueue()
 
     d_outgoingState = e_OPEN;
 
-    d_outgoingPacketQueue.enable();
-
     BSLS_ASSERT(d_config.outgoingMinThreads().has_value());
     BSLS_ASSERT(d_config.outgoingMaxThreads().has_value());
 
@@ -961,8 +1040,6 @@ ntsa::Error Device::openIncomingPacketQueue()
 
     d_incomingState = e_OPEN;
 
-    d_incomingPacketQueue.enable();
-
     BSLS_ASSERT(d_config.incomingMinThreads().has_value());
     BSLS_ASSERT(d_config.incomingMaxThreads().has_value());
 
@@ -991,13 +1068,13 @@ void Device::processOutgoingPacketQueue()
 
     while (true) {
         ntsa::Packet packet;
-        d_outgoingPacketQueue.popFront(&packet);
+        error = d_outgoingPacketQueue.dequeue(&packet);
 
         if (packet.isUndefined()) {
             break;
         }
 
-        error = d_driver->enqueue(bslmf::MovableRefUtil::move(packet));
+        error = d_driver->send(bslmf::MovableRefUtil::move(packet));
         if (error) {
             BSLS_LOG_ERROR("Failed to enqueue packet: %s",
                            error.text().c_str());
@@ -1016,23 +1093,15 @@ void Device::processIncomingPacketQueue()
     BSLS_LOG_INFO("Incoming packet queue thread starting");
 
     while (true) {
-        ntsa::Packet packet;
-        error = d_driver->dequeue(&packet);
+        error = d_driver->receive(&d_incomingPacketQueue);
         if (error) {
-            BSLS_LOG_ERROR("Failed to dequeue packet: %s",
-                           error.text().c_str());
-            break;
-        }
-
-        if (packet.isUndefined()) {
-            break;
-        }
-
-        rc = d_incomingPacketQueue.pushBack(
-            bslmf::MovableRefUtil::move(packet));
-        if (rc != 0) {
-            BSLS_LOG_INFO("Dropping incoming packet");
-            break;
+            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                break;
+            }
+            else {
+                BSLS_LOG_ERROR("Failed to dequeue packet: %s",
+                               error.text().c_str());
+            }
         }
     }
 
@@ -1055,8 +1124,8 @@ void Device::closeOutgoingPacketQueue()
 
     d_driver->shutdown(ntsa::ShutdownType::e_SEND);
 
-    d_outgoingPacketQueue.pushBack(ntsa::Packet());
-    d_outgoingPacketQueue.disable();
+    d_outgoingPacketQueue.enqueue(ntsa::Packet());
+    d_outgoingPacketQueue.shutdown();
     d_outgoingThreadGroup.joinAll();
 
     d_outgoingState = e_CLOSED;
@@ -1078,8 +1147,8 @@ void Device::closeIncomingPacketQueue()
 
     d_driver->shutdown(ntsa::ShutdownType::e_RECEIVE);
 
-    d_incomingPacketQueue.pushBack(ntsa::Packet());
-    d_incomingPacketQueue.disable();
+    d_incomingPacketQueue.enqueue(ntsa::Packet());
+    d_incomingPacketQueue.shutdown();
     d_incomingThreadGroup.joinAll();
 
     d_incomingState = e_CLOSED;
@@ -1147,30 +1216,25 @@ ntsa::Error Device::open()
 
 ntsa::Error Device::enqueue(const ntsa::Packet& packet)
 {
-    int rc = d_outgoingPacketQueue.pushBack(packet);
-    if (rc != 0) {
-        return ntsa::Error(ntsa::Error::e_LIMIT);
-    }
-
-    return ntsa::Error();
+    return d_outgoingPacketQueue.enqueue(packet);
 }
 
 ntsa::Error Device::enqueue(bslmf::MovableRef<ntsa::Packet> packet)
 {
-    int rc = d_outgoingPacketQueue.pushBack(
-        bslmf::MovableRefUtil::move(packet));
-    if (rc != 0) {
-        return ntsa::Error(ntsa::Error::e_LIMIT);
-    }
-
-    return ntsa::Error();
+    return d_outgoingPacketQueue.enqueue(packet);
 }
 
 ntsa::Error Device::dequeue(ntsa::Packet* result)
 {
+    ntsa::Error error;
+
     result->reset();
 
-    d_incomingPacketQueue.popFront(result);
+    error = d_incomingPacketQueue.dequeue(result);
+    if (error) {
+        return error;
+    }
+
     if (result->isUndefined()) {
         return ntsa::Error(ntsa::Error::e_EOF);
     }

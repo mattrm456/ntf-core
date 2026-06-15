@@ -95,26 +95,28 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoderContext*       context,
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    error = decoder->seek(headerPosition);
-    if (error) {
-        return error;
-    }
+    if (d_header.checksum() != 0 && !options.ignoreChecksum()) {
+        error = decoder->seek(headerPosition);
+        if (error) {
+            return error;
+        }
 
-    ntsa::Ipv4Checksum checksum;
-    checksum.add(decoder->next(), d_header.headerLength());
+        ntsa::Ipv4Checksum checksum;
+        checksum.add(decoder->next(), d_header.headerLength());
 
-    const bsl::uint16_t checksumValue = checksum.value();
+        const bsl::uint16_t checksumValue = checksum.value();
 
-    if (checksumValue != 0xFFFF) {
-        BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
-                      static_cast<bsl::size_t>(d_header.checksum()),
-                      static_cast<bsl::size_t>(checksumValue));
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
+        if (checksumValue != 0xFFFF) {
+            BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
+                        static_cast<bsl::size_t>(d_header.checksum()),
+                        static_cast<bsl::size_t>(checksumValue));
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
 
-    error = decoder->seek(payloadPosition);
-    if (error) {
-        return error;
+        error = decoder->seek(payloadPosition);
+        if (error) {
+            return error;
+        }
     }
 
     const bsl::size_t remaining = decoder->size() - decoder->position();
@@ -216,18 +218,27 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoderContext*       context,
     context->setDestinationIpAddress(
         ntsa::IpAddress(d_header.destinationAddress()));
 
-    ntsa::Ipv4Header header = d_header;
-    header.setChecksum(0);
+    const bsl::size_t headerPosition = encoder->position();
 
-    ntsa::Ipv4Checksum checksum;
-    checksum.add(&header, header.headerLength());
+    const bsl::size_t headerLength =
+        static_cast<bsl::size_t>(ntsa::Ipv4Header::k_MIN_HEADER_LENGTH);
 
-    header.setChecksum(checksum.value());
-
-    error = header.encode(encoder);
+    error = encoder->advance(headerLength);
     if (error) {
         return error;
     }
+
+    const bsl::size_t extensionPosition = encoder->position();
+
+    error = d_extension.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    const bsl::size_t extensionLength =
+        static_cast<bsl::size_t>(encoder->position() - extensionPosition);
+
+    const bsl::size_t payloadPosition = encoder->position();
 
     if (d_payload.isIcmp()) {
         if (d_header.protocol() !=
@@ -296,6 +307,47 @@ ntsa::Error Ipv4Packet::encode(ntsa::PacketEncoderContext*       context,
     }
     else {
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    }
+
+    const bsl::size_t finalPosition = encoder->position();
+
+    const bsl::size_t payloadLength = finalPosition - payloadPosition;
+
+    const bsl::size_t packetLength =
+        headerLength + extensionLength + payloadLength;
+
+    ntsa::Ipv4Header header = d_header;
+    header.setHeaderLength(headerLength + extensionLength);
+    header.setPacketLength(packetLength);
+    header.setChecksum(0);
+
+    if (!options.ignoreChecksum()) {
+        ntsa::Ipv4Checksum checksum;
+        checksum.add(&header, header.headerLength());
+
+        error = encoder->seek(extensionPosition);
+        if (error) {
+            return error;
+        }
+
+        checksum.add(encoder->next(), extensionLength);
+
+        header.setChecksum(checksum.value());
+    }
+
+    error = encoder->seek(headerPosition);
+    if (error) {
+        return error;
+    }
+
+    error = header.encode(encoder);
+    if (error) {
+        return error;
+    }
+
+    error = encoder->seek(finalPosition);
+    if (error) {
+        return error;
     }
 
     return ntsa::Error();

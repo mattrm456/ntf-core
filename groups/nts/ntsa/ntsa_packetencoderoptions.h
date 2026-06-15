@@ -35,6 +35,16 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class PacketEncoderOptions
 {
+    /// Enumerates the constants used by this implementation.
+    enum Constants {
+        /// The flag that indicates the packet is decoded from a loopback
+        /// device.
+        k_LOOPBACK = 1 << 0,
+
+        /// Ignore checksums.
+        k_IGNORE_CHECKSUM = 1 << 1
+    };
+
     bdlb::NullableValue<ntsa::EthernetAddress> d_sourceEthernetAddress;
     bdlb::NullableValue<ntsa::IpAddress>       d_sourceIpAddress;
     bdlb::NullableValue<ntsa::Port>            d_sourceTcpPort;
@@ -43,6 +53,7 @@ class PacketEncoderOptions
     bdlb::NullableValue<ntsa::IpAddress>       d_destinationIpAddress;
     bdlb::NullableValue<ntsa::Port>            d_destinationTcpPort;
     bdlb::NullableValue<ntsa::Port>            d_destinationUdpPort;
+    bsl::uint32_t                              d_flags;
 
   public:
     /// Create new packet encoder options having a default value.
@@ -98,6 +109,14 @@ class PacketEncoderOptions
     /// Set the destination UDP port to the specified 'value'.
     void setDestinationUdpPort(ntsa::Port value);
 
+    /// Set the flag that indicates the packet is decoded from a loopback
+    /// device according to the specified 'value'.
+    void setLoopback(bool value);
+
+    /// Set the flag that indicates checksums should be ignored according to
+    /// the specified 'value'.
+    void setIgnoreChecksum(bool value);
+
     /// Return the source Ethernet address.
     const bdlb::NullableValue<ntsa::EthernetAddress>& sourceEthernetAddress()
         const;
@@ -123,6 +142,13 @@ class PacketEncoderOptions
 
     /// Return the destination UDP port.
     const bdlb::NullableValue<ntsa::Port>& destinationUdpPort() const;
+
+    /// Return the flag that indicates the packet is decoded from a loopback
+    /// device.
+    bool loopback() const;
+
+    /// Return the flag that indicates checksums should be ignored.
+    bool ignoreChecksum() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -212,6 +238,7 @@ PacketEncoderOptions::PacketEncoderOptions()
 , d_destinationIpAddress()
 , d_destinationTcpPort()
 , d_destinationUdpPort()
+, d_flags(0)
 {
 }
 
@@ -226,7 +253,8 @@ PacketEncoderOptions::PacketEncoderOptions(
                                                 d_destinationEthernetAddress)),
   d_destinationIpAddress(NTSCFG_MOVE_FROM(original, d_destinationIpAddress)),
   d_destinationTcpPort(NTSCFG_MOVE_FROM(original, d_destinationTcpPort)),
-  d_destinationUdpPort(NTSCFG_MOVE_FROM(original, d_destinationUdpPort))
+  d_destinationUdpPort(NTSCFG_MOVE_FROM(original, d_destinationUdpPort)),
+  d_flags(NTSCFG_MOVE_FROM(original, d_flags))
 {
     NTSCFG_MOVE_RESET(original);
 }
@@ -242,6 +270,7 @@ PacketEncoderOptions::PacketEncoderOptions(
 , d_destinationIpAddress(original.d_destinationIpAddress)
 , d_destinationTcpPort(original.d_destinationTcpPort)
 , d_destinationUdpPort(original.d_destinationUdpPort)
+, d_flags(original.d_flags)
 {
 }
 
@@ -263,6 +292,7 @@ PacketEncoderOptions& PacketEncoderOptions::operator=(
     d_destinationIpAddress = NTSCFG_MOVE_FROM(other, d_destinationIpAddress);
     d_destinationTcpPort   = NTSCFG_MOVE_FROM(other, d_destinationTcpPort);
     d_destinationUdpPort   = NTSCFG_MOVE_FROM(other, d_destinationUdpPort);
+    d_flags                = NTSCFG_MOVE_FROM(other, d_flags);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -281,6 +311,7 @@ PacketEncoderOptions& PacketEncoderOptions::operator=(
     d_destinationIpAddress       = other.d_destinationIpAddress;
     d_destinationTcpPort         = other.d_destinationTcpPort;
     d_destinationUdpPort         = other.d_destinationUdpPort;
+    d_flags                      = other.d_flags;
 
     return *this;
 }
@@ -296,6 +327,7 @@ void PacketEncoderOptions::reset()
     d_destinationIpAddress.reset();
     d_destinationTcpPort.reset();
     d_destinationUdpPort.reset();
+    d_flags = 0;
 }
 
 NTSCFG_INLINE
@@ -347,6 +379,28 @@ NTSCFG_INLINE
 void PacketEncoderOptions::setDestinationUdpPort(ntsa::Port value)
 {
     d_destinationUdpPort = value;
+}
+
+NTSCFG_INLINE
+void PacketEncoderOptions::setLoopback(bool value)
+{
+    if (value) {
+        d_flags |= k_LOOPBACK;
+    }
+    else {
+        d_flags &= ~k_LOOPBACK;
+    }
+}
+
+NTSCFG_INLINE
+void PacketEncoderOptions::setIgnoreChecksum(bool value)
+{
+    if (value) {
+        d_flags |= k_IGNORE_CHECKSUM;
+    }
+    else {
+        d_flags &= ~k_IGNORE_CHECKSUM;
+    }
 }
 
 NTSCFG_INLINE
@@ -405,6 +459,18 @@ const bdlb::NullableValue<ntsa::Port>& PacketEncoderOptions::
     return d_destinationUdpPort;
 }
 
+NTSCFG_INLINE
+bool PacketEncoderOptions::loopback() const
+{
+    return (d_flags & k_LOOPBACK) != 0;
+}
+
+NTSCFG_INLINE
+bool PacketEncoderOptions::ignoreChecksum() const
+{
+    return (d_flags & k_IGNORE_CHECKSUM) != 0;
+}
+
 template <typename HASH_ALGORITHM>
 NTSCFG_INLINE void PacketEncoderOptions::hash(HASH_ALGORITHM& algorithm) const
 {
@@ -418,6 +484,7 @@ NTSCFG_INLINE void PacketEncoderOptions::hash(HASH_ALGORITHM& algorithm) const
     hashAppend(algorithm, d_destinationIpAddress);
     hashAppend(algorithm, d_destinationTcpPort);
     hashAppend(algorithm, d_destinationUdpPort);
+    hashAppend(algorithm, d_flags);
 }
 
 NTSCFG_INLINE
