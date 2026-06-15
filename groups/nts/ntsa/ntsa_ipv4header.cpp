@@ -117,15 +117,42 @@ bsl::ostream& Ipv4Header::print(bsl::ostream& stream,
 
     printer.printAttribute("timeToLive", timeToLive);
 
-    const bsl::size_t protocol = static_cast<bsl::size_t>(this->protocol());
-
-    printer.printAttribute("protocol", protocol);
+    printer.printForeign(this->protocol(), &Ipv4Header::printProtocol,
+                         "protocol");
 
     const bsl::size_t checksum = static_cast<bsl::size_t>(this->checksum());
 
     printer.printAttribute("checksum", checksum);
 
     printer.end();
+
+    return stream;
+}
+
+bsl::ostream& Ipv4Header::printProtocol(bsl::ostream& stream,
+                                        bsl::uint8_t  protocol,
+                                        int           level,
+                                        int           spacesPerLevel)
+{
+    NTSCFG_WARNING_UNUSED(level);
+    NTSCFG_WARNING_UNUSED(spacesPerLevel);
+
+    switch (protocol) {
+    case k_PROTOCOL_TCP:
+        stream << "TCP";
+        break;
+    case k_PROTOCOL_UDP:
+        stream << "UDP";
+        break;
+    case k_PROTOCOL_ICMP:
+        stream << "ICMP";
+        break;
+    case k_PROTOCOL_IGMP:
+        stream << "IGMP";
+        break;
+    default:
+        stream << protocol;
+    }
 
     return stream;
 }

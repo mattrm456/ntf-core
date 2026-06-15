@@ -217,6 +217,12 @@ class Ipv4Header
     /// Initialize the header to its default values.
     void initialize();
 
+    /// Print the specified 'protocol' to the specified 'stream'.
+    static bsl::ostream& printProtocol(bsl::ostream& stream,
+                                       bsl::uint8_t  protocol,
+                                       int           level,
+                                       int           spacesPerLevel);
+
   public:
     /// Enumerate the constants used by the implementation.
     enum Constants {

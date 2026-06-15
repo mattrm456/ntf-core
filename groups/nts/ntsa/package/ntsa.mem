@@ -98,6 +98,7 @@ ntsa_packetdecoderoptions
 ntsa_packetencoder
 ntsa_packetencodercontext
 ntsa_packetencoderoptions
+ntsa_packetfilter
 ntsa_packetqueue
 ntsa_packettype
 ntsa_port

@@ -53,6 +53,10 @@ class Device
     /// Open the device.
     virtual ntsa::Error open() = 0;
 
+    /// Load into the specified 'buffer' a new buffer whose size is the
+    /// maximum transmission unit of this device.
+    virtual ntsa::Error allocate(bdlbb::BlobBuffer* buffer) = 0;
+
     /// Enqueue the specified 'packet' for transmission. Return the error.
     virtual ntsa::Error enqueue(const ntsa::Packet& packet) = 0;
 

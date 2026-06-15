@@ -26,16 +26,13 @@ namespace ntsa {
 DeviceConfig::DeviceConfig(bslma::Allocator* basicAllocator)
 : d_driverName(basicAllocator)
 , d_adapterName(basicAllocator)
-, d_ethernetAddress()
-, d_ipv4Address()
-, d_ipv6Address()
-, d_tcpPort()
-, d_udpPort()
 , d_outgoingEnabled()
+, d_outgoingPacketFilter()
 , d_outgoingMinThreads()
 , d_outgoingMaxThreads()
 , d_outgoingMaxPackets()
 , d_incomingEnabled()
+, d_incomingPacketFilter()
 , d_incomingMinThreads()
 , d_incomingMaxThreads()
 , d_incomingMaxPackets()
@@ -46,16 +43,13 @@ DeviceConfig::DeviceConfig(const DeviceConfig& original,
                            bslma::Allocator*   basicAllocator)
 : d_driverName(original.d_driverName, basicAllocator)
 , d_adapterName(original.d_adapterName, basicAllocator)
-, d_ethernetAddress(original.d_ethernetAddress)
-, d_ipv4Address(original.d_ipv4Address)
-, d_ipv6Address(original.d_ipv6Address)
-, d_tcpPort(original.d_tcpPort)
-, d_udpPort(original.d_udpPort)
 , d_outgoingEnabled(original.d_outgoingEnabled)
+, d_outgoingPacketFilter(original.d_outgoingPacketFilter)
 , d_outgoingMinThreads(original.d_outgoingMinThreads)
 , d_outgoingMaxThreads(original.d_outgoingMaxThreads)
 , d_outgoingMaxPackets(original.d_outgoingMaxPackets)
 , d_incomingEnabled(original.d_incomingEnabled)
+, d_incomingPacketFilter(original.d_incomingPacketFilter)
 , d_incomingMinThreads(original.d_incomingMinThreads)
 , d_incomingMaxThreads(original.d_incomingMaxThreads)
 , d_incomingMaxPackets(original.d_incomingMaxPackets)
@@ -71,16 +65,13 @@ DeviceConfig& DeviceConfig::operator=(const DeviceConfig& other)
     if (this != &other) {
         d_driverName            = other.d_driverName;
         d_adapterName           = other.d_adapterName;
-        d_ethernetAddress       = other.d_ethernetAddress;
-        d_ipv4Address           = other.d_ipv4Address;
-        d_ipv6Address           = other.d_ipv6Address;
-        d_tcpPort               = other.d_tcpPort;
-        d_udpPort               = other.d_udpPort;
         d_outgoingEnabled       = other.d_outgoingEnabled;
+        d_outgoingPacketFilter  = other.d_outgoingPacketFilter;
         d_outgoingMinThreads    = other.d_outgoingMinThreads;
         d_outgoingMaxThreads    = other.d_outgoingMaxThreads;
         d_outgoingMaxPackets    = other.d_outgoingMaxPackets;
         d_incomingEnabled       = other.d_incomingEnabled;
+        d_incomingPacketFilter  = other.d_incomingPacketFilter;
         d_incomingMinThreads    = other.d_incomingMinThreads;
         d_incomingMaxThreads    = other.d_incomingMaxThreads;
         d_incomingMaxPackets    = other.d_incomingMaxPackets;
@@ -93,16 +84,13 @@ void DeviceConfig::reset()
 {
     d_driverName.reset();
     d_adapterName.reset();
-    d_ethernetAddress.reset();
-    d_ipv4Address.reset();
-    d_ipv6Address.reset();
-    d_tcpPort.reset();
-    d_udpPort.reset();
     d_outgoingEnabled.reset();
+    d_outgoingPacketFilter.reset();
     d_outgoingMinThreads.reset();
     d_outgoingMaxThreads.reset();
     d_outgoingMaxPackets.reset();
     d_incomingEnabled.reset();
+    d_incomingPacketFilter.reset();
     d_incomingMinThreads.reset();
     d_incomingMaxThreads.reset();
     d_incomingMaxPackets.reset();
@@ -118,34 +106,14 @@ void DeviceConfig::setAdapterName(const bsl::string& value)
     d_adapterName = value;
 }
 
-void DeviceConfig::setEthernetAddress(const ntsa::EthernetAddress& value)
-{
-    d_ethernetAddress = value;
-}
-
-void DeviceConfig::setIpv4Address(const ntsa::Ipv4Address& value)
-{
-    d_ipv4Address = value;
-}
-
-void DeviceConfig::setIpv6Address(const ntsa::Ipv6Address& value)
-{
-    d_ipv6Address = value;
-}
-
-void DeviceConfig::setTcpPort(ntsa::Port value)
-{
-    d_tcpPort = value;
-}
-
-void DeviceConfig::setUdpPort(ntsa::Port value)
-{
-    d_udpPort = value;
-}
-
 void DeviceConfig::setOutgoingEnabled(bool value)
 {
     d_outgoingEnabled = value;
+}
+
+void DeviceConfig::setOutgoingPacketFilter(const ntsa::PacketFilter& value)
+{
+    d_outgoingPacketFilter = value;
 }
 
 void DeviceConfig::setOutgoingMinThreads(bsl::size_t value)
@@ -166,6 +134,11 @@ void DeviceConfig::setOutgoingMaxPackets(bsl::size_t value)
 void DeviceConfig::setIncomingEnabled(bool value)
 {
     d_incomingEnabled = value;
+}
+
+void DeviceConfig::setIncomingPacketFilter(const ntsa::PacketFilter& value)
+{
+    d_incomingPacketFilter = value;
 }
 
 void DeviceConfig::setIncomingMinThreads(bsl::size_t value)
@@ -193,35 +166,15 @@ const bdlb::NullableValue<bsl::string>& DeviceConfig::adapterName() const
     return d_adapterName;
 }
 
-const bdlb::NullableValue<ntsa::EthernetAddress>&
-DeviceConfig::ethernetAddress() const
-{
-    return d_ethernetAddress;
-}
-
-const bdlb::NullableValue<ntsa::Ipv4Address>& DeviceConfig::ipv4Address() const
-{
-    return d_ipv4Address;
-}
-
-const bdlb::NullableValue<ntsa::Ipv6Address>& DeviceConfig::ipv6Address() const
-{
-    return d_ipv6Address;
-}
-
-const bdlb::NullableValue<ntsa::Port>& DeviceConfig::tcpPort() const
-{
-    return d_tcpPort;
-}
-
-const bdlb::NullableValue<ntsa::Port>& DeviceConfig::udpPort() const
-{
-    return d_udpPort;
-}
-
 const bdlb::NullableValue<bool>& DeviceConfig::outgoingEnabled() const
 {
     return d_outgoingEnabled;
+}
+
+const bdlb::NullableValue<ntsa::PacketFilter>&
+DeviceConfig::outgoingPacketFilter() const
+{
+    return d_outgoingPacketFilter;
 }
 
 const bdlb::NullableValue<bsl::size_t>&
@@ -247,6 +200,12 @@ const bdlb::NullableValue<bool>& DeviceConfig::incomingEnabled() const
     return d_incomingEnabled;
 }
 
+const bdlb::NullableValue<ntsa::PacketFilter>&
+DeviceConfig::incomingPacketFilter() const
+{
+    return d_incomingPacketFilter;
+}
+
 const bdlb::NullableValue<bsl::size_t>&
 DeviceConfig::incomingMinThreads() const
 {
@@ -267,21 +226,18 @@ DeviceConfig::incomingMaxPackets() const
 
 bool DeviceConfig::equals(const DeviceConfig& other) const
 {
-    return d_driverName         == other.d_driverName         &&
-           d_adapterName        == other.d_adapterName        &&
-           d_ethernetAddress    == other.d_ethernetAddress    &&
-           d_ipv4Address        == other.d_ipv4Address        &&
-           d_ipv6Address        == other.d_ipv6Address        &&
-           d_tcpPort            == other.d_tcpPort            &&
-           d_udpPort            == other.d_udpPort            &&
-           d_outgoingEnabled    == other.d_outgoingEnabled    &&
-           d_outgoingMinThreads == other.d_outgoingMinThreads &&
-           d_outgoingMaxThreads == other.d_outgoingMaxThreads &&
-           d_outgoingMaxPackets == other.d_outgoingMaxPackets &&
-           d_incomingEnabled    == other.d_incomingEnabled    &&
-           d_incomingMinThreads == other.d_incomingMinThreads &&
-           d_incomingMaxThreads == other.d_incomingMaxThreads &&
-           d_incomingMaxPackets == other.d_incomingMaxPackets;
+    return d_driverName           == other.d_driverName         &&
+           d_adapterName          == other.d_adapterName        &&
+           d_outgoingEnabled      == other.d_outgoingEnabled    &&
+           d_outgoingPacketFilter == other.d_outgoingPacketFilter &&
+           d_outgoingMinThreads   == other.d_outgoingMinThreads &&
+           d_outgoingMaxThreads   == other.d_outgoingMaxThreads &&
+           d_outgoingMaxPackets   == other.d_outgoingMaxPackets &&
+           d_incomingEnabled      == other.d_incomingEnabled    &&
+           d_incomingPacketFilter == other.d_incomingPacketFilter &&
+           d_incomingMinThreads   == other.d_incomingMinThreads &&
+           d_incomingMaxThreads   == other.d_incomingMaxThreads &&
+           d_incomingMaxPackets   == other.d_incomingMaxPackets;
 }
 
 bool DeviceConfig::less(const DeviceConfig& other) const
@@ -302,51 +258,19 @@ bool DeviceConfig::less(const DeviceConfig& other) const
         return false;
     }
 
-    if (d_ethernetAddress < other.d_ethernetAddress) {
-        return true;
-    }
-
-    if (other.d_ethernetAddress < d_ethernetAddress) {
-        return false;
-    }
-
-    if (d_ipv4Address < other.d_ipv4Address) {
-        return true;
-    }
-
-    if (other.d_ipv4Address < d_ipv4Address) {
-        return false;
-    }
-
-    if (d_ipv6Address < other.d_ipv6Address) {
-        return true;
-    }
-
-    if (other.d_ipv6Address < d_ipv6Address) {
-        return false;
-    }
-
-    if (d_tcpPort < other.d_tcpPort) {
-        return true;
-    }
-
-    if (other.d_tcpPort < d_tcpPort) {
-        return false;
-    }
-
-    if (d_udpPort < other.d_udpPort) {
-        return true;
-    }
-
-    if (other.d_udpPort < d_udpPort) {
-        return false;
-    }
-
     if (d_outgoingEnabled < other.d_outgoingEnabled) {
         return true;
     }
 
     if (other.d_outgoingEnabled < d_outgoingEnabled) {
+        return false;
+    }
+
+    if (d_outgoingPacketFilter < other.d_outgoingPacketFilter) {
+        return true;
+    }
+
+    if (other.d_outgoingPacketFilter < d_outgoingPacketFilter) {
         return false;
     }
 
@@ -379,6 +303,14 @@ bool DeviceConfig::less(const DeviceConfig& other) const
     }
 
     if (other.d_incomingEnabled < d_incomingEnabled) {
+        return false;
+    }
+
+    if (d_incomingPacketFilter < other.d_incomingPacketFilter) {
+        return true;
+    }
+
+    if (other.d_incomingPacketFilter < d_incomingPacketFilter) {
         return false;
     }
 
@@ -415,28 +347,14 @@ bsl::ostream& DeviceConfig::print(bsl::ostream& stream,
         printer.printAttribute("adapterName", d_adapterName.value());
     }
 
-    if (!d_ethernetAddress.isNull()) {
-        printer.printAttribute("ethernetAddress", d_ethernetAddress.value());
-    }
-
-    if (!d_ipv4Address.isNull()) {
-        printer.printAttribute("ipv4Address", d_ipv4Address.value());
-    }
-
-    if (!d_ipv6Address.isNull()) {
-        printer.printAttribute("ipv6Address", d_ipv6Address.value());
-    }
-
-    if (!d_tcpPort.isNull()) {
-        printer.printAttribute("tcpPort", d_tcpPort.value());
-    }
-
-    if (!d_udpPort.isNull()) {
-        printer.printAttribute("udpPort", d_udpPort.value());
-    }
-
     if (!d_outgoingEnabled.isNull()) {
         printer.printAttribute("outgoingEnabled", d_outgoingEnabled.value());
+    }
+
+    if (!d_outgoingPacketFilter.isNull()) {
+        printer.printAttribute(
+            "outgoingPacketFilter",
+            d_outgoingPacketFilter.value());
     }
 
     if (!d_outgoingMinThreads.isNull()) {
@@ -456,6 +374,12 @@ bsl::ostream& DeviceConfig::print(bsl::ostream& stream,
 
     if (!d_incomingEnabled.isNull()) {
         printer.printAttribute("incomingEnabled", d_incomingEnabled.value());
+    }
+
+    if (!d_incomingPacketFilter.isNull()) {
+        printer.printAttribute(
+            "incomingPacketFilter",
+            d_incomingPacketFilter.value());
     }
 
     if (!d_incomingMinThreads.isNull()) {

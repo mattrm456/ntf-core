@@ -22,6 +22,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
 #include <ntsa_ethernetaddress.h>
+#include <ntsa_packetfilter.h>
 #include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
@@ -47,14 +48,8 @@ namespace ntsa {
 /// @li @b adapterName:
 /// The name of the network device adapter, e.g., "lo", "eth0", etc.
 ///
-/// @li @b ethernetAddress:
-/// The Ethernet address of the network device.
-///
-/// @li @b ipv4Address:
-/// The IPv4 address of the network device.
-///
-/// @li @b ipv6Address:
-/// The IPv6 address of the network device.
+/// @li @b packetFilter:
+/// The packet filter.
 ///
 /// @li @b outgoingEnabled
 /// The flag that controls whether outgoing packets are enabled.
@@ -88,16 +83,13 @@ class DeviceConfig
 {
     bdlb::NullableValue<bsl::string>           d_driverName;
     bdlb::NullableValue<bsl::string>           d_adapterName;
-    bdlb::NullableValue<ntsa::EthernetAddress> d_ethernetAddress;
-    bdlb::NullableValue<ntsa::Ipv4Address>     d_ipv4Address;
-    bdlb::NullableValue<ntsa::Ipv6Address>     d_ipv6Address;
-    bdlb::NullableValue<ntsa::Port>            d_tcpPort;
-    bdlb::NullableValue<ntsa::Port>            d_udpPort;
     bdlb::NullableValue<bool>                  d_outgoingEnabled;
+    bdlb::NullableValue<ntsa::PacketFilter>    d_outgoingPacketFilter;
     bdlb::NullableValue<bsl::size_t>           d_outgoingMinThreads;
     bdlb::NullableValue<bsl::size_t>           d_outgoingMaxThreads;
     bdlb::NullableValue<bsl::size_t>           d_outgoingMaxPackets;
     bdlb::NullableValue<bool>                  d_incomingEnabled;
+    bdlb::NullableValue<ntsa::PacketFilter>    d_incomingPacketFilter;
     bdlb::NullableValue<bsl::size_t>           d_incomingMinThreads;
     bdlb::NullableValue<bsl::size_t>           d_incomingMaxThreads;
     bdlb::NullableValue<bsl::size_t>           d_incomingMaxPackets;
@@ -136,24 +128,12 @@ class DeviceConfig
     /// Set the name of the adapter to the specified 'value'.
     void setAdapterName(const bsl::string& value);
 
-    /// Set the ethernet address of the adapter to the specified 'value'.
-    void setEthernetAddress(const ntsa::EthernetAddress& value);
-
-    /// Set the IPv4 address of the adapter to the specified 'value'.
-    void setIpv4Address(const ntsa::Ipv4Address& value);
-
-    /// Set the IPv6 address of the adapter to the specified 'value'.
-    void setIpv6Address(const ntsa::Ipv6Address& value);
-
-    /// Set the TCP port to the specified 'value'.
-    void setTcpPort(ntsa::Port value);
-
-    /// Set the UDP port to the specified 'value'.
-    void setUdpPort(ntsa::Port value);
-
     /// Set the flag that indicates outgoing packets are enabled according to
     /// the specified 'value'.
     void setOutgoingEnabled(bool value);
+
+    /// Set the outgoing packet filter to the specified 'value'.
+    void setOutgoingPacketFilter(const ntsa::PacketFilter& value);
 
     /// Set the minimum number of threads processing outgoing packets to the
     /// specified 'value'.
@@ -169,6 +149,9 @@ class DeviceConfig
     /// Set the flag that indicates incoming packets are enabled according to
     /// the specified 'value'.
     void setIncomingEnabled(bool value);
+
+    /// Set the incoming packet filter to the specified 'value'.
+    void setIncomingPacketFilter(const ntsa::PacketFilter& value);
 
     /// Set the minimum number of threads processing incoming packets to the
     /// specified 'value'.
@@ -187,23 +170,11 @@ class DeviceConfig
     /// Return the name of the adapter.
     const bdlb::NullableValue<bsl::string>& adapterName() const;
 
-    /// Return the ethernet address of the adapter.
-    const bdlb::NullableValue<ntsa::EthernetAddress>& ethernetAddress() const;
-
-    /// Return the IPv4 address of the adapter.
-    const bdlb::NullableValue<ntsa::Ipv4Address>& ipv4Address() const;
-
-    /// Return the IPv6 address of the adapter.
-    const bdlb::NullableValue<ntsa::Ipv6Address>& ipv6Address() const;
-
-    /// Return the TCP port.
-    const bdlb::NullableValue<ntsa::Port>& tcpPort() const;
-
-    /// Return the UDP port.
-    const bdlb::NullableValue<ntsa::Port>& udpPort() const;
-
     /// Return the flag that indicates outgoing packets are enabled.
     const bdlb::NullableValue<bool>& outgoingEnabled() const;
+
+    /// Return the outgoing packet filter.
+    const bdlb::NullableValue<ntsa::PacketFilter>& outgoingPacketFilter() const;
 
     /// Return the minimum number of threads processing outgoing packets.
     const bdlb::NullableValue<bsl::size_t>& outgoingMinThreads() const;
@@ -216,6 +187,9 @@ class DeviceConfig
 
     /// Return the flag that indicates incoming packets are enabled.
     const bdlb::NullableValue<bool>& incomingEnabled() const;
+
+    /// Return the incoming packet filter.
+    const bdlb::NullableValue<ntsa::PacketFilter>& incomingPacketFilter() const;
 
     /// Return the minimum number of threads processing incoming packets.
     const bdlb::NullableValue<bsl::size_t>& incomingMinThreads() const;
@@ -292,16 +266,13 @@ void hashAppend(HASH_ALGORITHM& algorithm, const DeviceConfig& value)
 
     hashAppend(algorithm, value.driverName());
     hashAppend(algorithm, value.adapterName());
-    hashAppend(algorithm, value.ethernetAddress());
-    hashAppend(algorithm, value.ipv4Address());
-    hashAppend(algorithm, value.ipv6Address());
-    hashAppend(algorithm, value.tcpPort());
-    hashAppend(algorithm, value.udpPort());
     hashAppend(algorithm, value.outgoingEnabled());
+    hashAppend(algorithm, value.outgoingPacketFilter());
     hashAppend(algorithm, value.outgoingMinThreads());
     hashAppend(algorithm, value.outgoingMaxThreads());
     hashAppend(algorithm, value.outgoingMaxPackets());
     hashAppend(algorithm, value.incomingEnabled());
+    hashAppend(algorithm, value.incomingPacketFilter());
     hashAppend(algorithm, value.incomingMinThreads());
     hashAppend(algorithm, value.incomingMaxThreads());
     hashAppend(algorithm, value.incomingMaxPackets());
