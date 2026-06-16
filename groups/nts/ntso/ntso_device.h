@@ -46,10 +46,9 @@ namespace ntso {
 /// @ingroup module_ntso
 class DeviceUtil
 {
-public:
+  public:
     /// Enumerate the constants used by this implementation.
-    enum Constants
-    {
+    enum Constants {
         k_DEFAULT_OUTGOING_MIN_THREADS = 1,
         k_DEFAULT_OUTGOING_MAX_THREADS = 1,
         k_DEFAULT_OUTGOING_MAX_PACKETS = 100000,
@@ -70,9 +69,50 @@ public:
 
     /// Load into the specified 'result' the adapter for the specified
     /// 'configuration'. Return the error.
+    static ntsa::Error resolveAdapter(ntsa::Adapter*            result,
+                                      const ntsa::DeviceConfig& configuration);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'name'. Return the error.
     static ntsa::Error resolveAdapter(
-            ntsa::Adapter*            result,
-            const ntsa::DeviceConfig& configuration);
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const bsl::string&                name);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'index'. Return the error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        bsl::uint32_t                     index);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'ethernetAddress'. Return the
+    /// error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const ntsa::EthernetAddress&      ethernetAddress);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'ipv4Address'. Return the error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const ntsa::Ipv4Address&          ipv4Address);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'ipv4Address'. Return the error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const ntsa::Ipv6Address&          ipv6Address);
+
+    /// Validate the specified 'adapter' is compatible with the specified
+    /// 'configuration'. Return the error.
+    static ntsa::Error validateAdapter(
+        const ntsa::Adapter&      adapter,
+        const ntsa::DeviceConfig& configuration);
 
     /// Return true if the device is supported, otherwise return false.
     static bool isSupported();
@@ -82,4 +122,3 @@ public:
 }  // close enterprise namespace
 #endif
 #endif
-

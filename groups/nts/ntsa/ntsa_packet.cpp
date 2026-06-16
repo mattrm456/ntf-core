@@ -711,6 +711,13 @@ ntsa::Error Packet::encode(ntsa::PacketEncoderContext*       context,
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
+    error = encoder.flush();
+    if (error) {
+        return error;
+    }
+
+    buffer->setSize(encoder.position());
+
     return ntsa::Error();
 }
 
