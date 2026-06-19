@@ -26,6 +26,8 @@ ntsa_ethernetpacket
 ntsa_ethernetpayload
 ntsa_ethernetpriority
 ntsa_ethernetprotocol
+ntsa_ethernetroute
+ntsa_ethernetroutetable
 ntsa_ethernettag
 ntsa_event
 ntsa_file
@@ -74,8 +76,10 @@ ntsa_ipv4optiontype
 ntsa_ipv4optionvalue
 ntsa_ipv4packet
 ntsa_ipv4payload
+ntsa_ipv4route
 ntsa_ipv4routeledger
-ntsa_ipv4routetimestamp
+ntsa_ipv4routesequence
+ntsa_ipv4routetable
 ntsa_ipv4timestamp
 ntsa_ipv6address
 ntsa_ipv6checksum

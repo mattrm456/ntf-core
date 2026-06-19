@@ -45,6 +45,7 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #include <bdlf_placeholder.h>
 
 #include <bslma_allocator.h>
+#include <bslma_deallocatorguard.h>
 #include <bslma_default.h>
 #include <bslmt_condition.h>
 #include <bslmt_lockguard.h>
@@ -90,9 +91,15 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #endif
 
 #if defined(BSLS_PLATFORM_OS_DARWIN)
+#include <arpa/inet.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/if_dl.h>
+#include <net/if_types.h>
+#include <net/route.h>
+#include <netinet/if_ether.h>
+#include <sys/sysctl.h>
 #endif
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
@@ -2018,6 +2025,1507 @@ ntsa::Error DeviceUtil::validateAdapter(
     }
 
     return ntsa::Error();
+}
+
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
+/// Provide a implementation of the device utilities.
+class DeviceUtil::Impl
+{
+    BALL_LOG_SET_CLASS_CATEGORY("NTSO.DEVICEUTIL");
+
+  public:
+    static ntsa::Error decodeRouteHeader(const rt_msghdr**    rtm,
+                                         const bsl::uint8_t** current,
+                                         const bsl::uint8_t*  end);
+
+    static ntsa::Error decodeRoutePayload(const sockaddr** rti,
+                                          const rt_msghdr* rtm);
+
+    static const sockaddr* next(const sockaddr* sa);
+
+    static ntsa::Error decodeDestination(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+        const sockaddr*                         sa);
+
+    static ntsa::Error decodeDestination(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+        const sockaddr*                         sa);
+
+    static ntsa::Error decodeDestination(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+        const sockaddr_in*                      sa);
+
+    static ntsa::Error decodeDestination(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+        const sockaddr_in6*                     sa);
+
+    static ntsa::Error decodeNetMask(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Mask,
+        const sockaddr*                         sa);
+
+    static ntsa::Error decodeNetMask(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Mask,
+        const sockaddr*                         sa);
+
+    static ntsa::Error decodeGateway(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        bdlb::NullableValue<ntsa::Ipv4Address>*     ipv4Address,
+        const sockaddr*                             sa);
+
+    static ntsa::Error decodeGateway(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        bdlb::NullableValue<ntsa::Ipv6Address>*     ipv6Address,
+        const sockaddr*                             sa);
+
+    static ntsa::Error decodeGateway(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+        const sockaddr_in*                      sa);
+
+    static ntsa::Error decodeGateway(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+        const sockaddr_in6*                     sa);
+
+    static ntsa::Error decodeGateway(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        const sockaddr_dl*                          sa);
+
+    static ntsa::Error decodeIfa(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        bdlb::NullableValue<ntsa::Ipv4Address>*     ipv4Address,
+        const sockaddr*                             sa);
+
+    static ntsa::Error decodeIfa(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        bdlb::NullableValue<ntsa::Ipv6Address>*     ipv6Address,
+        const sockaddr*                             sa);
+
+    static ntsa::Error decodeIfa(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+        const sockaddr_in*                      sa);
+
+    static ntsa::Error decodeIfa(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+        const sockaddr_in6*                     sa);
+
+    static ntsa::Error decodeIfa(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        const sockaddr_dl*                          sa);
+
+    static ntsa::Error decodeIfp(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        bdlb::NullableValue<ntsa::Ipv4Address>*     ipv4Address,
+        const sockaddr*                             sa);
+
+    static ntsa::Error decodeIfp(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        bdlb::NullableValue<ntsa::Ipv6Address>*     ipv6Address,
+        const sockaddr*                             sa);
+
+    static ntsa::Error decodeIfp(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+        const sockaddr_in*                      sa);
+
+    static ntsa::Error decodeIfp(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+        const sockaddr_in6*                     sa);
+
+    static ntsa::Error decodeIfp(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        const sockaddr_dl*                          sa);
+
+    static ntsa::Error decodeIpv4Address(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+        const sockaddr_in*                      sa);
+
+    static ntsa::Error decodeIpv6Address(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv4Address,
+        const sockaddr_in6*                     sa);
+
+    static ntsa::Error decodeIpv4Mask(
+        bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Mask,
+        const sockaddr_in*                      sa);
+
+    static ntsa::Error decodeIpv6Mask(
+        bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Mask,
+        const sockaddr_in6*                     sa);
+
+    static ntsa::Error decodeLink(
+        bdlb::NullableValue<bsl::string>*           adapterName,
+        bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+        bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+        const sockaddr_dl*                          sa);
+
+    static bsl::string describesRtaxFlags(const rt_msghdr* rtm);
+};
+
+ntsa::Error DeviceUtil::Impl::decodeRouteHeader(const rt_msghdr**    rtm,
+                                                const bsl::uint8_t** current,
+                                                const bsl::uint8_t*  end)
+{
+    *rtm = 0;
+
+    while (true) {
+        if (*current >= end) {
+            return ntsa::Error(ntsa::Error::e_EOF);
+        }
+
+        if (reinterpret_cast<bsl::uintptr_t>(*current) % 4 != 0) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const rt_msghdr* header = reinterpret_cast<const rt_msghdr*>(*current);
+
+        if (header->rtm_msglen == 0) {
+            return ntsa::Error(ntsa::Error::e_EOF);
+        }
+
+        *current += static_cast<bsl::size_t>(header->rtm_msglen);
+
+        if (header->rtm_version != RTM_VERSION) {
+            continue;
+        }
+
+        *rtm = header;
+        break;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeRoutePayload(const sockaddr** rti,
+                                                 const rt_msghdr* rtm)
+{
+    if (rtm->rtm_msglen == 0) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (rtm->rtm_version != RTM_VERSION) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const sockaddr* sa = reinterpret_cast<const sockaddr*>(
+        reinterpret_cast<const bsl::uint8_t*>(rtm) + sizeof(rt_msghdr));
+
+    const sockaddr* saEnd = reinterpret_cast<const sockaddr*>(
+        reinterpret_cast<const bsl::uint8_t*>(rtm) + rtm->rtm_msglen);
+
+    for (int i = 0; i < RTAX_MAX; i++) {
+        if ((rtm->rtm_addrs & (1 << i)) != 0) {
+            if (reinterpret_cast<bsl::uintptr_t>(sa) % 4 != 0) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            if (sa >= saEnd) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            rti[i] = sa;
+
+            sa = Impl::next(sa);
+        }
+        else {
+            rti[i] = 0;
+        }
+    }
+
+    return ntsa::Error();
+}
+
+const sockaddr* DeviceUtil::Impl::next(const sockaddr* sa)
+{
+    bsl::size_t size;
+    if (sa->sa_len > 0) {
+        size = (sa->sa_len + sizeof(bsl::uint32_t) - 1) &
+               ~(sizeof(bsl::uint32_t) - 1);
+    }
+    else {
+        size = sizeof(bsl::uint32_t);
+    }
+
+    return reinterpret_cast<const sockaddr*>(
+        reinterpret_cast<const bsl::uint8_t*>(sa) + size);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeDestination(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+    const sockaddr*                         sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_DST sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET) {
+        error =
+            Impl::decodeDestination(ipv4Address,
+                                    reinterpret_cast<const sockaddr_in*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeDestination(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+    const sockaddr*                         sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_DST sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET6) {
+        error =
+            Impl::decodeDestination(ipv6Address,
+                                    reinterpret_cast<const sockaddr_in6*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeDestination(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+    const sockaddr_in*                      sa)
+{
+    return Impl::decodeIpv4Address(ipv4Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeDestination(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+    const sockaddr_in6*                     sa)
+{
+    return Impl::decodeIpv6Address(ipv6Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeNetMask(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Mask,
+    const sockaddr*                         sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_NETMASK sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    error = Impl::decodeIpv4Mask(ipv4Mask,
+                                 reinterpret_cast<const sockaddr_in*>(sa));
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeNetMask(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Mask,
+    const sockaddr*                         sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_NETMASK sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    error = Impl::decodeIpv6Mask(ipv6Mask,
+                                 reinterpret_cast<const sockaddr_in6*>(sa));
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeGateway(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv4Address>*     ipv4Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_GATEWAY sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET) {
+        error = Impl::decodeGateway(ipv4Address,
+                                    reinterpret_cast<const sockaddr_in*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeGateway(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv6Address>*     ipv6Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_GATEWAY sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET6) {
+        error = Impl::decodeGateway(ipv6Address,
+                                    reinterpret_cast<const sockaddr_in6*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeGateway(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+    const sockaddr_in*                      sa)
+{
+    return Impl::decodeIpv4Address(ipv4Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeGateway(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+    const sockaddr_in6*                     sa)
+{
+    return Impl::decodeIpv6Address(ipv6Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeGateway(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    const sockaddr_dl*                          sa)
+{
+    return Impl::decodeLink(adapterName, adapterIndex, ethernetAddress, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfa(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv4Address>*     ipv4Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_IFA sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET) {
+        error = Impl::decodeGateway(ipv4Address,
+                                    reinterpret_cast<const sockaddr_in*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfa(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv6Address>*     ipv6Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_IFA sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET6) {
+        error = Impl::decodeGateway(ipv6Address,
+                                    reinterpret_cast<const sockaddr_in6*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfa(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+    const sockaddr_in*                      sa)
+{
+    return Impl::decodeIpv4Address(ipv4Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfa(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+    const sockaddr_in6*                     sa)
+{
+    return Impl::decodeIpv6Address(ipv6Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfa(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    const sockaddr_dl*                          sa)
+{
+    return Impl::decodeLink(adapterName, adapterIndex, ethernetAddress, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfp(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv4Address>*     ipv4Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_IFP sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET) {
+        error = Impl::decodeGateway(ipv4Address,
+                                    reinterpret_cast<const sockaddr_in*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfp(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv6Address>*     ipv6Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    BALL_LOG_TRACE << "Decoding RTAX_IFP sockaddr [ sa_family = "
+                   << static_cast<bsl::uint32_t>(sa->sa_family)
+                   << " sa_len = " << static_cast<bsl::uint32_t>(sa->sa_len)
+                   << " ]" << BALL_LOG_END;
+
+    if (sa->sa_family == AF_INET6) {
+        error = Impl::decodeGateway(ipv6Address,
+                                    reinterpret_cast<const sockaddr_in6*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfp(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+    const sockaddr_in*                      sa)
+{
+    return Impl::decodeIpv4Address(ipv4Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfp(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+    const sockaddr_in6*                     sa)
+{
+    return Impl::decodeIpv6Address(ipv6Address, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIfp(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    const sockaddr_dl*                          sa)
+{
+    return Impl::decodeLink(adapterName, adapterIndex, ethernetAddress, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIpv4Address(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+    const sockaddr_in*                      sa)
+{
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    if (sa->sin_family != AF_INET) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::uint8_t minimumLengthWithAddress =
+        offsetof(struct sockaddr_in, sin_addr) + sizeof sa->sin_addr;
+
+    if (sa->sin_len < minimumLengthWithAddress) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    ipv4Address->makeValue();
+
+    const bsl::size_t bytesCopied =
+        ipv4Address->value().copyFrom(&sa->sin_addr, sizeof sa->sin_addr);
+
+    if (bytesCopied != sizeof sa->sin_addr) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIpv6Address(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
+    const sockaddr_in6*                     sa)
+{
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    if (sa->sin6_family != AF_INET6) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::uint8_t minimumLengthWithAddress =
+        offsetof(struct sockaddr_in6, sin6_addr) + sizeof sa->sin6_addr;
+
+    if (sa->sin6_len < minimumLengthWithAddress) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    ipv6Address->makeValue();
+
+    const bsl::size_t bytesCopied =
+        ipv6Address->value().copyFrom(&sa->sin6_addr, sizeof sa->sin6_addr);
+
+    if (bytesCopied != sizeof sa->sin6_addr) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::uint8_t minimumLengthWithScope =
+        offsetof(struct sockaddr_in6, sin6_scope_id) +
+        sizeof sa->sin6_scope_id;
+
+    if (sa->sin6_len >= minimumLengthWithScope) {
+        ipv6Address->value().setScopeId(sa->sin6_scope_id);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIpv4Mask(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Mask,
+    const sockaddr_in*                      sa)
+{
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    if (sa->sin_len == 0) {
+        return ntsa::Error();
+    }
+
+    ipv4Mask->makeValue();
+
+    const bsl::uint8_t minimumLengthWithAddress =
+        offsetof(struct sockaddr_in, sin_addr) + sizeof sa->sin_addr;
+
+    if (sa->sin_len >= minimumLengthWithAddress) {
+        const bsl::size_t bytesCopied =
+            ipv4Mask->value().copyFrom(&sa->sin_addr, sizeof sa->sin_addr);
+
+        if (bytesCopied != sizeof sa->sin_addr) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+    }
+    else {
+        struct in_addr octets;
+        NTSCFG_MEMORY_ZERO(&octets, sizeof octets);
+
+        const bsl::size_t bytesToCopy = static_cast<bsl::size_t>(sa->sin_len) -
+                                        offsetof(struct sockaddr_in, sin_addr);
+
+        if (bytesToCopy > 0 && bytesToCopy <= sizeof(struct in_addr)) {
+            NTSCFG_MEMORY_COPY(&octets, &sa->sin_addr, bytesToCopy);
+
+            const bsl::size_t bytesCopied =
+                ipv4Mask->value().copyFrom(&octets, sizeof octets);
+
+            if (bytesCopied != sizeof octets) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+        }
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::decodeIpv6Mask(
+    bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Mask,
+    const sockaddr_in6*                     sa)
+{
+    return Impl::decodeIpv6Address(ipv6Mask, sa);
+}
+
+ntsa::Error DeviceUtil::Impl::decodeLink(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    const sockaddr_dl*                          sa)
+{
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    if (sa->sdl_family != AF_LINK) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    adapterIndex->reset();
+    adapterIndex->makeValue(static_cast<bsl::size_t>(sa->sdl_index));
+
+    if (sa->sdl_nlen > 0) {
+        adapterName->reset();
+        adapterName->makeValue();
+        adapterName->value().resize(static_cast<bsl::size_t>(sa->sdl_nlen));
+
+        NTSCFG_MEMORY_COPY(&adapterName->value()[0],
+                           sa->sdl_data,
+                           sa->sdl_nlen);
+    }
+
+    if (sa->sdl_alen > 0 && sa->sdl_alen == 6) {
+        ethernetAddress->reset();
+        ethernetAddress->makeValue();
+
+        NTSCFG_MEMORY_COPY(&ethernetAddress->value(),
+                           sa->sdl_data + sa->sdl_nlen,
+                           sa->sdl_alen);
+    }
+
+    return ntsa::Error();
+}
+
+bsl::string DeviceUtil::Impl::describesRtaxFlags(const rt_msghdr* rtm)
+{
+    bsl::stringstream ss;
+    ss << "[";
+    if ((rtm->rtm_addrs & (1 << RTAX_DST)) != 0) {
+        ss << " DST";
+    }
+    if ((rtm->rtm_addrs & (1 << RTAX_GATEWAY)) != 0) {
+        ss << " GATEWAY";
+    }
+    if ((rtm->rtm_addrs & (1 << RTAX_NETMASK)) != 0) {
+        ss << " NETMASK";
+    }
+    if ((rtm->rtm_addrs & (1 << RTAX_GENMASK)) != 0) {
+        ss << " GENMASK";
+    }
+    if ((rtm->rtm_addrs & (1 << RTAX_IFP)) != 0) {
+        ss << " IFP";
+    }
+    if ((rtm->rtm_addrs & (1 << RTAX_IFA)) != 0) {
+        ss << " IFA";
+    }
+    if ((rtm->rtm_addrs & (1 << RTAX_AUTHOR)) != 0) {
+        ss << " AUTHOR";
+    }
+    if ((rtm->rtm_addrs & (1 << RTAX_BRD)) != 0) {
+        ss << " BRD";
+    }
+    ss << " ]";
+
+    return ss.str();
+}
+
+#endif
+
+ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable* result)
+{
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
+    ntsa::Error error;
+    int         rc;
+
+    bslma::Allocator* allocator = bslma::Default::defaultAllocator();
+
+    result->reset();
+
+    bsl::vector<ntsa::Adapter> adapterVector;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
+
+    int mib[6];
+
+    mib[0] = CTL_NET;
+    mib[1] = PF_ROUTE;
+    mib[2] = 0;
+    mib[3] = AF_INET;
+    mib[4] = NET_RT_FLAGS;
+    mib[5] = RTF_LLINFO;
+
+    size_t bufferLength;
+    rc = ::sysctl(mib, 6, 0, &bufferLength, 0, 0);
+
+    if (rc < 0) {
+        error = ntsa::Error::last();
+        BSLS_LOG_ERROR("Failed to get routing table size: %s",
+                       error.text().c_str());
+        return error;
+    }
+
+    bsl::uint8_t* buffer = reinterpret_cast<bsl::uint8_t*>(
+        allocator->allocate(static_cast<bsl::size_t>(bufferLength)));
+
+    const bsl::uint8_t* bufferEnd = buffer + bufferLength;
+
+    bslma::DeallocatorGuard<bslma::Allocator> bufferGuard(buffer, allocator);
+
+    rc = ::sysctl(mib, 6, buffer, &bufferLength, 0, 0);
+    if (rc < 0) {
+        error = ntsa::Error::last();
+        BSLS_LOG_ERROR("Failed to get routing table size: %s",
+                       error.text().c_str());
+        return error;
+    }
+
+    const bsl::uint8_t* current = buffer;
+
+    while (current < bufferEnd) {
+        const rt_msghdr* rtm = 0;
+        error = Impl::decodeRouteHeader(&rtm, &current, bufferEnd);
+        if (error) {
+            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                break;
+            }
+            else {
+                return error;
+            }
+        }
+
+        BALL_LOG_DEBUG << "Decoded route message" << BALL_LOG_END;
+
+        BALL_LOG_DEBUG << "Flags = " << Impl::describesRtaxFlags(rtm)
+                       << BALL_LOG_END;
+
+        const sockaddr* rti_info[RTAX_MAX];
+        NTSCFG_MEMORY_ZERO(rti_info, sizeof rti_info);
+
+        error = Impl::decodeRoutePayload(rti_info, rtm);
+        if (error) {
+            return error;
+        }
+
+        bdlb::NullableValue<ntsa::Ipv4Address>     destinationIpv4Address;
+        bdlb::NullableValue<ntsa::Ipv6Address>     destinationIpv6Address;
+        bdlb::NullableValue<bsl::string>           gatewayAdapterName;
+        bdlb::NullableValue<bsl::uint32_t>         gatewayAdapterIndex;
+        bdlb::NullableValue<ntsa::EthernetAddress> gatewayEthernetAddress;
+        bdlb::NullableValue<ntsa::Ipv4Address>     gatewayIpv4Address;
+        bdlb::NullableValue<bsl::string>           interfaceAdapterName;
+        bdlb::NullableValue<bsl::uint32_t>         interfaceAdapterIndex;
+        bdlb::NullableValue<ntsa::EthernetAddress> interfaceEthernetAddress;
+        bdlb::NullableValue<ntsa::Ipv4Address>     interfaceIpv4Address;
+
+        error = Impl::decodeDestination(&destinationIpv4Address,
+                                        rti_info[RTAX_DST]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_DST: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeGateway(&gatewayAdapterName,
+                                    &gatewayAdapterIndex,
+                                    &gatewayEthernetAddress,
+                                    &gatewayIpv4Address,
+                                    rti_info[RTAX_GATEWAY]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_GATEWAY: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeIfa(&interfaceAdapterName,
+                                &interfaceAdapterIndex,
+                                &interfaceEthernetAddress,
+                                &interfaceIpv4Address,
+                                rti_info[RTAX_IFA]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_IFA: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeIfp(&interfaceAdapterName,
+                                &interfaceAdapterIndex,
+                                &interfaceEthernetAddress,
+                                &interfaceIpv4Address,
+                                rti_info[RTAX_IFP]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_IFP: " << error
+                          << BALL_LOG_END;
+        }
+
+        BALL_LOG_DEBUG_BLOCK
+        {
+            BALL_LOG_OUTPUT_STREAM << "Route destination IPv4 address ";
+            if (destinationIpv4Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << destinationIpv4Address.value();
+            }
+
+            if (destinationIpv6Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " IPv6 address "
+                                       << destinationIpv6Address.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " to gateway [";
+
+            if (gatewayAdapterName.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterName = "
+                                       << gatewayAdapterName.value();
+            }
+
+            if (gatewayAdapterIndex.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterIndex = "
+                                       << gatewayAdapterIndex.value();
+            }
+
+            if (gatewayEthernetAddress.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ethernet = "
+                                       << gatewayEthernetAddress.value();
+            }
+
+            if (gatewayIpv4Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ip = "
+                                       << gatewayIpv4Address.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " ]";
+
+            BALL_LOG_OUTPUT_STREAM << " through interface [";
+
+            if (interfaceAdapterName.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterName = "
+                                       << interfaceAdapterName.value();
+            }
+
+            if (interfaceAdapterIndex.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterIndex = "
+                                       << interfaceAdapterIndex.value();
+            }
+
+            if (interfaceEthernetAddress.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ethernet = "
+                                       << interfaceEthernetAddress.value();
+            }
+
+            if (interfaceIpv4Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ip = "
+                                       << interfaceIpv4Address.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " ]";
+        }
+
+        ntsa::EthernetRoute route;
+
+        if (destinationIpv4Address.has_value()) {
+            route.setIpv4Address(destinationIpv4Address.value());
+        }
+        else if (destinationIpv6Address.has_value()) {
+            route.setIpv6Address(destinationIpv6Address.value());
+        }
+        else {
+            continue;
+        }
+
+        if (gatewayEthernetAddress.has_value()) {
+            route.setEthernetAddress(gatewayEthernetAddress.value());
+        }
+        else {
+            continue;
+        }
+
+        result->add(route);
+    }
+
+    return ntsa::Error();
+
+#else
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+
+#endif
+}
+
+ntsa::Error DeviceUtil::load(ntsa::Ipv4RouteTable* result)
+{
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
+    ntsa::Error error;
+    int         rc;
+
+    bslma::Allocator* allocator = bslma::Default::defaultAllocator();
+
+    result->reset();
+
+    bsl::vector<ntsa::Adapter> adapterVector;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
+
+    int mib[6];
+
+    // 1. Setup the Management Information Base (MIB) array for the routing table dump
+    mib[0] = CTL_NET;   // Networking subsystem
+    mib[1] = PF_ROUTE;  // Routing messages
+    mib[2] = 0;         // Protocol number (always 0)
+    mib[3] = AF_INET;   // Address family (AF_INET for IPv4, AF_INET6 for IPv6)
+    mib[4] = NET_RT_DUMP;  // Dump the entire routing table
+    mib[5] = 0;            // Filter flags (none)
+
+    size_t bufferLength;
+    rc = ::sysctl(mib, 6, 0, &bufferLength, 0, 0);
+
+    if (rc < 0) {
+        error = ntsa::Error::last();
+        BSLS_LOG_ERROR("Failed to get routing table size: %s",
+                       error.text().c_str());
+        return error;
+    }
+
+    bsl::uint8_t* buffer = reinterpret_cast<bsl::uint8_t*>(
+        allocator->allocate(static_cast<bsl::size_t>(bufferLength)));
+
+    const bsl::uint8_t* bufferEnd = buffer + bufferLength;
+
+    bslma::DeallocatorGuard<bslma::Allocator> bufferGuard(buffer, allocator);
+
+    rc = ::sysctl(mib, 6, buffer, &bufferLength, 0, 0);
+    if (rc < 0) {
+        error = ntsa::Error::last();
+        BSLS_LOG_ERROR("Failed to get routing table size: %s",
+                       error.text().c_str());
+        return error;
+    }
+
+    const bsl::uint8_t* current = buffer;
+
+    while (current < bufferEnd) {
+        const rt_msghdr* rtm = 0;
+        error = Impl::decodeRouteHeader(&rtm, &current, bufferEnd);
+        if (error) {
+            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                break;
+            }
+            else {
+                return error;
+            }
+        }
+
+        BALL_LOG_DEBUG << "Flags = " << Impl::describesRtaxFlags(rtm)
+                       << BALL_LOG_END;
+
+        const sockaddr* rti_info[RTAX_MAX];
+        NTSCFG_MEMORY_ZERO(rti_info, sizeof rti_info);
+
+        error = Impl::decodeRoutePayload(rti_info, rtm);
+        if (error) {
+            return error;
+        }
+
+        bdlb::NullableValue<ntsa::Ipv4Address>     destinationIpv4Address;
+        bdlb::NullableValue<ntsa::Ipv4Address>     destinationIpv4Mask;
+        bdlb::NullableValue<bsl::string>           gatewayAdapterName;
+        bdlb::NullableValue<bsl::uint32_t>         gatewayAdapterIndex;
+        bdlb::NullableValue<ntsa::EthernetAddress> gatewayEthernetAddress;
+        bdlb::NullableValue<ntsa::Ipv4Address>     gatewayIpv4Address;
+        bdlb::NullableValue<bsl::string>           interfaceAdapterName;
+        bdlb::NullableValue<bsl::uint32_t>         interfaceAdapterIndex;
+        bdlb::NullableValue<ntsa::EthernetAddress> interfaceEthernetAddress;
+        bdlb::NullableValue<ntsa::Ipv4Address>     interfaceIpv4Address;
+
+        error = Impl::decodeDestination(&destinationIpv4Address,
+                                        rti_info[RTAX_DST]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_DST: " << error
+                          << BALL_LOG_END;
+        }
+
+        error =
+            Impl::decodeNetMask(&destinationIpv4Mask, rti_info[RTAX_NETMASK]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_NETMASK: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeGateway(&gatewayAdapterName,
+                                    &gatewayAdapterIndex,
+                                    &gatewayEthernetAddress,
+                                    &gatewayIpv4Address,
+                                    rti_info[RTAX_GATEWAY]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_GATEWAY: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeIfa(&interfaceAdapterName,
+                                &interfaceAdapterIndex,
+                                &interfaceEthernetAddress,
+                                &interfaceIpv4Address,
+                                rti_info[RTAX_IFA]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_IFA: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeIfp(&interfaceAdapterName,
+                                &interfaceAdapterIndex,
+                                &interfaceEthernetAddress,
+                                &interfaceIpv4Address,
+                                rti_info[RTAX_IFP]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_IFP: " << error
+                          << BALL_LOG_END;
+        }
+
+        BALL_LOG_DEBUG_BLOCK
+        {
+            BALL_LOG_OUTPUT_STREAM << "Route destination ";
+            if (destinationIpv4Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << destinationIpv4Address.value();
+            }
+
+            if (destinationIpv4Mask.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " mask "
+                                       << destinationIpv4Mask.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " to gateway [";
+
+            if (gatewayAdapterName.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterName = "
+                                       << gatewayAdapterName.value();
+            }
+
+            if (gatewayAdapterIndex.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterIndex = "
+                                       << gatewayAdapterIndex.value();
+            }
+
+            if (gatewayEthernetAddress.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ethernet = "
+                                       << gatewayEthernetAddress.value();
+            }
+
+            if (gatewayIpv4Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ip = "
+                                       << gatewayIpv4Address.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " ]";
+
+            BALL_LOG_OUTPUT_STREAM << " through interface [";
+
+            if (interfaceAdapterName.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterName = "
+                                       << interfaceAdapterName.value();
+            }
+
+            if (interfaceAdapterIndex.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterIndex = "
+                                       << interfaceAdapterIndex.value();
+            }
+
+            if (interfaceEthernetAddress.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ethernet = "
+                                       << interfaceEthernetAddress.value();
+            }
+
+            if (interfaceIpv4Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ip = "
+                                       << interfaceIpv4Address.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " ]";
+        }
+
+        ntsa::Ipv4Route route;
+
+        if (destinationIpv4Address.has_value()) {
+            route.setDestinationIpv4Address(destinationIpv4Address.value());
+        }
+
+        if (destinationIpv4Mask.has_value()) {
+            route.setDestinationIpv4Mask(destinationIpv4Mask.value());
+        }
+
+        if (gatewayAdapterName.has_value()) {
+            route.setGatewayAdapterName(gatewayAdapterName.value());
+        }
+
+        if (gatewayAdapterIndex.has_value()) {
+            route.setGatewayAdapterIndex(gatewayAdapterIndex.value());
+        }
+
+        if (gatewayEthernetAddress.has_value()) {
+            route.setGatewayEthernetAddress(gatewayEthernetAddress.value());
+        }
+
+        if (gatewayIpv4Address.has_value()) {
+            route.setGatewayIpv4Address(gatewayIpv4Address.value());
+        }
+
+        if (interfaceAdapterName.has_value()) {
+            route.setInterfaceAdapterName(interfaceAdapterName.value());
+        }
+
+        if (interfaceAdapterIndex.has_value()) {
+            route.setInterfaceAdapterIndex(interfaceAdapterIndex.value());
+        }
+
+        if (interfaceEthernetAddress.has_value()) {
+            route.setInterfaceEthernetAddress(
+                interfaceEthernetAddress.value());
+        }
+
+        if (interfaceIpv4Address.has_value()) {
+            route.setInterfaceIpv4Address(interfaceIpv4Address.value());
+        }
+
+        if (route.gatewayIpv4Address().isNull()) {
+            const ntsa::Adapter* gatewayAdapter = 0;
+
+            if (gatewayAdapter == 0) {
+                if (route.gatewayAdapterName().has_value()) {
+                    for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                        if (adapterVector[i].name() ==
+                            route.gatewayAdapterName().value())
+                        {
+                            gatewayAdapter = &adapterVector[i];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (gatewayAdapter == 0) {
+                if (route.gatewayAdapterIndex().has_value()) {
+                    for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                        if (adapterVector[i].index() ==
+                            route.gatewayAdapterIndex().value())
+                        {
+                            gatewayAdapter = &adapterVector[i];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (gatewayAdapter == 0) {
+                if (route.gatewayEthernetAddress().has_value()) {
+                    for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                        ntsa::EthernetAddress ethernetAddress;
+                        if (!ethernetAddress.parse(
+                                adapterVector[i].ethernetAddress()))
+                        {
+                            continue;
+                        }
+
+                        if (ethernetAddress ==
+                            route.gatewayEthernetAddress().value())
+                        {
+                            gatewayAdapter = &adapterVector[i];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (gatewayAdapter != 0) {
+                if (route.gatewayAdapterName().has_value()) {
+                    // TODO: compare
+                }
+                else {
+                    route.setGatewayAdapterName(gatewayAdapter->name());
+                }
+
+                if (route.gatewayAdapterIndex().has_value()) {
+                    // TODO: compare
+                }
+                else {
+                    route.setGatewayAdapterIndex(gatewayAdapter->index());
+                }
+
+                if (route.gatewayEthernetAddress().has_value()) {
+                    // TODO: compare
+                }
+                else {
+                    route.setGatewayEthernetAddress(ntsa::EthernetAddress(
+                        gatewayAdapter->ethernetAddress()));
+                }
+            }
+        }
+
+        const ntsa::Adapter* interfaceAdapter = 0;
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceAdapterName().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    if (adapterVector[i].name() ==
+                        route.interfaceAdapterName().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceAdapterIndex().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    if (adapterVector[i].index() ==
+                        route.interfaceAdapterIndex().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceEthernetAddress().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    ntsa::EthernetAddress ethernetAddress;
+                    if (!ethernetAddress.parse(
+                            adapterVector[i].ethernetAddress()))
+                    {
+                        continue;
+                    }
+
+                    if (ethernetAddress ==
+                        route.interfaceEthernetAddress().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceIpv4Address().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    if (adapterVector[i].ipv4Address().has_value() &&
+                        adapterVector[i].ipv4Address().value() ==
+                            route.interfaceIpv4Address().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter != 0) {
+            if (route.interfaceAdapterName().has_value()) {
+                // TODO: compare
+            }
+            else {
+                route.setInterfaceAdapterName(interfaceAdapter->name());
+            }
+
+            if (route.interfaceAdapterIndex().has_value()) {
+                // TODO: compare
+            }
+            else {
+                route.setInterfaceAdapterIndex(interfaceAdapter->index());
+            }
+
+            if (route.interfaceEthernetAddress().has_value()) {
+                // TODO: compare
+            }
+            else {
+                route.setInterfaceEthernetAddress(ntsa::EthernetAddress(
+                    interfaceAdapter->ethernetAddress()));
+            }
+
+            if (route.interfaceIpv4Address().has_value()) {
+                // TODO: compare
+            }
+            else if (interfaceAdapter->ipv4Address().has_value()) {
+                route.setInterfaceIpv4Address(
+                    interfaceAdapter->ipv4Address().value());
+            }
+        }
+
+        result->add(route);
+    }
+
+    return ntsa::Error();
+
+#else
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+
+#endif
 }
 
 bool DeviceUtil::isSupported()

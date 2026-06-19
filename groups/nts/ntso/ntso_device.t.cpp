@@ -55,6 +55,13 @@ class DeviceTest
     BALL_LOG_SET_CLASS_CATEGORY("NTSO.DEVICE.TEST");
 
   public:
+    // Concern: Verify the system Ethernet routing table can be loaded
+    // correctly.
+    static void verifyEthernetRouteTable();
+
+    // Concern: Verify the system IPv4 routing table can be loaded correctly.
+    static void verifyIpv4RouteTable();
+
     // Concern: Verify raw packet transmission and reception from the loopback
     // network interface.
     static void verifyLoopback();
@@ -235,6 +242,155 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
     NTSCFG_TEST_OK(error);
 
     incomingThreadGroup.joinAll();
+}
+
+NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyEthernetRouteTable)
+{
+    ntsa::Error error;
+
+    ntsa::EthernetRouteTable routeTable(NTSCFG_TEST_ALLOCATOR);
+    error = ntso::DeviceUtil::load(&routeTable);
+    NTSCFG_TEST_OK(error);
+
+}
+
+NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyIpv4RouteTable)
+{
+    ntsa::Error error;
+
+    ntsa::Ipv4RouteTable routeTable(NTSCFG_TEST_ALLOCATOR);
+    error = ntso::DeviceUtil::load(&routeTable);
+    NTSCFG_TEST_OK(error);
+
+    bsl::vector<ntsa::Ipv4Route> routeVector = routeTable.entries();
+
+    const bsl::size_t WN = 16;
+    const bsl::size_t WI = 8;
+    const bsl::size_t WE = 21;
+    const bsl::size_t W4 = ntsa::Ipv4Address::MAX_TEXT_LENGTH + 4;
+    const bsl::size_t W6 = ntsa::Ipv6Address::MAX_TEXT_LENGTH + 4;
+
+    bsl::stringstream ss;
+    ss << bsl::left << bsl::setw(W4) << "DstAddr";
+    ss << bsl::left << bsl::setw(W4) << "DstMask";
+
+    ss << bsl::left << bsl::setw(WN) << "GtwName";
+    ss << bsl::left << bsl::setw(WI) << "GtwIdx";
+    ss << bsl::left << bsl::setw(WE) << "GtwEth";
+    ss << bsl::left << bsl::setw(W4) << "GtwIP";
+
+    ss << bsl::left << bsl::setw(WN) << "IfcName";
+    ss << bsl::left << bsl::setw(WI) << "IfcIdx";
+    ss << bsl::left << bsl::setw(WE) << "IfcEth";
+    ss << bsl::left << bsl::setw(W4) << "IfcIP";
+
+    ss << bsl::endl;
+
+    for (bsl::size_t i = 0; i < routeVector.size(); ++i) {
+        const ntsa::Ipv4Route& route = routeVector[i];
+
+        bsl::string dstAddr;
+        bsl::string dstMask;
+
+        bsl::string gtwName;
+        bsl::string gtwIdx;
+        bsl::string gtwEth;
+        bsl::string gtwIp;
+
+        bsl::string ifcName;
+        bsl::string ifcIdx;
+        bsl::string ifcEth;
+        bsl::string ifcIp;
+
+        if (route.destinationIpv4Address().has_value()) {
+            dstAddr = route.destinationIpv4Address().value().text();
+        }
+        else {
+            dstAddr = "-";
+        }
+
+        if (route.destinationIpv4Mask().has_value()) {
+            dstMask = route.destinationIpv4Mask().value().text();
+        }
+        else {
+            dstMask = "-";
+        }
+
+        if (route.gatewayAdapterName().has_value()) {
+            gtwName = route.gatewayAdapterName().value();
+        }
+        else {
+            gtwName = "-";
+        }
+
+        if (route.gatewayAdapterIndex().has_value()) {
+            gtwIdx = bsl::to_string(route.gatewayAdapterIndex().value());
+        }
+        else {
+            gtwIdx = "-";
+        }
+
+        if (route.gatewayEthernetAddress().has_value()) {
+            gtwEth = route.gatewayEthernetAddress().value().text();
+        }
+        else {
+            gtwEth = "-";
+        }
+
+        if (route.gatewayIpv4Address().has_value()) {
+            gtwIp = route.gatewayIpv4Address().value().text();
+        }
+        else {
+            gtwIp = "-";
+        }
+
+        if (route.interfaceAdapterName().has_value()) {
+            ifcName = route.interfaceAdapterName().value();
+        }
+        else {
+            ifcName = "-";
+        }
+
+        if (route.interfaceAdapterIndex().has_value()) {
+            ifcIdx = bsl::to_string(route.interfaceAdapterIndex().value());
+        }
+        else {
+            ifcIdx = "-";
+        }
+
+        if (route.interfaceEthernetAddress().has_value()) {
+            ifcEth = route.interfaceEthernetAddress().value().text();
+        }
+        else {
+            ifcEth = "-";
+        }
+
+        if (route.interfaceIpv4Address().has_value()) {
+            ifcIp = route.interfaceIpv4Address().value().text();
+        }
+        else {
+            ifcIp = "-";
+        }
+
+        ss << bsl::left << bsl::setw(W4) << dstAddr;
+        ss << bsl::left << bsl::setw(W4) << dstMask;
+
+        ss << bsl::left << bsl::setw(WN) << gtwName;
+        ss << bsl::left << bsl::setw(WI) << gtwIdx;
+        ss << bsl::left << bsl::setw(WE) << gtwEth;
+        ss << bsl::left << bsl::setw(W4) << gtwIp;
+
+        ss << bsl::left << bsl::setw(WN) << ifcName;
+        ss << bsl::left << bsl::setw(WI) << ifcIdx;
+        ss << bsl::left << bsl::setw(WE) << ifcEth;
+        ss << bsl::left << bsl::setw(W4) << ifcIp;
+
+        ss << bsl::endl;
+    }
+
+    bsl::string routeReport = ss.str();
+
+    BALL_LOG_INFO << "Routes:\n" << routeReport << BALL_LOG_END;
 }
 
 NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyLoopback)

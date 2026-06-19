@@ -20,10 +20,17 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_deviceconfig.h>
+#include <ntsa_ethernetaddress.h>
+#include <ntsa_ethernetroute.h>
+#include <ntsa_ethernetroutetable.h>
+#include <ntsa_ipv4address.h>
+#include <ntsa_ipv4route.h>
+#include <ntsa_ipv4routetable.h>
 #include <ntscfg_config.h>
 #include <ntscfg_platform.h>
 #include <ntsi_device.h>
 #include <ntsscm_version.h>
+#include <ball_log.h>
 #include <bsl_memory.h>
 
 // #if NTS_BUILD_WITH_RAW_SOCKETS
@@ -46,6 +53,11 @@ namespace ntso {
 /// @ingroup module_ntso
 class DeviceUtil
 {
+    BALL_LOG_SET_CLASS_CATEGORY("NTSO.DEVICE");
+
+    /// Provide a implementation of the device utilities.
+    class Impl;
+
   public:
     /// Enumerate the constants used by this implementation.
     enum Constants {
@@ -113,6 +125,12 @@ class DeviceUtil
     static ntsa::Error validateAdapter(
         const ntsa::Adapter&      adapter,
         const ntsa::DeviceConfig& configuration);
+
+    /// Load the Ethernet route table into the specified 'result'.
+    static ntsa::Error load(ntsa::EthernetRouteTable* result);
+
+    /// Load the IPv4 route table into the specified 'result'.
+    static ntsa::Error load(ntsa::Ipv4RouteTable* result);
 
     /// Return true if the device is supported, otherwise return false.
     static bool isSupported();
