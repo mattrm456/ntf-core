@@ -28,6 +28,7 @@ EthernetRouteTable::EthernetRouteTable(bslma::Allocator* basicAllocator)
 , d_ethernetAddressByIpv6Address(basicAllocator)
 , d_ipv4AddressByEthernetAddress(basicAllocator)
 , d_ipv6AddressByEthernetAddress(basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 

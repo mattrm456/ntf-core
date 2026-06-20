@@ -355,6 +355,11 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyIpv4RouteTable)
 
         if (route.destinationIpv4Address().has_value()) {
             dstAddr = route.destinationIpv4Address().value().text();
+
+            if (route.destinationIpv4MaskLength() > 0) {
+                dstAddr.append(1, '/');
+                dstAddr.append(bsl::to_string(route.destinationIpv4MaskLength()));
+            }
         }
         else {
             dstAddr = "-";

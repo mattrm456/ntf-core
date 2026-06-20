@@ -65,6 +65,7 @@ public:
 Ipv4RouteTable::Ipv4RouteTable(bslma::Allocator* basicAllocator)
 : d_routeCache(basicAllocator)
 , d_routeVector(basicAllocator)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
 }
 
