@@ -25,6 +25,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv4address.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlb_bitutil.h>
 #include <bdlb_nullablevalue.h>
 #include <bslh_hash.h>
 #include <bsls_assert.h>
@@ -66,8 +67,11 @@ class Ipv4Route
     /// specific rule.
     bdlb::NullableValue<ntsa::Ipv4Address> d_destinationIpv4Address;
 
-    /// The number of bits in the subnet mask.
+    /// The subnet mask.
     bdlb::NullableValue<ntsa::Ipv4Address> d_destinationIpv4Mask;
+
+    /// The number of bits in the subnet mask.
+    bsl::uint32_t d_destinationIpv4MaskLength;
 
     /// The gateway adapter name.
     bdlb::NullableValue<bsl::string> d_gatewayAdapterName;
@@ -95,6 +99,12 @@ class Ipv4Route
 
     /// The time-to-live, in seconds.
     bdlb::NullableValue<bsl::uint32_t> d_timeToLive;
+
+    /// The administrative distance (or expense of the routing protocol).
+    bsl::uint64_t d_distance;
+
+    /// The cost of the path.
+    bsl::uint64_t d_cost;
 
     /// The flags.
     bsl::uint32_t d_flags;
@@ -154,6 +164,13 @@ class Ipv4Route
     /// Set the time-to-live, in seconds, to the specified 'value'.
     void setTimeToLive(bsl::size_t value);
 
+    /// Set the adminstrative distance (i.e. expense of the routing protocol)
+    /// to the specified 'value'.
+    void setDistance(bsl::uint64_t value);
+
+    /// Set the cost of the path to the specified 'value'.
+    void setCost(bsl::uint64_t value);
+
     /// Set the flags to the specified 'value'.
     void setFlags(bsl::uint32_t value);
 
@@ -163,6 +180,9 @@ class Ipv4Route
 
     /// Return the destination IPv4 sub-network mask.
     const bdlb::NullableValue<ntsa::Ipv4Address>& destinationIpv4Mask() const;
+
+    /// Return the number of bits in the IPv4 sub-network mask.
+    bsl::uint32_t destinationIpv4MaskLength() const;
 
     /// Return the gateway adapter name.
     const bdlb::NullableValue<bsl::string>& gatewayAdapterName() const;
@@ -192,6 +212,12 @@ class Ipv4Route
 
     /// Return the time-to-live, in seconds.
     const bdlb::NullableValue<bsl::uint32_t>& timeToLive() const;
+
+    /// Return the adminstrative distance (i.e. expense of the routing protocol).
+    bsl::uint64_t distance() const;
+
+    /// Return the cost of the path.
+    bsl::uint64_t cost() const;
 
     /// Return the flags.
     bsl::uint32_t flags() const;
@@ -269,6 +295,7 @@ NTSCFG_INLINE
 void Ipv4Route::setDestinationIpv4Mask(const ntsa::Ipv4Address& value)
 {
     d_destinationIpv4Mask = value;
+    d_destinationIpv4MaskLength = bdlb::BitUtil::numBitsSet(value.value());
 }
 
 NTSCFG_INLINE
@@ -326,6 +353,18 @@ void Ipv4Route::setTimeToLive(bsl::size_t value)
 }
 
 NTSCFG_INLINE
+void Ipv4Route::setDistance(bsl::uint64_t value)
+{
+    d_distance = value;
+}
+
+NTSCFG_INLINE
+void Ipv4Route::setCost(bsl::uint64_t value)
+{
+    d_cost = value;
+}
+
+NTSCFG_INLINE
 void Ipv4Route::setFlags(bsl::uint32_t value)
 {
     d_flags = value;
@@ -343,6 +382,12 @@ const bdlb::NullableValue<ntsa::Ipv4Address>& Ipv4Route::destinationIpv4Mask()
     const
 {
     return d_destinationIpv4Mask;
+}
+
+NTSCFG_INLINE
+bsl::uint32_t Ipv4Route::destinationIpv4MaskLength() const
+{
+    return d_destinationIpv4MaskLength;
 }
 
 NTSCFG_INLINE
@@ -403,6 +448,18 @@ NTSCFG_INLINE
 const bdlb::NullableValue<bsl::uint32_t>& Ipv4Route::timeToLive() const
 {
     return d_timeToLive;
+}
+
+NTSCFG_INLINE
+bsl::uint64_t Ipv4Route::distance() const
+{
+    return d_distance;
+}
+
+NTSCFG_INLINE
+bsl::uint64_t Ipv4Route::cost() const
+{
+    return d_cost;
 }
 
 NTSCFG_INLINE

@@ -248,21 +248,72 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyEthernetRouteTable)
 {
     ntsa::Error error;
 
+    bsls::ReviewFailureHandlerGuard reviewGuard(&bsls::Review::failByAbort);
+
     ntsa::EthernetRouteTable routeTable(NTSCFG_TEST_ALLOCATOR);
     error = ntso::DeviceUtil::load(&routeTable);
     NTSCFG_TEST_OK(error);
 
+    bsl::vector<ntsa::EthernetRoute> routeVector;
+    routeTable.load(&routeVector);
+
+    const bsl::size_t WE = 21;
+    const bsl::size_t W4 = ntsa::Ipv4Address::MAX_TEXT_LENGTH + 4;
+    const bsl::size_t W6 = ntsa::Ipv6Address::MAX_TEXT_LENGTH + 4;
+
+    bsl::stringstream ss;
+    ss << bsl::left << bsl::setw(WE) << "Ethernet";
+    ss << bsl::left << bsl::setw(W4) << "IPv4";
+    ss << bsl::left << bsl::setw(W6) << "IPv6";
+    ss << bsl::endl;
+
+    for (bsl::size_t i = 0; i < routeVector.size(); ++i) {
+        const ntsa::EthernetRoute& route = routeVector[i];
+
+        bsl::string ethernetAddress;
+        bsl::string ipv4Address;
+        bsl::string ipv6Address;
+
+        ethernetAddress = route.ethernetAddress().text();
+
+        if (route.ipv4Address().has_value()) {
+            ipv4Address = route.ipv4Address().value().text();
+        }
+        else {
+            ipv4Address = "-";
+        }
+
+        if (route.ipv6Address().has_value()) {
+            ipv6Address = route.ipv6Address().value().text();
+        }
+        else {
+            ipv6Address = "-";
+        }
+
+        ss << bsl::left << bsl::setw(WE) << ethernetAddress;
+        ss << bsl::left << bsl::setw(W4) << ipv4Address;
+        ss << bsl::left << bsl::setw(W6) << ipv6Address;
+
+        ss << bsl::endl;
+    }
+
+    bsl::string routeReport = ss.str();
+
+    BALL_LOG_INFO << "Routes:\n" << routeReport << BALL_LOG_END;
 }
 
 NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyIpv4RouteTable)
 {
     ntsa::Error error;
 
+    bsls::ReviewFailureHandlerGuard reviewGuard(&bsls::Review::failByAbort);
+
     ntsa::Ipv4RouteTable routeTable(NTSCFG_TEST_ALLOCATOR);
     error = ntso::DeviceUtil::load(&routeTable);
     NTSCFG_TEST_OK(error);
 
-    bsl::vector<ntsa::Ipv4Route> routeVector = routeTable.entries();
+    bsl::vector<ntsa::Ipv4Route> routeVector;
+    routeTable.load(&routeVector);
 
     const bsl::size_t WN = 16;
     const bsl::size_t WI = 8;

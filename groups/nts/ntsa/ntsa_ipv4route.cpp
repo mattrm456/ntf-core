@@ -26,6 +26,7 @@ namespace ntsa {
 Ipv4Route::Ipv4Route(bslma::Allocator* basicAllocator)
 : d_destinationIpv4Address()
 , d_destinationIpv4Mask()
+, d_destinationIpv4MaskLength(0)
 , d_gatewayAdapterName(basicAllocator)
 , d_gatewayAdapterIndex()
 , d_gatewayEthernetAddress()
@@ -35,6 +36,8 @@ Ipv4Route::Ipv4Route(bslma::Allocator* basicAllocator)
 , d_interfaceEthernetAddress()
 , d_interfaceIpv4Address()
 , d_timeToLive()
+, d_distance(0)
+, d_cost(0)
 , d_flags(0)
 {
 }
@@ -43,6 +46,7 @@ Ipv4Route::Ipv4Route(const Ipv4Route&  original,
                      bslma::Allocator* basicAllocator)
 : d_destinationIpv4Address(original.d_destinationIpv4Address)
 , d_destinationIpv4Mask(original.d_destinationIpv4Mask)
+, d_destinationIpv4MaskLength(original.d_destinationIpv4MaskLength)
 , d_gatewayAdapterName(original.d_gatewayAdapterName, basicAllocator)
 , d_gatewayAdapterIndex(original.d_gatewayAdapterIndex)
 , d_gatewayEthernetAddress(original.d_gatewayEthernetAddress)
@@ -52,6 +56,8 @@ Ipv4Route::Ipv4Route(const Ipv4Route&  original,
 , d_interfaceEthernetAddress(original.d_interfaceEthernetAddress)
 , d_interfaceIpv4Address(original.d_interfaceIpv4Address)
 , d_timeToLive(original.d_timeToLive)
+, d_distance(original.d_distance)
+, d_cost(original.d_cost)
 , d_flags(original.d_flags)
 {
 }
@@ -64,6 +70,7 @@ Ipv4Route& Ipv4Route::operator=(const Ipv4Route& other)
 {
     d_destinationIpv4Address   = other.d_destinationIpv4Address;
     d_destinationIpv4Mask      = other.d_destinationIpv4Mask;
+    d_destinationIpv4MaskLength = other.d_destinationIpv4MaskLength;
     d_gatewayAdapterName       = other.d_gatewayAdapterName;
     d_gatewayAdapterIndex      = other.d_gatewayAdapterIndex;
     d_gatewayEthernetAddress   = other.d_gatewayEthernetAddress;
@@ -73,6 +80,8 @@ Ipv4Route& Ipv4Route::operator=(const Ipv4Route& other)
     d_interfaceEthernetAddress = other.d_interfaceEthernetAddress;
     d_interfaceIpv4Address     = other.d_interfaceIpv4Address;
     d_timeToLive               = other.d_timeToLive;
+    d_distance                 = other.d_distance;
+    d_cost                     = other.d_cost;
     d_flags                    = other.d_flags;
 
     return *this;
@@ -82,6 +91,7 @@ void Ipv4Route::reset()
 {
     d_destinationIpv4Address.reset();
     d_destinationIpv4Mask.reset();
+    d_destinationIpv4MaskLength = 0;
     d_gatewayAdapterName.reset();
     d_gatewayAdapterIndex.reset();
     d_gatewayEthernetAddress.reset();
@@ -91,6 +101,8 @@ void Ipv4Route::reset()
     d_interfaceEthernetAddress.reset();
     d_interfaceIpv4Address.reset();
     d_timeToLive.reset();
+    d_distance = 0;
+    d_cost = 0;
     d_flags = 0;
 }
 
@@ -98,6 +110,7 @@ bool Ipv4Route::equals(const Ipv4Route& other) const
 {
     return d_destinationIpv4Address == other.d_destinationIpv4Address &&
            d_destinationIpv4Mask == other.d_destinationIpv4Mask &&
+           d_destinationIpv4MaskLength == other.d_destinationIpv4MaskLength &&
            d_gatewayAdapterName == other.d_gatewayAdapterName &&
            d_gatewayAdapterIndex == other.d_gatewayAdapterIndex &&
            d_gatewayEthernetAddress == other.d_gatewayEthernetAddress &&
@@ -106,7 +119,10 @@ bool Ipv4Route::equals(const Ipv4Route& other) const
            d_interfaceAdapterIndex == other.d_interfaceAdapterIndex &&
            d_interfaceEthernetAddress == other.d_interfaceEthernetAddress &&
            d_interfaceIpv4Address == other.d_interfaceIpv4Address &&
-           d_timeToLive == other.d_timeToLive && d_flags == other.d_flags;
+           d_timeToLive == other.d_timeToLive &&
+           d_distance == other.d_distance &&
+           d_cost == other.d_cost &&
+           d_flags == other.d_flags;
 }
 
 bool Ipv4Route::less(const Ipv4Route& other) const
@@ -124,6 +140,14 @@ bool Ipv4Route::less(const Ipv4Route& other) const
     }
 
     if (other.d_destinationIpv4Mask < d_destinationIpv4Mask) {
+        return false;
+    }
+
+    if (d_destinationIpv4MaskLength < other.d_destinationIpv4MaskLength) {
+        return true;
+    }
+
+    if (other.d_destinationIpv4MaskLength < d_destinationIpv4MaskLength) {
         return false;
     }
 
@@ -199,6 +223,22 @@ bool Ipv4Route::less(const Ipv4Route& other) const
         return false;
     }
 
+    if (d_distance < other.d_distance) {
+        return true;
+    }
+
+    if (other.d_distance < d_distance) {
+        return false;
+    }
+
+    if (d_cost < other.d_cost) {
+        return true;
+    }
+
+    if (other.d_cost < d_cost) {
+        return false;
+    }
+
     return d_flags < other.d_flags;
 }
 
@@ -264,6 +304,14 @@ bsl::ostream& Ipv4Route::print(bsl::ostream& stream,
 
     if (d_timeToLive.has_value()) {
         printer.printAttribute("timeToLive", d_timeToLive.value());
+    }
+
+    if (d_distance != 0) {
+        printer.printAttribute("distance", d_distance);
+    }
+
+    if (d_cost != 0) {
+        printer.printAttribute("cost", d_cost);
     }
 
     if (d_flags != 0) {

@@ -27,6 +27,7 @@ BSLS_IDENT("$Id: $")
 #include <bslh_hash.h>
 #include <bsls_assert.h>
 #include <bsl_iosfwd.h>
+#include <bsl_unordered_map.h>
 #include <bsl_vector.h>
 
 namespace BloombergLP {
@@ -43,11 +44,30 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class Ipv4RouteTable
 {
+    /// Defines a type alias for a map of routes by IPv4 address.
+    typedef bsl::unordered_map<ntsa::Ipv4Address,
+                               bsl::shared_ptr<ntsa::Ipv4Route> >
+        RouteCache;
+
+    /// Defines a type alias for a vector of routes.
+    typedef bsl::vector<bsl::shared_ptr<ntsa::Ipv4Route> > RouteVector;
+
+    /// Predicate to sort routes by longest prefix, then by distance, then by
+    /// cost.
+    class Sorter;
+
+    /// The route cache.
+    RouteCache d_routeCache;
+
     /// The route entries.
-    bsl::vector<ntsa::Ipv4Route> d_entries;
+    RouteVector d_routeVector;
 
     /// The memory allocator.
     bslma::Allocator* d_allocator_p;
+
+  private:
+    Ipv4RouteTable(const Ipv4RouteTable&);
+    Ipv4RouteTable& operator=(const Ipv4RouteTable&);
 
   public:
     /// Create a new IPv4 route table having a default value. Optionally
@@ -55,19 +75,8 @@ class Ipv4RouteTable
     /// is 0, the currently installed default allocator is used.
     explicit Ipv4RouteTable(bslma::Allocator* basicAllocator = 0);
 
-    /// Create a new IPv4 route table having the same value as the specified
-    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
-    /// memory. If 'basicAllocator' is 0, the currently installed default
-    /// allocator is used.
-    Ipv4RouteTable(const Ipv4RouteTable&   original,
-               bslma::Allocator* basicAllocator = 0);
-
     /// Destroy this object.
     ~Ipv4RouteTable();
-
-    /// Assign the value of the specified 'other' object to this object.
-    /// Return a reference to this modifiable object.
-    Ipv4RouteTable& operator=(const Ipv4RouteTable& other);
 
     /// Reset the value of this object to its value upon default construction.
     void reset();
@@ -75,21 +84,17 @@ class Ipv4RouteTable
     /// Add the specified 'route' to the route table.
     void add(const ntsa::Ipv4Route& route);
 
-    /// Return the route entries.
-    const bsl::vector<ntsa::Ipv4Route>& entries() const;
+    /// Load into the specified 'sourceEthernetAddress' and
+    /// 'destinationEthernetAddress' the source and destination Ethernet
+    /// address, respectively, for the route to the specified
+    /// 'destinationIpv4Address'. Return true if such a route exists, and false
+    /// otherwise.
+    bool find(ntsa::EthernetAddress*   sourceEthernetAddress,
+              ntsa::EthernetAddress*   destinationEthernetAddress,
+              const ntsa::Ipv4Address& destinationIpv4Address) const;
 
-    /// Return true if this object has the same value as the specified 'other'
-    /// object, otherwise return false.
-    bool equals(const Ipv4RouteTable& other) const;
-
-    /// Return true if the value of this object is less than the value of the
-    /// specified 'other' object, otherwise return false.
-    bool less(const Ipv4RouteTable& other) const;
-
-    /// Contribute the values of the salient attributes of this object to the
-    /// specified hash 'algorithm'.
-    template <typename HASH_ALGORITHM>
-    void hash(HASH_ALGORITHM& algorithm) const;
+    /// Load into the specified 'result' each route in the table.
+    void load(bsl::vector<ntsa::Ipv4Route>* result) const;
 
     /// Format this object to the specified output 'stream' at the optionally
     /// specified indentation 'level' and return a reference to the modifiable
@@ -116,67 +121,10 @@ class Ipv4RouteTable
 /// @related ntsa::Ipv4RouteTable
 bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4RouteTable& object);
 
-/// Return true if the specified 'lhs' has the same value as the specified
-/// 'rhs', otherwise return false.
-///
-/// @related ntsa::Ipv4RouteTable
-bool operator==(const Ipv4RouteTable& lhs, const Ipv4RouteTable& rhs);
-
-/// Return true if the specified 'lhs' does not have the same value as the
-/// specified 'rhs', otherwise return false.
-///
-/// @related ntsa::Ipv4RouteTable
-bool operator!=(const Ipv4RouteTable& lhs, const Ipv4RouteTable& rhs);
-
-/// Return true if the specified 'lhs' is "less than" the specified 'rhs',
-/// otherwise return false.
-///
-/// @related ntsa::Ipv4RouteTable
-bool operator<(const Ipv4RouteTable& lhs, const Ipv4RouteTable& rhs);
-
-/// Contribute the values of the salient attributes of the specified 'value'
-/// to the specified hash 'algorithm'.
-///
-/// @related ntsa::Ipv4RouteTable
-template <typename HASH_ALGORITHM>
-void hashAppend(HASH_ALGORITHM& algorithm, const Ipv4RouteTable& value);
-
-template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void Ipv4RouteTable::hash(HASH_ALGORITHM& algorithm) const
-{
-    using bslh::hashAppend;
-    hashAppend(algorithm, d_entries);
-}
-
 NTSCFG_INLINE
 bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4RouteTable& object)
 {
     return object.print(stream, 0, -1);
-}
-
-NTSCFG_INLINE
-bool operator==(const Ipv4RouteTable& lhs, const Ipv4RouteTable& rhs)
-{
-    return lhs.equals(rhs);
-}
-
-NTSCFG_INLINE
-bool operator!=(const Ipv4RouteTable& lhs, const Ipv4RouteTable& rhs)
-{
-    return !operator==(lhs, rhs);
-}
-
-NTSCFG_INLINE
-bool operator<(const Ipv4RouteTable& lhs, const Ipv4RouteTable& rhs)
-{
-    return lhs.less(rhs);
-}
-
-template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&   algorithm,
-                              const Ipv4RouteTable& value)
-{
-    value.hash(algorithm);
 }
 
 }  // close package namespace

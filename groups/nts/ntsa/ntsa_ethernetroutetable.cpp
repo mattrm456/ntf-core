@@ -175,7 +175,7 @@ void EthernetRouteTable::load(bsl::vector<ntsa::EthernetRoute>* result) const
                 route.setIpv4Address(it->second.first.value());
             }
 
-            if (it->second.first.has_value()) {
+            if (it->second.second.has_value()) {
                 route.setIpv6Address(it->second.second.value());
             }
 

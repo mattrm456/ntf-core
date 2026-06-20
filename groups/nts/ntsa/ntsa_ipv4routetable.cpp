@@ -19,18 +19,52 @@
 BSLS_IDENT_RCSID(ntsa_ipv4routetable_cpp, "$Id$ $CSID$")
 
 #include <bslim_printer.h>
+#include <bsl_algorithm.h>
+#include <bsl_map.h>
 
 namespace BloombergLP {
 namespace ntsa {
 
-Ipv4RouteTable::Ipv4RouteTable(bslma::Allocator* basicAllocator)
-: d_entries(basicAllocator)
-{
-}
+class Ipv4RouteTable::Sorter {
+public:
+    bool operator()(const bsl::shared_ptr<ntsa::Ipv4Route>& lhs,
+                    const bsl::shared_ptr<ntsa::Ipv4Route>& rhs) const
+    {
+        const bsl::uint32_t lhsMaskLength =
+            lhs->destinationIpv4MaskLength();
 
-Ipv4RouteTable::Ipv4RouteTable(const Ipv4RouteTable& original,
-                     bslma::Allocator* basicAllocator)
-: d_entries(original.d_entries, basicAllocator)
+        const bsl::uint32_t rhsMaskLength =
+            rhs->destinationIpv4MaskLength();
+
+        if (rhsMaskLength < lhsMaskLength) {
+            return true;
+        }
+
+        if (lhsMaskLength < rhsMaskLength) {
+            return false;
+        }
+
+        const bsl::uint64_t lhsDistance = lhs->distance();
+        const bsl::uint64_t rhsDistance = rhs->distance();
+
+        if (lhsDistance < rhsDistance) {
+            return true;
+        }
+
+        if (rhsDistance < lhsDistance) {
+            return false;
+        }
+
+        const bsl::uint64_t lhsCost = lhs->cost();
+        const bsl::uint64_t rhsCost = rhs->cost();
+
+        return lhsCost < rhsCost;
+    }
+};
+
+Ipv4RouteTable::Ipv4RouteTable(bslma::Allocator* basicAllocator)
+: d_routeCache(basicAllocator)
+, d_routeVector(basicAllocator)
 {
 }
 
@@ -38,46 +72,113 @@ Ipv4RouteTable::~Ipv4RouteTable()
 {
 }
 
-Ipv4RouteTable& Ipv4RouteTable::operator=(const Ipv4RouteTable& other)
-{
-    d_entries = other.d_entries;
-
-    return *this;
-}
-
 void Ipv4RouteTable::reset()
 {
-    d_entries.clear();
+    d_routeVector.clear();
 }
 
 void Ipv4RouteTable::add(const ntsa::Ipv4Route& route)
 {
-    d_entries.push_back(route);
+    bsl::shared_ptr<ntsa::Ipv4Route> sharedRoute;
+    sharedRoute.createInplace(d_allocator_p, route, d_allocator_p);
+
+    d_routeVector.push_back(sharedRoute);
 }
 
-const bsl::vector<ntsa::Ipv4Route>& Ipv4RouteTable::entries() const
+bool Ipv4RouteTable::find(
+    ntsa::EthernetAddress*   sourceEthernetAddress,
+    ntsa::EthernetAddress*   destinationEthernetAddress,
+    const ntsa::Ipv4Address& destinationIpv4Address) const
 {
-    return d_entries;
+    if (d_routeCache.empty()) {
+        RouteCache::const_iterator it =
+            d_routeCache.find(destinationIpv4Address);
+        if (it != d_routeCache.end()) {
+            const bsl::shared_ptr<ntsa::Ipv4Route>& route = it->second;
+
+            if (route->interfaceEthernetAddress().has_value() &&
+                route->gatewayEthernetAddress().has_value())
+            {
+                *sourceEthernetAddress =
+                    route->interfaceEthernetAddress().value();
+                *destinationEthernetAddress =
+                    route->gatewayEthernetAddress().value();
+                return true;
+            }
+        }
+    }
+
+    RouteVector candidateRouteVector;
+
+    for (bsl::size_t i = 0; i < d_routeVector.size(); ++i) {
+        const bsl::shared_ptr<ntsa::Ipv4Route>& route = d_routeVector[i];
+
+        if (route->destinationIpv4Address().isNull()) {
+            continue;
+        }
+
+        ntsa::Ipv4Address effectiveIpv4Address;
+        if (route->destinationIpv4Mask().isNull()) {
+            effectiveIpv4Address = destinationIpv4Address;
+        }
+        else {
+            bsl::uint32_t value = destinationIpv4Address.value();
+            bsl::uint32_t mask  = route->destinationIpv4Mask().value().value();
+
+            effectiveIpv4Address = ntsa::Ipv4Address(value & mask);
+        }
+
+        if (effectiveIpv4Address == route->destinationIpv4Address().value()) {
+            candidateRouteVector.push_back(route);
+        }
+    }
+
+    if (candidateRouteVector.empty()) {
+        return false;
+    }
+
+    bsl::sort(candidateRouteVector.begin(),
+              candidateRouteVector.end(),
+              Sorter());
+
+    bsl::shared_ptr<ntsa::Ipv4Route> route = candidateRouteVector.front();
+
+    if (route->interfaceEthernetAddress().isNull()) {
+        return false;
+    }
+
+    if (route->gatewayEthernetAddress().isNull()) {
+        return false;
+    }
+
+    *sourceEthernetAddress      = route->interfaceEthernetAddress().value();
+    *destinationEthernetAddress = route->gatewayEthernetAddress().value();
+
+    const_cast<Ipv4RouteTable*>(this)->d_routeCache.emplace(
+        destinationIpv4Address,
+        route);
+
+    return true;
 }
 
-bool Ipv4RouteTable::equals(const Ipv4RouteTable& other) const
+void Ipv4RouteTable::load(bsl::vector<ntsa::Ipv4Route>* result) const
 {
-    return d_entries == other.d_entries;
-}
+    result->clear();
+    result->reserve(d_routeVector.size());
 
-bool Ipv4RouteTable::less(const Ipv4RouteTable& other) const
-{
-    return d_entries < other.d_entries;
+    for (bsl::size_t i = 0; i < d_routeVector.size(); ++i) {
+        result->push_back(*d_routeVector[i]);
+    }
 }
 
 bsl::ostream& Ipv4RouteTable::print(bsl::ostream& stream,
-                                int           level,
-                                int           spacesPerLevel) const
+                                    int           level,
+                                    int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
 
-    printer.printAttribute("entries", d_entries);
+    printer.printAttribute("entries", d_routeVector);
 
     printer.end();
 
