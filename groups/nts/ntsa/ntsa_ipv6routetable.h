@@ -13,14 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INCLUDED_NTSA_IPV4ROUTETABLE
-#define INCLUDED_NTSA_IPV4ROUTETABLE
+#ifndef INCLUDED_NTSA_IPV6ROUTETABLE
+#define INCLUDED_NTSA_IPV6ROUTETABLE
 
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_error.h>
-#include <ntsa_ipv4route.h>
+#include <ntsa_ipv6route.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_nullablevalue.h>
@@ -33,7 +33,7 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsa {
 
-/// Provide an Internet Protocol version 4 (IPv4) route table.
+/// Provide an Internet Protocol version 4 (IPv6) route table.
 ///
 /// @details
 /// TODO
@@ -42,15 +42,15 @@ namespace ntsa {
 /// This class is not thread safe.
 ///
 /// @ingroup module_ntsa_protocol
-class Ipv4RouteTable
+class Ipv6RouteTable
 {
-    /// Defines a type alias for a map of routes by IPv4 address.
-    typedef bsl::unordered_map<ntsa::Ipv4Address,
-                               bsl::shared_ptr<ntsa::Ipv4Route> >
+    /// Defines a type alias for a map of routes by IPv6 address.
+    typedef bsl::unordered_map<ntsa::Ipv6Address,
+                               bsl::shared_ptr<ntsa::Ipv6Route> >
         RouteCache;
 
     /// Defines a type alias for a vector of routes.
-    typedef bsl::vector<bsl::shared_ptr<ntsa::Ipv4Route> > RouteVector;
+    typedef bsl::vector<bsl::shared_ptr<ntsa::Ipv6Route> > RouteVector;
 
     /// Predicate to sort routes by longest prefix, then by distance, then by
     /// cost.
@@ -66,37 +66,37 @@ class Ipv4RouteTable
     bslma::Allocator* d_allocator_p;
 
   private:
-    Ipv4RouteTable(const Ipv4RouteTable&);
-    Ipv4RouteTable& operator=(const Ipv4RouteTable&);
+    Ipv6RouteTable(const Ipv6RouteTable&);
+    Ipv6RouteTable& operator=(const Ipv6RouteTable&);
 
   public:
-    /// Create a new IPv4 route table having a default value. Optionally
+    /// Create a new IPv6 route table having a default value. Optionally
     /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
     /// is 0, the currently installed default allocator is used.
-    explicit Ipv4RouteTable(bslma::Allocator* basicAllocator = 0);
+    explicit Ipv6RouteTable(bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
-    ~Ipv4RouteTable();
+    ~Ipv6RouteTable();
 
     /// Reset the value of this object to its value upon default construction.
     void reset();
 
     /// Add the specified 'route' to the route table.
-    void add(const ntsa::Ipv4Route& route);
+    void add(const ntsa::Ipv6Route& route);
 
     /// Load into the specified 'sourceEthernetAddress' and
     /// 'destinationEthernetAddress' the source and destination Ethernet
     /// address, respectively, and load into the specifed 'sourceIpvAddress'
-    /// the source IPv4 address for the route to the specified
-    /// 'destinationIpv4Address'. Return true if such a route exists, and false
+    /// the source IPv6 address for the route to the specified
+    /// 'destinationIpv6Address'. Return true if such a route exists, and false
     /// otherwise.
     bool find(ntsa::EthernetAddress*   sourceEthernetAddress,
               ntsa::EthernetAddress*   destinationEthernetAddress,
-              ntsa::Ipv4Address*       sourceIpv4Address,
-              const ntsa::Ipv4Address& destinationIpv4Address) const;
+              ntsa::Ipv6Address*       sourceIpv6Address,
+              const ntsa::Ipv6Address& destinationIpv6Address) const;
 
     /// Load into the specified 'result' each route in the table.
-    void load(bsl::vector<ntsa::Ipv4Route>* result) const;
+    void load(bsl::vector<ntsa::Ipv6Route>* result) const;
 
     /// Format this object to the specified output 'stream' at the optionally
     /// specified indentation 'level' and return a reference to the modifiable
@@ -114,17 +114,17 @@ class Ipv4RouteTable
 
     /// This type accepts an allocator argument to its constructors and may
     /// dynamically allocate memory during its operation.
-    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(Ipv4RouteTable);
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(Ipv6RouteTable);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
 /// into the specified 'stream'. Return a reference to the modifiable 'stream'.
 ///
-/// @related ntsa::Ipv4RouteTable
-bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4RouteTable& object);
+/// @related ntsa::Ipv6RouteTable
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv6RouteTable& object);
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4RouteTable& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv6RouteTable& object)
 {
     return object.print(stream, 0, -1);
 }

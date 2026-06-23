@@ -35,6 +35,7 @@ BSLS_IDENT("$Id: $")
 #include <bsls_assert.h>
 #include <bsls_objectbuffer.h>
 #include <bsl_iosfwd.h>
+#include <bsl_memory.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -349,6 +350,13 @@ class Packet
 ///
 /// @related ntsa::Packet
 bsl::ostream& operator<<(bsl::ostream& stream, const Packet& object);
+
+/// Write the specified 'object' to the specified 'stream'. Return a modifiable
+/// reference to the 'stream'.
+///
+/// @related ntsa::Packet
+bsl::ostream& operator<<(bsl::ostream&                  stream,
+                         const bsl::shared_ptr<Packet>& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.

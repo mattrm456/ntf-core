@@ -13,22 +13,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsi_device.h>
+#include <ntsa_packetfactory.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsi_device_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_packetfactory_cpp, "$Id$ $CSID$")
 
 namespace BloombergLP {
-namespace ntsi {
+namespace ntsa {
 
-Device::~Device()
-{
-}
-
-Network::~Network()
+PacketFactory::~PacketFactory()
 {
 }
 
 }  // close package namespace
 }  // close enterprise namespace
-

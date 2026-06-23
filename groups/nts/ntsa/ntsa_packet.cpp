@@ -806,6 +806,18 @@ bsl::ostream& operator<<(bsl::ostream& stream, const Packet& object)
     return object.print(stream, 0, -1);
 }
 
+bsl::ostream& operator<<(bsl::ostream&                  stream,
+                         const bsl::shared_ptr<Packet>& object)
+{
+    if (object) {
+        return object->print(stream, 0, -1);
+    }
+    else {
+        stream << "NULL";
+        return stream;
+    }
+}
+
 bool operator==(const Packet& lhs, const Packet& rhs)
 {
     return lhs.equals(rhs);

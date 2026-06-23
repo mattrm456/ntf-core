@@ -313,6 +313,10 @@ class Bpf : public ntso::DeviceDriver
     /// The memory allocator.
     bslma::Allocator* d_allocator_p;
 
+  private:
+    Bpf(const Bpf&) BSLS_KEYWORD_DELETED;
+    Bpf& operator=(const Bpf&) BSLS_KEYWORD_DELETED;
+
   public:
     /// Create a new device driver having the specified 'configuration'.
     /// Optionally specify a 'basicAllocator' used to supply memory. If
@@ -3149,6 +3153,15 @@ bsl::string DeviceUtil::Impl::describesRtaxFlags(const rt_msghdr* rtm)
 
 ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable* result)
 {
+    bsl::vector<ntsa::Adapter> adapterVector;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
+
+    return DeviceUtil::load(result, adapterVector);
+}
+
+ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable*         result,
+                             const bsl::vector<ntsa::Adapter>& adapterVector)
+{
 #if defined(BSLS_PLATFORM_OS_DARWIN)
 
     ntsa::Error error;
@@ -3157,9 +3170,6 @@ ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable* result)
     bslma::Allocator* allocator = bslma::Default::defaultAllocator();
 
     result->reset();
-
-    bsl::vector<ntsa::Adapter> adapterVector;
-    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
 
     int mib[6];
 
@@ -3232,8 +3242,8 @@ ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable* result)
         bdlb::NullableValue<ntsa::EthernetAddress> interfaceEthernetAddress;
         bdlb::NullableValue<ntsa::IpAddress>       interfaceIpAddress;
 
-        error = Impl::decodeDestination(&destinationIpAddress,
-                                        rti_info[RTAX_DST]);
+        error =
+            Impl::decodeDestination(&destinationIpAddress, rti_info[RTAX_DST]);
         if (error) {
             BALL_LOG_WARN << "Failed to decode RTAX_DST: " << error
                           << BALL_LOG_END;
@@ -3294,8 +3304,7 @@ ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable* result)
             }
 
             if (gatewayIpAddress.has_value()) {
-                BALL_LOG_OUTPUT_STREAM << " ip = "
-                                       << gatewayIpAddress.value();
+                BALL_LOG_OUTPUT_STREAM << " ip = " << gatewayIpAddress.value();
             }
 
             BALL_LOG_OUTPUT_STREAM << " ]";
@@ -3339,7 +3348,6 @@ ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable* result)
             continue;
         }
 
-
         if (gatewayEthernetAddress.has_value()) {
             route.setEthernetAddress(gatewayEthernetAddress.value());
         }
@@ -3361,6 +3369,20 @@ ntsa::Error DeviceUtil::load(ntsa::EthernetRouteTable* result)
 
 ntsa::Error DeviceUtil::load(ntsa::Ipv4RouteTable* result)
 {
+    bsl::vector<ntsa::Adapter> adapterVector;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
+
+    ntsa::EthernetRouteTable ethernetRouteTable;
+    DeviceUtil::load(&ethernetRouteTable);
+
+    return DeviceUtil::load(result, adapterVector, ethernetRouteTable);
+}
+
+ntsa::Error DeviceUtil::load(
+    ntsa::Ipv4RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
+{
 #if defined(BSLS_PLATFORM_OS_DARWIN)
 
     ntsa::Error error;
@@ -3369,12 +3391,6 @@ ntsa::Error DeviceUtil::load(ntsa::Ipv4RouteTable* result)
     bslma::Allocator* allocator = bslma::Default::defaultAllocator();
 
     result->reset();
-
-    bsl::vector<ntsa::Adapter> adapterVector;
-    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
-
-    ntsa::EthernetRouteTable ethernetRouteTable;
-    DeviceUtil::load(&ethernetRouteTable);
 
     int mib[6];
 
@@ -3770,7 +3786,448 @@ ntsa::Error DeviceUtil::load(ntsa::Ipv4RouteTable* result)
                 else {
                     ntsa::EthernetAddress ethernetAddress;
                     if (ethernetRouteTable.find(
-                        &ethernetAddress, route.gatewayIpv4Address().value()))
+                            &ethernetAddress,
+                            route.gatewayIpv4Address().value()))
+                    {
+                        route.setGatewayEthernetAddress(ethernetAddress);
+                    }
+                }
+            }
+        }
+
+        result->add(route);
+    }
+
+    return ntsa::Error();
+
+#else
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+
+#endif
+}
+
+ntsa::Error DeviceUtil::load(ntsa::Ipv6RouteTable* result)
+{
+    bsl::vector<ntsa::Adapter> adapterVector;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
+
+    ntsa::EthernetRouteTable ethernetRouteTable;
+    DeviceUtil::load(&ethernetRouteTable);
+
+    return DeviceUtil::load(result, adapterVector, ethernetRouteTable);
+}
+
+ntsa::Error DeviceUtil::load(
+    ntsa::Ipv6RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
+{
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
+    ntsa::Error error;
+    int         rc;
+
+    bslma::Allocator* allocator = bslma::Default::defaultAllocator();
+
+    result->reset();
+
+    int mib[6];
+
+    mib[0] = CTL_NET;
+    mib[1] = PF_ROUTE;
+    mib[2] = 0;
+    mib[3] = AF_INET6;
+    mib[4] = NET_RT_DUMP;
+    mib[5] = 0;
+
+    size_t bufferLength;
+    rc = ::sysctl(mib, 6, 0, &bufferLength, 0, 0);
+
+    if (rc < 0) {
+        error = ntsa::Error::last();
+        BSLS_LOG_ERROR("Failed to get routing table size: %s",
+                       error.text().c_str());
+        return error;
+    }
+
+    bsl::uint8_t* buffer = reinterpret_cast<bsl::uint8_t*>(
+        allocator->allocate(static_cast<bsl::size_t>(bufferLength)));
+
+    const bsl::uint8_t* bufferEnd = buffer + bufferLength;
+
+    bslma::DeallocatorGuard<bslma::Allocator> bufferGuard(buffer, allocator);
+
+    rc = ::sysctl(mib, 6, buffer, &bufferLength, 0, 0);
+    if (rc < 0) {
+        error = ntsa::Error::last();
+        BSLS_LOG_ERROR("Failed to get routing table size: %s",
+                       error.text().c_str());
+        return error;
+    }
+
+    const bsl::uint8_t* current = buffer;
+
+    while (current < bufferEnd) {
+        const rt_msghdr* rtm = 0;
+        error = Impl::decodeRouteHeader(&rtm, &current, bufferEnd);
+        if (error) {
+            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                break;
+            }
+            else {
+                return error;
+            }
+        }
+
+        BALL_LOG_DEBUG << "Flags = " << Impl::describesRtaxFlags(rtm)
+                       << BALL_LOG_END;
+
+        const sockaddr* rti_info[RTAX_MAX];
+        NTSCFG_MEMORY_ZERO(rti_info, sizeof rti_info);
+
+        error = Impl::decodeRoutePayload(rti_info, rtm);
+        if (error) {
+            return error;
+        }
+
+        bdlb::NullableValue<ntsa::Ipv6Address>     destinationIpv6Address;
+        bdlb::NullableValue<ntsa::Ipv6Address>     destinationIpv6Mask;
+        bdlb::NullableValue<bsl::string>           gatewayAdapterName;
+        bdlb::NullableValue<bsl::uint32_t>         gatewayAdapterIndex;
+        bdlb::NullableValue<ntsa::EthernetAddress> gatewayEthernetAddress;
+        bdlb::NullableValue<ntsa::Ipv6Address>     gatewayIpv6Address;
+        bdlb::NullableValue<bsl::string>           interfaceAdapterName;
+        bdlb::NullableValue<bsl::uint32_t>         interfaceAdapterIndex;
+        bdlb::NullableValue<ntsa::EthernetAddress> interfaceEthernetAddress;
+        bdlb::NullableValue<ntsa::Ipv6Address>     interfaceIpv6Address;
+
+        error = Impl::decodeDestination(&destinationIpv6Address,
+                                        rti_info[RTAX_DST]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_DST: " << error
+                          << BALL_LOG_END;
+        }
+
+        error =
+            Impl::decodeNetMask(&destinationIpv6Mask, rti_info[RTAX_NETMASK]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_NETMASK: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeGateway(&gatewayAdapterName,
+                                    &gatewayAdapterIndex,
+                                    &gatewayEthernetAddress,
+                                    &gatewayIpv6Address,
+                                    rti_info[RTAX_GATEWAY]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_GATEWAY: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeIfa(&interfaceAdapterName,
+                                &interfaceAdapterIndex,
+                                &interfaceEthernetAddress,
+                                &interfaceIpv6Address,
+                                rti_info[RTAX_IFA]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_IFA: " << error
+                          << BALL_LOG_END;
+        }
+
+        error = Impl::decodeIfp(&interfaceAdapterName,
+                                &interfaceAdapterIndex,
+                                &interfaceEthernetAddress,
+                                &interfaceIpv6Address,
+                                rti_info[RTAX_IFP]);
+        if (error) {
+            BALL_LOG_WARN << "Failed to decode RTAX_IFP: " << error
+                          << BALL_LOG_END;
+        }
+
+        BALL_LOG_DEBUG_BLOCK
+        {
+            BALL_LOG_OUTPUT_STREAM << "Route destination ";
+            if (destinationIpv6Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << destinationIpv6Address.value();
+            }
+
+            if (destinationIpv6Mask.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " mask "
+                                       << destinationIpv6Mask.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " to gateway [";
+
+            if (gatewayAdapterName.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterName = "
+                                       << gatewayAdapterName.value();
+            }
+
+            if (gatewayAdapterIndex.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterIndex = "
+                                       << gatewayAdapterIndex.value();
+            }
+
+            if (gatewayEthernetAddress.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ethernet = "
+                                       << gatewayEthernetAddress.value();
+            }
+
+            if (gatewayIpv6Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ip = "
+                                       << gatewayIpv6Address.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " ]";
+
+            BALL_LOG_OUTPUT_STREAM << " through interface [";
+
+            if (interfaceAdapterName.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterName = "
+                                       << interfaceAdapterName.value();
+            }
+
+            if (interfaceAdapterIndex.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " adapterIndex = "
+                                       << interfaceAdapterIndex.value();
+            }
+
+            if (interfaceEthernetAddress.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ethernet = "
+                                       << interfaceEthernetAddress.value();
+            }
+
+            if (interfaceIpv6Address.has_value()) {
+                BALL_LOG_OUTPUT_STREAM << " ip = "
+                                       << interfaceIpv6Address.value();
+            }
+
+            BALL_LOG_OUTPUT_STREAM << " ]";
+        }
+
+        ntsa::Ipv6Route route;
+
+        if (destinationIpv6Address.has_value()) {
+            route.setDestinationIpv6Address(destinationIpv6Address.value());
+        }
+
+        if (destinationIpv6Mask.has_value()) {
+            route.setDestinationIpv6Mask(destinationIpv6Mask.value());
+        }
+
+        if (gatewayAdapterName.has_value()) {
+            route.setGatewayAdapterName(gatewayAdapterName.value());
+        }
+
+        if (gatewayAdapterIndex.has_value()) {
+            route.setGatewayAdapterIndex(gatewayAdapterIndex.value());
+        }
+
+        if (gatewayEthernetAddress.has_value()) {
+            route.setGatewayEthernetAddress(gatewayEthernetAddress.value());
+        }
+
+        if (gatewayIpv6Address.has_value()) {
+            route.setGatewayIpv6Address(gatewayIpv6Address.value());
+        }
+
+        if (interfaceAdapterName.has_value()) {
+            route.setInterfaceAdapterName(interfaceAdapterName.value());
+        }
+
+        if (interfaceAdapterIndex.has_value()) {
+            route.setInterfaceAdapterIndex(interfaceAdapterIndex.value());
+        }
+
+        if (interfaceEthernetAddress.has_value()) {
+            route.setInterfaceEthernetAddress(
+                interfaceEthernetAddress.value());
+        }
+
+        if (interfaceIpv6Address.has_value()) {
+            route.setInterfaceIpv6Address(interfaceIpv6Address.value());
+        }
+
+        if (route.gatewayIpv6Address().isNull()) {
+            const ntsa::Adapter* gatewayAdapter = 0;
+
+            if (gatewayAdapter == 0) {
+                if (route.gatewayAdapterName().has_value()) {
+                    for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                        if (adapterVector[i].name() ==
+                            route.gatewayAdapterName().value())
+                        {
+                            gatewayAdapter = &adapterVector[i];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (gatewayAdapter == 0) {
+                if (route.gatewayAdapterIndex().has_value()) {
+                    for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                        if (adapterVector[i].index() ==
+                            route.gatewayAdapterIndex().value())
+                        {
+                            gatewayAdapter = &adapterVector[i];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (gatewayAdapter == 0) {
+                if (route.gatewayEthernetAddress().has_value()) {
+                    for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                        ntsa::EthernetAddress ethernetAddress;
+                        if (!ethernetAddress.parse(
+                                adapterVector[i].ethernetAddress()))
+                        {
+                            continue;
+                        }
+
+                        if (ethernetAddress ==
+                            route.gatewayEthernetAddress().value())
+                        {
+                            gatewayAdapter = &adapterVector[i];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (gatewayAdapter != 0) {
+                if (route.gatewayAdapterName().has_value()) {
+                    // TODO: compare
+                }
+                else {
+                    route.setGatewayAdapterName(gatewayAdapter->name());
+                }
+
+                if (route.gatewayAdapterIndex().has_value()) {
+                    // TODO: compare
+                }
+                else {
+                    route.setGatewayAdapterIndex(gatewayAdapter->index());
+                }
+
+                if (route.gatewayEthernetAddress().has_value()) {
+                    // TODO: compare
+                }
+                else {
+                    route.setGatewayEthernetAddress(ntsa::EthernetAddress(
+                        gatewayAdapter->ethernetAddress()));
+                }
+            }
+        }
+
+        const ntsa::Adapter* interfaceAdapter = 0;
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceAdapterName().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    if (adapterVector[i].name() ==
+                        route.interfaceAdapterName().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceAdapterIndex().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    if (adapterVector[i].index() ==
+                        route.interfaceAdapterIndex().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceEthernetAddress().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    ntsa::EthernetAddress ethernetAddress;
+                    if (!ethernetAddress.parse(
+                            adapterVector[i].ethernetAddress()))
+                    {
+                        continue;
+                    }
+
+                    if (ethernetAddress ==
+                        route.interfaceEthernetAddress().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter == 0) {
+            if (route.interfaceIpv6Address().has_value()) {
+                for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+                    if (adapterVector[i].ipv6Address().has_value() &&
+                        adapterVector[i].ipv6Address().value() ==
+                            route.interfaceIpv6Address().value())
+                    {
+                        interfaceAdapter = &adapterVector[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (interfaceAdapter != 0) {
+            if (route.interfaceAdapterName().has_value()) {
+                // TODO: compare
+            }
+            else {
+                route.setInterfaceAdapterName(interfaceAdapter->name());
+            }
+
+            if (route.interfaceAdapterIndex().has_value()) {
+                // TODO: compare
+            }
+            else {
+                route.setInterfaceAdapterIndex(interfaceAdapter->index());
+            }
+
+            if (route.interfaceEthernetAddress().has_value()) {
+                // TODO: compare
+            }
+            else {
+                route.setInterfaceEthernetAddress(ntsa::EthernetAddress(
+                    interfaceAdapter->ethernetAddress()));
+            }
+
+            if (route.interfaceIpv6Address().has_value()) {
+                // TODO: compare
+            }
+            else if (interfaceAdapter->ipv6Address().has_value()) {
+                route.setInterfaceIpv6Address(
+                    interfaceAdapter->ipv6Address().value());
+            }
+        }
+
+        if (route.gatewayEthernetAddress().isNull()) {
+            if (route.gatewayIpv6Address().has_value()) {
+                if (route.gatewayIpv6Address().value().isLoopback()) {
+                    route.setGatewayEthernetAddress(ntsa::EthernetAddress());
+                }
+                else {
+                    ntsa::EthernetAddress ethernetAddress;
+                    if (ethernetRouteTable.find(
+                            &ethernetAddress,
+                            route.gatewayIpv6Address().value()))
                     {
                         route.setGatewayEthernetAddress(ethernetAddress);
                     }
@@ -3848,6 +4305,216 @@ bool DeviceUtil::isSupported()
 #else
     return false;
 #endif
+}
+
+ntsa::Error Network::prepare(ntsa::EthernetHeader*    ethernet,
+                             ntsa::Ipv4Header*        ipv4,
+                             const ntsa::Ipv4Address& destinationIpv4Address)
+{
+    ntsa::Error error;
+
+    ntsa::EthernetAddress sourceEthernetAddress;
+    ntsa::EthernetAddress destinationEthernetAddress;
+    ntsa::Ipv4Address     sourceIpv4Address;
+
+    error = d_ipv4RouteTable.find(&sourceEthernetAddress,
+                                  &destinationEthernetAddress,
+                                  &sourceIpv4Address,
+                                  destinationIpv4Address);
+    if (error) {
+        return error;
+    }
+
+    ethernet->setSource(sourceEthernetAddress);
+    ethernet->setDestination(destinationEthernetAddress);
+
+    ipv4->setSourceAddress(sourceIpv4Address);
+    ipv4->setDestinationAddress(destinationIpv4Address);
+
+    return ntsa::Error();
+}
+
+ntsa::Error Network::prepare(ntsa::EthernetHeader*    ethernet,
+                             ntsa::Ipv6Header*        ipv6,
+                             const ntsa::Ipv6Address& destinationIpv6Address)
+{
+    ntsa::Error error;
+
+    ntsa::EthernetAddress sourceEthernetAddress;
+    ntsa::EthernetAddress destinationEthernetAddress;
+    ntsa::Ipv6Address     sourceIpv6Address;
+
+    error = d_ipv6RouteTable.find(&sourceEthernetAddress,
+                                  &destinationEthernetAddress,
+                                  &sourceIpv6Address,
+                                  destinationIpv6Address);
+    if (error) {
+        return error;
+    }
+
+    ethernet->setSource(sourceEthernetAddress);
+    ethernet->setDestination(destinationEthernetAddress);
+
+    ipv6->setSourceAddress(sourceIpv6Address);
+    ipv6->setDestinationAddress(destinationIpv6Address);
+
+    return ntsa::Error();
+}
+
+Network::Network(bslma::Allocator* basicAllocator)
+: d_blobBufferFactory()
+, d_adapterVector(basicAllocator)
+, d_ethernetRouteTable(basicAllocator)
+, d_ipv4RouteTable(basicAllocator)
+, d_ipv6RouteTable(basicAllocator)
+, d_allocator_p(basicAllocator)
+{
+    bsl::shared_ptr<bdlbb::PooledBlobBufferFactory> blobBufferFactory;
+    blobBufferFactory.createInplace(d_allocator_p,
+                                    static_cast<int>(k_MTU),
+                                    d_allocator_p);
+
+    d_blobBufferFactory = blobBufferFactory;
+}
+
+Network::~Network()
+{
+}
+
+ntsa::Error Network::open()
+{
+    ntsa::Error error;
+
+    ntsu::AdapterUtil::discoverAdapterList(&d_adapterVector);
+
+    error = ntso::DeviceUtil::load(&d_ethernetRouteTable, d_adapterVector);
+    if (error) {
+        return error;
+    }
+
+    error = ntso::DeviceUtil::load(&d_ipv4RouteTable,
+                                   d_adapterVector,
+                                   d_ethernetRouteTable);
+    if (error) {
+        return error;
+    }
+
+    error = ntso::DeviceUtil::load(&d_ipv6RouteTable,
+                                   d_adapterVector,
+                                   d_ethernetRouteTable);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error Network::allocate(bdlbb::BlobBuffer* buffer)
+{
+    d_blobBufferFactory->allocate(buffer);
+    return ntsa::Error();
+}
+
+ntsa::Error Network::allocate(ntsa::Packet*            packet,
+                              const ntsa::Ipv4Address& destinationIpv4Address)
+{
+    ntsa::Error error;
+
+    packet->reset();
+
+    ntsa::EthernetPacket* ethernet = &packet->makeEthernet();
+    ntsa::Ipv4Packet*     ipv4     = &ethernet->payload().makeIpv4();
+
+    error = this->prepare(&ethernet->header(),
+                          &ipv4->header(),
+                          destinationIpv4Address);
+    if (error) {
+        return error;
+    }
+
+    ethernet->header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    return ntsa::Error();
+}
+
+ntsa::Error Network::allocate(ntsa::Packet*            packet,
+                              const ntsa::Ipv6Address& destinationIpv6Address)
+{
+    ntsa::Error error;
+
+    packet->reset();
+
+    ntsa::EthernetPacket* ethernet = &packet->makeEthernet();
+    ntsa::Ipv6Packet*     ipv6     = &ethernet->payload().makeIpv6();
+
+    error = this->prepare(&ethernet->header(),
+                          &ipv6->header(),
+                          destinationIpv6Address);
+    if (error) {
+        return error;
+    }
+
+    ethernet->header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    return ntsa::Error();
+}
+
+ntsa::Error Network::enqueue(const ntsa::Packet& packet)
+{
+    ntsa::Error error;
+
+    if (packet.isEthernet()) {
+        const ntsa::EthernetPacket& ethernet = packet.ethernet();
+
+        if (ethernet.payload().isIpv4()) {
+            const ntsa::Ipv4Packet& ipv4 = ethernet.payload().ipv4();
+        }
+        else if (ethernet.payload().isIpv6()) {
+            const ntsa::Ipv6Packet& ipv6 = ethernet.payload().ipv6();
+        }
+        else {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+    }
+    else if (packet.isIpv4()) {
+    }
+    else if (packet.isIpv6()) {
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error Network::enqueue(bslmf::MovableRef<ntsa::Packet> packet)
+{
+    NTSCFG_WARNING_UNUSED(packet);
+
+    return ntsa::Error();
+}
+
+ntsa::Error Network::dequeue(ntsa::Packet* result)
+{
+    result->reset();
+
+    return ntsa::Error();
+}
+
+ntsa::Error Network::close()
+{
+    return ntsa::Error();
+}
+
+bsl::shared_ptr<ntsi::Network> NetworkUtil::createNetwork(
+    bslma::Allocator* basicAllocator)
+{
+    bslma::Allocator* allocator = bslma::Default::allocator(basicAllocator);
+
+    bsl::shared_ptr<ntso::Network> network;
+    network.createInplace(allocator, allocator);
+
+    return network;
 }
 
 }  // close package namespace

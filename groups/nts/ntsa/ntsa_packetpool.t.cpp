@@ -13,22 +13,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsi_device.h>
+#include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsi_device_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsa_packetpool_t_cpp, "$Id$ $CSID$")
+
+#include <ntsa_packetpool.h>
+
+using namespace BloombergLP;
 
 namespace BloombergLP {
-namespace ntsi {
+namespace ntsa {
 
-Device::~Device()
+// Provide tests for 'ntsa::PacketPool'.
+class PacketPoolTest
+{
+  public:
+    // Test value semantics: type traits.
+    static void verifyTypeTraits();
+
+    // Test usage example.
+    static void verifyUsage();
+};
+
+NTSCFG_TEST_FUNCTION(ntsa::PacketPoolTest::verifyTypeTraits)
 {
 }
 
-Network::~Network()
+NTSCFG_TEST_FUNCTION(ntsa::PacketPoolTest::verifyUsage)
 {
 }
 
-}  // close package namespace
-}  // close enterprise namespace
-
+}  // close namespace ntsa
+}  // close namespace BloombergLP

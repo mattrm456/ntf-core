@@ -88,6 +88,8 @@ ntsa_ipv6extension
 ntsa_ipv6header
 ntsa_ipv6packet
 ntsa_ipv6payload
+ntsa_ipv6route
+ntsa_ipv6routetable
 ntsa_ipv6scopeid
 ntsa_linger
 ntsa_localname
@@ -102,7 +104,9 @@ ntsa_packetdecoderoptions
 ntsa_packetencoder
 ntsa_packetencodercontext
 ntsa_packetencoderoptions
+ntsa_packetfactory
 ntsa_packetfilter
+ntsa_packetpool
 ntsa_packetqueue
 ntsa_packettype
 ntsa_port

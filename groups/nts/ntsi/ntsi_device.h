@@ -74,7 +74,57 @@ class Device
     virtual const ntsa::Adapter& adapter() const = 0;
 };
 
+/// Provide an abstract representation of a network.
+///
+/// @par Thread Safety
+/// This class is thread safe.
+///
+/// @ingroup module_ntsi
+class Network
+{
+  public:
+    /// Destroy this object.
+    virtual ~Network();
+
+    /// Open the device.
+    virtual ntsa::Error open() = 0;
+
+    /// Load into the specified 'buffer' a new buffer whose size is the
+    /// maximum transmission unit of this device.
+    virtual ntsa::Error allocate(bdlbb::BlobBuffer* buffer) = 0;
+
+    /// Load into the specified 'packet' a new packets to the specified
+    /// 'destinationIpv4Address' with the source IPv4 address, source Ethernet
+    /// address, and destination Ethernet address of theh 'packet'
+    /// automatically assigned to the correct addresses according to the
+    /// current IPv4 routing table. Return the error.
+    virtual ntsa::Error allocate(
+        ntsa::Packet*            packet,
+        const ntsa::Ipv4Address& destinationIpv4Address) = 0;
+
+    /// Load into the specified 'packet' a new packets to the specified
+    /// 'destinationIpv6Address' with the source IPv6 address, source Ethernet
+    /// address, and destination Ethernet address of theh 'packet'
+    /// automatically assigned to the correct addresses according to the
+    /// current IPv6 routing table. Return the error.
+    virtual ntsa::Error allocate(
+        ntsa::Packet*            packet,
+        const ntsa::Ipv6Address& destinationIpv6Address) = 0;
+
+    /// Enqueue the specified 'packet' for transmission. Return the error.
+    virtual ntsa::Error enqueue(const ntsa::Packet& packet) = 0;
+
+    /// Enqueue the specified 'packet' for transmission. Return the error.
+    virtual ntsa::Error enqueue(bslmf::MovableRef<ntsa::Packet> packet) = 0;
+
+    /// Load into the specified 'result' the next packet received. Return the
+    /// error.
+    virtual ntsa::Error dequeue(ntsa::Packet* result) = 0;
+
+    /// Close the device. Return the error.
+    virtual ntsa::Error close() = 0;
+};
+
 }  // end namespace ntsi
 }  // end namespace BloombergLP
 #endif
-
