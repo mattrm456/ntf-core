@@ -592,7 +592,7 @@ ntsa::Error SocketOptionUtil::setTimestampIncomingData(ntsa::Handle socket,
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    optionValue = 
+    optionValue =
         ntsu::TimestampUtil::setRxTimestamps(optionValue, timestampFlag);
 
     rc = setsockopt(socket,
@@ -645,7 +645,7 @@ ntsa::Error SocketOptionUtil::setTimestampOutgoingData(ntsa::Handle socket,
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    optionValue = 
+    optionValue =
         ntsu::TimestampUtil::setTxTimestamps(optionValue, timestampFlag);
 
     rc = setsockopt(socket,

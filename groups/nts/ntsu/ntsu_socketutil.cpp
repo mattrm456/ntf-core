@@ -1210,7 +1210,7 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
         if (domain == AF_INET) {
             const int optionValue = 1;
 
-            const socklen_t optionLength = 
+            const socklen_t optionLength =
                 static_cast<socklen_t>(sizeof optionValue);
 
             rc = ::setsockopt(
@@ -1222,12 +1222,12 @@ ntsa::Error SocketUtil::create(ntsa::Handle*          result,
         else if (domain == AF_INET6) {
             const int optionValue = 1;
 
-            const socklen_t optionLength = 
+            const socklen_t optionLength =
                 static_cast<socklen_t>(sizeof optionValue);
 
-            rc = ::setsockopt(*result, 
-                              IPPROTO_IPV6, 
-                              IPV6_HDRINCL, 
+            rc = ::setsockopt(*result,
+                              IPPROTO_IPV6,
+                              IPV6_HDRINCL,
                               &optionValue,
                               optionLength);
             if (rc != 0) {

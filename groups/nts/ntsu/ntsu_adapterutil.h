@@ -20,6 +20,8 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_adapter.h>
+#include <ntsa_error.h>
+#include <ntsa_ethernetaddress.h>
 #include <ntsa_ipaddress.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
@@ -110,6 +112,42 @@ struct AdapterUtil {
     /// 'address'.
     static bsl::uint32_t discoverScopeId(const ntsa::Ipv6Address& address);
 
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'name'. Return the error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const bsl::string&                name);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'index'. Return the error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        bsl::uint32_t                     index);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'ethernetAddress'. Return the
+    /// error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const ntsa::EthernetAddress&      ethernetAddress);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'ipv4Address'. Return the error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const ntsa::Ipv4Address&          ipv4Address);
+
+    /// Load into the specified 'result' the adapter in the specified
+    /// 'adapterList' having the specified 'ipv4Address'. Return the error.
+    static ntsa::Error resolveAdapter(
+        ntsa::Adapter*                    result,
+        const bsl::vector<ntsa::Adapter>& adapterList,
+        const ntsa::Ipv6Address&          ipv6Address);
+
     /// Return true if the current machine has any adapter assigned an
     /// IPv4 address, otherwise return false.
     static bool supportsIpv4();
@@ -178,8 +216,8 @@ struct AdapterUtil {
     /// the specified 'transport', otherwise return false.
     static bool supportsTransportLoopback(ntsa::Transport::Value transport);
 
-    /// Return true if the current process is priviledged to support raw 
-    /// sockets. 
+    /// Return true if the current process is priviledged to support raw
+    /// sockets.
     static bool supportsRaw();
 
   public:

@@ -33,13 +33,22 @@ void PacketPool::construct(void*                     address,
     new (address) ntsa::Packet(allocator);
 }
 
-PacketPool::PacketPool(bslma::Allocator* basicAllocator)
-: d_blobBufferFactory(1500, basicAllocator)
-, d_objectPool(bdlf::BindUtil::bind(&PacketPool::construct,
+PacketPool::PacketPool(bsl::size_t       outgoingBlobBufferSize,
+                       bsl::size_t       incomingBlobBufferSize,
+                       bslma::Allocator* basicAllocator)
+: d_outgoingBlobBufferFactory(static_cast<int>(outgoingBlobBufferSize), basicAllocator)
+, d_incomingBlobBufferFactory(static_cast<int>(incomingBlobBufferSize), basicAllocator)
+, d_outgoingPacketPool(bdlf::BindUtil::bind(&PacketPool::construct,
                                     bdlf::PlaceHolders::_1,
-                                    &d_blobBufferFactory,
+                                    &d_outgoingBlobBufferFactory,
                                     bdlf::PlaceHolders::_2),
                64,
+               basicAllocator)
+, d_incomingPacketPool(bdlf::BindUtil::bind(&PacketPool::construct,
+                                    bdlf::PlaceHolders::_1,
+                                    &d_incomingBlobBufferFactory,
+                                    bdlf::PlaceHolders::_2),
+               1,
                basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -49,24 +58,24 @@ PacketPool::~PacketPool()
 {
 }
 
-void* PacketPool::allocate(size_type size)
+void PacketPool::createOutgoingPacket(bsl::shared_ptr<ntsa::Packet>* result)
 {
-    return d_allocator_p->allocate(size);
+    *result = d_outgoingPacketPool.getObject();
 }
 
-void PacketPool::deallocate(void* address)
+void PacketPool::createIncomingPacket(bsl::shared_ptr<ntsa::Packet>* result)
 {
-    d_allocator_p->deallocate(address);
+    *result = d_incomingPacketPool.getObject();
 }
 
-void PacketPool::allocate(bdlbb::BlobBuffer* buffer)
+void PacketPool::createOutgoingBlobBuffer(bdlbb::BlobBuffer* result)
 {
-    d_blobBufferFactory.allocate(buffer);
+    d_outgoingBlobBufferFactory.allocate(result);
 }
 
-void PacketPool::allocate(bsl::shared_ptr<ntsa::Packet>* packet)
+void PacketPool::createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
 {
-    *packet = d_objectPool.getObject();
+    d_incomingBlobBufferFactory.allocate(result);
 }
 
 }  // close package namespace

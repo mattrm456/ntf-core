@@ -1,6 +1,9 @@
 ntsu_adapterutil
-ntsu_zerocopyutil
+ntsu_deviceutil
+ntsu_packetutil
 ntsu_resolverutil
+ntsu_routeutil
 ntsu_socketutil
 ntsu_socketoptionutil
 ntsu_timestamputil
+ntsu_zerocopyutil

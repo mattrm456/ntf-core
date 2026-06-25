@@ -39,6 +39,12 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class PacketPool : public ntsa::PacketFactory
 {
+    /// Enumerates the constants used by this implementation.
+    enum Constants {
+        /// The default maximum transmission unit.
+        k_MTU = 1500
+    };
+
     /// Defines a type alias for a shared object pool of packets.
     typedef bdlcc::SharedObjectPool<
         ntsa::Packet,
@@ -46,11 +52,17 @@ class PacketPool : public ntsa::PacketFactory
         bdlcc::ObjectPoolFunctors::Reset<ntsa::Packet> >
         Pool;
 
-    /// The blob buffer factory.
-    bdlbb::PooledBlobBufferFactory d_blobBufferFactory;
+    /// The outgoing blob buffer factory.
+    bdlbb::PooledBlobBufferFactory d_outgoingBlobBufferFactory;
 
-    /// The shared object pool of packets.
-    Pool d_objectPool;
+    /// The incoming blob buffer factory.
+    bdlbb::PooledBlobBufferFactory d_incomingBlobBufferFactory;
+
+    /// The shared object pool of outgoing packets.
+    Pool d_outgoingPacketPool;
+
+    /// The shared object pool of incoming packets.
+    Pool d_incomingPacketPool;
 
     /// The memory allocator.
     bslma::Allocator* d_allocator_p;
@@ -68,47 +80,38 @@ class PacketPool : public ntsa::PacketFactory
                           bslma::Allocator*         allocator);
 
   public:
-    /// Create a new packet pool. Optionally specify a 'basicAllocator' used to
-    /// supply memory. If 'basicAllocator' is 0, the currently installed
-    /// default allocator is used.
-    explicit PacketPool(bslma::Allocator* basicAllocator = 0);
+    /// Create a new packet pool. Allocate blob buffers of the specified
+    /// 'outgoingBlobBufferSize' intended for outgoing data. Allocate blob
+    /// buffers of the specified 'incomingBlobBufferSize' intended for incoming
+    /// data. Optionally specify a 'basicAllocator' used to supply memory. If
+    /// 'basicAllocator' is 0, the currently installed default allocator is
+    /// used.
+    PacketPool(bsl::size_t       outgoingBlobBufferSize,
+               bsl::size_t       incomingBlobBufferSize,
+               bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~PacketPool() BSLS_KEYWORD_OVERRIDE;
 
-    /// Return a newly allocated block of memory of (at least) the specified
-    /// positive 'size' (in bytes).  If 'size' is 0, a null pointer is
-    /// returned with no other effect.  If this allocator cannot return the
-    /// requested number of bytes, then it will throw a 'std::bad_alloc'
-    /// exception in an exception-enabled build, or else will abort the
-    /// program in a non-exception build.  The behavior is undefined unless
-    /// '0 <= size'.  Note that the alignment of the address returned
-    /// conforms to the platform requirement for any object of the specified
-    /// 'size'.  Note that this virtual function hides a two-parameter
-    /// non-virtual 'allocate' method inherited from 'bsl::memory_resource';
-    /// to access the inherited function, upcast the object to
-    /// 'bsl::memory_resource&' before calling the base-class function.
-    void* allocate(size_type size) BSLS_KEYWORD_OVERRIDE;
+    /// Load into the specified 'result' a packet suitable to enqueue to to the
+    /// associated device.
+    void createOutgoingPacket(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE;
 
-    /// Return the memory block at the specified 'address' back to this
-    /// allocator.  If 'address' is 0, this function has no effect.  The
-    /// behavior is undefined unless 'address' was allocated using this
-    /// allocator object and has not already been deallocated.  Note that
-    /// this virtual function hides a three-parameter, non-virtual 'deallocate'
-    /// method inherited from 'bsl::memory_resource'; to access the
-    /// inherited function, upcast the object to 'bsl::memory_resource&'
-    /// before calling the base-class function.
-    void deallocate(void* address) BSLS_KEYWORD_OVERRIDE;
+    /// Load into the specified 'result' a packet suitable to dequeue from the
+    /// associated device.
+    void createIncomingPacket(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE;
 
-    /// Allocate a blob buffer from this blob buffer factory, and load it
-    /// into the specified 'buffer'.
-    void allocate(bdlbb::BlobBuffer* buffer) BSLS_KEYWORD_OVERRIDE;
+    /// Load into the specified 'result' a blob buffer suitable to enqueue to
+    /// to the associated device.
+    void createOutgoingBlobBuffer(bdlbb::BlobBuffer* result)
+        BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'packet' a shared pointer to an available
-    /// packet in the pool having a default value. The resulting packet is
-    /// automatically returned to this pool when its reference count reaches
-    /// zero.
-    void allocate(bsl::shared_ptr<ntsa::Packet>* packet) BSLS_KEYWORD_OVERRIDE;
+    /// Load into the specified 'result' a blob buffer suitable to dequeue from
+    /// the associated device.
+    void createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
+        BSLS_KEYWORD_OVERRIDE;
 
     /// This type accepts an allocator argument to its constructors and may
     /// dynamically allocate memory during its operation.

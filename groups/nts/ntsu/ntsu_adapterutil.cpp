@@ -1049,6 +1049,100 @@ bsl::uint32_t AdapterUtil::discoverScopeId(const ntsa::Ipv6Address& address)
     return scopeId;
 }
 
+ntsa::Error AdapterUtil::resolveAdapter(
+    ntsa::Adapter*                    result,
+    const bsl::vector<ntsa::Adapter>& adapterList,
+    const bsl::string&                name)
+{
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& adapter = adapterList[i];
+
+        if (adapter.name() == name) {
+            *result = adapter;
+            return ntsa::Error();
+        }
+    }
+
+    return ntsa::Error(ntsa::Error::e_EOF);
+}
+
+ntsa::Error AdapterUtil::resolveAdapter(
+    ntsa::Adapter*                    result,
+    const bsl::vector<ntsa::Adapter>& adapterList,
+    bsl::uint32_t                     index)
+{
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& adapter = adapterList[i];
+
+        if (adapter.index() == index) {
+            *result = adapter;
+            return ntsa::Error();
+        }
+    }
+
+    return ntsa::Error(ntsa::Error::e_EOF);
+}
+
+ntsa::Error AdapterUtil::resolveAdapter(
+    ntsa::Adapter*                    result,
+    const bsl::vector<ntsa::Adapter>& adapterList,
+    const ntsa::EthernetAddress&      ethernetAddress)
+{
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& adapter = adapterList[i];
+
+        ntsa::EthernetAddress adapterEthernetAddress;
+        if (!adapterEthernetAddress.parse(adapter.ethernetAddress())) {
+            continue;
+        }
+
+        if (adapterEthernetAddress == ethernetAddress) {
+            *result = adapter;
+            return ntsa::Error();
+        }
+    }
+
+    return ntsa::Error(ntsa::Error::e_EOF);
+}
+
+ntsa::Error AdapterUtil::resolveAdapter(
+    ntsa::Adapter*                    result,
+    const bsl::vector<ntsa::Adapter>& adapterList,
+    const ntsa::Ipv4Address&          ipv4Address)
+{
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& adapter = adapterList[i];
+
+        if (adapter.ipv4Address().has_value()) {
+            if (adapter.ipv4Address().value() == ipv4Address) {
+                *result = adapter;
+                return ntsa::Error();
+            }
+        }
+    }
+
+    return ntsa::Error(ntsa::Error::e_EOF);
+}
+
+ntsa::Error AdapterUtil::resolveAdapter(
+    ntsa::Adapter*                    result,
+    const bsl::vector<ntsa::Adapter>& adapterList,
+    const ntsa::Ipv6Address&          ipv6Address)
+{
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& adapter = adapterList[i];
+
+        if (adapter.ipv6Address().has_value()) {
+            if (adapter.ipv6Address().value() == ipv6Address) {
+                *result = adapter;
+                return ntsa::Error();
+            }
+        }
+    }
+
+    return ntsa::Error(ntsa::Error::e_EOF);
+}
+
 bool AdapterUtil::supportsIpv4()
 {
 #if NTSCFG_BUILD_WITH_ADDRESS_FAMILY_IPV4

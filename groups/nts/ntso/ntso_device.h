@@ -29,10 +29,16 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv6address.h>
 #include <ntsa_ipv6route.h>
 #include <ntsa_ipv6routetable.h>
+#include <ntsa_packet.h>
+#include <ntsa_packetfactory.h>
+#include <ntsa_packetpool.h>
+#include <ntsa_packetqueue.h>
 #include <ntscfg_config.h>
 #include <ntscfg_platform.h>
 #include <ntsi_device.h>
 #include <ntsscm_version.h>
+#include <bslmt_lockguard.h>
+#include <bslmt_mutex.h>
 #include <bsl_memory.h>
 #include <ball_log.h>
 
@@ -86,80 +92,11 @@ class DeviceUtil
     static ntsa::Error resolveAdapter(ntsa::Adapter*            result,
                                       const ntsa::DeviceConfig& configuration);
 
-    /// Load into the specified 'result' the adapter in the specified
-    /// 'adapterList' having the specified 'name'. Return the error.
-    static ntsa::Error resolveAdapter(
-        ntsa::Adapter*                    result,
-        const bsl::vector<ntsa::Adapter>& adapterList,
-        const bsl::string&                name);
-
-    /// Load into the specified 'result' the adapter in the specified
-    /// 'adapterList' having the specified 'index'. Return the error.
-    static ntsa::Error resolveAdapter(
-        ntsa::Adapter*                    result,
-        const bsl::vector<ntsa::Adapter>& adapterList,
-        bsl::uint32_t                     index);
-
-    /// Load into the specified 'result' the adapter in the specified
-    /// 'adapterList' having the specified 'ethernetAddress'. Return the
-    /// error.
-    static ntsa::Error resolveAdapter(
-        ntsa::Adapter*                    result,
-        const bsl::vector<ntsa::Adapter>& adapterList,
-        const ntsa::EthernetAddress&      ethernetAddress);
-
-    /// Load into the specified 'result' the adapter in the specified
-    /// 'adapterList' having the specified 'ipv4Address'. Return the error.
-    static ntsa::Error resolveAdapter(
-        ntsa::Adapter*                    result,
-        const bsl::vector<ntsa::Adapter>& adapterList,
-        const ntsa::Ipv4Address&          ipv4Address);
-
-    /// Load into the specified 'result' the adapter in the specified
-    /// 'adapterList' having the specified 'ipv4Address'. Return the error.
-    static ntsa::Error resolveAdapter(
-        ntsa::Adapter*                    result,
-        const bsl::vector<ntsa::Adapter>& adapterList,
-        const ntsa::Ipv6Address&          ipv6Address);
-
     /// Validate the specified 'adapter' is compatible with the specified
     /// 'configuration'. Return the error.
     static ntsa::Error validateAdapter(
         const ntsa::Adapter&      adapter,
         const ntsa::DeviceConfig& configuration);
-
-    /// Load the Ethernet route table into the specified 'result'. Return the
-    /// error.
-    static ntsa::Error load(ntsa::EthernetRouteTable* result);
-
-    /// Load the Ethernet route table for the adapters in the specified
-    /// 'adapterVector' into the specified 'result'. Return the error.
-    static ntsa::Error load(ntsa::EthernetRouteTable*         result,
-                            const bsl::vector<ntsa::Adapter>& adapterVector);
-
-    /// Load the IPv4 route table into the specified 'result'. Return the
-    /// error.
-    static ntsa::Error load(ntsa::Ipv4RouteTable* result);
-
-    /// Load the IPv4 route table into the specified 'result' using the
-    /// specified 'ethernetRouteTable' for the adapters in the specified
-    /// 'adapterVector'. Return the error.
-    static ntsa::Error load(
-        ntsa::Ipv4RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable);
-
-    /// Load the IPv6 route table into the specified 'result'. Return the
-    /// error.
-    static ntsa::Error load(ntsa::Ipv6RouteTable* result);
-
-    /// Load the IPv6 route table into the specified 'result' using the
-    /// specified 'ethernetRouteTable' for the adapters in the specified
-    /// 'adapterVector'. Return the error.
-    static ntsa::Error load(
-        ntsa::Ipv6RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable);
 
     /// Return true if the device is supported, otherwise return false.
     static bool isSupported();
@@ -180,8 +117,53 @@ class Network : public ntsi::Network
         k_MTU = 1500
     };
 
+    /// Define a type alias for a mutex.
+    typedef bslmt::Mutex Mutex;
+
+    /// Define a type alias for a lock guard.
+    typedef bslmt::LockGuard<bslmt::Mutex> LockGuard;
+
+    /// Defines a type alias for a map of devices indexed by their Ethernet
+    /// address.
+    typedef bsl::unordered_map<ntsa::EthernetAddress,
+                               bsl::shared_ptr<ntsi::Device> >
+        DeviceByEthernetAddress;
+
+    /// Defines a type alias for a map of devices indexed by their IPv4
+    /// address.
+    typedef bsl::unordered_map<ntsa::Ipv4Address,
+                               bsl::shared_ptr<ntsi::Device> >
+        DeviceByIpv4Address;
+
+    /// Defines a type alias for a map of devices indexed by their IPv4
+    /// address.
+    typedef bsl::unordered_map<ntsa::Ipv6Address,
+                               bsl::shared_ptr<ntsi::Device> >
+        DeviceByIpv6Address;
+
+    /// The mutex.
+    mutable Mutex d_mutex;
+
     /// The blob buffer factory.
     bsl::shared_ptr<bdlbb::BlobBufferFactory> d_blobBufferFactory;
+
+    /// The map of TX devices indexed by their Ethernet address.
+    DeviceByEthernetAddress d_txDeviceByEthernetAddress;
+
+    /// The map of TX devices indexed by their IPv4 address.
+    DeviceByIpv4Address d_txDeviceByIpv4Address;
+
+    /// The map of TX devices indexed by their IPv6 address.
+    DeviceByIpv6Address d_txDeviceByIpv6Address;
+
+    /// The map of RX devices indexed by their Ethernet address.
+    DeviceByEthernetAddress d_rxDeviceByEthernetAddress;
+
+    /// The map of RX devices indexed by their IPv4 address.
+    DeviceByIpv4Address d_rxDeviceByIpv4Address;
+
+    /// The map of RX devices indexed by their IPv6 address.
+    DeviceByIpv6Address d_rxDeviceByIpv6Address;
 
     /// The adapter vector.
     bsl::vector<ntsa::Adapter> d_adapterVector;
@@ -206,17 +188,41 @@ class Network : public ntsi::Network
     Network& operator=(const Network&) BSLS_KEYWORD_DELETED;
 
   private:
-    /// Prepare the specified 'ethernet' and 'ipv4' header for a transmission
-    /// to the specified 'destinationIpv4Address'.
-    ntsa::Error prepare(ntsa::EthernetHeader*    ethernet,
-                        ntsa::Ipv4Header*        ipv4,
-                        const ntsa::Ipv4Address& destinationIpv4Address);
+    /// Lookup or create a device for sending packets from the specified source
+    /// 'ethernetAddress'. Load the device into the specified 'device'. Return
+    /// the error.
+    ntsa::Error ensureTxDevice(bsl::shared_ptr<ntsi::Device>* device,
+                               const ntsa::EthernetAddress&   ethernetAddress);
 
-    /// Prepare the specified 'ethernet' and 'ipv6' header for a transmission
-    /// to the specified 'destinationIpv4Address'.
-    ntsa::Error prepare(ntsa::EthernetHeader*    ethernet,
-                        ntsa::Ipv6Header*        ipv6,
-                        const ntsa::Ipv6Address& destinationIpv6Address);
+    /// Lookup or create a device for sending packets from the specified source
+    /// 'ipv4Address'. Load the device into the specified 'device'. Return the
+    /// error.
+    ntsa::Error ensureTxDevice(bsl::shared_ptr<ntsi::Device>* device,
+                               const ntsa::Ipv4Address&       ipv4Address);
+
+    /// Lookup or create a device for sending packets from the specified source
+    /// 'ipv6Address'. Load the device into the specified 'device'. Return the
+    /// error.
+    ntsa::Error ensureTxDevice(bsl::shared_ptr<ntsi::Device>* device,
+                               const ntsa::Ipv6Address&       ipv6Address);
+
+    /// Lookup or create a device for receiving packets to the specified
+    /// destination 'ethernetAddress'. Load the device into the specified
+    /// 'device'. Return the error.
+    ntsa::Error ensureRxDevice(bsl::shared_ptr<ntsi::Device>* device,
+                               const ntsa::EthernetAddress&   ethernetAddress);
+
+    /// Lookup or create a device for receiving packets to the specified
+    /// destination 'ipv4Address'. Load the device into the specified 'device'.
+    /// Return the error.
+    ntsa::Error ensureRxDevice(bsl::shared_ptr<ntsi::Device>* device,
+                               const ntsa::Ipv4Address&       ipv4Address);
+
+    /// Lookup or create a device for receiving packets to the specified
+    /// destination 'ipv6Address'. Load the device into the specified 'device'.
+    /// Return the error.
+    ntsa::Error ensureRxDevice(bsl::shared_ptr<ntsi::Device>* device,
+                               const ntsa::Ipv6Address&       ipv6Address);
 
   public:
     /// Create a new network. Optionally specify a 'basicAllocator' used to
@@ -234,34 +240,48 @@ class Network : public ntsi::Network
     /// maximum transmission unit of this device.
     ntsa::Error allocate(bdlbb::BlobBuffer* buffer) BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'packet' a new packets to the specified
+    /// Load into the specified 'packet' a new packet to the specified
     /// 'destinationIpv4Address' with the source IPv4 address, source Ethernet
-    /// address, and destination Ethernet address of theh 'packet'
-    /// automatically assigned to the correct addresses according to the
-    /// current IPv4 routing table. Return the error.
-    ntsa::Error allocate(
-        ntsa::Packet*            packet,
-        const ntsa::Ipv4Address& destinationIpv4Address) BSLS_KEYWORD_OVERRIDE;
-
-    /// Load into the specified 'packet' a new packets to the specified
-    /// 'destinationIpv6Address' with the source IPv6 address, source Ethernet
-    /// address, and destination Ethernet address of theh 'packet'
-    /// automatically assigned to the correct addresses according to the
-    /// current IPv6 routing table. Return the error.
-    ntsa::Error allocate(
-        ntsa::Packet*            packet,
-        const ntsa::Ipv6Address& destinationIpv6Address) BSLS_KEYWORD_OVERRIDE;
-
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    ntsa::Error enqueue(const ntsa::Packet& packet) BSLS_KEYWORD_OVERRIDE;
-
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    ntsa::Error enqueue(bslmf::MovableRef<ntsa::Packet> packet)
+    /// address, and destination Ethernet address of the 'packet' automatically
+    /// assigned to the correct addresses according to the current IPv4 routing
+    /// table. Load into the specified 'sender' an appropriate mechanism to
+    /// enqueue the 'packet for transmission. Return the error.
+    ntsa::Error allocate(bsl::shared_ptr<ntsa::Packet>*       packet,
+                         bsl::shared_ptr<ntsi::PacketSender>* sender,
+                         const ntsa::Ipv4Address& destinationIpv4Address)
         BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'result' the next packet received. Return the
+    /// Load into the specified 'packet' a new packet to the specified
+    /// 'destinationIpv4Address' with the source IPv4 address, source Ethernet
+    /// address, and destination Ethernet address of the 'packet' automatically
+    /// assigned to the correct addresses according to the current IPv4 routing
+    /// table. Load into the specified 'sender' an appropriate mechanism to
+    /// enqueue the 'packet for transmission. Return the error.
+    ntsa::Error allocate(bsl::shared_ptr<ntsa::Packet>*       packet,
+                         bsl::shared_ptr<ntsi::PacketSender>* sender,
+                         const ntsa::Ipv6Address& destinationIpv6Address)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Load into the specified 'receiver' an appropriate mechanism to receive
+    /// packets intended for the specified 'sourceEthernetAddress'. Return the
     /// error.
-    ntsa::Error dequeue(ntsa::Packet* result) BSLS_KEYWORD_OVERRIDE;
+    ntsa::Error bind(bsl::shared_ptr<ntsi::PacketReceiver>* receiver,
+                     const ntsa::EthernetAddress& sourceEthernetAddress)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Load into the specified 'receiver' an appropriate mechanism to receive
+    /// packets intended for the specified 'sourceIpv4Address'. Return the
+    /// error.
+    ntsa::Error bind(bsl::shared_ptr<ntsi::PacketReceiver>* receiver,
+                     const ntsa::Ipv4Address&               sourceIpv4Address)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Load into the specified 'receiver' an appropriate mechanism to receive
+    /// packets intended for the specified 'sourceIpv4Address'. Return the
+    /// error.
+    ntsa::Error bind(bsl::shared_ptr<ntsi::PacketReceiver>* receiver,
+                     const ntsa::Ipv6Address&               sourceIpv6Address)
+        BSLS_KEYWORD_OVERRIDE;
 
     /// Close the device. Return the error.
     ntsa::Error close() BSLS_KEYWORD_OVERRIDE;

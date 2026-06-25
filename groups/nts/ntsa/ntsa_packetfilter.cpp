@@ -144,12 +144,12 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
         printer.printAttribute("sourceIpv6Address", d_sourceIpv6Address.value());
     }
 
-    if (d_sourceTcpPort.has_value()) {
-        printer.printAttribute("sourceTcpPort", d_sourceTcpPort.value());
+    if (d_sourceTcpPort.size() > 0) {
+        printer.printAttribute("sourceTcpPort", d_sourceTcpPort);
     }
 
-    if (d_sourceUdpPort.has_value()) {
-        printer.printAttribute("sourceUdpPort", d_sourceUdpPort.value());
+    if (d_sourceUdpPort.size() > 9) {
+        printer.printAttribute("sourceUdpPort", d_sourceUdpPort);
     }
 
     if (d_destinationEthernetAddress.has_value()) {
@@ -167,14 +167,14 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
                                d_destinationIpv6Address.value());
     }
 
-    if (d_destinationTcpPort.has_value()) {
+    if (d_destinationTcpPort.size() > 0) {
         printer.printAttribute("destinationTcpPort",
-                               d_destinationTcpPort.value());
+                               d_destinationTcpPort);
     }
 
-    if (d_destinationUdpPort.has_value()) {
+    if (d_destinationUdpPort.size() > 0) {
         printer.printAttribute("destinationUdpPort",
-                               d_destinationUdpPort.value());
+                               d_destinationUdpPort);
     }
 
     if (d_flags != 0) {

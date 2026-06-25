@@ -13,30 +13,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ntsi_device.h>
+#include <ntscfg_test.h>
 
 #include <bsls_ident.h>
-BSLS_IDENT_RCSID(ntsi_device_cpp, "$Id$ $CSID$")
+BSLS_IDENT_RCSID(ntsu_packetutil_t_cpp, "$Id$ $CSID$")
+
+#include <ntsu_packetutil.h>
+
+using namespace BloombergLP;
 
 namespace BloombergLP {
-namespace ntsi {
+namespace ntsu {
 
-PacketSender::~PacketSender()
+// Provide tests for 'ntsu::PacketUtil'.
+class PacketUtilTest
 {
+  public:
+    // TODO
+    static void verify();
+};
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verify)
+{
+
 }
 
-PacketReceiver::~PacketReceiver()
-{
-}
-
-Device::~Device()
-{
-}
-
-Network::~Network()
-{
-}
-
-}  // close package namespace
-}  // close enterprise namespace
-
+}  // close namespace ntsu
+}  // close namespace BloombergLP

@@ -38,7 +38,7 @@ namespace ntsa {
 class PacketQueue
 {
     /// The queue container.
-    bdlcc::FixedQueue<ntsa::Packet> d_queue;
+    bdlcc::FixedQueue<bsl::shared_ptr<ntsa::Packet> > d_queue;
 
     /// The memory allocator.
     bslma::Allocator* d_allocator_p;
@@ -59,14 +59,15 @@ class PacketQueue
     ~PacketQueue();
 
     /// Enqueue the specified 'packet' to the queue. Return the error.
-    ntsa::Error enqueue(const ntsa::Packet& packet);
+    ntsa::Error enqueue(const bsl::shared_ptr<ntsa::Packet>& packet);
 
     /// Enqueue the specified 'packet' to the queue. Return the error.
-    ntsa::Error enqueue(bslmf::MovableRef<ntsa::Packet> packet);
+    ntsa::Error enqueue(
+        bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet);
 
     /// Dequeue the next available packet and load it into the specified
     /// 'result'.
-    ntsa::Error dequeue(ntsa::Packet* result);
+    ntsa::Error dequeue(bsl::shared_ptr<ntsa::Packet>* result);
 
     /// Disable enqueing packets from the queue and unblock any thread blocked
     /// on dequeuing a packet.

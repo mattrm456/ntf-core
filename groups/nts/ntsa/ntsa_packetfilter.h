@@ -27,6 +27,8 @@ BSLS_IDENT("$Id: $")
 #include <ntsscm_version.h>
 #include <bdlb_nullablevalue.h>
 #include <bsl_cstdint.h>
+#include <bsl_memory.h>
+#include <bsl_vector.h>
 
 namespace BloombergLP {
 namespace ntsa {
@@ -39,37 +41,29 @@ class PacketFilter
     bdlb::NullableValue<ntsa::EthernetAddress> d_sourceEthernetAddress;
     bdlb::NullableValue<ntsa::Ipv4Address>     d_sourceIpv4Address;
     bdlb::NullableValue<ntsa::Ipv6Address>     d_sourceIpv6Address;
-    bdlb::NullableValue<ntsa::Port>            d_sourceTcpPort;
-    bdlb::NullableValue<ntsa::Port>            d_sourceUdpPort;
+    bsl::vector<ntsa::Port>                    d_sourceTcpPort;
+    bsl::vector<ntsa::Port>                    d_sourceUdpPort;
     bdlb::NullableValue<ntsa::EthernetAddress> d_destinationEthernetAddress;
     bdlb::NullableValue<ntsa::Ipv4Address>     d_destinationIpv4Address;
     bdlb::NullableValue<ntsa::Ipv6Address>     d_destinationIpv6Address;
-    bdlb::NullableValue<ntsa::Port>            d_destinationTcpPort;
-    bdlb::NullableValue<ntsa::Port>            d_destinationUdpPort;
+    bsl::vector<ntsa::Port>                    d_destinationTcpPort;
+    bsl::vector<ntsa::Port>                    d_destinationUdpPort;
     bsl::uint32_t                              d_flags;
 
   public:
-    /// Create new packet decoder options having a default value.
-    PacketFilter();
+    /// Create new packet filter. Optionally specify a 'basicAllocator' used to
+    /// supply memory. If 'basicAllocator' is 0, the currently installed
+    /// default allocator is used.
+    explicit PacketFilter(bslma::Allocator* basicAllocator = 0);
 
-    /// Create new packet decoder options having the same value as the
-    /// specified 'original' object. Assign an unspecified but valid value to
-    /// the 'original' original.
-    PacketFilter(bslmf::MovableRef<PacketFilter> original)
-        NTSCFG_NOEXCEPT;
-
-    /// Create new packet decoder options having the same value as the
-    /// specified 'original' object.
-    PacketFilter(const PacketFilter& original);
+    /// Create new packet filter having the same value as the specified
+    /// 'original' object. Optionally specify a 'basicAllocator' used to supply
+    /// memory. If 'basicAllocator' is 0, the currently installed default
+    /// allocator is used.
+    PacketFilter(const PacketFilter& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~PacketFilter();
-
-    /// Assign the value of the specified 'other' object to this object. Assign
-    /// an unspecified but valid value to the 'original' original. Return a
-    /// reference to this modifiable object.
-    PacketFilter& operator=(
-        bslmf::MovableRef<PacketFilter> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -87,11 +81,17 @@ class PacketFilter
      /// Set the source IPv6 address to the specified 'value'.
     void setSourceIpv6Address(const ntsa::Ipv6Address& value);
 
-    /// Set the source TCP port to the specified 'value'.
-    void setSourceTcpPort(ntsa::Port value);
+    /// Add the source TCP port having the specified 'value'.
+    void addSourceTcpPort(ntsa::Port value);
 
-    /// Set the source UDP port to the specified 'value'.
-    void setSourceUdpPort(ntsa::Port value);
+    /// Add the source UDP port having the specified 'value'.
+    void addSourceUdpPort(ntsa::Port value);
+
+    /// Remove the source TCP port having the specified 'value'.
+    void removeSourceTcpPort(ntsa::Port value);
+
+    /// Remove the source UDP port having the specified 'value'.
+    void removeSourceUdpPort(ntsa::Port value);
 
     /// Set the destination Ethernet address to the specified 'value'.
     void setDestinationEthernetAddress(const ntsa::EthernetAddress& value);
@@ -102,11 +102,17 @@ class PacketFilter
     /// Set the destination IPv6 address to the specified 'value'.
     void setDestinationIpv6Address(const ntsa::Ipv6Address& value);
 
-    /// Set the destination TCP port to the specified 'value'.
-    void setDestinationTcpPort(ntsa::Port value);
+    /// Add the destination TCP port having the specified 'value'.
+    void addDestinationTcpPort(ntsa::Port value);
 
-    /// Set the destination UDP port to the specified 'value'.
-    void setDestinationUdpPort(ntsa::Port value);
+    /// Add the destination UDP port having the specified 'value'.
+    void addDestinationUdpPort(ntsa::Port value);
+
+    /// Remove the destination TCP port having the specified 'value'.
+    void removeDestinationTcpPort(ntsa::Port value);
+
+    /// Remove the destination UDP port having the specified 'value'.
+    void removeDestinationUdpPort(ntsa::Port value);
 
     /// Return the source Ethernet address.
     const bdlb::NullableValue<ntsa::EthernetAddress>& sourceEthernetAddress()
@@ -119,10 +125,10 @@ class PacketFilter
     const bdlb::NullableValue<ntsa::Ipv6Address>& sourceIpv6Address() const;
 
     /// Return the source TCP port.
-    const bdlb::NullableValue<ntsa::Port>& sourceTcpPort() const;
+    const bsl::vector<ntsa::Port>& sourceTcpPort() const;
 
     /// Return the source UDP port.
-    const bdlb::NullableValue<ntsa::Port>& sourceUdpPort() const;
+    const bsl::vector<ntsa::Port>& sourceUdpPort() const;
 
     /// Return the destination Ethernet address.
     const bdlb::NullableValue<ntsa::EthernetAddress>&
@@ -135,10 +141,10 @@ class PacketFilter
     const bdlb::NullableValue<ntsa::Ipv6Address>& destinationIpv6Address() const;
 
     /// Return the destination TCP port.
-    const bdlb::NullableValue<ntsa::Port>& destinationTcpPort() const;
+    const bsl::vector<ntsa::Port>& destinationTcpPort() const;
 
     /// Return the destination UDP port.
-    const bdlb::NullableValue<ntsa::Port>& destinationUdpPort() const;
+    const bsl::vector<ntsa::Port>& destinationUdpPort() const;
 
     /// Return true if this object has the same value as the specified 'other'
     /// object, otherwise return false.
@@ -167,19 +173,9 @@ class PacketFilter
                         int           level          = 0,
                         int           spacesPerLevel = 4) const;
 
-    /// This type's default constructor is equivalent to setting each byte of
-    /// the object's footprint to zero.
-    NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(PacketFilter);
-
-    /// This type's copy-constructor and copy-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_COPYABLE(PacketFilter);
-
-    /// This type's move-constructor and move-assignment operator is equivalent
-    /// to copying each byte of the source object's footprint to each
-    /// corresponding byte of the destination object's footprint.
-    NTSCFG_TYPE_TRAIT_BITWISE_MOVABLE(PacketFilter);
+    /// This type accepts an allocator argument to its constructors and may
+    /// dynamically allocate memory during its operation.
+    NTSCFG_TYPE_TRAIT_ALLOCATOR_AWARE(PacketFilter);
 };
 
 /// Write a formatted, human-readable description of the specified 'object'
@@ -219,53 +215,34 @@ template <typename HASH_ALGORITHM>
 void hashAppend(HASH_ALGORITHM& algorithm, const PacketFilter& value);
 
 NTSCFG_INLINE
-PacketFilter::PacketFilter()
+PacketFilter::PacketFilter(bslma::Allocator* basicAllocator)
 : d_sourceEthernetAddress()
 , d_sourceIpv4Address()
 , d_sourceIpv6Address()
-, d_sourceTcpPort()
-, d_sourceUdpPort()
+, d_sourceTcpPort(basicAllocator)
+, d_sourceUdpPort(basicAllocator)
 , d_destinationEthernetAddress()
 , d_destinationIpv4Address()
 , d_destinationIpv6Address()
-, d_destinationTcpPort()
-, d_destinationUdpPort()
+, d_destinationTcpPort(basicAllocator)
+, d_destinationUdpPort(basicAllocator)
 , d_flags(0)
 {
 }
 
 NTSCFG_INLINE
 PacketFilter::PacketFilter(
-    bslmf::MovableRef<PacketFilter> original) NTSCFG_NOEXCEPT
-: d_sourceEthernetAddress(NTSCFG_MOVE_FROM(original, d_sourceEthernetAddress)),
-  d_sourceIpv4Address(NTSCFG_MOVE_FROM(original, d_sourceIpv4Address)),
-  d_sourceIpv6Address(NTSCFG_MOVE_FROM(original, d_sourceIpv6Address)),
-  d_sourceTcpPort(NTSCFG_MOVE_FROM(original, d_sourceTcpPort)),
-  d_sourceUdpPort(NTSCFG_MOVE_FROM(original, d_sourceUdpPort)),
-  d_destinationEthernetAddress(NTSCFG_MOVE_FROM(original,
-                                                d_destinationEthernetAddress)),
-  d_destinationIpv4Address(NTSCFG_MOVE_FROM(original, d_destinationIpv4Address)),
-  d_destinationIpv6Address(NTSCFG_MOVE_FROM(original, d_destinationIpv6Address)),
-  d_destinationTcpPort(NTSCFG_MOVE_FROM(original, d_destinationTcpPort)),
-  d_destinationUdpPort(NTSCFG_MOVE_FROM(original, d_destinationUdpPort)),
-  d_flags(NTSCFG_MOVE_FROM(original, d_flags))
-{
-    NTSCFG_MOVE_RESET(original);
-}
-
-NTSCFG_INLINE
-PacketFilter::PacketFilter(
-    const PacketFilter& original)
+    const PacketFilter& original, bslma::Allocator* basicAllocator)
 : d_sourceEthernetAddress(original.d_sourceEthernetAddress)
 , d_sourceIpv4Address(original.d_sourceIpv4Address)
 , d_sourceIpv6Address(original.d_sourceIpv6Address)
-, d_sourceTcpPort(original.d_sourceTcpPort)
-, d_sourceUdpPort(original.d_sourceUdpPort)
+, d_sourceTcpPort(original.d_sourceTcpPort, basicAllocator)
+, d_sourceUdpPort(original.d_sourceUdpPort, basicAllocator)
 , d_destinationEthernetAddress(original.d_destinationEthernetAddress)
 , d_destinationIpv4Address(original.d_destinationIpv4Address)
 , d_destinationIpv6Address(original.d_destinationIpv6Address)
-, d_destinationTcpPort(original.d_destinationTcpPort)
-, d_destinationUdpPort(original.d_destinationUdpPort)
+, d_destinationTcpPort(original.d_destinationTcpPort, basicAllocator)
+, d_destinationUdpPort(original.d_destinationUdpPort, basicAllocator)
 , d_flags(original.d_flags)
 {
 }
@@ -273,28 +250,6 @@ PacketFilter::PacketFilter(
 NTSCFG_INLINE
 PacketFilter::~PacketFilter()
 {
-}
-
-NTSCFG_INLINE
-PacketFilter& PacketFilter::operator=(
-    bslmf::MovableRef<PacketFilter> other) NTSCFG_NOEXCEPT
-{
-    d_sourceEthernetAddress = NTSCFG_MOVE_FROM(other, d_sourceEthernetAddress);
-    d_sourceIpv4Address     = NTSCFG_MOVE_FROM(other, d_sourceIpv4Address);
-    d_sourceIpv6Address     = NTSCFG_MOVE_FROM(other, d_sourceIpv6Address);
-    d_sourceTcpPort         = NTSCFG_MOVE_FROM(other, d_sourceTcpPort);
-    d_sourceUdpPort         = NTSCFG_MOVE_FROM(other, d_sourceUdpPort);
-    d_destinationEthernetAddress =
-        NTSCFG_MOVE_FROM(other, d_destinationEthernetAddress);
-    d_destinationIpv4Address = NTSCFG_MOVE_FROM(other, d_destinationIpv4Address);
-    d_destinationIpv6Address = NTSCFG_MOVE_FROM(other, d_destinationIpv6Address);
-    d_destinationTcpPort   = NTSCFG_MOVE_FROM(other, d_destinationTcpPort);
-    d_destinationUdpPort   = NTSCFG_MOVE_FROM(other, d_destinationUdpPort);
-    d_flags                = NTSCFG_MOVE_FROM(other, d_flags);
-
-    NTSCFG_MOVE_RESET(other);
-
-    return *this;
 }
 
 NTSCFG_INLINE
@@ -322,13 +277,13 @@ void PacketFilter::reset()
     d_sourceEthernetAddress.reset();
     d_sourceIpv4Address.reset();
     d_sourceIpv6Address.reset();
-    d_sourceTcpPort.reset();
-    d_sourceUdpPort.reset();
+    d_sourceTcpPort.clear();
+    d_sourceUdpPort.clear();
     d_destinationEthernetAddress.reset();
     d_destinationIpv4Address.reset();
     d_destinationIpv6Address.reset();
-    d_destinationTcpPort.reset();
-    d_destinationUdpPort.reset();
+    d_destinationTcpPort.clear();
+    d_destinationUdpPort.clear();
     d_flags = 0;
 }
 
@@ -352,15 +307,33 @@ void PacketFilter::setSourceIpv6Address(const ntsa::Ipv6Address& value)
 }
 
 NTSCFG_INLINE
-void PacketFilter::setSourceTcpPort(ntsa::Port value)
+void PacketFilter::addSourceTcpPort(ntsa::Port value)
 {
-    d_sourceTcpPort = value;
+    d_sourceTcpPort.push_back(value);
 }
 
 NTSCFG_INLINE
-void PacketFilter::setSourceUdpPort(ntsa::Port value)
+void PacketFilter::addSourceUdpPort(ntsa::Port value)
 {
-    d_sourceUdpPort = value;
+    d_sourceUdpPort.push_back(value);
+}
+
+NTSCFG_INLINE
+void PacketFilter::removeSourceTcpPort(ntsa::Port value)
+{
+    d_sourceTcpPort.erase(
+        bsl::remove(
+            d_sourceTcpPort.begin(), d_sourceTcpPort.end(), value),
+        d_sourceTcpPort.end());
+}
+
+NTSCFG_INLINE
+void PacketFilter::removeSourceUdpPort(ntsa::Port value)
+{
+    d_sourceUdpPort.erase(
+        bsl::remove(
+            d_sourceUdpPort.begin(), d_sourceUdpPort.end(), value),
+        d_sourceUdpPort.end());
 }
 
 NTSCFG_INLINE
@@ -385,15 +358,33 @@ void PacketFilter::setDestinationIpv6Address(
 }
 
 NTSCFG_INLINE
-void PacketFilter::setDestinationTcpPort(ntsa::Port value)
+void PacketFilter::addDestinationTcpPort(ntsa::Port value)
 {
-    d_destinationTcpPort = value;
+    d_destinationTcpPort.push_back(value);
 }
 
 NTSCFG_INLINE
-void PacketFilter::setDestinationUdpPort(ntsa::Port value)
+void PacketFilter::addDestinationUdpPort(ntsa::Port value)
 {
-    d_destinationUdpPort = value;
+    d_destinationUdpPort.push_back(value);
+}
+
+NTSCFG_INLINE
+void PacketFilter::removeDestinationTcpPort(ntsa::Port value)
+{
+    d_destinationTcpPort.erase(
+        bsl::remove(
+            d_destinationTcpPort.begin(), d_destinationTcpPort.end(), value),
+        d_destinationTcpPort.end());
+}
+
+NTSCFG_INLINE
+void PacketFilter::removeDestinationUdpPort(ntsa::Port value)
+{
+    d_destinationUdpPort.erase(
+        bsl::remove(
+            d_destinationUdpPort.begin(), d_destinationUdpPort.end(), value),
+        d_destinationUdpPort.end());
 }
 
 NTSCFG_INLINE
@@ -418,14 +409,14 @@ const bdlb::NullableValue<ntsa::Ipv6Address>& PacketFilter::
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::Port>& PacketFilter::sourceTcpPort()
+const bsl::vector<ntsa::Port>& PacketFilter::sourceTcpPort()
     const
 {
     return d_sourceTcpPort;
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::Port>& PacketFilter::sourceUdpPort()
+const bsl::vector<ntsa::Port>& PacketFilter::sourceUdpPort()
     const
 {
     return d_sourceUdpPort;
@@ -453,14 +444,14 @@ const bdlb::NullableValue<ntsa::Ipv6Address>& PacketFilter::
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::Port>& PacketFilter::
+const bsl::vector<ntsa::Port>& PacketFilter::
     destinationTcpPort() const
 {
     return d_destinationTcpPort;
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::Port>& PacketFilter::
+const bsl::vector<ntsa::Port>& PacketFilter::
     destinationUdpPort() const
 {
     return d_destinationUdpPort;

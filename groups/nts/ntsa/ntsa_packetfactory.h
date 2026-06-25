@@ -36,42 +36,29 @@ namespace ntsa {
 /// This class is thread safe.
 ///
 /// @ingroup module_ntsa_protocol
-class PacketFactory : public bdlbb::BlobBufferFactory, public bslma::Allocator
+class PacketFactory
 {
   public:
     /// Destroy this object.
-    ~PacketFactory() BSLS_KEYWORD_OVERRIDE;
+    virtual ~PacketFactory();
 
-    /// Return a newly allocated block of memory of (at least) the specified
-    /// positive 'size' (in bytes).  If 'size' is 0, a null pointer is
-    /// returned with no other effect.  If this allocator cannot return the
-    /// requested number of bytes, then it will throw a 'std::bad_alloc'
-    /// exception in an exception-enabled build, or else will abort the
-    /// program in a non-exception build.  The behavior is undefined unless
-    /// '0 <= size'.  Note that the alignment of the address returned
-    /// conforms to the platform requirement for any object of the specified
-    /// 'size'.  Note that this virtual function hides a two-parameter
-    /// non-virtual 'allocate' method inherited from 'bsl::memory_resource';
-    /// to access the inherited function, upcast the object to
-    /// 'bsl::memory_resource&' before calling the base-class function.
-    virtual void* allocate(size_type size) BSLS_KEYWORD_OVERRIDE = 0;
+    /// Load into the specified 'result' a packet suitable to enqueue to to the
+    /// associated device.
+    virtual void createOutgoingPacket(
+        bsl::shared_ptr<ntsa::Packet>* result) = 0;
 
-    /// Return the memory block at the specified 'address' back to this
-    /// allocator.  If 'address' is 0, this function has no effect.  The
-    /// behavior is undefined unless 'address' was allocated using this
-    /// allocator object and has not already been deallocated.  Note that
-    /// this virtual function hides a three-parameter, non-virtual 'deallocate'
-    /// method inherited from 'bsl::memory_resource'; to access the
-    /// inherited function, upcast the object to 'bsl::memory_resource&'
-    /// before calling the base-class function.
-    void deallocate(void* address) BSLS_KEYWORD_OVERRIDE = 0;
+    /// Load into the specified 'result' a packet suitable to dequeue from the
+    /// associated device.
+    virtual void createIncomingPacket(
+        bsl::shared_ptr<ntsa::Packet>* result) = 0;
 
-    /// Allocate a blob buffer from this blob buffer factory, and load it
-    /// into the specified 'buffer'.
-    void allocate(bdlbb::BlobBuffer* buffer) BSLS_KEYWORD_OVERRIDE = 0;
+    /// Load into the specified 'result' a blob buffer suitable to enqueue to
+    /// to the associated device.
+    virtual void createOutgoingBlobBuffer(bdlbb::BlobBuffer* result) = 0;
 
-    /// Load into the specified 'result' a new packet.
-    virtual void allocate(bsl::shared_ptr<ntsa::Packet>* result) = 0;
+    /// Load into the specified 'result' a blob buffer suitable to dequeue from
+    /// the associated device.
+    virtual void createIncomingBlobBuffer(bdlbb::BlobBuffer* result) = 0;
 };
 
 }  // close namespace ntsa

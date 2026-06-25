@@ -27,6 +27,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_packet.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
+#include <ntsa_packetfactory.h>
 #include <ntscfg_platform.h>
 #include <ntsi_descriptor.h>
 #include <ntsscm_version.h>
@@ -38,13 +39,53 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsi {
 
+/// Provide a packet sender.
+///
+/// @par Thread Safety
+/// This class is thread safe.
+///
+/// @ingroup module_ntsi
+class PacketSender
+{
+  public:
+    /// Destroy this object.
+    virtual ~PacketSender();
+
+    /// Enqueue the specified 'packet' for transmission. Return the error.
+    virtual ntsa::Error enqueue(
+        const bsl::shared_ptr<ntsa::Packet>& packet) = 0;
+
+    /// Enqueue the specified 'packet' for transmission. Return the error.
+    virtual ntsa::Error enqueue(
+        bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet) = 0;
+};
+
+/// Provide a packet receiver.
+///
+/// @par Thread Safety
+/// This class is thread safe.
+///
+/// @ingroup module_ntsi
+class PacketReceiver
+{
+  public:
+    /// Destroy this object.
+    virtual ~PacketReceiver();
+
+    /// Load into the specified 'result' the next packet received. Return the
+    /// error.
+    virtual ntsa::Error dequeue(bsl::shared_ptr<ntsa::Packet>* result) = 0;
+};
+
 /// Provide an abstract representation of a network device.
 ///
 /// @par Thread Safety
 /// This class is thread safe.
 ///
 /// @ingroup module_ntsi
-class Device
+class Device : public ntsa::PacketFactory,
+               public ntsi::PacketSender,
+               public ntsi::PacketReceiver
 {
   public:
     /// Destroy this object.
@@ -53,19 +94,39 @@ class Device
     /// Open the device.
     virtual ntsa::Error open() = 0;
 
-    /// Load into the specified 'buffer' a new buffer whose size is the
-    /// maximum transmission unit of this device.
-    virtual ntsa::Error allocate(bdlbb::BlobBuffer* buffer) = 0;
+    /// Load into the specified 'result' a packet suitable to enqueue to to the
+    /// associated device.
+    virtual void createOutgoingPacket(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE = 0;
+
+    /// Load into the specified 'result' a packet suitable to dequeue from the
+    /// associated device.
+    virtual void createIncomingPacket(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE = 0;
+
+    /// Load into the specified 'result' a blob buffer suitable to enqueue to
+    /// to the associated device.
+    virtual void createOutgoingBlobBuffer(bdlbb::BlobBuffer* result)
+        BSLS_KEYWORD_OVERRIDE = 0;
+
+    /// Load into the specified 'result' a blob buffer suitable to dequeue from
+    /// the associated device.
+    virtual void createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
+        BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(const ntsa::Packet& packet) = 0;
+    virtual ntsa::Error enqueue(const bsl::shared_ptr<ntsa::Packet>& packet)
+        BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(bslmf::MovableRef<ntsa::Packet> packet) = 0;
+    virtual ntsa::Error enqueue(
+        bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet)
+        BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Load into the specified 'result' the next packet received. Return the
     /// error.
-    virtual ntsa::Error dequeue(ntsa::Packet* result) = 0;
+    virtual ntsa::Error dequeue(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Close the device. Return the error.
     virtual ntsa::Error close() = 0;
@@ -93,33 +154,46 @@ class Network
     /// maximum transmission unit of this device.
     virtual ntsa::Error allocate(bdlbb::BlobBuffer* buffer) = 0;
 
-    /// Load into the specified 'packet' a new packets to the specified
+    /// Load into the specified 'packet' a new packet to the specified
     /// 'destinationIpv4Address' with the source IPv4 address, source Ethernet
-    /// address, and destination Ethernet address of theh 'packet'
-    /// automatically assigned to the correct addresses according to the
-    /// current IPv4 routing table. Return the error.
+    /// address, and destination Ethernet address of the 'packet' automatically
+    /// assigned to the correct addresses according to the current IPv4 routing
+    /// table. Load into the specified 'sender' an appropriate mechanism to
+    /// enqueue the 'packet for transmission. Return the error.
     virtual ntsa::Error allocate(
-        ntsa::Packet*            packet,
-        const ntsa::Ipv4Address& destinationIpv4Address) = 0;
+        bsl::shared_ptr<ntsa::Packet>*       packet,
+        bsl::shared_ptr<ntsi::PacketSender>* sender,
+        const ntsa::Ipv4Address&             destinationIpv4Address) = 0;
 
-    /// Load into the specified 'packet' a new packets to the specified
-    /// 'destinationIpv6Address' with the source IPv6 address, source Ethernet
-    /// address, and destination Ethernet address of theh 'packet'
-    /// automatically assigned to the correct addresses according to the
-    /// current IPv6 routing table. Return the error.
+    /// Load into the specified 'packet' a new packet to the specified
+    /// 'destinationIpv4Address' with the source IPv4 address, source Ethernet
+    /// address, and destination Ethernet address of the 'packet' automatically
+    /// assigned to the correct addresses according to the current IPv4 routing
+    /// table. Load into the specified 'sender' an appropriate mechanism to
+    /// enqueue the 'packet for transmission. Return the error.
     virtual ntsa::Error allocate(
-        ntsa::Packet*            packet,
-        const ntsa::Ipv6Address& destinationIpv6Address) = 0;
+        bsl::shared_ptr<ntsa::Packet>*       packet,
+        bsl::shared_ptr<ntsi::PacketSender>* sender,
+        const ntsa::Ipv6Address&             destinationIpv6Address) = 0;
 
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(const ntsa::Packet& packet) = 0;
-
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(bslmf::MovableRef<ntsa::Packet> packet) = 0;
-
-    /// Load into the specified 'result' the next packet received. Return the
+    /// Load into the specified 'receiver' an appropriate mechanism to receive
+    /// packets intended for the specified 'sourceEthernetAddress'. Return the
     /// error.
-    virtual ntsa::Error dequeue(ntsa::Packet* result) = 0;
+    virtual ntsa::Error bind(
+        bsl::shared_ptr<ntsi::PacketReceiver>* receiver,
+        const ntsa::EthernetAddress&           sourceEthernetAddress) = 0;
+
+    /// Load into the specified 'receiver' an appropriate mechanism to receive
+    /// packets intended for the specified 'sourceIpv4Address'. Return the
+    /// error.
+    virtual ntsa::Error bind(bsl::shared_ptr<ntsi::PacketReceiver>* receiver,
+                             const ntsa::Ipv4Address& sourceIpv4Address) = 0;
+
+    /// Load into the specified 'receiver' an appropriate mechanism to receive
+    /// packets intended for the specified 'sourceIpv4Address'. Return the
+    /// error.
+    virtual ntsa::Error bind(bsl::shared_ptr<ntsi::PacketReceiver>* receiver,
+                             const ntsa::Ipv6Address& sourceIpv6Address) = 0;
 
     /// Close the device. Return the error.
     virtual ntsa::Error close() = 0;

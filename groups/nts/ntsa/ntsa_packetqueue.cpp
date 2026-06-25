@@ -38,7 +38,7 @@ void PacketQueue::shutdown()
     d_queue.disable();
 }
 
-ntsa::Error PacketQueue::enqueue(const ntsa::Packet& packet)
+ntsa::Error PacketQueue::enqueue(const bsl::shared_ptr<ntsa::Packet>& packet)
 {
     int rc = d_queue.tryPushBack(packet);
     if (rc != 0) {
@@ -53,9 +53,10 @@ ntsa::Error PacketQueue::enqueue(const ntsa::Packet& packet)
     return ntsa::Error();
 }
 
-ntsa::Error PacketQueue::enqueue(bslmf::MovableRef<ntsa::Packet> packet)
+ntsa::Error PacketQueue::enqueue(
+    bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet)
 {
-    int rc = d_queue.tryPushBack(bslmf::MovableRefUtil::move(packet));
+    int rc = d_queue.tryPushBack(NTSCFG_MOVE(packet));
     if (rc != 0) {
         if (d_queue.isEnabled()) {
             return ntsa::Error(ntsa::Error::e_LIMIT);
@@ -68,12 +69,12 @@ ntsa::Error PacketQueue::enqueue(bslmf::MovableRef<ntsa::Packet> packet)
     return ntsa::Error();
 }
 
-ntsa::Error PacketQueue::dequeue(ntsa::Packet* result)
+ntsa::Error PacketQueue::dequeue(bsl::shared_ptr<ntsa::Packet>* result)
 {
     result->reset();
 
     d_queue.popFront(result);
-    if (result->isUndefined()) {
+    if (!result->get() || (*result)->isUndefined()) {
         return ntsa::Error(ntsa::Error::e_EOF);
     }
 
