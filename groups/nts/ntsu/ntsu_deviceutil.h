@@ -93,6 +93,7 @@ class DeviceUtil
     /// Apply the specified packet 'filter' to the specified 'device'. Return
     /// the error.
     static ntsa::Error applyFilter(ntsa::Handle              device,
+                                   const ntsa::Adapter&      adapter,
                                    const ntsa::PacketFilter& filter);
 
     /// Set the blocking mode of the specified 'device' to the specified
@@ -136,15 +137,20 @@ class DeviceUtil
     /// Block until at least one packet can be enqueued for transmission by the
     /// specified 'device' then enqueue the specified 'packet' for
     /// transmission. Return the error.
-    static ntsa::Error enqueuePacket(ntsa::Handle                         device,
-                            const bsl::shared_ptr<ntsa::Packet>& packet);
+    static ntsa::Error enqueuePacket(
+        ntsa::Handle                                device,
+        ntsa::DeviceType::Value                     deviceType,
+        const bsl::shared_ptr<ntsa::Packet>&        packet,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory);
 
     /// Block until at least one packet has been received by the specified
     /// 'device' then enqueue to the specified 'packetQueue' each packet
     /// received. Return the error.
-    static ntsa::Error dequeuePacket(ntsa::Handle         device,
-                               ntsa::PacketQueue*   packetQueue,
-                               ntsa::PacketFactory* packetFactory);
+    static ntsa::Error dequeuePacket(
+        ntsa::Handle                                device,
+        ntsa::DeviceType::Value                     deviceType,
+        const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory);
 
     /// Close the specified 'device'. Return the error.
     static ntsa::Error close(ntsa::Handle device);

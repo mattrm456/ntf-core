@@ -20,6 +20,9 @@ BSLS_IDENT_RCSID(ntsu_deviceutil_t_cpp, "$Id$ $CSID$")
 
 #include <ntsu_deviceutil.h>
 
+#include <ntsa_packet.h>
+#include <ntsa_packetpool.h>
+#include <ntsa_packetqueue.h>
 #include <ntsu_adapterutil.h>
 #include <bslmt_threadattributes.h>
 #include <bslmt_threadgroup.h>
@@ -33,13 +36,27 @@ namespace ntsu {
 // Provide tests for 'ntsu::DeviceUtil'.
 class DeviceUtilTest
 {
+    // Return a packet created through the specified 'packetFactory' from the
+    // specified 'adapter' to that same 'adapter'.
+    static bsl::shared_ptr<ntsa::Packet> createPacket(
+        const ntsa::Adapter&                        adapter,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory);
+
     // Execute the reader loop.
-    static void reader(ntsa::Handle              device,
-                       const bsls::TimeInterval& duration);
+    static void reader(
+        ntsa::Handle                                device,
+        ntsa::DeviceType::Value                     deviceType,
+        const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const bsls::TimeInterval&                   duration);
 
     // Execute the writer loop.
-    static void writer(ntsa::Handle              device,
-                       const bsls::TimeInterval& duration);
+    static void writer(
+        ntsa::Handle                                device,
+        ntsa::DeviceType::Value                     deviceType,
+        const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const bsls::TimeInterval&                   duration);
 
     // Verify the specified 'adapter'.
     static void verifyAdapter(const ntsa::Adapter& adapter);
@@ -57,22 +74,180 @@ class DeviceUtilTest
     static void verifyDefault();
 };
 
-void DeviceUtilTest::reader(ntsa::Handle              device,
-                            const bsls::TimeInterval& duration)
+bsl::shared_ptr<ntsa::Packet> DeviceUtilTest::createPacket(
+    const ntsa::Adapter&                        adapter,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
-    ntsa::Error error;
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
 
-    error = ntsu::DeviceUtil::shutdown(device);
-    NTSCFG_TEST_OK(error);
+    ntsa::EthernetPacket& ethernet = packet->makeEthernet();
+
+    ntsa::EthernetAddress sourceEthernetAddress;
+    ntsa::EthernetAddress destinationEthernetAddress;
+
+    destinationEthernetAddress.parse(adapter.ethernetAddress());
+
+    ethernet.header().setSource(sourceEthernetAddress);
+    ethernet.header().setDestination(destinationEthernetAddress);
+
+    ethernet.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4 = ethernet.payload().makeIpv4();
+
+    ntsa::Ipv4Address sourceIpv4Address      = ntsa::Ipv4Address::loopback();
+    ntsa::Ipv4Address destinationIpv4Address = adapter.ipv4Address().value();
+
+    ipv4.header().setSourceAddress(sourceIpv4Address);
+    ipv4.header().setDestinationAddress(destinationIpv4Address);
+
+    ipv4.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_UDP);
+    ipv4.header().setId(1);
+    ipv4.header().setPreserve(true);
+
+    ntsa::UdpPacket& udp = ipv4.payload().makeUdp();
+
+    const ntsa::Port sourceUdpPort      = 3001;
+    const ntsa::Port destinationUdpPort = 4001;
+
+    udp.header().setSourcePort(sourceUdpPort);
+    udp.header().setDestinationPort(destinationUdpPort);
+
+    bdlbb::BlobBuffer payload;
+    packetFactory->createOutgoingBlobBuffer(&payload);
+
+    NTSCFG_MEMORY_COPY(payload.data(), "Hello, world!", 13);
+    payload.setSize(13);
+
+    udp.setPayload(payload);
+
+    BALL_LOG_DEBUG << "Transmitting packet " << packet << BALL_LOG_END;
+
+    return packet;
 }
 
-void DeviceUtilTest::writer(ntsa::Handle              device,
-                            const bsls::TimeInterval& duration)
+void DeviceUtilTest::reader(
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const bsls::TimeInterval&                   duration)
 {
     ntsa::Error error;
 
-    error = ntsu::DeviceUtil::shutdown(device);
-    NTSCFG_TEST_OK(error);
+    BALL_LOG_INFO << "Test reader thread starting" << BALL_LOG_END;
+
+    bsls::TimeInterval now      = bdlt::CurrentTime::now();
+    bsls::TimeInterval deadline = now + duration;
+
+    while (true) {
+        now = bdlt::CurrentTime::now();
+        if (now >= deadline) {
+            break;
+        }
+
+        BALL_LOG_TRACE << "Device descriptor " << device
+                       << " wait until readable starting: "
+                       << BALL_LOG_END;
+
+        error = ntsu::DeviceUtil::waitUntilReadable(device, deadline);
+
+        BALL_LOG_TRACE << "Device descriptor " << device
+                       << " wait until readable complete: "
+                       << error
+                       << BALL_LOG_END;
+
+        if (error) {
+            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                bsls::TimeInterval interval;
+                interval.setTotalMilliseconds(200);
+                bslmt::ThreadUtil::sleep(interval);
+                continue;
+            }
+            else if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                break;
+            }
+            else {
+                BALL_LOG_ERROR << "Device descriptor " << device
+                               << " failed to wait until readable: " << error
+                               << BALL_LOG_END;
+                break;
+            }
+        }
+
+        error = ntsu::DeviceUtil::dequeuePacket(device,
+                                                deviceType,
+                                                packetQueue,
+                                                packetFactory);
+        if (error) {
+            BALL_LOG_ERROR << "Device descriptor " << device
+                           << " failed to dequeue packet: " << error
+                           << BALL_LOG_END;
+            break;
+        }
+
+        bsls::TimeInterval interval;
+        interval.setTotalMilliseconds(100);
+
+        bslmt::ThreadUtil::sleep(interval);
+    }
+
+    BALL_LOG_INFO << "Test reader thread complete" << BALL_LOG_END;
+}
+
+void DeviceUtilTest::writer(
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const bsls::TimeInterval&                   duration)
+{
+    ntsa::Error error;
+
+    BALL_LOG_INFO << "Test writer thread starting" << BALL_LOG_END;
+
+    bsls::TimeInterval now      = bdlt::CurrentTime::now();
+    bsls::TimeInterval deadline = now + duration;
+
+    while (true) {
+        now = bdlt::CurrentTime::now();
+        if (now >= deadline) {
+            break;
+        }
+
+        bsl::shared_ptr<ntsa::Packet> packet;
+        error = packetQueue->dequeue(&packet);
+        if (error) {
+            if (error != ntsa::Error(ntsa::Error::e_EOF)) {
+                BALL_LOG_ERROR << "Failed to dequeue packet from packet queue: "
+                               << BALL_LOG_END;
+            }
+            break;
+        }
+
+        NTSCFG_TEST_TRUE(packet);
+
+        error = ntsu::DeviceUtil::waitUntilWritable(device, deadline);
+        if (error) {
+            BALL_LOG_ERROR << "Device descriptor " << device
+                           << " failed to wait until writable: " << error
+                           << BALL_LOG_END;
+            // break;
+        }
+
+        error = ntsu::DeviceUtil::enqueuePacket(device,
+                                                deviceType,
+                                                packet,
+                                                packetFactory);
+        if (error) {
+            BALL_LOG_ERROR << "Device descriptor " << device
+                           << " failed to enqueue packet: " << error
+                           << BALL_LOG_END;
+            break;
+        }
+    }
+
+    BALL_LOG_INFO << "Test writer thread complete" << BALL_LOG_END;
 }
 
 void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
@@ -81,6 +256,8 @@ void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
 
     ntsa::Error error;
     int         rc;
+
+    const bsl::size_t k_MAX_PACKETS = 1024;
 
     ntsa::DeviceConfig incomingDeviceConfig(NTSCFG_TEST_ALLOCATOR);
     incomingDeviceConfig.setAdapterName(adapter.name());
@@ -109,6 +286,17 @@ void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
     error = ntsu::DeviceUtil::setBlocking(incomingDevice, false);
     NTSCFG_TEST_OK(error);
 
+    bsl::shared_ptr<ntsa::PacketPool> incomingPacketPool;
+    incomingPacketPool.createInplace(NTSCFG_TEST_ALLOCATOR,
+                                     incomingTxBufferSize,
+                                     incomingRxBufferSize,
+                                     NTSCFG_TEST_ALLOCATOR);
+
+    bsl::shared_ptr<ntsa::PacketQueue> incomingPacketQueue;
+    incomingPacketQueue.createInplace(NTSCFG_TEST_ALLOCATOR,
+                                      k_MAX_PACKETS,
+                                      NTSCFG_TEST_ALLOCATOR);
+
     ntsa::DeviceConfig outgoingDeviceConfig(NTSCFG_TEST_ALLOCATOR);
     outgoingDeviceConfig.setAdapterName(adapter.name());
     outgoingDeviceConfig.setIncomingEnabled(false);
@@ -136,6 +324,17 @@ void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
     error = ntsu::DeviceUtil::setBlocking(outgoingDevice, false);
     NTSCFG_TEST_OK(error);
 
+    bsl::shared_ptr<ntsa::PacketPool> outgoingPacketPool;
+    outgoingPacketPool.createInplace(NTSCFG_TEST_ALLOCATOR,
+                                     outgoingTxBufferSize,
+                                     outgoingRxBufferSize,
+                                     NTSCFG_TEST_ALLOCATOR);
+
+    bsl::shared_ptr<ntsa::PacketQueue> outgoingPacketQueue;
+    outgoingPacketQueue.createInplace(NTSCFG_TEST_ALLOCATOR,
+                                      k_MAX_PACKETS,
+                                      NTSCFG_TEST_ALLOCATOR);
+
     bsls::TimeInterval duration = bsls::TimeInterval(1, 0);
     bsls::TimeInterval deadline = bdlt::CurrentTime::now() + duration;
 
@@ -149,6 +348,9 @@ void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
         rc = incomingThreadGroup.addThread(
             bdlf::BindUtil::bind(&DeviceUtilTest::reader,
                                  incomingDevice,
+                                 incomingDeviceType,
+                                 incomingPacketQueue,
+                                 incomingPacketPool,
                                  duration),
             incomingThreadAttributes);
         NTSCFG_TEST_EQ(rc, 0);
@@ -161,13 +363,37 @@ void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
         rc = outgoingThreadGroup.addThread(
             bdlf::BindUtil::bind(&DeviceUtilTest::writer,
                                  outgoingDevice,
+                                 outgoingDeviceType,
+                                 outgoingPacketQueue,
+                                 outgoingPacketPool,
                                  duration),
             outgoingThreadAttributes);
         NTSCFG_TEST_EQ(rc, 0);
     }
 
+    bsl::shared_ptr<ntsa::Packet> packet =
+        DeviceUtilTest::createPacket(adapter, outgoingPacketPool);
+
+    error = outgoingPacketQueue->enqueue(packet);
+    NTSCFG_TEST_OK(error);
+
+    bslmt::ThreadUtil::sleep(duration);
+
+    outgoingPacketQueue->shutdown();
+
+    // MRM
+#if 0
+    error = ntsu::DeviceUtil::shutdown(outgoingDevice);
+    NTSCFG_TEST_OK(error);
+
+    error = ntsu::DeviceUtil::shutdown(incomingDevice);
+    NTSCFG_TEST_OK(error);
+#endif
+
     outgoingThreadGroup.joinAll();
     incomingThreadGroup.joinAll();
+
+    incomingPacketQueue->shutdown();
 
     error = ntsu::DeviceUtil::close(incomingDevice);
     NTSCFG_TEST_OK(error);

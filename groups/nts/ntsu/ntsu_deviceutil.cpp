@@ -214,6 +214,79 @@ namespace ntsu {
                        << BALL_LOG_END;                                       \
     } while (false)
 
+#define NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(buffer, packet, error)       \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Device driver failed to decode packet " << (packet) << ": "    \
+           << (error) << "\n"                                                 \
+           << bdlb::PrintStringHexDumper((buffer).data(), (buffer).size());   \
+                                                                              \
+        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error)               \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Device driver failed to encode packet " << (packet) << ": "    \
+           << (error);                                                        \
+                                                                              \
+        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(packet, error)                \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Device driver failed to write packet " << (packet) << ": "     \
+           << (error);                                                        \
+                                                                              \
+        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(packet)                   \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Device driver failed to write packet " << (packet) << ": EOF"; \
+                                                                              \
+        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(packet,       \
+                                                                buffer,       \
+                                                                bytesSent)    \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Device driver failed to write packet " << (packet)             \
+           << ": unexpected number of bytes sent: expected "                  \
+           << (buffer).size() << " but found " << (bytesSent);                \
+                                                                              \
+        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet)                      \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Incoming packet dropped = " << (packet);                       \
+                                                                              \
+        BSLS_LOG_WARN("%s", ss.str().c_str());                                \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet)                           \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Incoming packet = " << (packet);                               \
+                                                                              \
+        BSLS_LOG_DEBUG("%s", ss.str().c_str());                               \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(packet, buffer)                   \
+    do {                                                                      \
+        bsl::stringstream ss;                                                 \
+        ss << "Outgoing packet " << (packet) << ":\n"                         \
+           << bdlb::PrintStringHexDumper((buffer).data(), (buffer).size());   \
+                                                                              \
+        BSLS_LOG_DEBUG("%s", ss.str().c_str());                               \
+    } while (false)
+
 /// Provide a private, platform-specific implementation of utilities for
 /// link-level devices.
 class DeviceUtil::Impl
@@ -306,6 +379,8 @@ class DeviceUtil::Impl
     /// Apply the specified packet 'filter' to the specified 'device'. Return
     /// the error.
     static ntsa::Error applyFilter(ntsa::Handle              device,
+                                   const ntsa::Adapter&      adapter,
+                                   bool                      loopback,
                                    const ntsa::PacketFilter& filter);
 
     /// Print a formatted, human-readable description of the specified
@@ -794,10 +869,64 @@ ntsa::Error DeviceUtil::Impl::getAdapter(ntsa::Handle   device,
 }
 
 ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
+                                          const ntsa::Adapter&      adapter,
+                                          bool                      loopback,
                                           const ntsa::PacketFilter& filter)
 {
     NTSCFG_WARNING_UNUSED(device);
     NTSCFG_WARNING_UNUSED(filter);
+
+    ntsa::Error error;
+
+    if (!loopback) {
+        ntsa::EthernetAddress ethernetAddress;
+        if (!ethernetAddress.parse(adapter.ethernetAddress())) {
+            BALL_LOG_ERROR << "Failed to parse ethernet address" << BALL_LOG_END;
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        unsigned char target_mac[6];
+        NTSCFG_MEMORY_COPY(target_mac, &ethernetAddress, sizeof target_mac);
+
+        // 5. Define BPF Bytecode Instructions
+        // This cBPF code evaluates 'ether dst' or 'dst host' at the link layer
+        struct bpf_insn bpf_code[] = {
+            // Load the first 4 bytes of the destination MAC address into
+            // accumulator
+            BPF_STMT(BPF_LD + BPF_W + BPF_ABS, 0),
+            // Compare against the first 4 bytes of our target MAC
+            BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+                     ((bpf_u_int32)(target_mac[0]) << 24) |
+                         ((bpf_u_int32)(target_mac[1]) << 16) |
+                         ((bpf_u_int32)(target_mac[2]) << 8) |
+                         (bpf_u_int32)(target_mac[3]),
+                     0,
+                     3),
+            // Load the next 2 bytes of the destination MAC address
+            BPF_STMT(BPF_LD + BPF_H + BPF_ABS, 4),
+            // Compare against the last 2 bytes of our target MAC
+            BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+                     ((bpf_u_int32)(target_mac[4]) << 8) |
+                         (bpf_u_int32)(target_mac[5]),
+                     0,
+                     1),
+            // If it matches, accept the packet (return max cap length)
+            BPF_STMT(BPF_RET + BPF_K, (u_int)-1),
+            // If it does not match, drop the packet (return 0 bytes)
+            BPF_STMT(BPF_RET + BPF_K, 0)};
+
+        struct bpf_program bpf_prog = {
+            .bf_len   = sizeof(bpf_code) / sizeof(struct bpf_insn),
+            .bf_insns = bpf_code};
+
+        // 6. Attach filter to BPF
+        if (ioctl(device, BIOCSETF, &bpf_prog) < 0) {
+            error = ntsa::Error::last();
+            BSLS_LOG_ERROR("BPF device driver set packet filter program: %s",
+                           error.text().c_str());
+            return error;
+        }
+    }
 
     return ntsa::Error();
 }
@@ -857,6 +986,13 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     *rxBufferSize = 0;
 
     ntsa::Handle device = ntsa::k_INVALID_HANDLE;
+
+    bool loopback = false;
+    if (adapter.ipv4Address().has_value() &&
+        adapter.ipv4Address().value().isLoopback())
+    {
+        loopback = true;
+    }
 
     const bool outgoing = configuration.outgoingEnabled().value_or(false);
     const bool incoming = configuration.incomingEnabled().value_or(false);
@@ -937,7 +1073,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     // Configure the visibility of transmitted packets.
 
-    error = DeviceUtil::Impl::setSeeSent(device, false);
+    error = DeviceUtil::Impl::setSeeSent(device, true);
     if (error) {
         return error;
     }
@@ -951,13 +1087,15 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     // Configure the packet filter.
 
+    ntsa::PacketFilter packetFilter;
     if (configuration.incomingPacketFilter().has_value()) {
-        error = DeviceUtil::Impl::applyFilter(
-            device,
-            configuration.incomingPacketFilter().value());
-        if (error) {
-            return error;
-        }
+        packetFilter = configuration.incomingPacketFilter().value();
+    }
+
+    error =
+        DeviceUtil::Impl::applyFilter(device, adapter, loopback, packetFilter);
+    if (error) {
+        return error;
     }
 
     // Configure the network interface.
@@ -1004,6 +1142,12 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         return error;
     }
 
+    if (loopback) {
+        if (dataLinkType != DLT_NULL && dataLinkType != DLT_LOOP) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+    }
+
     if (dataLinkType == DLT_NULL) {
         *type = ntsa::DeviceType::e_LOCAL;
     }
@@ -1038,16 +1182,42 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     *txBufferSize =
         static_cast<bsl::size_t>(DeviceUtil::Impl::k_DEFAULT_TX_BUFFER_SIZE);
 
-    *rxBufferSize =
-        static_cast<bsl::size_t>(bufferSize);
+    *rxBufferSize = static_cast<bsl::size_t>(bufferSize);
 
     return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
+                                    const ntsa::Adapter&      adapter,
                                     const ntsa::PacketFilter& filter)
 {
-    return DeviceUtil::Impl::applyFilter(device, filter);
+    ntsa::Error error;
+
+    bool loopback = false;
+    if (adapter.ipv4Address().has_value() &&
+        adapter.ipv4Address().value().isLoopback())
+    {
+        loopback = true;
+    }
+
+    bsl::uint32_t dataLinkType;
+    error = DeviceUtil::Impl::getDataLinkType(device, &dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    if (loopback) {
+        if (dataLinkType != DLT_NULL && dataLinkType != DLT_LOOP) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+    }
+
+    error = DeviceUtil::Impl::applyFilter(device, adapter, loopback, filter);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::setBlocking(ntsa::Handle device, bool value)
@@ -1250,24 +1420,429 @@ ntsa::Error DeviceUtil::waitUntilError(ntsa::Handle              device,
 }
 
 ntsa::Error DeviceUtil::enqueuePacket(
-    ntsa::Handle                         device,
-    const bsl::shared_ptr<ntsa::Packet>& packet)
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::Packet>&        packet,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(packet);
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    if (!packet) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!packet->isEthernet()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const ntsa::EthernetPacket& ethernet = packet->ethernet();
+
+    if (deviceType == ntsa::DeviceType::e_LOCAL ||
+        deviceType == ntsa::DeviceType::e_LOOPBACK)
+    {
+        bdlbb::BlobBuffer buffer;
+        packetFactory->createOutgoingBlobBuffer(&buffer);
+
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        encoderOptions.setLoopback(true);
+        encoderOptions.setIgnoreChecksum(true);
+
+        ntsa::PacketEncoder encoder(&buffer);
+
+        if (ethernet.payload().isUndefined()) {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+        else if (ethernet.payload().isIpv4()) {
+            if (ethernet.header().protocol() != ntsa::EthernetProtocol::e_IPV4)
+            {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            const ntsa::Ipv4Packet& ipv4 = ethernet.payload().ipv4();
+
+            bsl::uint32_t packetType;
+            if (deviceType == ntsa::DeviceType::e_LOCAL) {
+                packetType = PF_INET;
+            }
+            else {
+                packetType = BSLS_BYTEORDER_HOST_TO_BE(PF_INET);
+            }
+
+            if (buffer.size() < sizeof packetType) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            NTSCFG_MEMORY_COPY(buffer.data(), &packetType, sizeof packetType);
+
+            error = encoder.advance(sizeof packetType);
+            if (error) {
+                return error;
+            }
+
+            error = ipv4.encode(&encoderContext, &encoder, encoderOptions);
+            if (error) {
+                NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error);
+                return error;
+            }
+        }
+        else if (ethernet.payload().isIpv6()) {
+            if (ethernet.header().protocol() != ntsa::EthernetProtocol::e_IPV6)
+            {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            const ntsa::Ipv6Packet& ipv6 = ethernet.payload().ipv6();
+
+            bsl::uint32_t packetType;
+            if (deviceType == ntsa::DeviceType::e_LOCAL) {
+                packetType = PF_INET6;
+            }
+            else {
+                packetType = BSLS_BYTEORDER_HOST_TO_BE(PF_INET6);
+            }
+
+            if (buffer.size() < sizeof packetType) {
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            NTSCFG_MEMORY_COPY(buffer.data(), &packetType, sizeof packetType);
+
+            error = encoder.advance(sizeof packetType);
+            if (error) {
+                return error;
+            }
+
+            error = ipv6.encode(&encoderContext, &encoder, encoderOptions);
+            if (error) {
+                NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error);
+                return error;
+            }
+        }
+        else {
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        error = encoder.flush();
+        if (error) {
+            return error;
+        }
+
+        buffer.setSize(encoder.position());
+
+        NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(packet, buffer);
+
+        do {
+            ssize_t bytesSent =
+                ::write(device,
+                        buffer.data(),
+                        static_cast<bsl::size_t>(buffer.size()));
+            if (bytesSent < 0) {
+                error = ntsa::Error::last();
+                if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                    continue;
+                }
+                if (error == ntsa::Error(ntsa::Error::e_INTERRUPTED)) {
+                    continue;
+                }
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(packet, error);
+                return error;
+            }
+            else if (bytesSent == 0) {
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(packet);
+                return ntsa::Error(ntsa::Error::e_EOF);
+            }
+            else if (bytesSent < static_cast<ssize_t>(buffer.size())) {
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    packet,
+                    buffer,
+                    bytesSent);
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+            else if (bytesSent > static_cast<ssize_t>(buffer.size())) {
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    packet,
+                    buffer,
+                    bytesSent);
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            BSLS_ASSERT(bytesSent == static_cast<ssize_t>(buffer.size()));
+        } while (false);
+    }
+    else {
+        bdlbb::BlobBuffer buffer;
+        packetFactory->createOutgoingBlobBuffer(&buffer);
+
+        ntsa::PacketEncoderContext encoderContext;
+        ntsa::PacketEncoderOptions encoderOptions;
+
+        ntsa::PacketEncoder encoder(&buffer);
+
+        error = ethernet.encode(&encoderContext, &encoder, encoderOptions);
+        if (error) {
+            NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error);
+            return error;
+        }
+
+        error = encoder.flush();
+        if (error) {
+            return error;
+        }
+
+        buffer.setSize(encoder.position());
+
+        NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(packet, buffer);
+
+        do {
+            ssize_t bytesSent =
+                ::write(device,
+                        buffer.data(),
+                        static_cast<bsl::size_t>(buffer.size()));
+            if (bytesSent < 0) {
+                error = ntsa::Error::last();
+                if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                    continue;
+                }
+                if (error == ntsa::Error(ntsa::Error::e_INTERRUPTED)) {
+                    continue;
+                }
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(packet, error);
+                return error;
+            }
+            else if (bytesSent == 0) {
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(packet);
+                return ntsa::Error(ntsa::Error::e_EOF);
+            }
+            else if (bytesSent < static_cast<ssize_t>(buffer.size())) {
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    packet,
+                    buffer,
+                    bytesSent);
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+            else if (bytesSent > static_cast<ssize_t>(buffer.size())) {
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    packet,
+                    buffer,
+                    bytesSent);
+                return ntsa::Error(ntsa::Error::e_INVALID);
+            }
+
+            BSLS_ASSERT(bytesSent == static_cast<ssize_t>(buffer.size()));
+        } while (false);
+    }
+
+    return ntsa::Error();
 }
 
-ntsa::Error DeviceUtil::dequeuePacket(ntsa::Handle         device,
-                                      ntsa::PacketQueue*   packetQueue,
-                                      ntsa::PacketFactory* packetFactory)
+ntsa::Error DeviceUtil::dequeuePacket(
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(packetQueue);
-    NTSCFG_WARNING_UNUSED(packetFactory);
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    bdlbb::BlobBuffer buffer;
+    packetFactory->createIncomingBlobBuffer(&buffer);
+
+    bsl::memset(buffer.data(), 0, static_cast<bsl::size_t>(buffer.size()));
+
+    BALL_LOG_DEBUG << "BPF device driver read starting" << BALL_LOG_END;
+
+    ssize_t bytesRead =
+        ::read(device, buffer.data(), static_cast<bsl::size_t>(buffer.size()));
+
+    BALL_LOG_DEBUG << "BPF device driver read complete: rc = " << bytesRead
+                   << BALL_LOG_END;
+
+    if (bytesRead < 0) {
+        error = ntsa::Error::last();
+        BSLS_LOG_ERROR("BPF device driver failed to read packet: %s",
+                       error.text().c_str());
+        return error;
+    }
+    else if (bytesRead == 0) {
+        BSLS_LOG_ERROR("BPF device driver failed to read packet: EOF");
+        return ntsa::Error(ntsa::Error::e_EOF);
+    }
+    else if (bytesRead > static_cast<ssize_t>(buffer.size())) {
+        BSLS_LOG_ERROR("BPF device driver failed to read packet: too long");
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    BSLS_ASSERT(bytesRead > 0);
+    BSLS_ASSERT(bytesRead <= static_cast<ssize_t>(buffer.size()));
+
+    buffer.setSize(static_cast<int>(bytesRead));
+
+    char* metaFrame    = buffer.data();
+    char* metaFrameEnd = metaFrame + buffer.size();
+
+    while (metaFrame < metaFrameEnd) {
+        struct bpf_hdr* bpf = reinterpret_cast<struct bpf_hdr*>(metaFrame);
+
+        BSLS_LOG_TRACE("BPF device read packet meta-data "
+                       "[ caplen = %zu datalen = %zu hdrlen = %zu ]",
+                       static_cast<bsl::size_t>(bpf->bh_caplen),
+                       static_cast<bsl::size_t>(bpf->bh_datalen),
+                       static_cast<bsl::size_t>(bpf->bh_hdrlen));
+
+        if (bpf->bh_caplen != bpf->bh_datalen) {
+            BSLS_LOG_ERROR("BPF device driver failed to read packet: "
+                           "the captured length %zu "
+                           "does not match the data length %zu",
+                           static_cast<bsl::size_t>(bpf->bh_caplen),
+                           static_cast<bsl::size_t>(bpf->bh_datalen));
+
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        char*       packetData = metaFrame + bpf->bh_hdrlen;
+        bsl::size_t packetSize = static_cast<bsl::size_t>(bpf->bh_datalen);
+
+        if (deviceType == ntsa::DeviceType::e_LOCAL ||
+            deviceType == ntsa::DeviceType::e_LOOPBACK)
+        {
+            bsl::uint32_t packetType;
+            NTSCFG_MEMORY_COPY(&packetType, packetData, sizeof packetType);
+
+            if (deviceType == ntsa::DeviceType::e_LOOPBACK) {
+                packetType = BSLS_BYTEORDER_BE_TO_HOST(packetType);
+            }
+
+            packetData += sizeof(bsl::uint32_t);
+            packetSize -= sizeof(bsl::uint32_t);
+
+            bdlbb::BlobBuffer packetBuffer(
+                bsl::shared_ptr<char>(buffer.buffer(), packetData),
+                static_cast<int>(packetSize));
+
+            ntsa::PacketDecoderContext decoderContext;
+            ntsa::PacketDecoderOptions decoderOptions;
+
+            decoderContext.setSourceEthernetAddress(ntsa::EthernetAddress());
+            decoderContext.setDestinationEthernetAddress(
+                ntsa::EthernetAddress());
+
+            decoderOptions.setLoopback(true);
+            decoderOptions.setIgnoreChecksum(true);
+
+            if (packetType == PF_UNSPEC) {
+                bsl::shared_ptr<ntsa::Packet> packet;
+                packetFactory->createIncomingPacket(&packet);
+
+                packet->makeEthernet();
+
+                error = packet->decode(&decoderContext,
+                                       packetBuffer,
+                                       decoderOptions);
+                if (error) {
+                    if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
+                        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet);
+                    }
+                    else {
+                        NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
+                                                                 packet,
+                                                                 error);
+                    }
+                }
+                else {
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet);
+
+                    error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+                    if (error) {
+                        return error;
+                    }
+                }
+            }
+            else if (packetType == PF_INET) {
+                bsl::shared_ptr<ntsa::Packet> packet;
+                packetFactory->createIncomingPacket(&packet);
+
+                packet->makeEthernet();
+                packet->ethernet().header().setProtocol(
+                    ntsa::EthernetProtocol::e_IPV4);
+
+                packet->ethernet().payload().makeIpv4();
+
+                ntsa::PacketDecoder decoder(&packetBuffer);
+
+                error =
+                    packet->ethernet().payload().ipv4().decode(&decoderContext,
+                                                               &decoder,
+                                                               decoderOptions);
+                if (error) {
+                    if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
+                        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet);
+                    }
+                    else {
+                        NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
+                                                                 packet,
+                                                                 error);
+                        return error;
+                    }
+                }
+                else {
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet);
+
+                    error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+                    if (error) {
+                        return error;
+                    }
+                }
+            }
+            else if (packetType == PF_INET6) {
+                BSLS_LOG_WARN(
+                    "BPF device driver dropping loopback IPv6 packet");
+            }
+            else {
+                BSLS_LOG_ERROR("BPF device driver failed to decode packet: "
+                               "unsupported loopback device packet type: %zu",
+                               static_cast<bsl::size_t>(packetType));
+            }
+        }
+        else {
+            bdlbb::BlobBuffer packetBuffer(
+                bsl::shared_ptr<char>(buffer.buffer(), packetData),
+                static_cast<int>(packetSize));
+
+            ntsa::PacketDecoderContext decoderContext;
+            ntsa::PacketDecoderOptions decoderOptions;
+
+            bsl::shared_ptr<ntsa::Packet> packet;
+            packetFactory->createIncomingPacket(&packet);
+
+            packet->makeEthernet();
+
+            error =
+                packet->decode(&decoderContext, packetBuffer, decoderOptions);
+            if (error) {
+                if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet);
+                }
+                else {
+                    NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
+                                                             packet,
+                                                             error);
+                }
+            }
+            else {
+                NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet);
+
+                error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+                if (error) {
+                    return error;
+                }
+            }
+        }
+
+        metaFrame += BPF_WORDALIGN(bpf->bh_hdrlen + bpf->bh_caplen);
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::shutdown(ntsa::Handle device)
@@ -1329,9 +1904,11 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 }
 
 ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
+                                    const ntsa::Adapter&      adapter,
                                     const ntsa::PacketFilter& filter)
 {
     NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(adapter);
     NTSCFG_WARNING_UNUSED(filter);
 
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
@@ -1403,20 +1980,27 @@ ntsa::Error DeviceUtil::waitUntilError(ntsa::Handle              device,
 }
 
 ntsa::Error DeviceUtil::enqueuePacket(
-    ntsa::Handle                         device,
-    const bsl::shared_ptr<ntsa::Packet>& packet)
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::Packet>&        packet,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
     NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(deviceType);
     NTSCFG_WARNING_UNUSED(packet);
+    NTSCFG_WARNING_UNUSED(packetFactory);
 
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
-ntsa::Error DeviceUtil::dequeuePacket(ntsa::Handle         device,
-                                      ntsa::PacketQueue*   packetQueue,
-                                      ntsa::PacketFactory* packetFactory)
+ntsa::Error DeviceUtil::dequeuePacket(
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
     NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(deviceType);
     NTSCFG_WARNING_UNUSED(packetQueue);
     NTSCFG_WARNING_UNUSED(packetFactory);
 
@@ -1504,6 +2088,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 }
 
 ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
+                                    const ntsa::Adapter&      adapter,
                                     const ntsa::PacketFilter& filter)
 {
     NTSCFG_WARNING_UNUSED(device);
@@ -1579,20 +2164,27 @@ ntsa::Error DeviceUtil::waitUntilError(ntsa::Handle              device,
 }
 
 ntsa::Error DeviceUtil::enqueuePacket(
-    ntsa::Handle                         device,
-    const bsl::shared_ptr<ntsa::Packet>& packet)
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::Packet>&        packet,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
     NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(deviceType);
     NTSCFG_WARNING_UNUSED(packet);
+    NTSCFG_WARNING_UNUSED(packetFactory);
 
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
-ntsa::Error DeviceUtil::dequeuePacket(ntsa::Handle         device,
-                                      ntsa::PacketQueue*   packetQueue,
-                                      ntsa::PacketFactory* packetFactory)
+ntsa::Error DeviceUtil::dequeuePacket(
+    ntsa::Handle                                device,
+    ntsa::DeviceType::Value                     deviceType,
+    const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
     NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(deviceType);
     NTSCFG_WARNING_UNUSED(packetQueue);
     NTSCFG_WARNING_UNUSED(packetFactory);
 

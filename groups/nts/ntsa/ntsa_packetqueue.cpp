@@ -35,6 +35,7 @@ PacketQueue::~PacketQueue()
 
 void PacketQueue::shutdown()
 {
+    d_queue.tryPushBack(bsl::shared_ptr<ntsa::Packet>());
     d_queue.disable();
 }
 
