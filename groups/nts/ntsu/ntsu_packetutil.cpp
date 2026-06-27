@@ -365,7 +365,8 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     if (deviceType == ntsa::DeviceType::e_LOCAL ||
         deviceType == ntsa::DeviceType::e_LOOPBACK)
     {
-        return ntsa::Error();  // TODO
+        PacketUtil::acceptAll(program);
+        return ntsa::Error();
     }
 
     if (deviceType != ntsa::DeviceType::e_ETHERNET) {

@@ -906,84 +906,8 @@ ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
                                           const ntsa::Adapter&      adapter,
                                           const ntsa::PacketFilter& filter)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(filter);
-
     ntsa::Error error;
     int         rc;
-
-    if (deviceType == ntsa::DeviceType::e_LOCAL ||
-        deviceType == ntsa::DeviceType::e_LOOPBACK)
-    {
-        return ntsa::Error();  // TODO
-    }
-
-    if (deviceType != ntsa::DeviceType::e_ETHERNET) {
-        BALL_LOG_ERROR << "Device descriptor " << device << " failed to apply packet filter: the device type " << deviceType << " is not supported" << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-    }
-
-    ntsa::EthernetAddress ethernetAddress;
-    if (!ethernetAddress.parse(adapter.ethernetAddress())) {
-        BALL_LOG_ERROR << "Device descriptor " << device << " failed to apply packet filter: failed to parse ethernet address '" << adapter.ethernetAddress() << "'" << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    // MRM
-#if 1
-    unsigned char target_mac[6];
-    NTSCFG_MEMORY_COPY(target_mac, &ethernetAddress, sizeof target_mac);
-
-    // NNNN
-
-    // 5. Define BPF Bytecode Instructions
-    // This cBPF code evaluates 'ether dst' or 'dst host' at the link layer
-    struct bpf_insn bpf_code[] = {
-        // Load the first 4 bytes of the destination MAC address into
-        // accumulator
-
-        /* 0 */
-        BPF_STMT(BPF_LD + BPF_W + BPF_ABS, 0),
-
-        // Compare against the first 4 bytes of our target MAC
-
-        /* 1 */
-        BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
-                 ((bpf_u_int32)(target_mac[0]) << 24) |
-                     ((bpf_u_int32)(target_mac[1]) << 16) |
-                     ((bpf_u_int32)(target_mac[2]) << 8) |
-                     (bpf_u_int32)(target_mac[3]),
-                 0,
-                 3),
-
-        // Load the next 2 bytes of the destination MAC address
-
-        /* 2 */
-        BPF_STMT(BPF_LD + BPF_H + BPF_ABS, 4),
-
-        // Compare against the last 2 bytes of our target MAC
-
-        /* 3 */
-        BPF_JUMP(
-            BPF_JMP + BPF_JEQ + BPF_K,
-            ((bpf_u_int32)(target_mac[4]) << 8) | (bpf_u_int32)(target_mac[5]),
-            0,
-            1),
-
-        // If it matches, accept the packet (return max cap length)
-
-        /* 4 */
-        BPF_STMT(BPF_RET + BPF_K, (u_int)-1),
-
-        // If it does not match, drop the packet (return 0 bytes)
-
-        /* 5 */
-        BPF_STMT(BPF_RET + BPF_K, 0)};
-
-    struct bpf_program bpf_prog = {
-        .bf_len   = sizeof(bpf_code) / sizeof(struct bpf_insn),
-        .bf_insns = bpf_code};
-#endif
 
     ntsu::PacketFilter::Program program;
     error = ntsu::PacketUtil::compile(&program , deviceType, adapter, filter);
@@ -992,62 +916,6 @@ ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
                        << error << BALL_LOG_END;
         return error;
     }
-
-    // MRM
-    #if 1
-    BSLMF_ASSERT(sizeof(struct bpf_insn) ==
-                 sizeof(ntsu::PacketFilter::Instruction));
-
-    BALL_LOG_INFO << "Canonical BPF:\n"
-                  << bdlb::PrintStringHexDumper(
-                        reinterpret_cast<const char*>(bpf_prog.bf_insns),
-                        bpf_prog.bf_len * sizeof(struct bpf_insn))
-                  << BALL_LOG_END;
-
-    BALL_LOG_INFO << "Compiled/Linked BPF:\n"
-                  << bdlb::PrintStringHexDumper(
-                        reinterpret_cast<const char*>(&program.front()),
-                        program.size() * sizeof(struct bpf_insn))
-                  << BALL_LOG_END;
-
-    if (program.size() != bpf_prog.bf_len) {
-        BALL_LOG_ERROR << "Filter programs instruction counts are not "
-                            "equal: expected "
-                        << bpf_prog.bf_len << " but found "
-                        << program.size() << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    for (bsl::size_t i = 0; i < program.size(); ++i) {
-        const struct bpf_insn& e = bpf_prog.bf_insns[i];
-        const ntsu::PacketFilter::Instruction& f = program[i];
-
-        BSLMF_ASSERT(sizeof e == sizeof f);
-
-        if (NTSCFG_MEMORY_COMPARE(&f, &e, sizeof f) != 0) {
-            BALL_LOG_INFO << "E[" << i << "]:\n"
-                        << bdlb::PrintStringHexDumper(
-                                reinterpret_cast<const char*>(&e),
-                                sizeof(struct bpf_insn))
-                        << BALL_LOG_END;
-
-            BALL_LOG_INFO << "F[" << i << "]:\n"
-                        << bdlb::PrintStringHexDumper(
-                                reinterpret_cast<const char*>(&f),
-                                sizeof f)
-                        << BALL_LOG_END;
-        }
-    }
-
-    if (NTSCFG_MEMORY_COMPARE(
-            &program.front(),
-            bpf_prog.bf_insns,
-            bpf_prog.bf_len * sizeof(struct bpf_insn)) != 0)
-    {
-        BALL_LOG_ERROR << "Filter programs are not equal" << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-    #endif
 
     struct bpf_program bpf;
     NTSCFG_MEMORY_ZERO(&bpf, sizeof bpf);
