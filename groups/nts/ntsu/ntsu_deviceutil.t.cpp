@@ -121,7 +121,10 @@ bsl::shared_ptr<ntsa::Packet> DeviceUtilTest::createPacket(
 
     udp.setPayload(payload);
 
+    // MRM
+    #if 0
     BALL_LOG_DEBUG << "Transmitting packet " << packet << BALL_LOG_END;
+    #endif
 
     return packet;
 }
@@ -146,16 +149,22 @@ void DeviceUtilTest::reader(
             break;
         }
 
+        // MRM
+#if 0
         BALL_LOG_TRACE << "Device descriptor " << device
                        << " wait until readable starting: "
                        << BALL_LOG_END;
+#endif
 
         error = ntsu::DeviceUtil::waitUntilReadable(device, deadline);
 
+// MRM
+#if 0
         BALL_LOG_TRACE << "Device descriptor " << device
                        << " wait until readable complete: "
                        << error
                        << BALL_LOG_END;
+#endif
 
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {

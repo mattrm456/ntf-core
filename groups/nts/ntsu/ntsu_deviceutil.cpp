@@ -31,6 +31,7 @@ BSLS_IDENT_RCSID(ntsu_deviceutil_cpp, "$Id$ $CSID$")
 #include <ntscfg_limits.h>
 #include <ntscfg_platform.h>
 #include <ntsu_adapterutil.h>
+#include <ntsu_packetutil.h>
 #include <ntsu_socketoptionutil.h>
 #include <ntsu_socketutil.h>
 
@@ -367,6 +368,12 @@ class DeviceUtil::Impl
         ntsa::Handle                device,
         bsl::vector<bsl::uint32_t>* result);
 
+    /// Get the device type of the specified 'device' and load it into the
+    /// specified 'result'. Return the error.
+    static ntsa::Error getDeviceType(
+        ntsa::Handle                device,
+        ntsa::DeviceType::Value*    result);
+
     /// Set the network interface of the specified 'device' to the specified
     /// 'value'. Return the error.
     static ntsa::Error setAdapter(ntsa::Handle         device,
@@ -379,8 +386,8 @@ class DeviceUtil::Impl
     /// Apply the specified packet 'filter' to the specified 'device'. Return
     /// the error.
     static ntsa::Error applyFilter(ntsa::Handle              device,
+                                   ntsa::DeviceType::Value   deviceType,
                                    const ntsa::Adapter&      adapter,
-                                   bool                      loopback,
                                    const ntsa::PacketFilter& filter);
 
     /// Print a formatted, human-readable description of the specified
@@ -395,6 +402,12 @@ class DeviceUtil::Impl
     static bsl::ostream& printDataLinkTypeSupport(
         bsl::ostream&                     stream,
         const bsl::vector<bsl::uint32_t>& dataLinkTypeSupport);
+
+    /// Load into the specified 'result' the device type converted from the
+    /// specified 'dataLinkType'. Return the error.
+    static ntsa::Error convertFromDataLinkType(
+        ntsa::DeviceType::Value* result,
+        bsl::uint32_t            dataLinkType);
 };
 
 ntsa::Error DeviceUtil::Impl::setImmediate(ntsa::Handle device, bool value)
@@ -806,6 +819,26 @@ ntsa::Error DeviceUtil::Impl::getDataLinkTypeSupport(
     return ntsa::Error();
 }
 
+ntsa::Error DeviceUtil::Impl::getDeviceType(
+        ntsa::Handle                device,
+        ntsa::DeviceType::Value*    result)
+{
+    ntsa::Error error;
+
+    bsl::uint32_t dataLinkType;
+    error = DeviceUtil::Impl::getDataLinkType(device, &dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    error = DeviceUtil::Impl::convertFromDataLinkType(result, dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
 ntsa::Error DeviceUtil::Impl::setAdapter(ntsa::Handle         device,
                                          const ntsa::Adapter& value)
 {
@@ -869,63 +902,165 @@ ntsa::Error DeviceUtil::Impl::getAdapter(ntsa::Handle   device,
 }
 
 ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
+                                          ntsa::DeviceType::Value   deviceType,
                                           const ntsa::Adapter&      adapter,
-                                          bool                      loopback,
                                           const ntsa::PacketFilter& filter)
 {
     NTSCFG_WARNING_UNUSED(device);
     NTSCFG_WARNING_UNUSED(filter);
 
     ntsa::Error error;
+    int         rc;
 
-    if (!loopback) {
-        ntsa::EthernetAddress ethernetAddress;
-        if (!ethernetAddress.parse(adapter.ethernetAddress())) {
-            BALL_LOG_ERROR << "Failed to parse ethernet address" << BALL_LOG_END;
-            return ntsa::Error(ntsa::Error::e_INVALID);
+    if (deviceType == ntsa::DeviceType::e_LOCAL ||
+        deviceType == ntsa::DeviceType::e_LOOPBACK)
+    {
+        return ntsa::Error();  // TODO
+    }
+
+    if (deviceType != ntsa::DeviceType::e_ETHERNET) {
+        BALL_LOG_ERROR << "Device descriptor " << device << " failed to apply packet filter: the device type " << deviceType << " is not supported" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    }
+
+    ntsa::EthernetAddress ethernetAddress;
+    if (!ethernetAddress.parse(adapter.ethernetAddress())) {
+        BALL_LOG_ERROR << "Device descriptor " << device << " failed to apply packet filter: failed to parse ethernet address '" << adapter.ethernetAddress() << "'" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    // MRM
+#if 1
+    unsigned char target_mac[6];
+    NTSCFG_MEMORY_COPY(target_mac, &ethernetAddress, sizeof target_mac);
+
+    // NNNN
+
+    // 5. Define BPF Bytecode Instructions
+    // This cBPF code evaluates 'ether dst' or 'dst host' at the link layer
+    struct bpf_insn bpf_code[] = {
+        // Load the first 4 bytes of the destination MAC address into
+        // accumulator
+
+        /* 0 */
+        BPF_STMT(BPF_LD + BPF_W + BPF_ABS, 0),
+
+        // Compare against the first 4 bytes of our target MAC
+
+        /* 1 */
+        BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+                 ((bpf_u_int32)(target_mac[0]) << 24) |
+                     ((bpf_u_int32)(target_mac[1]) << 16) |
+                     ((bpf_u_int32)(target_mac[2]) << 8) |
+                     (bpf_u_int32)(target_mac[3]),
+                 0,
+                 3),
+
+        // Load the next 2 bytes of the destination MAC address
+
+        /* 2 */
+        BPF_STMT(BPF_LD + BPF_H + BPF_ABS, 4),
+
+        // Compare against the last 2 bytes of our target MAC
+
+        /* 3 */
+        BPF_JUMP(
+            BPF_JMP + BPF_JEQ + BPF_K,
+            ((bpf_u_int32)(target_mac[4]) << 8) | (bpf_u_int32)(target_mac[5]),
+            0,
+            1),
+
+        // If it matches, accept the packet (return max cap length)
+
+        /* 4 */
+        BPF_STMT(BPF_RET + BPF_K, (u_int)-1),
+
+        // If it does not match, drop the packet (return 0 bytes)
+
+        /* 5 */
+        BPF_STMT(BPF_RET + BPF_K, 0)};
+
+    struct bpf_program bpf_prog = {
+        .bf_len   = sizeof(bpf_code) / sizeof(struct bpf_insn),
+        .bf_insns = bpf_code};
+#endif
+
+    ntsu::PacketFilter::Program program;
+    error = ntsu::PacketUtil::compile(&program , deviceType, adapter, filter);
+    if (error) {
+        BALL_LOG_ERROR << "Failed to compiler packet filter program: "
+                       << error << BALL_LOG_END;
+        return error;
+    }
+
+    // MRM
+    #if 1
+    BSLMF_ASSERT(sizeof(struct bpf_insn) ==
+                 sizeof(ntsu::PacketFilter::Instruction));
+
+    BALL_LOG_INFO << "Canonical BPF:\n"
+                  << bdlb::PrintStringHexDumper(
+                        reinterpret_cast<const char*>(bpf_prog.bf_insns),
+                        bpf_prog.bf_len * sizeof(struct bpf_insn))
+                  << BALL_LOG_END;
+
+    BALL_LOG_INFO << "Compiled/Linked BPF:\n"
+                  << bdlb::PrintStringHexDumper(
+                        reinterpret_cast<const char*>(&program.front()),
+                        program.size() * sizeof(struct bpf_insn))
+                  << BALL_LOG_END;
+
+    if (program.size() != bpf_prog.bf_len) {
+        BALL_LOG_ERROR << "Filter programs instruction counts are not "
+                            "equal: expected "
+                        << bpf_prog.bf_len << " but found "
+                        << program.size() << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    for (bsl::size_t i = 0; i < program.size(); ++i) {
+        const struct bpf_insn& e = bpf_prog.bf_insns[i];
+        const ntsu::PacketFilter::Instruction& f = program[i];
+
+        BSLMF_ASSERT(sizeof e == sizeof f);
+
+        if (NTSCFG_MEMORY_COMPARE(&f, &e, sizeof f) != 0) {
+            BALL_LOG_INFO << "E[" << i << "]:\n"
+                        << bdlb::PrintStringHexDumper(
+                                reinterpret_cast<const char*>(&e),
+                                sizeof(struct bpf_insn))
+                        << BALL_LOG_END;
+
+            BALL_LOG_INFO << "F[" << i << "]:\n"
+                        << bdlb::PrintStringHexDumper(
+                                reinterpret_cast<const char*>(&f),
+                                sizeof f)
+                        << BALL_LOG_END;
         }
+    }
 
-        unsigned char target_mac[6];
-        NTSCFG_MEMORY_COPY(target_mac, &ethernetAddress, sizeof target_mac);
+    if (NTSCFG_MEMORY_COMPARE(
+            &program.front(),
+            bpf_prog.bf_insns,
+            bpf_prog.bf_len * sizeof(struct bpf_insn)) != 0)
+    {
+        BALL_LOG_ERROR << "Filter programs are not equal" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+    #endif
 
-        // 5. Define BPF Bytecode Instructions
-        // This cBPF code evaluates 'ether dst' or 'dst host' at the link layer
-        struct bpf_insn bpf_code[] = {
-            // Load the first 4 bytes of the destination MAC address into
-            // accumulator
-            BPF_STMT(BPF_LD + BPF_W + BPF_ABS, 0),
-            // Compare against the first 4 bytes of our target MAC
-            BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
-                     ((bpf_u_int32)(target_mac[0]) << 24) |
-                         ((bpf_u_int32)(target_mac[1]) << 16) |
-                         ((bpf_u_int32)(target_mac[2]) << 8) |
-                         (bpf_u_int32)(target_mac[3]),
-                     0,
-                     3),
-            // Load the next 2 bytes of the destination MAC address
-            BPF_STMT(BPF_LD + BPF_H + BPF_ABS, 4),
-            // Compare against the last 2 bytes of our target MAC
-            BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
-                     ((bpf_u_int32)(target_mac[4]) << 8) |
-                         (bpf_u_int32)(target_mac[5]),
-                     0,
-                     1),
-            // If it matches, accept the packet (return max cap length)
-            BPF_STMT(BPF_RET + BPF_K, (u_int)-1),
-            // If it does not match, drop the packet (return 0 bytes)
-            BPF_STMT(BPF_RET + BPF_K, 0)};
+    struct bpf_program bpf;
+    NTSCFG_MEMORY_ZERO(&bpf, sizeof bpf);
 
-        struct bpf_program bpf_prog = {
-            .bf_len   = sizeof(bpf_code) / sizeof(struct bpf_insn),
-            .bf_insns = bpf_code};
+    bpf.bf_insns = reinterpret_cast<struct bpf_insn*>(&program.front());
+    bpf.bf_len   = static_cast<u_int>(program.size());
 
-        // 6. Attach filter to BPF
-        if (ioctl(device, BIOCSETF, &bpf_prog) < 0) {
-            error = ntsa::Error::last();
-            BSLS_LOG_ERROR("BPF device driver set packet filter program: %s",
-                           error.text().c_str());
-            return error;
-        }
+    rc = ioctl(device, BIOCSETF, &bpf);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "apply packet filter", error);
+        return error;
     }
 
     return ntsa::Error();
@@ -969,6 +1104,32 @@ bsl::ostream& DeviceUtil::Impl::printDataLinkTypeSupport(
     stream << " ]";
 
     return stream;
+}
+
+ntsa::Error DeviceUtil::Impl::convertFromDataLinkType(
+    ntsa::DeviceType::Value* result,
+    bsl::uint32_t            dataLinkType)
+{
+    if (dataLinkType == DLT_NULL) {
+        *result = ntsa::DeviceType::e_LOCAL;
+    }
+    else if (dataLinkType == DLT_LOOP) {
+        *result = ntsa::DeviceType::e_LOOPBACK;
+    }
+    else if (dataLinkType == DLT_RAW) {
+        *result = ntsa::DeviceType::e_IP;
+    }
+    else if (dataLinkType == DLT_EN10MB) {
+        *result = ntsa::DeviceType::e_ETHERNET;
+    }
+    else if (dataLinkType == DLT_IEEE802_11_RADIO) {
+        *result = ntsa::DeviceType::e_WIRELESS;
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
@@ -1092,10 +1253,19 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         packetFilter = configuration.incomingPacketFilter().value();
     }
 
-    error =
-        DeviceUtil::Impl::applyFilter(device, adapter, loopback, packetFilter);
-    if (error) {
-        return error;
+    if (loopback) {
+        error =
+            DeviceUtil::Impl::applyFilter(device, ntsa::DeviceType::e_LOCAL, adapter, packetFilter);
+        if (error) {
+            return error;
+        }
+    }
+    else {
+        error =
+            DeviceUtil::Impl::applyFilter(device, ntsa::DeviceType::e_ETHERNET, adapter, packetFilter);
+        if (error) {
+            return error;
+        }
     }
 
     // Configure the network interface.
@@ -1148,23 +1318,9 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         }
     }
 
-    if (dataLinkType == DLT_NULL) {
-        *type = ntsa::DeviceType::e_LOCAL;
-    }
-    else if (dataLinkType == DLT_LOOP) {
-        *type = ntsa::DeviceType::e_LOOPBACK;
-    }
-    else if (dataLinkType == DLT_RAW) {
-        *type = ntsa::DeviceType::e_IP;
-    }
-    else if (dataLinkType == DLT_EN10MB) {
-        *type = ntsa::DeviceType::e_ETHERNET;
-    }
-    else if (dataLinkType == DLT_IEEE802_11_RADIO) {
-        *type = ntsa::DeviceType::e_WIRELESS;
-    }
-    else {
-        return ntsa::Error(ntsa::Error::e_INVALID);
+    error = DeviceUtil::Impl::convertFromDataLinkType(type, dataLinkType);
+    if (error) {
+        return error;
     }
 
     NTSU_DEVICEUTIL_LOG_OPEN(device,
@@ -1188,31 +1344,13 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 }
 
 ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
+                                    ntsa::DeviceType::Value   deviceType,
                                     const ntsa::Adapter&      adapter,
                                     const ntsa::PacketFilter& filter)
 {
     ntsa::Error error;
 
-    bool loopback = false;
-    if (adapter.ipv4Address().has_value() &&
-        adapter.ipv4Address().value().isLoopback())
-    {
-        loopback = true;
-    }
-
-    bsl::uint32_t dataLinkType;
-    error = DeviceUtil::Impl::getDataLinkType(device, &dataLinkType);
-    if (error) {
-        return error;
-    }
-
-    if (loopback) {
-        if (dataLinkType != DLT_NULL && dataLinkType != DLT_LOOP) {
-            return ntsa::Error(ntsa::Error::e_INVALID);
-        }
-    }
-
-    error = DeviceUtil::Impl::applyFilter(device, adapter, loopback, filter);
+    error = DeviceUtil::Impl::applyFilter(device, deviceType, adapter, filter);
     if (error) {
         return error;
     }
@@ -1650,13 +1788,19 @@ ntsa::Error DeviceUtil::dequeuePacket(
 
     bsl::memset(buffer.data(), 0, static_cast<bsl::size_t>(buffer.size()));
 
+    // MRM
+#if 0
     BALL_LOG_DEBUG << "BPF device driver read starting" << BALL_LOG_END;
+#endif
 
     ssize_t bytesRead =
         ::read(device, buffer.data(), static_cast<bsl::size_t>(buffer.size()));
 
+    // MRM
+#if 0
     BALL_LOG_DEBUG << "BPF device driver read complete: rc = " << bytesRead
                    << BALL_LOG_END;
+#endif
 
     if (bytesRead < 0) {
         error = ntsa::Error::last();
@@ -1684,11 +1828,14 @@ ntsa::Error DeviceUtil::dequeuePacket(
     while (metaFrame < metaFrameEnd) {
         struct bpf_hdr* bpf = reinterpret_cast<struct bpf_hdr*>(metaFrame);
 
+        // MRM
+#if 0
         BSLS_LOG_TRACE("BPF device read packet meta-data "
                        "[ caplen = %zu datalen = %zu hdrlen = %zu ]",
                        static_cast<bsl::size_t>(bpf->bh_caplen),
                        static_cast<bsl::size_t>(bpf->bh_datalen),
                        static_cast<bsl::size_t>(bpf->bh_hdrlen));
+#endif
 
         if (bpf->bh_caplen != bpf->bh_datalen) {
             BSLS_LOG_ERROR("BPF device driver failed to read packet: "
@@ -1904,10 +2051,12 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 }
 
 ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
+                                    ntsa::DeviceType::Value   deviceType,
                                     const ntsa::Adapter&      adapter,
                                     const ntsa::PacketFilter& filter)
 {
     NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(deviceType);
     NTSCFG_WARNING_UNUSED(adapter);
     NTSCFG_WARNING_UNUSED(filter);
 
@@ -2088,10 +2237,12 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 }
 
 ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
+                                    ntsa::DeviceType::Value   deviceType,
                                     const ntsa::Adapter&      adapter,
                                     const ntsa::PacketFilter& filter)
 {
     NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(deviceType);
     NTSCFG_WARNING_UNUSED(adapter);
     NTSCFG_WARNING_UNUSED(filter);
 

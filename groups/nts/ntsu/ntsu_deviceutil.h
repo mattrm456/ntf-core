@@ -93,6 +93,7 @@ class DeviceUtil
     /// Apply the specified packet 'filter' to the specified 'device'. Return
     /// the error.
     static ntsa::Error applyFilter(ntsa::Handle              device,
+                                   ntsa::DeviceType::Value   deviceType,
                                    const ntsa::Adapter&      adapter,
                                    const ntsa::PacketFilter& filter);
 

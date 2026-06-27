@@ -142,5 +142,304 @@ BSLS_IDENT_RCSID(ntsu_packetutil_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsu {
 
+bsl::uint16_t PacketFilter::Encoding::getClass(bsl::uint16_t code)
+{
+    return code & 0x07;
+}
+
+bsl::uint16_t PacketFilter::Encoding::getSize(bsl::uint16_t code)
+{
+    return code & 0x18;
+}
+
+bsl::uint16_t PacketFilter::Encoding::getMode(bsl::uint16_t code)
+{
+    return code & 0xe0;
+}
+
+bsl::uint16_t PacketFilter::Encoding::getOperation(bsl::uint16_t code)
+{
+    return code & 0xf0;
+}
+
+bsl::uint16_t PacketFilter::Encoding::getSource(bsl::uint16_t code)
+{
+    return code & 0x08;
+}
+
+bsl::uint16_t PacketFilter::Encoding::getReturnValue(bsl::uint16_t code)
+{
+    return code & 0x18;
+}
+
+bsl::uint16_t PacketFilter::Encoding::getMisc(bsl::uint16_t code)
+{
+    return code & 0xf8;
+}
+
+PacketFilter::Command::Command()
+: label(0)
+, code(0)
+, jt(0)
+, jf(0)
+, k(0)
+{
+}
+
+PacketFilter::Instruction::Instruction()
+: code(0)
+, jt(0)
+, jf(0)
+, k(0)
+{
+}
+
+void PacketFilter::Compiler::label(Script* script, const char* label)
+{
+    Command command;
+    command.label = label;
+
+    script->push_back(command);
+}
+
+void PacketFilter::Compiler::compile(Script*       script,
+                                     bsl::uint16_t code,
+                                     bsl::uint32_t k)
+{
+    PacketFilter::Compiler::compile(script, code, k, 0, 0);
+}
+
+void PacketFilter::Compiler::compile(Script*       script,
+                                     bsl::uint16_t code,
+                                     bsl::uint32_t k,
+                                     const char*   jt,
+                                     const char*   jf)
+{
+    Command* command = 0;
+
+    if (script->size() > 0 && script->back().label != 0 &&
+        script->back().code == 0)
+    {
+        command = &script->back();
+    }
+    else {
+        script->resize(script->size() + 1);
+        command = &script->back();
+    }
+
+    command->code = code;
+    command->jt   = jt;
+    command->jf   = jf;
+    command->k    = k;
+}
+
+ntsa::Error PacketFilter::Compiler::link(Program*      program,
+                                         const Script& script)
+{
+    ntsa::Error error;
+
+    program->clear();
+
+    LabelMap labelMap;
+    error = Compiler::analyze(&labelMap, script);
+    if (error) {
+        return error;
+    }
+
+    program->resize(script.size());
+
+    for (bsl::size_t pc = 0; pc < script.size(); ++pc) {
+        const Command& command = script[pc];
+
+        Instruction* instruction = &((*program)[pc]);
+
+        instruction->code = command.code;
+        instruction->k    = command.k;
+
+        error = Compiler::resolve(&instruction->jt, pc, command.jt, labelMap);
+        if (error) {
+            return error;
+        }
+
+        error = Compiler::resolve(&instruction->jf, pc, command.jf, labelMap);
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error PacketFilter::Compiler::analyze(LabelMap*     labelMap,
+                                            const Script& script)
+{
+    labelMap->clear();
+
+    for (bsl::size_t pc = 0; pc < script.size(); ++pc) {
+        const Command& command = script[pc];
+
+        if (command.label != 0) {
+            const bsl::size_t labelSize = bsl::strlen(command.label);
+            if (labelSize > 0) {
+                bsl::string key(command.label, labelSize);
+                BALL_LOG_INFO << "Found label '" << key << "' at position "
+                              << pc << BALL_LOG_END;
+                (*labelMap)[key] = pc;
+            }
+        }
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error PacketFilter::Compiler::resolve(bsl::uint8_t*   jump,
+                                            bsl::size_t     pc,
+                                            const char*     label,
+                                            const LabelMap& labelMap)
+{
+    *jump = 0;
+
+    if (label == 0) {
+        BALL_LOG_INFO << "Jump label is null" << BALL_LOG_END;
+        return ntsa::Error();
+    }
+
+    const char*       keyData = label;
+    const bsl::size_t keySize = bsl::strlen(keyData);
+
+    if (keySize == 0) {
+        BALL_LOG_INFO << "Jump label is empty" << BALL_LOG_END;
+        return ntsa::Error();
+    }
+
+    bsl::string key(keyData, keySize);
+
+    LabelMap::const_iterator it = labelMap.find(key);
+    if (it == labelMap.end()) {
+        BALL_LOG_ERROR << "Link failure: line " << pc
+                       << " references undefined label '" << label << "'"
+                       << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t index = static_cast<bsl::uint8_t>(it->second);
+
+    if (index <= pc) {
+        BALL_LOG_ERROR << "Link failure: line " << pc
+                       << " indicates an illegal jump backwards"
+                       << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    const bsl::size_t offset = index - pc - 1;
+
+    if (offset > 255) {
+        BALL_LOG_ERROR << "Link failure: line " << pc
+                       << " indicates an illegal jump too far" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    BALL_LOG_INFO << "Resolving jump to label '" << key << "' at position "
+                  << index << " to offset " << offset
+                  << " from instruction at " << pc << BALL_LOG_END;
+
+    *jump = static_cast<bsl::uint8_t>(offset);
+
+    return ntsa::Error();
+}
+
+ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
+                                ntsa::DeviceType::Value   deviceType,
+                                const ntsa::Adapter&      adapter,
+                                const ntsa::PacketFilter& filter)
+{
+    ntsa::Error error;
+
+    typedef ntsu::PacketFilter::Script      PFS;
+    typedef ntsu::PacketFilter::Program     PFP;
+    typedef ntsu::PacketFilter::Instruction PFI;
+    typedef ntsu::PacketFilter::Compiler    PFC;
+
+    program->clear();
+
+    if (deviceType == ntsa::DeviceType::e_LOCAL ||
+        deviceType == ntsa::DeviceType::e_LOOPBACK)
+    {
+        return ntsa::Error();  // TODO
+    }
+
+    if (deviceType != ntsa::DeviceType::e_ETHERNET) {
+        BALL_LOG_ERROR << "Failed to compile packet filter: the device type "
+                       << deviceType << " is not supported" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    }
+
+    ntsa::EthernetAddress ethernetAddress;
+    if (!ethernetAddress.parse(adapter.ethernetAddress())) {
+        BALL_LOG_ERROR << "Failed to compile packet filter: failed to parse "
+                          "ethernet address '"
+                       << adapter.ethernetAddress() << "'" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    PFS script;
+
+    const bsl::uint32_t ethernetAddress0 =
+        (static_cast<bsl::uint32_t>(ethernetAddress[0]) << 24) |
+        (static_cast<bsl::uint32_t>(ethernetAddress[1]) << 16) |
+        (static_cast<bsl::uint32_t>(ethernetAddress[2]) << 8) |
+        (static_cast<bsl::uint32_t>(ethernetAddress[3]));
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS, 0);
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 ethernetAddress0,
+                 0,
+                 "reject");
+
+    const bsl::uint32_t ethernetAddress4 =
+        (static_cast<bsl::uint32_t>(ethernetAddress[4]) << 8) |
+        (static_cast<bsl::uint32_t>(ethernetAddress[5]));
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, 4);
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 ethernetAddress4,
+                 0,
+                 "reject");
+
+    PFC::label(&script, "accept");
+    PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, (u_int)(-1));
+
+    PFC::label(&script, "reject");
+    PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, 0);
+
+    error = PFC::link(program, script);
+    if (error) {
+        BALL_LOG_ERROR
+            << "Failed to compile packet filter: failed to link program: "
+            << error << BALL_LOG_END;
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+void PacketUtil::acceptAll(PacketFilter::Program* program)
+{
+    PacketFilter::Script script;
+    PacketFilter::Compiler::compile(&script,
+                                    NTSU_BPF_RET + NTSU_BPF_K,
+                                    (u_int)(-1));
+    PacketFilter::Compiler::link(program, script);
+}
+
+void PacketUtil::rejectAll(PacketFilter::Program* program)
+{
+    PacketFilter::Script script;
+    PacketFilter::Compiler::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, 0);
+    PacketFilter::Compiler::link(program, script);
+}
+
 }  // close package namespace
 }  // close enterprise namespace
