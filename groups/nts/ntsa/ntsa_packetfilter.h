@@ -22,6 +22,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ethernetaddress.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
+#include <ntsa_packettype.h>
 #include <ntsa_port.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
@@ -38,6 +39,7 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class PacketFilter
 {
+    bsl::vector<ntsa::PacketType::Value>       d_packetType;
     bdlb::NullableValue<ntsa::EthernetAddress> d_sourceEthernetAddress;
     bdlb::NullableValue<ntsa::Ipv4Address>     d_sourceIpv4Address;
     bdlb::NullableValue<ntsa::Ipv6Address>     d_sourceIpv6Address;
@@ -71,6 +73,12 @@ class PacketFilter
 
     /// Reset the value of this object to its value upon default construction.
     void reset();
+
+    /// Add the packet type having the specified 'value'.
+    void addPacketType(ntsa::PacketType::Value value);
+
+    /// Remove the packet type having the specified 'value'.
+    void removePacketType(ntsa::PacketType::Value value);
 
     /// Set the source Ethernet address to the specified 'value'.
     void setSourceEthernetAddress(const ntsa::EthernetAddress& value);
@@ -113,6 +121,9 @@ class PacketFilter
 
     /// Remove the destination UDP port having the specified 'value'.
     void removeDestinationUdpPort(ntsa::Port value);
+
+    /// Return the packet type.
+    const bsl::vector<ntsa::PacketType::Value>& packetType() const;
 
     /// Return the source Ethernet address.
     const bdlb::NullableValue<ntsa::EthernetAddress>& sourceEthernetAddress()
@@ -216,7 +227,8 @@ void hashAppend(HASH_ALGORITHM& algorithm, const PacketFilter& value);
 
 NTSCFG_INLINE
 PacketFilter::PacketFilter(bslma::Allocator* basicAllocator)
-: d_sourceEthernetAddress()
+: d_packetType(basicAllocator)
+, d_sourceEthernetAddress()
 , d_sourceIpv4Address()
 , d_sourceIpv6Address()
 , d_sourceTcpPort(basicAllocator)
@@ -233,7 +245,8 @@ PacketFilter::PacketFilter(bslma::Allocator* basicAllocator)
 NTSCFG_INLINE
 PacketFilter::PacketFilter(
     const PacketFilter& original, bslma::Allocator* basicAllocator)
-: d_sourceEthernetAddress(original.d_sourceEthernetAddress)
+: d_packetType(original.d_packetType, basicAllocator)
+, d_sourceEthernetAddress(original.d_sourceEthernetAddress)
 , d_sourceIpv4Address(original.d_sourceIpv4Address)
 , d_sourceIpv6Address(original.d_sourceIpv6Address)
 , d_sourceTcpPort(original.d_sourceTcpPort, basicAllocator)
@@ -256,6 +269,7 @@ NTSCFG_INLINE
 PacketFilter& PacketFilter::operator=(
     const PacketFilter& other)
 {
+    d_packetType = other.d_packetType;
     d_sourceEthernetAddress      = other.d_sourceEthernetAddress;
     d_sourceIpv4Address            = other.d_sourceIpv4Address;
     d_sourceIpv6Address            = other.d_sourceIpv6Address;
@@ -274,6 +288,7 @@ PacketFilter& PacketFilter::operator=(
 NTSCFG_INLINE
 void PacketFilter::reset()
 {
+    d_packetType.clear();
     d_sourceEthernetAddress.reset();
     d_sourceIpv4Address.reset();
     d_sourceIpv6Address.reset();
@@ -285,6 +300,21 @@ void PacketFilter::reset()
     d_destinationTcpPort.clear();
     d_destinationUdpPort.clear();
     d_flags = 0;
+}
+
+NTSCFG_INLINE
+void PacketFilter::addPacketType(ntsa::PacketType::Value value)
+{
+    d_packetType.push_back(value);
+}
+
+NTSCFG_INLINE
+void PacketFilter::removePacketType(ntsa::PacketType::Value value)
+{
+    d_packetType.erase(
+        bsl::remove(
+            d_packetType.begin(), d_packetType.end(), value),
+        d_packetType.end());
 }
 
 NTSCFG_INLINE
@@ -388,6 +418,12 @@ void PacketFilter::removeDestinationUdpPort(ntsa::Port value)
 }
 
 NTSCFG_INLINE
+const bsl::vector<ntsa::PacketType::Value>& PacketFilter::packetType() const
+{
+    return d_packetType;
+}
+
+NTSCFG_INLINE
 const bdlb::NullableValue<ntsa::EthernetAddress>& PacketFilter::
     sourceEthernetAddress() const
 {
@@ -462,6 +498,7 @@ NTSCFG_INLINE void PacketFilter::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
 
+    hashAppend(algorithm, d_packetType);
     hashAppend(algorithm, d_sourceEthernetAddress);
     hashAppend(algorithm, d_sourceIpv4Address);
     hashAppend(algorithm, d_sourceIpv6Address);

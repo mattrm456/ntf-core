@@ -385,6 +385,9 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
     PFS script;
 
+    // Reject the packet unless its destination Ethernet address matches the
+    // Ethernet address of the network interface.
+
     const bsl::uint32_t ethernetAddress0 =
         (static_cast<bsl::uint32_t>(ethernetAddress[0]) << 24) |
         (static_cast<bsl::uint32_t>(ethernetAddress[1]) << 16) |
@@ -408,6 +411,54 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                  ethernetAddress4,
                  0,
                  "reject");
+
+    // Reject the packet unless the Ethernet packet carries a protocol that
+    // matches the valid packet types.
+
+    if (filter.packetType().size() > 0) {
+        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, 12);
+
+        for (bsl::size_t i = 0; i < filter.packetType().size(); ++i) {
+            const ntsa::PacketType::Value packetType = filter.packetType()[i];
+
+            if (packetType == ntsa::PacketType::e_IPV4) {
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             ntsa::EthernetProtocol::e_IPV4,
+                             "accept-ethernet-protocol",
+                             0);
+            }
+            else if (packetType == ntsa::PacketType::e_IPV6) {
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             ntsa::EthernetProtocol::e_IPV6,
+                             "accept-ethernet-protocol",
+                             0);
+            }
+            else if (packetType == ntsa::PacketType::e_ARP) {
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             ntsa::EthernetProtocol::e_ARP,
+                             "accept-ethernet-protocol",
+                             0);
+            }
+            else if (packetType == ntsa::PacketType::e_RARP) {
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             ntsa::EthernetProtocol::e_RARP,
+                             "accept-ethernet-protocol",
+                             0);
+            }
+        }
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JA + NTSU_BPF_K,
+                     ntsa::EthernetProtocol::e_RARP,
+                     "reject",
+                     0);
+    }
+
+    PFC::label(&script, "accept-ethernet-protocol");
 
     PFC::label(&script, "accept");
     PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, (u_int)(-1));

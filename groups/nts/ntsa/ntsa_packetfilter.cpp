@@ -25,7 +25,8 @@ namespace ntsa {
 
 bool PacketFilter::equals(const PacketFilter& other) const
 {
-    return d_sourceEthernetAddress == other.d_sourceEthernetAddress &&
+    return d_packetType == other.d_packetType &&
+           d_sourceEthernetAddress == other.d_sourceEthernetAddress &&
            d_sourceIpv4Address == other.d_sourceIpv4Address &&
            d_sourceIpv6Address == other.d_sourceIpv6Address &&
            d_sourceTcpPort == other.d_sourceTcpPort &&
@@ -41,6 +42,14 @@ bool PacketFilter::equals(const PacketFilter& other) const
 
 bool PacketFilter::less(const PacketFilter& other) const
 {
+    if (d_packetType < other.d_packetType) {
+        return true;
+    }
+
+    if (other.d_packetType < d_packetType) {
+        return false;
+    }
+
     if (d_sourceEthernetAddress < other.d_sourceEthernetAddress) {
         return true;
     }
@@ -130,6 +139,10 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
+
+    if (d_packetType.size() > 0) {
+        printer.printAttribute("packetType", d_packetType);
+    }
 
     if (d_sourceEthernetAddress.has_value()) {
         printer.printAttribute("sourceEthernetAddress",
