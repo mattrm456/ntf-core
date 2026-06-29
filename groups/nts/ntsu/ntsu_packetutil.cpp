@@ -196,10 +196,19 @@ PacketFilter::Instruction::Instruction()
 
 void PacketFilter::Compiler::label(Script* script, const char* label)
 {
-    Command command;
-    command.label = label;
+    Command* command = 0;
 
-    script->push_back(command);
+    if (script->size() > 0 && script->back().label.size() > 0 &&
+        script->back().code == 0)
+    {
+        command = &script->back();
+    }
+    else {
+        script->resize(script->size() + 1);
+        command = &script->back();
+    }
+
+    command->label.push_back(label);
 }
 
 void PacketFilter::Compiler::compile(Script*       script,
@@ -217,7 +226,7 @@ void PacketFilter::Compiler::compile(Script*       script,
 {
     Command* command = 0;
 
-    if (script->size() > 0 && script->back().label != 0 &&
+    if (script->size() > 0 && script->back().label.size() > 0 &&
         script->back().code == 0)
     {
         command = &script->back();
@@ -278,14 +287,10 @@ ntsa::Error PacketFilter::Compiler::analyze(LabelMap*     labelMap,
     for (bsl::size_t pc = 0; pc < script.size(); ++pc) {
         const Command& command = script[pc];
 
-        if (command.label != 0) {
-            const bsl::size_t labelSize = bsl::strlen(command.label);
-            if (labelSize > 0) {
-                bsl::string key(command.label, labelSize);
-                BALL_LOG_INFO << "Found label '" << key << "' at position "
-                              << pc << BALL_LOG_END;
-                (*labelMap)[key] = pc;
-            }
+        for (bsl::size_t i = 0; i < command.label.size(); ++i) {
+            BALL_LOG_INFO << "Found label '" << command.label[i]
+                          << "' at position " << pc << BALL_LOG_END;
+            (*labelMap)[command.label[i]] = pc;
         }
     }
 
@@ -360,7 +365,17 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     typedef ntsu::PacketFilter::Instruction PFI;
     typedef ntsu::PacketFilter::Compiler    PFC;
 
+    // The index into scratch memory where the Ethernet header length is
+    // stored.
+    const bsl::uint32_t k_SCRATCH_ETHERNET_HEADER_LENGTH = 0;
+
+    // The index into scratch memory where the layer-2 protocol carried by the
+    // Ethernet packet is stored.
+    const bsl::uint32_t k_SCRATCH_ETHERNET_PROTOCOL = 1;
+
     program->clear();
+
+    // This implementation only supports non-loopback Ethernet devices for now.
 
     if (deviceType == ntsa::DeviceType::e_LOCAL ||
         deviceType == ntsa::DeviceType::e_LOOPBACK)
@@ -369,11 +384,15 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
         return ntsa::Error();
     }
 
+    // This implementation only supports Ethernet link-level packet types.
+
     if (deviceType != ntsa::DeviceType::e_ETHERNET) {
         BALL_LOG_ERROR << "Failed to compile packet filter: the device type "
                        << deviceType << " is not supported" << BALL_LOG_END;
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
+
+    // Determine the Ethernet address of the local device.
 
     ntsa::EthernetAddress ethernetAddress;
     if (!ethernetAddress.parse(adapter.ethernetAddress())) {
@@ -385,8 +404,50 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
     PFS script;
 
+    // Determine if the Ethernet packet has a VLAN tag. Load the 2-byte
+    // tag protocol identifier (TPID) field, which will be set to 0x8100 if
+    // the Ethernet frame is 802.1Q tagged.
+
+    PFC::label(&script, "store-ethernet-header-attributes");
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, 12);
+
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 0x8100,
+                 0,
+                 "store-ethernet-header-attributes-vlan");
+
+    PFC::label(&script, "store-ethernet-header-attributes-standard");
+
+    PFC::compile(&script,
+                 NTSU_BPF_LD | NTSU_BPF_W | NTSU_BPF_K,
+                 ntsa::EthernetHeader::k_MIN_HEADER_LENGTH);
+
+    PFC::compile(&script,
+                 NTSU_BPF_ST | NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
+
+    PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JA + NTSU_BPF_K,
+                     1, // "store-ethernet-header-attributes-end",
+                     0,
+                     0);
+
+    PFC::label(&script, "store-ethernet-header-attributes-vlan");
+
+    PFC::compile(&script,
+                 NTSU_BPF_LD | NTSU_BPF_W | NTSU_BPF_K,
+                 ntsa::EthernetHeader::k_MAX_HEADER_LENGTH);
+
+    PFC::compile(&script,
+                 NTSU_BPF_ST | NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
+
+    PFC::label(&script, "store-ethernet-header-attributes-end");
+
     // Reject the packet unless its destination Ethernet address matches the
     // Ethernet address of the network interface.
+
+    PFC::label(&script, "filter-ethernet-address");
 
     const bsl::uint32_t ethernetAddress0 =
         (static_cast<bsl::uint32_t>(ethernetAddress[0]) << 24) |
@@ -459,6 +520,68 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     }
 
     PFC::label(&script, "accept-ethernet-protocol");
+
+    // MRM
+#if 1
+
+    PFC::label(&script, "filter-ipv4");
+
+    PFC::label(&script, "filter-source-ipv4-address");
+
+    if (filter.sourceIpv4Address().has_value()) {
+        // Load the 32-bit source IP address from its absolute position inside
+        // an IPv4 packet inside an Ethernet packet.
+
+        PFC::compile(&script,
+                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS,
+                     ntsa::EthernetHeader::k_MIN_HEADER_LENGTH +
+                     ntsa::Ipv4Header::k_SOURCE_ADDRESS_OFFSET);
+
+        // Compare with the required source IP address.
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     filter.sourceIpv4Address().value().value(),
+                     "accept-source-ipv4-address",
+                     "reject");
+    }
+
+    PFC::label(&script, "accept-source-ipv4-address");
+
+    PFC::label(&script, "filter-destination-ipv4-address");
+
+    if (filter.destinationIpv4Address().has_value()) {
+        // Load the 32-bit destination IP address from its absolute position
+        // inside an IPv4 packet inside an Ethernet packet.
+
+        PFC::compile(&script,
+                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS,
+                     ntsa::EthernetHeader::k_MIN_HEADER_LENGTH +
+                     ntsa::Ipv4Header::k_DESTINATION_ADDRESS_OFFSET);
+
+        // Compare with the required destination IP address.
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     filter.destinationIpv4Address().value().value(),
+                     "accept-destination-ipv4-address",
+                     "reject");
+    }
+
+    PFC::label(&script, "accept-destination-ipv4-address");
+
+    // PFC::label(&script, "filter-ipv6");
+
+    PFC::label(&script, "filter-tcp");
+
+    if (filter.sourceTcpPort().size() > 0) {
+    }
+    PFC::label(&script, "accept-source-tcp-port");
+
+    if (filter.destinationTcpPort().size() > 0) {
+    }
+    PFC::label(&script, "accept-destination->tcp-port");
+#endif
 
     PFC::label(&script, "accept");
     PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, (u_int)(-1));

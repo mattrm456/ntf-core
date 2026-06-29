@@ -52,6 +52,16 @@ class EthernetHeader
     ntsa::EthernetProtocol::Value          d_protocol;
 
   public:
+    /// Enumerate the constants used by the implementation.
+    enum Constants {
+        /// The minimum header length, in bytes.
+        k_MIN_HEADER_LENGTH = 14,
+
+        /// The minimum header length, in bytes. This length accounts for a
+        /// single VLAN tag.
+        k_MAX_HEADER_LENGTH = 18
+    };
+
     /// Create a new Ethernet header having a default value.
     EthernetHeader();
 

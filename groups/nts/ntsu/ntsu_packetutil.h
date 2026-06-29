@@ -232,7 +232,7 @@ class PacketFilter
       public:
         Command();
 
-        const char*   label;
+        bsl::vector<bsl::string> label;
         bsl::uint16_t code;
         const char*   jt;
         const char*   jf;
