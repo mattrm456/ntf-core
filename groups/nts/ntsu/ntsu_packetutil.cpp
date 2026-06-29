@@ -421,26 +421,26 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     PFC::label(&script, "store-ethernet-header-attributes-standard");
 
     PFC::compile(&script,
-                 NTSU_BPF_LD | NTSU_BPF_W | NTSU_BPF_K,
+                 NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_K,
                  ntsa::EthernetHeader::k_MIN_HEADER_LENGTH);
 
     PFC::compile(&script,
-                 NTSU_BPF_ST | NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
+                 NTSU_BPF_ST + NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
 
     PFC::compile(&script,
-                     NTSU_BPF_JMP + NTSU_BPF_JA + NTSU_BPF_K,
-                     1, // "store-ethernet-header-attributes-end",
-                     0,
-                     0);
+                 NTSU_BPF_JMP + NTSU_BPF_JA + NTSU_BPF_K,
+                 1, // "store-ethernet-header-attributes-end",
+                 0,
+                 0);
 
     PFC::label(&script, "store-ethernet-header-attributes-vlan");
 
     PFC::compile(&script,
-                 NTSU_BPF_LD | NTSU_BPF_W | NTSU_BPF_K,
+                 NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_K,
                  ntsa::EthernetHeader::k_MAX_HEADER_LENGTH);
 
     PFC::compile(&script,
-                 NTSU_BPF_ST | NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
+                 NTSU_BPF_ST + NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
 
     PFC::label(&script, "store-ethernet-header-attributes-end");
 
