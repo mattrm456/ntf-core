@@ -41,18 +41,18 @@ namespace ntsa {
 /// This class is composed of the following attributes.
 ///
 /// @li @b driverName:
-/// The name of the implementation of the driver.  Valid values are "native",
-/// "dpdk", "openonload", and the empty string to represent the default reactor
-/// implementation for the current platform.
+/// The name of the implementation of the driver.  Valid values are "native"
+/// and the empty string to represent the default reactor implementation for
+/// the current platform.
 ///
 /// @li @b adapterName:
 /// The name of the network device adapter, e.g., "lo", "eth0", etc.
 ///
-/// @li @b packetFilter:
-/// The packet filter.
-///
 /// @li @b outgoingEnabled
 /// The flag that controls whether outgoing packets are enabled.
+///
+/// @li @b outgoingPacketFilter
+/// The outgoing packet filter.
 ///
 /// @li @b outgoingMinThreads
 /// The minimum number of threads processing outgoing packets.
@@ -66,6 +66,9 @@ namespace ntsa {
 /// @li @b incomingEnabled
 /// The flag that controls whether incoming packets are enabled.
 ///
+/// @li @b incomingPacketFilter
+/// The incoming packet filter.
+///
 /// @li @b incomingMinThreads
 /// The minimum number of threads processing incoming packets.
 ///
@@ -74,6 +77,9 @@ namespace ntsa {
 ///
 /// @li @b incomingMaxPackets
 /// The maximum number of incoming packets.
+///
+/// @li @b promiscuous
+/// Process all packets, not just those intended for this device.
 ///
 /// @par Thread Safety
 /// This class is not thread safe.
@@ -93,6 +99,7 @@ class DeviceConfig
     bdlb::NullableValue<bsl::size_t>           d_incomingMinThreads;
     bdlb::NullableValue<bsl::size_t>           d_incomingMaxThreads;
     bdlb::NullableValue<bsl::size_t>           d_incomingMaxPackets;
+    bdlb::NullableValue<bool>                  d_promiscuous;
 
   public:
     /// Create a new driver configuration. Optionally specify a
@@ -164,6 +171,10 @@ class DeviceConfig
     /// Set the maximum number of incoming packets to the specified 'value'.
     void setIncomingMaxPackets(bsl::size_t value);
 
+    /// Set the flag to process all packets, not just those intended for the
+    /// device, according to the specified 'value'.
+    void setPromiscuous(bool value);
+
     /// Return the name of the driver implementation.
     const bdlb::NullableValue<bsl::string>& driverName() const;
 
@@ -199,6 +210,10 @@ class DeviceConfig
 
     /// Return the maximum number of incoming packets.
     const bdlb::NullableValue<bsl::size_t>& incomingMaxPackets() const;
+
+    /// Return the flag to process all packets, not just those intended for the
+    /// device.
+    const bdlb::NullableValue<bool>& promiscuous() const;
 
     /// Return true if this object has the same value as the specified
     /// 'other' object, otherwise return false.
@@ -276,6 +291,7 @@ void hashAppend(HASH_ALGORITHM& algorithm, const DeviceConfig& value)
     hashAppend(algorithm, value.incomingMinThreads());
     hashAppend(algorithm, value.incomingMaxThreads());
     hashAppend(algorithm, value.incomingMaxPackets());
+    hashAppend(algorithm, value.promiscuous());
 }
 
 }  // close package namespace

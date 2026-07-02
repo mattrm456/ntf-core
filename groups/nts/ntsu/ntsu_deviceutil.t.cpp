@@ -86,6 +86,7 @@ bsl::shared_ptr<ntsa::Packet> DeviceUtilTest::createPacket(
     ntsa::EthernetAddress sourceEthernetAddress;
     ntsa::EthernetAddress destinationEthernetAddress;
 
+    sourceEthernetAddress.parse(adapter.ethernetAddress());
     destinationEthernetAddress.parse(adapter.ethernetAddress());
 
     ethernet.header().setSource(sourceEthernetAddress);
@@ -95,7 +96,7 @@ bsl::shared_ptr<ntsa::Packet> DeviceUtilTest::createPacket(
 
     ntsa::Ipv4Packet& ipv4 = ethernet.payload().makeIpv4();
 
-    ntsa::Ipv4Address sourceIpv4Address      = ntsa::Ipv4Address::loopback();
+    ntsa::Ipv4Address sourceIpv4Address      = adapter.ipv4Address().value();
     ntsa::Ipv4Address destinationIpv4Address = adapter.ipv4Address().value();
 
     ipv4.header().setSourceAddress(sourceIpv4Address);
@@ -120,11 +121,6 @@ bsl::shared_ptr<ntsa::Packet> DeviceUtilTest::createPacket(
     payload.setSize(13);
 
     udp.setPayload(payload);
-
-    // MRM
-    #if 0
-    BALL_LOG_DEBUG << "Transmitting packet " << packet << BALL_LOG_END;
-    #endif
 
     return packet;
 }

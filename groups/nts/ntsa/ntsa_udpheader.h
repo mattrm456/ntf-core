@@ -64,6 +64,14 @@ class UdpHeader
         /// The fixed UDP header length.
         k_LENGTH = 8,
 
+        /// The offset from the start of the TCP header to the source port
+        /// field.
+        k_SOURCE_PORT_OFFSET = 0,
+
+        /// The offset from the start of the TCP header to the destination port
+        /// field.
+        k_DESTINATION_PORT_OFFSET = 2,
+
         /// The protocol number indicating the IPv4 packet carries UDP.
         k_PROTOCOL_UDP = 17
     };

@@ -54,12 +54,25 @@ class EthernetHeader
   public:
     /// Enumerate the constants used by the implementation.
     enum Constants {
-        /// The minimum header length, in bytes.
+        /// The minimum header length, in bytes, for an Ethernet header without
+        /// a VLAN tag.
         k_MIN_HEADER_LENGTH = 14,
 
-        /// The minimum header length, in bytes. This length accounts for a
-        /// single VLAN tag.
-        k_MAX_HEADER_LENGTH = 18
+        /// The maximum header length, in bytes, for an Ethernet header with
+        /// a VLAN tag.
+        k_MAX_HEADER_LENGTH = 18,
+
+        /// The offset from the start of the Ethernet header to the source
+        /// address field.
+        k_SOURCE_ADDRESS_OFFSET = 6,
+
+        /// The offset from the start of the Ethernet header to the destination
+        /// address field.
+        k_DESTINATION_ADDRESS_OFFSET = 0,
+
+        /// The offset from the start of the Ethernet header to the tag
+        /// protocol identifier (TPID) field.
+        k_TPID_OFFSET = 12
     };
 
     /// Create a new Ethernet header having a default value.

@@ -40,12 +40,12 @@ namespace ntsa {
 class PacketFilter
 {
     bsl::vector<ntsa::PacketType::Value>       d_packetType;
-    bdlb::NullableValue<ntsa::EthernetAddress> d_sourceEthernetAddress;
+    bsl::vector<ntsa::EthernetAddress> d_sourceEthernetAddress;
     bdlb::NullableValue<ntsa::Ipv4Address>     d_sourceIpv4Address;
     bdlb::NullableValue<ntsa::Ipv6Address>     d_sourceIpv6Address;
     bsl::vector<ntsa::Port>                    d_sourceTcpPort;
     bsl::vector<ntsa::Port>                    d_sourceUdpPort;
-    bdlb::NullableValue<ntsa::EthernetAddress> d_destinationEthernetAddress;
+    bsl::vector<ntsa::EthernetAddress> d_destinationEthernetAddress;
     bdlb::NullableValue<ntsa::Ipv4Address>     d_destinationIpv4Address;
     bdlb::NullableValue<ntsa::Ipv6Address>     d_destinationIpv6Address;
     bsl::vector<ntsa::Port>                    d_destinationTcpPort;
@@ -80,29 +80,35 @@ class PacketFilter
     /// Remove the packet type having the specified 'value'.
     void removePacketType(ntsa::PacketType::Value value);
 
-    /// Set the source Ethernet address to the specified 'value'.
-    void setSourceEthernetAddress(const ntsa::EthernetAddress& value);
+    /// Add a source Ethernet address having the specified 'value'.
+    void addSourceEthernetAddress(const ntsa::EthernetAddress& value);
+
+    /// Remove the source Ethernet address having the specified 'value'.
+    void removeSourceEthernetAddress(const ntsa::EthernetAddress& value);
 
     /// Set the source IPv4 address to the specified 'value'.
     void setSourceIpv4Address(const ntsa::Ipv4Address& value);
 
-     /// Set the source IPv6 address to the specified 'value'.
+    /// Set the source IPv6 address to the specified 'value'.
     void setSourceIpv6Address(const ntsa::Ipv6Address& value);
 
     /// Add the source TCP port having the specified 'value'.
     void addSourceTcpPort(ntsa::Port value);
 
-    /// Add the source UDP port having the specified 'value'.
-    void addSourceUdpPort(ntsa::Port value);
-
     /// Remove the source TCP port having the specified 'value'.
     void removeSourceTcpPort(ntsa::Port value);
+
+    /// Add the source UDP port having the specified 'value'.
+    void addSourceUdpPort(ntsa::Port value);
 
     /// Remove the source UDP port having the specified 'value'.
     void removeSourceUdpPort(ntsa::Port value);
 
-    /// Set the destination Ethernet address to the specified 'value'.
-    void setDestinationEthernetAddress(const ntsa::EthernetAddress& value);
+    /// Add a destination Ethernet address having the specified 'value'.
+    void addDestinationEthernetAddress(const ntsa::EthernetAddress& value);
+
+    /// Remove the destination Ethernet address having the specified 'value'.
+    void removeDestinationEthernetAddress(const ntsa::EthernetAddress& value);
 
     /// Set the destination IPv4 address to the specified 'value'.
     void setDestinationIpv4Address(const ntsa::Ipv4Address& value);
@@ -113,11 +119,11 @@ class PacketFilter
     /// Add the destination TCP port having the specified 'value'.
     void addDestinationTcpPort(ntsa::Port value);
 
-    /// Add the destination UDP port having the specified 'value'.
-    void addDestinationUdpPort(ntsa::Port value);
-
     /// Remove the destination TCP port having the specified 'value'.
     void removeDestinationTcpPort(ntsa::Port value);
+
+    /// Add the destination UDP port having the specified 'value'.
+    void addDestinationUdpPort(ntsa::Port value);
 
     /// Remove the destination UDP port having the specified 'value'.
     void removeDestinationUdpPort(ntsa::Port value);
@@ -126,7 +132,7 @@ class PacketFilter
     const bsl::vector<ntsa::PacketType::Value>& packetType() const;
 
     /// Return the source Ethernet address.
-    const bdlb::NullableValue<ntsa::EthernetAddress>& sourceEthernetAddress()
+    const bsl::vector<ntsa::EthernetAddress>& sourceEthernetAddress()
         const;
 
     /// Return the source IPv4 address.
@@ -142,7 +148,7 @@ class PacketFilter
     const bsl::vector<ntsa::Port>& sourceUdpPort() const;
 
     /// Return the destination Ethernet address.
-    const bdlb::NullableValue<ntsa::EthernetAddress>&
+    const bsl::vector<ntsa::EthernetAddress>&
     destinationEthernetAddress() const;
 
     /// Return the destination IPv4 address.
@@ -228,12 +234,12 @@ void hashAppend(HASH_ALGORITHM& algorithm, const PacketFilter& value);
 NTSCFG_INLINE
 PacketFilter::PacketFilter(bslma::Allocator* basicAllocator)
 : d_packetType(basicAllocator)
-, d_sourceEthernetAddress()
+, d_sourceEthernetAddress(basicAllocator)
 , d_sourceIpv4Address()
 , d_sourceIpv6Address()
 , d_sourceTcpPort(basicAllocator)
 , d_sourceUdpPort(basicAllocator)
-, d_destinationEthernetAddress()
+, d_destinationEthernetAddress(basicAllocator)
 , d_destinationIpv4Address()
 , d_destinationIpv6Address()
 , d_destinationTcpPort(basicAllocator)
@@ -246,12 +252,12 @@ NTSCFG_INLINE
 PacketFilter::PacketFilter(
     const PacketFilter& original, bslma::Allocator* basicAllocator)
 : d_packetType(original.d_packetType, basicAllocator)
-, d_sourceEthernetAddress(original.d_sourceEthernetAddress)
+, d_sourceEthernetAddress(original.d_sourceEthernetAddress, basicAllocator)
 , d_sourceIpv4Address(original.d_sourceIpv4Address)
 , d_sourceIpv6Address(original.d_sourceIpv6Address)
 , d_sourceTcpPort(original.d_sourceTcpPort, basicAllocator)
 , d_sourceUdpPort(original.d_sourceUdpPort, basicAllocator)
-, d_destinationEthernetAddress(original.d_destinationEthernetAddress)
+, d_destinationEthernetAddress(original.d_destinationEthernetAddress, basicAllocator)
 , d_destinationIpv4Address(original.d_destinationIpv4Address)
 , d_destinationIpv6Address(original.d_destinationIpv6Address)
 , d_destinationTcpPort(original.d_destinationTcpPort, basicAllocator)
@@ -289,12 +295,12 @@ NTSCFG_INLINE
 void PacketFilter::reset()
 {
     d_packetType.clear();
-    d_sourceEthernetAddress.reset();
+    d_sourceEthernetAddress.clear();
     d_sourceIpv4Address.reset();
     d_sourceIpv6Address.reset();
     d_sourceTcpPort.clear();
     d_sourceUdpPort.clear();
-    d_destinationEthernetAddress.reset();
+    d_destinationEthernetAddress.clear();
     d_destinationIpv4Address.reset();
     d_destinationIpv6Address.reset();
     d_destinationTcpPort.clear();
@@ -318,10 +324,20 @@ void PacketFilter::removePacketType(ntsa::PacketType::Value value)
 }
 
 NTSCFG_INLINE
-void PacketFilter::setSourceEthernetAddress(
+void PacketFilter::addSourceEthernetAddress(
     const ntsa::EthernetAddress& value)
 {
-    d_sourceEthernetAddress = value;
+    d_sourceEthernetAddress.push_back(value);
+}
+
+NTSCFG_INLINE
+void PacketFilter::removeSourceEthernetAddress(
+    const ntsa::EthernetAddress& value)
+{
+    d_sourceEthernetAddress.erase(
+        bsl::remove(
+            d_sourceEthernetAddress.begin(), d_sourceEthernetAddress.end(), value),
+        d_sourceEthernetAddress.end());
 }
 
 NTSCFG_INLINE
@@ -343,18 +359,18 @@ void PacketFilter::addSourceTcpPort(ntsa::Port value)
 }
 
 NTSCFG_INLINE
-void PacketFilter::addSourceUdpPort(ntsa::Port value)
-{
-    d_sourceUdpPort.push_back(value);
-}
-
-NTSCFG_INLINE
 void PacketFilter::removeSourceTcpPort(ntsa::Port value)
 {
     d_sourceTcpPort.erase(
         bsl::remove(
             d_sourceTcpPort.begin(), d_sourceTcpPort.end(), value),
         d_sourceTcpPort.end());
+}
+
+NTSCFG_INLINE
+void PacketFilter::addSourceUdpPort(ntsa::Port value)
+{
+    d_sourceUdpPort.push_back(value);
 }
 
 NTSCFG_INLINE
@@ -367,10 +383,20 @@ void PacketFilter::removeSourceUdpPort(ntsa::Port value)
 }
 
 NTSCFG_INLINE
-void PacketFilter::setDestinationEthernetAddress(
+void PacketFilter::addDestinationEthernetAddress(
     const ntsa::EthernetAddress& value)
 {
-    d_destinationEthernetAddress = value;
+    d_destinationEthernetAddress.push_back(value);
+}
+
+NTSCFG_INLINE
+void PacketFilter::removeDestinationEthernetAddress(
+    const ntsa::EthernetAddress& value)
+{
+    d_destinationEthernetAddress.erase(
+        bsl::remove(
+            d_destinationEthernetAddress.begin(), d_destinationEthernetAddress.end(), value),
+        d_destinationEthernetAddress.end());
 }
 
 NTSCFG_INLINE
@@ -394,18 +420,18 @@ void PacketFilter::addDestinationTcpPort(ntsa::Port value)
 }
 
 NTSCFG_INLINE
-void PacketFilter::addDestinationUdpPort(ntsa::Port value)
-{
-    d_destinationUdpPort.push_back(value);
-}
-
-NTSCFG_INLINE
 void PacketFilter::removeDestinationTcpPort(ntsa::Port value)
 {
     d_destinationTcpPort.erase(
         bsl::remove(
             d_destinationTcpPort.begin(), d_destinationTcpPort.end(), value),
         d_destinationTcpPort.end());
+}
+
+NTSCFG_INLINE
+void PacketFilter::addDestinationUdpPort(ntsa::Port value)
+{
+    d_destinationUdpPort.push_back(value);
 }
 
 NTSCFG_INLINE
@@ -424,7 +450,7 @@ const bsl::vector<ntsa::PacketType::Value>& PacketFilter::packetType() const
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::EthernetAddress>& PacketFilter::
+const bsl::vector<ntsa::EthernetAddress>& PacketFilter::
     sourceEthernetAddress() const
 {
     return d_sourceEthernetAddress;
@@ -459,7 +485,7 @@ const bsl::vector<ntsa::Port>& PacketFilter::sourceUdpPort()
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::EthernetAddress>& PacketFilter::
+const bsl::vector<ntsa::EthernetAddress>& PacketFilter::
     destinationEthernetAddress() const
 {
     return d_destinationEthernetAddress;

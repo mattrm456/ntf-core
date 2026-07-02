@@ -141,6 +141,14 @@ class TcpHeader
         /// The maximum length of all options, in bytes.
         k_MAX_OPTIONS_LENGTH = 40,
 
+        /// The offset from the start of the TCP header to the source port
+        /// field.
+        k_SOURCE_PORT_OFFSET = 0,
+
+        /// The offset from the start of the TCP header to the destination port
+        /// field.
+        k_DESTINATION_PORT_OFFSET = 2,
+
         /// The protocol number indicating TCP.
         k_PROTOCOL_TCP = 6
     };

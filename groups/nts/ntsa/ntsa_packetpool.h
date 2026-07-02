@@ -39,12 +39,6 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class PacketPool : public ntsa::PacketFactory
 {
-    /// Enumerates the constants used by this implementation.
-    enum Constants {
-        /// The default maximum transmission unit.
-        k_MTU = 1500
-    };
-
     /// Defines a type alias for a shared object pool of packets.
     typedef bdlcc::SharedObjectPool<
         ntsa::Packet,
@@ -80,6 +74,12 @@ class PacketPool : public ntsa::PacketFactory
                           bslma::Allocator*         allocator);
 
   public:
+    /// Enumerates the constants used by this implementation.
+    enum Constants {
+        /// The default maximum transmission unit.
+        k_MTU = 1500
+    };
+
     /// Create a new packet pool. Allocate blob buffers of the specified
     /// 'outgoingBlobBufferSize' intended for outgoing data. Allocate blob
     /// buffers of the specified 'incomingBlobBufferSize' intended for incoming

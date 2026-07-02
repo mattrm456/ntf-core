@@ -127,6 +127,9 @@ namespace ntccfg {
 // Build with support for OpenSSL as the driver for TLS.
 #define NTC_BUILD_WITH_OPENSSL @NTF_BUILD_WITH_OPENSSL@
 
+// Build with support for pcap as the driver for packet capture.
+#define NTC_BUILD_WITH_PCAP @NTF_BUILD_WITH_PCAP@
+
 // Build with support for packet timestamping, if supported by the network
 // device.
 #define NTC_BUILD_WITH_TIMESTAMPING @NTF_BUILD_WITH_TIMESTAMPING@

@@ -106,6 +106,21 @@ namespace ntscfg {
 // a reactor. This driver is available on Darwin and FreeBSD.
 #define NTS_BUILD_WITH_KQUEUE @NTF_BUILD_WITH_KQUEUE@
 
+// Build with support for lz4 in the default compression driver.
+#define NTS_BUILD_WITH_LZ4 @NTF_BUILD_WITH_LZ4@
+
+// Build with support for zstd in the default compression driver.
+#define NTS_BUILD_WITH_ZSTD @NTF_BUILD_WITH_ZSTD@
+
+// Build with support for zlib in the default compression driver.
+#define NTS_BUILD_WITH_ZLIB @NTF_BUILD_WITH_ZLIB@
+
+// Build with support for OpenSSL as the driver for TLS.
+#define NTS_BUILD_WITH_OPENSSL @NTF_BUILD_WITH_OPENSSL@
+
+// Build with support for pcap as the driver for packet capture.
+#define NTS_BUILD_WITH_PCAP @NTF_BUILD_WITH_PCAP@
+
 // Build with support for packet timestamping, if supported by the network
 // device.
 #define NTS_BUILD_WITH_TIMESTAMPING @NTF_BUILD_WITH_TIMESTAMPING@

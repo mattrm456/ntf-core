@@ -601,6 +601,18 @@ if (NOT DEFINED NTF_BUILD_WITH_OPENSSL)
     endif()
 endif()
 
+if (NOT DEFINED NTF_BUILD_WITH_PCAP)
+    if (DEFINED NTF_CONFIGURE_WITH_PCAP)
+        set(NTF_BUILD_WITH_PCAP
+            ${NTF_CONFIGURE_WITH_PCAP} CACHE INTERNAL "")
+    elseif (DEFINED ENV{NTF_CONFIGURE_WITH_PCAP})
+        set(NTF_BUILD_WITH_PCAP
+            $ENV{NTF_CONFIGURE_WITH_PCAP} CACHE INTERNAL "")
+    else()
+        set(NTF_BUILD_WITH_PCAP TRUE CACHE INTERNAL "")
+    endif()
+endif()
+
 if (NOT DEFINED NTF_BUILD_WITH_COROUTINES)
     if (DEFINED NTF_CONFIGURE_WITH_COROUTINES)
         set(NTF_BUILD_WITH_COROUTINES
@@ -1088,6 +1100,12 @@ if (${NTF_BUILD_WITH_OPENSSL})
     message(STATUS "NTF: Building with OpenSSL:                     yes")
 else()
     message(STATUS "NTF: Building with OpenSSL:                     no")
+endif()
+
+if (${NTF_BUILD_WITH_PCAP})
+    message(STATUS "NTF: Building with pcap:                        yes")
+else()
+    message(STATUS "NTF: Building with pcap:                        no")
 endif()
 
 if (${NTF_BUILD_WITH_COROUTINES})

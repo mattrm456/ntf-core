@@ -370,9 +370,8 @@ class DeviceUtil::Impl
 
     /// Get the device type of the specified 'device' and load it into the
     /// specified 'result'. Return the error.
-    static ntsa::Error getDeviceType(
-        ntsa::Handle                device,
-        ntsa::DeviceType::Value*    result);
+    static ntsa::Error getDeviceType(ntsa::Handle             device,
+                                     ntsa::DeviceType::Value* result);
 
     /// Set the network interface of the specified 'device' to the specified
     /// 'value'. Return the error.
@@ -405,9 +404,8 @@ class DeviceUtil::Impl
 
     /// Load into the specified 'result' the device type converted from the
     /// specified 'dataLinkType'. Return the error.
-    static ntsa::Error convertFromDataLinkType(
-        ntsa::DeviceType::Value* result,
-        bsl::uint32_t            dataLinkType);
+    static ntsa::Error convertFromDataLinkType(ntsa::DeviceType::Value* result,
+                                               bsl::uint32_t dataLinkType);
 };
 
 ntsa::Error DeviceUtil::Impl::setImmediate(ntsa::Handle device, bool value)
@@ -819,9 +817,8 @@ ntsa::Error DeviceUtil::Impl::getDataLinkTypeSupport(
     return ntsa::Error();
 }
 
-ntsa::Error DeviceUtil::Impl::getDeviceType(
-        ntsa::Handle                device,
-        ntsa::DeviceType::Value*    result)
+ntsa::Error DeviceUtil::Impl::getDeviceType(ntsa::Handle             device,
+                                            ntsa::DeviceType::Value* result)
 {
     ntsa::Error error;
 
@@ -910,10 +907,10 @@ ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
     int         rc;
 
     ntsu::PacketFilter::Program program;
-    error = ntsu::PacketUtil::compile(&program , deviceType, adapter, filter);
+    error = ntsu::PacketUtil::compile(&program, deviceType, adapter, filter);
     if (error) {
-        BALL_LOG_ERROR << "Failed to compiler packet filter program: "
-                       << error << BALL_LOG_END;
+        BALL_LOG_ERROR << "Failed to compiler packet filter program: " << error
+                       << BALL_LOG_END;
         return error;
     }
 
@@ -1114,6 +1111,15 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         return error;
     }
 
+    // Configure promiscuity.
+
+    if (configuration.promiscuous().value_or(false)) {
+        error = DeviceUtil::Impl::setPromiscuous(device, true);
+        if (error) {
+            return error;
+        }
+    }
+
     // Configure the packet filter.
 
     ntsa::PacketFilter packetFilter;
@@ -1122,15 +1128,19 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     }
 
     if (loopback) {
-        error =
-            DeviceUtil::Impl::applyFilter(device, ntsa::DeviceType::e_LOCAL, adapter, packetFilter);
+        error = DeviceUtil::Impl::applyFilter(device,
+                                              ntsa::DeviceType::e_LOCAL,
+                                              adapter,
+                                              packetFilter);
         if (error) {
             return error;
         }
     }
     else {
-        error =
-            DeviceUtil::Impl::applyFilter(device, ntsa::DeviceType::e_ETHERNET, adapter, packetFilter);
+        error = DeviceUtil::Impl::applyFilter(device,
+                                              ntsa::DeviceType::e_ETHERNET,
+                                              adapter,
+                                              packetFilter);
         if (error) {
             return error;
         }
@@ -1301,65 +1311,13 @@ ntsa::Error DeviceUtil::waitUntilReadable(ntsa::Handle              device,
 
 ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle device)
 {
-    struct ::pollfd pfd;
-
-    pfd.fd      = device;
-    pfd.events  = POLLOUT | POLLERR | POLLNVAL;
-    pfd.revents = 0;
-
-    int rc = ::poll(&pfd, 1, -1);
-    if (rc < 0) {
-        return ntsa::Error(errno);
-    }
-
-    if (rc == 0) {
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
-    }
-
-    if ((pfd.revents & POLLOUT) != 0) {
-        return ntsa::Error();
-    }
-
-    return ntsa::Error::invalid();
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle              device,
                                           const bsls::TimeInterval& timeout)
 {
-    struct ::pollfd pfd;
-
-    pfd.fd      = device;
-    pfd.events  = POLLOUT | POLLERR | POLLNVAL;
-    pfd.revents = 0;
-
-    bsls::TimeInterval now = bdlt::CurrentTime::now();
-
-    bsls::TimeInterval delta;
-    if (timeout > now) {
-        delta = timeout - now;
-    }
-
-    bsl::int64_t milliseconds =
-        static_cast<bsl::int64_t>(delta.totalMilliseconds());
-
-    if (milliseconds > bsl::numeric_limits<int>::max()) {
-        milliseconds = bsl::numeric_limits<int>::max();
-    }
-
-    int rc = ::poll(&pfd, 1, static_cast<int>(milliseconds));
-    if (rc < 0) {
-        return ntsa::Error(errno);
-    }
-
-    if (rc == 0) {
-        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
-    }
-
-    if ((pfd.revents & POLLOUT) != 0) {
-        return ntsa::Error();
-    }
-
-    return ntsa::Error::invalid();
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::waitUntilError(ntsa::Handle device)

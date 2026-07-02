@@ -87,6 +87,10 @@ if (${NTF_BUILD_WITH_NTS})
         ntf_group_requires(NAME nts DEPENDENCY openssl)
     endif()
 
+    if (${NTF_BUILD_WITH_PCAP})
+        ntf_group_requires(NAME nts DEPENDENCY libpcap)
+    endif()
+
     ntf_package(NAME ntsscm)
 
     ntf_component(NAME ntsscm_version)
@@ -464,6 +468,10 @@ if (${NTF_BUILD_WITH_NTC})
 
     if (${NTF_BUILD_WITH_OPENSSL})
         ntf_group_requires(NAME ntc DEPENDENCY openssl)
+    endif()
+
+    if (${NTF_BUILD_WITH_PCAP})
+        ntf_group_requires(NAME ntc DEPENDENCY libpcap)
     endif()
 
     ntf_package(NAME ntcscm)

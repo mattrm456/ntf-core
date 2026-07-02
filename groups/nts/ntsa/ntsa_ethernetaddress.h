@@ -153,6 +153,12 @@ class EthernetAddress
     /// is undefined unless 'index < 4'.
     bsl::uint8_t operator[](bsl::size_t index) const;
 
+    /// Return the wildcard Ethernet address 00:00:00:00:00::00.
+    static EthernetAddress any();
+
+    /// Return the broadcast Ethernet address FF:FF:FF:FF:FF:FF.
+    static EthernetAddress broadcast();
+
     /// This type's default constructor is equivalent to setting each byte of
     /// the object's footprint to zero.
     NTSCFG_TYPE_TRAIT_BITWISE_INITIALIZABLE(EthernetAddress);
@@ -312,6 +318,27 @@ bsl::uint8_t EthernetAddress::operator[](bsl::size_t index) const
 {
     BSLS_ASSERT(index < sizeof d_value);
     return d_value[index];
+}
+
+NTSCFG_INLINE
+EthernetAddress EthernetAddress::any()
+{
+    return ntsa::EthernetAddress();
+}
+
+NTSCFG_INLINE
+EthernetAddress EthernetAddress::broadcast()
+{
+    ntsa::EthernetAddress ethernetAddress;
+
+    ethernetAddress[0] = 0xFF;
+    ethernetAddress[1] = 0xFF;
+    ethernetAddress[2] = 0xFF;
+    ethernetAddress[3] = 0xFF;
+    ethernetAddress[4] = 0xFF;
+    ethernetAddress[5] = 0xFF;
+
+    return ethernetAddress;
 }
 
 NTSCFG_INLINE

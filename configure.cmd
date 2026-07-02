@@ -133,6 +133,10 @@ IF NOT DEFINED NTF_CONFIGURE_WITH_OPENSSL (
     set NTF_CONFIGURE_WITH_OPENSSL=1
 )
 
+IF NOT DEFINED NTF_CONFIGURE_WITH_PCAP (
+    set NTF_CONFIGURE_WITH_PCAP=0
+)
+
 IF NOT DEFINED NTF_CONFIGURE_WITH_COROUTINES (
     set NTF_CONFIGURE_WITH_COROUTINES=0
 )
@@ -381,6 +385,9 @@ if not "%1"=="" (
     if "%1"=="--with-openssl" (
         set NTF_CONFIGURE_WITH_OPENSSL=1
     )
+    if "%1"=="--with-pcap" (
+        set NTF_CONFIGURE_WITH_PCAP=1
+    )
 
     if "%1"=="--with-coroutines" (
         set NTF_CONFIGURE_WITH_COROUTINES=1
@@ -525,6 +532,9 @@ if not "%1"=="" (
 
     if "%1"=="--without-openssl" (
         set NTF_CONFIGURE_WITH_OPENSSL=0
+    )
+    if "%1"=="--without-pcap" (
+        set NTF_CONFIGURE_WITH_PCAP=0
     )
 
     if "%1"=="--without-coroutines" (
@@ -927,6 +937,7 @@ echo     --with-zstd                      Enable the compression driver implemen
 echo     --with-zlib                      Enable the compression driver implemented with zlib
 
 echo     --with-openssl                   Enable the encryption driver implemented with OpenSSL
+echo     --with-pcap                      Enable the packet capture driver implemented with pcap
 
 echo     --with-dynamic-load-balancing    Enable processing I/O on any thread, rather than a single thread
 echo     --with-thread-scaling            Enable automatic scaling of thread pools

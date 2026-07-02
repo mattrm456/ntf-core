@@ -325,6 +325,10 @@ if [[ -z "${NTF_CONFIGURE_WITH_OPENSSL}" ]]; then
     NTF_CONFIGURE_WITH_OPENSSL=1
 fi
 
+if [[ -z "${NTF_CONFIGURE_WITH_PCAP}" ]]; then
+    NTF_CONFIGURE_WITH_PCAP=0
+fi
+
 if [[ -z "${NTF_CONFIGURE_WITH_COROUTINES}" ]]; then
     NTF_CONFIGURE_WITH_COROUTINES=0
 fi
@@ -534,6 +538,7 @@ usage()
     echo "    --with-zlib                        Enable the compression driver implemented with zlib [${NTF_CONFIGURE_WITH_ZLIB}]"
 
     echo "    --with-openssl                     Enable the encryption driver implemented with OpenSSL [${NTF_CONFIGURE_WITH_OPENSSL}]"
+    echo "    --with-pcap                        Enable the packet capture driver implemented with pcap [${NTF_CONFIGURE_WITH_PCAP}]"
 
     echo "    --with-coroutines                  Enable coroutine support and APIs depending on coroutines [${NTF_CONFIGURE_WITH_COROUTINES}]"
     echo "    --with-timestamping                Enable packet timestamping, if supported by the network device [${NTF_CONFIGURE_WITH_TIMESTAMPING}]"
@@ -716,6 +721,8 @@ while true ; do
 
         --with-openssl)
             NTF_CONFIGURE_WITH_OPENSSL=1 ; shift ;;
+        --with-pcap)
+            NTF_CONFIGURE_WITH_PCAP=1 ; shift ;;
 
         --with-coroutines)
             NTF_CONFIGURE_WITH_COROUTINES=1 ; shift ;;
@@ -842,6 +849,8 @@ while true ; do
 
         --without-openssl)
             NTF_CONFIGURE_WITH_OPENSSL=0 ; shift ;;
+        --without-pcap)
+            NTF_CONFIGURE_WITH_PCAP=0 ; shift ;;
 
         --without-coroutines)
             NTF_CONFIGURE_WITH_COROUTINES=0 ; shift ;;
@@ -983,6 +992,7 @@ export NTF_CONFIGURE_WITH_ZSTD
 export NTF_CONFIGURE_WITH_ZLIB
 
 export NTF_CONFIGURE_WITH_OPENSSL
+export NTF_CONFIGURE_WITH_PCAP
 
 export NTF_CONFIGURE_WITH_COROUTINES
 export NTF_CONFIGURE_WITH_TIMESTAMPING

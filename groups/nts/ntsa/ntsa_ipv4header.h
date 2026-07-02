@@ -269,12 +269,19 @@ class Ipv4Header
         /// The default time-to-live.
         k_DEFAULT_TIME_TO_LIVE = 64,
 
+        /// The offset from the start of the IPV4 header to the total length
+        /// field.
+        k_TOTAL_LENGTH_OFFSET = 2,
+
+        /// The offset from the start of the IPV4 header to the protocol field.
+        k_PROTOCOL_OFFSET = 9,
+
         /// The offset from the start of the IPv4 header to the source address
-        /// field, in bytes.
+        /// field.
         k_SOURCE_ADDRESS_OFFSET = 12,
 
         /// The offset from the start of the IPv4 header to the destination
-        /// address field, in bytes.
+        /// address field.
         k_DESTINATION_ADDRESS_OFFSET = 16,
 
         /// The protocol number indicating the IPv4 packet carries ICMP.

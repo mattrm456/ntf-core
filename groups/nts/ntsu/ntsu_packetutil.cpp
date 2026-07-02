@@ -53,6 +53,7 @@ BSLS_IDENT_RCSID(ntsu_packetutil_cpp, "$Id$ $CSID$")
 #include <bslmt_threadutil.h>
 #include <bsls_assert.h>
 #include <bsls_atomic.h>
+#include <bsls_byteorder.h>
 #include <bsls_log.h>
 #include <bsls_platform.h>
 
@@ -180,9 +181,9 @@ bsl::uint16_t PacketFilter::Encoding::getMisc(bsl::uint16_t code)
 PacketFilter::Command::Command()
 : label(0)
 , code(0)
-, jt(0)
-, jf(0)
-, k(0)
+, jt(0U)
+, jf(0U)
+, k(0U)
 {
 }
 
@@ -194,7 +195,7 @@ PacketFilter::Instruction::Instruction()
 {
 }
 
-void PacketFilter::Compiler::label(Script* script, const char* label)
+PacketFilter::Command* PacketFilter::Compiler::emit(Script* script)
 {
     Command* command = 0;
 
@@ -207,6 +208,13 @@ void PacketFilter::Compiler::label(Script* script, const char* label)
         script->resize(script->size() + 1);
         command = &script->back();
     }
+
+    return command;
+}
+
+void PacketFilter::Compiler::label(Script* script, const bsl::string& label)
+{
+    Command* command = Compiler::emit(script);
 
     command->label.push_back(label);
 }
@@ -215,31 +223,66 @@ void PacketFilter::Compiler::compile(Script*       script,
                                      bsl::uint16_t code,
                                      bsl::uint32_t k)
 {
-    PacketFilter::Compiler::compile(script, code, k, 0, 0);
-}
-
-void PacketFilter::Compiler::compile(Script*       script,
-                                     bsl::uint16_t code,
-                                     bsl::uint32_t k,
-                                     const char*   jt,
-                                     const char*   jf)
-{
-    Command* command = 0;
-
-    if (script->size() > 0 && script->back().label.size() > 0 &&
-        script->back().code == 0)
-    {
-        command = &script->back();
-    }
-    else {
-        script->resize(script->size() + 1);
-        command = &script->back();
-    }
+    Command* command = Compiler::emit(script);
 
     command->code = code;
+    command->k    = k;
+    command->jt   = 0U;
+    command->jf   = 0U;
+}
+
+void PacketFilter::Compiler::compile(Script*            script,
+                                     bsl::uint16_t      code,
+                                     const bsl::string& k)
+{
+    Command* command = Compiler::emit(script);
+
+    command->code = code;
+    command->k    = k;
+    command->jt   = 0U;
+    command->jf   = 0U;
+}
+
+void PacketFilter::Compiler::compile(Script*            script,
+                                     bsl::uint16_t      code,
+                                     bsl::uint32_t      k,
+                                     const bsl::string& jt,
+                                     const bsl::string& jf)
+{
+    Command* command = Compiler::emit(script);
+
+    command->code = code;
+    command->k    = k;
     command->jt   = jt;
     command->jf   = jf;
+}
+
+void PacketFilter::Compiler::compile(Script*            script,
+                                     bsl::uint16_t      code,
+                                     bsl::uint32_t      k,
+                                     bsl::uint8_t       jt,
+                                     const bsl::string& jf)
+{
+    Command* command = Compiler::emit(script);
+
+    command->code = code;
     command->k    = k;
+    command->jt   = jt;
+    command->jf   = jf;
+}
+
+void PacketFilter::Compiler::compile(Script*            script,
+                                     bsl::uint16_t      code,
+                                     bsl::uint32_t      k,
+                                     const bsl::string& jt,
+                                     bsl::uint8_t       jf)
+{
+    Command* command = Compiler::emit(script);
+
+    command->code = code;
+    command->k    = k;
+    command->jt   = jt;
+    command->jf   = jf;
 }
 
 ntsa::Error PacketFilter::Compiler::link(Program*      program,
@@ -263,7 +306,11 @@ ntsa::Error PacketFilter::Compiler::link(Program*      program,
         Instruction* instruction = &((*program)[pc]);
 
         instruction->code = command.code;
-        instruction->k    = command.k;
+
+        error = Compiler::resolve(&instruction->k, pc, command.k, labelMap);
+        if (error) {
+            return error;
+        }
 
         error = Compiler::resolve(&instruction->jt, pc, command.jt, labelMap);
         if (error) {
@@ -297,58 +344,85 @@ ntsa::Error PacketFilter::Compiler::analyze(LabelMap*     labelMap,
     return ntsa::Error();
 }
 
-ntsa::Error PacketFilter::Compiler::resolve(bsl::uint8_t*   jump,
+ntsa::Error PacketFilter::Compiler::resolve(bsl::uint8_t*   value,
                                             bsl::size_t     pc,
-                                            const char*     label,
+                                            const Symbol&   symbol,
                                             const LabelMap& labelMap)
 {
-    *jump = 0;
+    ntsa::Error error;
 
-    if (label == 0) {
-        BALL_LOG_INFO << "Jump label is null" << BALL_LOG_END;
-        return ntsa::Error();
+    bsl::uint32_t temp;
+    error = PacketFilter::Compiler::resolve(&temp, pc, symbol, labelMap);
+    if (error) {
+        return error;
     }
 
-    const char*       keyData = label;
-    const bsl::size_t keySize = bsl::strlen(keyData);
-
-    if (keySize == 0) {
-        BALL_LOG_INFO << "Jump label is empty" << BALL_LOG_END;
-        return ntsa::Error();
-    }
-
-    bsl::string key(keyData, keySize);
-
-    LabelMap::const_iterator it = labelMap.find(key);
-    if (it == labelMap.end()) {
-        BALL_LOG_ERROR << "Link failure: line " << pc
-                       << " references undefined label '" << label << "'"
-                       << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t index = static_cast<bsl::uint8_t>(it->second);
-
-    if (index <= pc) {
-        BALL_LOG_ERROR << "Link failure: line " << pc
-                       << " indicates an illegal jump backwards"
-                       << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_INVALID);
-    }
-
-    const bsl::size_t offset = index - pc - 1;
-
-    if (offset > 255) {
+    if (temp > 255) {
         BALL_LOG_ERROR << "Link failure: line " << pc
                        << " indicates an illegal jump too far" << BALL_LOG_END;
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    BALL_LOG_INFO << "Resolving jump to label '" << key << "' at position "
-                  << index << " to offset " << offset
-                  << " from instruction at " << pc << BALL_LOG_END;
+    *value = static_cast<bsl::uint8_t>(temp);
 
-    *jump = static_cast<bsl::uint8_t>(offset);
+    return ntsa::Error();
+}
+
+ntsa::Error PacketFilter::Compiler::resolve(bsl::uint32_t*  value,
+                                            bsl::size_t     pc,
+                                            const Symbol&   symbol,
+                                            const LabelMap& labelMap)
+{
+    *value = 0;
+
+    if (symbol.index() == static_cast<bsl::size_t>(k_SYMBOL_TYPE_LITERAL)) {
+        *value = bsl::get<bsl::uint32_t>(symbol);
+    }
+    else if (symbol.index() == static_cast<bsl::size_t>(k_SYMBOL_TYPE_LABEL)) {
+        bsl::string label = bsl::get<bsl::string>(symbol);
+
+        if (label.empty()) {
+            BALL_LOG_INFO << "Jump label is empty" << BALL_LOG_END;
+            return ntsa::Error();
+        }
+
+        LabelMap::const_iterator it = labelMap.find(label);
+        if (it == labelMap.end()) {
+            BALL_LOG_ERROR << "Link failure: line " << pc
+                           << " references undefined label '" << label << "'"
+                           << BALL_LOG_END;
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const bsl::size_t index = static_cast<bsl::uint8_t>(it->second);
+
+        if (index <= pc) {
+            BALL_LOG_ERROR << "Link failure: line " << pc
+                           << " indicates an illegal jump backwards"
+                           << BALL_LOG_END;
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        const bsl::size_t offset = index - pc - 1;
+
+        if (offset > bsl::numeric_limits<bsl::uint32_t>::max()) {
+            BALL_LOG_ERROR << "Link failure: line " << pc
+                           << " indicates an illegal jump too far"
+                           << BALL_LOG_END;
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        BALL_LOG_INFO << "Resolving jump to label '" << label
+                      << "' at position " << index << " to offset " << offset
+                      << " from instruction at " << pc << BALL_LOG_END;
+
+        *value = static_cast<bsl::uint32_t>(offset);
+    }
+    else {
+        BALL_LOG_ERROR << "Link failure: line " << pc
+                       << " symbol type is unknown" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
 
     return ntsa::Error();
 }
@@ -365,13 +439,60 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     typedef ntsu::PacketFilter::Instruction PFI;
     typedef ntsu::PacketFilter::Compiler    PFC;
 
-    // The index into scratch memory where the Ethernet header length is
-    // stored.
-    const bsl::uint32_t k_SCRATCH_ETHERNET_HEADER_LENGTH = 0;
+    // The index into scratch memory where the offset from the beginning of the
+    // packet to the beginning of the layer-2 (e.g. Ethernet) header is stored.
+    const bsl::uint32_t k_L2_HEADER_OFFSET = 0;
 
-    // The index into scratch memory where the layer-2 protocol carried by the
-    // Ethernet packet is stored.
-    const bsl::uint32_t k_SCRATCH_ETHERNET_PROTOCOL = 1;
+    // The index into scratch memory where the layer-2 (e.g. Ethernet) header
+    // length is stored.
+    const bsl::uint32_t k_L2_HEADER_LENGTH = 1;
+
+    // The index into scratch memory where the layer-2 (e.g. Ethernet) packet
+    // length is stored.
+    const bsl::uint32_t k_L2_PACKET_LENGTH = 2;
+
+    // The index into scratch memory where the layer-3 protocol (e.g. IPv4 or
+    // IPv6) carried by the layer-2 (e.g. Ethernet) packet is stored.
+    const bsl::uint32_t k_L2_PROTOCOL = 3;
+
+    // The index into scratch memory where the offset from the beginning of the
+    // packet to the beginning of the layer-3 (e.g. IPv4 or IPv6) header is
+    // stored.
+    const bsl::uint32_t k_L3_HEADER_OFFSET = 4;
+
+    // The index into scratch memory where the layer-3 (e.g. IPv4 or IPv6)
+    // header length is stored.
+    const bsl::uint32_t k_L3_HEADER_LENGTH = 5;
+
+    // The index into scratch memory where the layer-3 (e.g. IPv4 or IPv6)
+    // packet length is stored.
+    const bsl::uint32_t k_L3_PACKET_LENGTH = 6;
+
+    // The index into scratch memory where the layer-4 protocol (e.g. TCP or
+    // UDP) carried by the layer-3 (e.g. IPv4 or IPv6) packet is stored.
+    const bsl::uint32_t k_L3_PROTOCOL = 7;
+
+    // The index into scratch memory where the offset from the beginning of the
+    // packet to the beginning of the layer-4 (e.g. TCP or UDP) header is
+    // stored.
+    const bsl::uint32_t k_L4_HEADER_OFFSET = 8;
+
+    // The index into scratch memory where the layer-4 (e.g. TCP or UDP)
+    // header length is stored.
+    const bsl::uint32_t k_L4_HEADER_LENGTH = 9;
+
+    // The index into scratch memory where the layer-4 (e.g. TCP or UDP)
+    // packet length is stored.
+    const bsl::uint32_t k_L4_PACKET_LENGTH = 10;
+
+    // The index into scratch memory where the layer-5 protocol (e.g. the
+    // application protocol) carried by the layer-4 (e.g. TCP or UDP) packet is
+    // stored.
+    const bsl::uint32_t k_L4_PROTOCOL = 11;
+
+    // Start with a blank program. The BPF interpreter guarantees that the
+    // accumulator register, the index register, and the scratch memory are
+    // zeroed.
 
     program->clear();
 
@@ -392,92 +513,250 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
         return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
 
-    // Determine the Ethernet address of the local device.
+    // MRM: The destination ethernet address vector is now defined in the
+    // filter.
+#if 0
+    bsl::vector<ntsa::EthernetAddress> ethernetAddressVector;
 
-    ntsa::EthernetAddress ethernetAddress;
-    if (!ethernetAddress.parse(adapter.ethernetAddress())) {
-        BALL_LOG_ERROR << "Failed to compile packet filter: failed to parse "
-                          "ethernet address '"
-                       << adapter.ethernetAddress() << "'" << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_INVALID);
+    // Automatically filter the destination Ethernet address on the Ethernet
+    // address of the local device.
+
+    {
+        ntsa::EthernetAddress ethernetAddress;
+        if (!ethernetAddress.parse(adapter.ethernetAddress())) {
+            BALL_LOG_ERROR << "Failed to compile packet filter: failed to parse "
+                              "ethernet address '"
+                        << adapter.ethernetAddress() << "'" << BALL_LOG_END;
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        ethernetAddressVector.push_back(ethernetAddress);
     }
+
+    // Automatically filter the destination Ethernet address on the broadcast
+    // Ethernet address.
+
+    {
+        ethernetAddressVector.push_back(ntsa::EthernetAddress::broadcast());
+    }
+#endif
 
     PFS script;
 
-    // Determine if the Ethernet packet has a VLAN tag. Load the 2-byte
-    // tag protocol identifier (TPID) field, which will be set to 0x8100 if
-    // the Ethernet frame is 802.1Q tagged.
+    // Filter the Ethernet packet.
 
-    PFC::label(&script, "store-ethernet-header-attributes");
+    PFC::label(&script, "filter-ethernet");
 
-    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, 12);
+    // Store the Ethernet header length and protocol carried by the Ethernet
+    // packet into scratch memory. The length of the Ethernet header and offset
+    // of the protocol field depends on whether the Ethernet header has a VLAN
+    // tag.
+
+    PFC::label(&script, "store-ethernet-attributes");
+
+    // Load the wire length into the accumulator register.
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_LEN, 0);
+
+    // The accumulator register into scratch memory to remember the Ethernet
+    // packet length.
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L2_PACKET_LENGTH);
+
+    // Load the 2-byte tag protocol identifier (TPID) field into the
+    // accumulator register.
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, ntsa::EthernetHeader::k_TPID_OFFSET);
+
+    // The Ethernet tag protocol identifier will be set to 0x8100 if the
+    // Ethernet frame is 802.1Q tagged, and will indicate the layer-3 protocol
+    // otherwise.
 
     PFC::compile(&script,
                  NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                  0x8100,
-                 0,
-                 "store-ethernet-header-attributes-vlan");
+                 "store-ethernet-attributes-vlan",
+                 0);
 
-    PFC::label(&script, "store-ethernet-header-attributes-standard");
+    PFC::label(&script, "store-ethernet-attributes-standard");
+
+    // Store the accumulator register into scratch memory to remember the
+    // protocol carried by the Ethernet packet.
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L2_PROTOCOL);
+
+    // Load the fixed-size length of a standard (non-tagged) Ethernet header
+    // into the accumulator register.
 
     PFC::compile(&script,
                  NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_K,
                  ntsa::EthernetHeader::k_MIN_HEADER_LENGTH);
 
-    PFC::compile(&script,
-                 NTSU_BPF_ST + NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
+    // Store the accumulator register into scratch memory to remember the
+    // Ethernet header length.
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L2_HEADER_LENGTH);
+
+    // Store the accumulator register into scratch memory to remember the
+    // layer-3 header offset.
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L3_HEADER_OFFSET);
+
+    // Jump to the end of the "if-802.1Q-tagged-else" branch.
 
     PFC::compile(&script,
-                 NTSU_BPF_JMP + NTSU_BPF_JA + NTSU_BPF_K,
-                 1, // "store-ethernet-header-attributes-end",
-                 0,
-                 0);
+                 NTSU_BPF_JMP + NTSU_BPF_JA,
+                 "store-ethernet-attributes-end");
 
-    PFC::label(&script, "store-ethernet-header-attributes-vlan");
+    PFC::label(&script, "store-ethernet-attributes-vlan");
+
+    // Load the 2-byte Ethernet protocol field after the tag into the
+    // accumulator register.
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, 14);
+
+    // Store the accumulator register into scratch memory to remember the
+    // protocol carried by the Ethernet packet.
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L2_PROTOCOL);
+
+    // Load the fixed-size length of an 802.1Q tagged Ethernet header
+    // into the accumulator register.
 
     PFC::compile(&script,
                  NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_K,
                  ntsa::EthernetHeader::k_MAX_HEADER_LENGTH);
 
-    PFC::compile(&script,
-                 NTSU_BPF_ST + NTSU_BPF_MEM, k_SCRATCH_ETHERNET_HEADER_LENGTH);
+    // Store the accumulator register into scratch memory to remember the
+    // Ethernet header length.
 
-    PFC::label(&script, "store-ethernet-header-attributes-end");
+    PFC::compile(&script, NTSU_BPF_ST, k_L2_HEADER_LENGTH);
 
-    // Reject the packet unless its destination Ethernet address matches the
-    // Ethernet address of the network interface.
+    // Store the accumulator register into scratch memory to remember the
+    // layer-3 header offset.
 
-    PFC::label(&script, "filter-ethernet-address");
+    PFC::compile(&script, NTSU_BPF_ST, k_L3_HEADER_OFFSET);
 
-    const bsl::uint32_t ethernetAddress0 =
-        (static_cast<bsl::uint32_t>(ethernetAddress[0]) << 24) |
-        (static_cast<bsl::uint32_t>(ethernetAddress[1]) << 16) |
-        (static_cast<bsl::uint32_t>(ethernetAddress[2]) << 8) |
-        (static_cast<bsl::uint32_t>(ethernetAddress[3]));
+    PFC::label(&script, "store-ethernet-attributes-end");
 
-    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS, 0);
-    PFC::compile(&script,
-                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                 ethernetAddress0,
-                 0,
-                 "reject");
 
-    const bsl::uint32_t ethernetAddress4 =
-        (static_cast<bsl::uint32_t>(ethernetAddress[4]) << 8) |
-        (static_cast<bsl::uint32_t>(ethernetAddress[5]));
 
-    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, 4);
-    PFC::compile(&script,
-                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                 ethernetAddress4,
-                 0,
-                 "reject");
+
+
+
+
+
+
+
+
+
+
+
+
+    // Reject the packet unless its source Ethernet address is allowed by
+    // the filter.
+
+    PFC::label(&script, "filter-ethernet-source-address");
+
+    if (filter.sourceEthernetAddress().size() > 0) {
+        for (bsl::size_t i = 0; i < filter.sourceEthernetAddress().size(); ++i) {
+            PFC::label(&script, "filter-ethernet-source-address-" + bsl::to_string(i));
+
+            const ntsa::EthernetAddress& ethernetAddress =
+                filter.sourceEthernetAddress()[i];
+
+            const bsl::uint32_t ethernetAddress0 =
+                (static_cast<bsl::uint32_t>(ethernetAddress[0]) << 24) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[1]) << 16) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[2]) << 8) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[3]));
+
+            const bsl::uint32_t ethernetAddress4 =
+                (static_cast<bsl::uint32_t>(ethernetAddress[4]) << 8) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[5]));
+
+            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS, ntsa::EthernetHeader::k_SOURCE_ADDRESS_OFFSET);
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         ethernetAddress0,
+                         0,
+                         "filter-ethernet-source-address-" + bsl::to_string(i + 1));
+
+            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, ntsa::EthernetHeader::k_SOURCE_ADDRESS_OFFSET + sizeof(bsl::uint32_t));
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         ethernetAddress4,
+                         "filter-ethernet-source-address-end",
+                         "filter-ethernet-source-address-" + bsl::to_string(i + 1));
+        }
+
+        PFC::label(&script, "filter-ethernet-source-address-" + bsl::to_string(filter.sourceEthernetAddress().size()));
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::label(&script, "filter-ethernet-source-address-end");
+
+
+
+
+
+
+
+
+
+
+    // Reject the packet unless its destination Ethernet address is allowed by
+    // the filter.
+
+    PFC::label(&script, "filter-ethernet-destination-address");
+
+    if (filter.destinationEthernetAddress().size() > 0) {
+        for (bsl::size_t i = 0; i < filter.destinationEthernetAddress().size(); ++i) {
+            PFC::label(&script, "filter-ethernet-destination-address-" + bsl::to_string(i));
+
+            const ntsa::EthernetAddress& ethernetAddress =
+                filter.destinationEthernetAddress()[i];
+
+            const bsl::uint32_t ethernetAddress0 =
+                (static_cast<bsl::uint32_t>(ethernetAddress[0]) << 24) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[1]) << 16) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[2]) << 8) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[3]));
+
+            const bsl::uint32_t ethernetAddress4 =
+                (static_cast<bsl::uint32_t>(ethernetAddress[4]) << 8) |
+                (static_cast<bsl::uint32_t>(ethernetAddress[5]));
+
+            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS, ntsa::EthernetHeader::k_DESTINATION_ADDRESS_OFFSET);
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         ethernetAddress0,
+                         0,
+                         "filter-ethernet-destination-address-" + bsl::to_string(i + 1));
+
+            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, ntsa::EthernetHeader::k_DESTINATION_ADDRESS_OFFSET + sizeof(bsl::uint32_t));
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         ethernetAddress4,
+                         "filter-ethernet-destination-address-end",
+                         "filter-ethernet-destination-address-" + bsl::to_string(i + 1));
+        }
+
+        PFC::label(&script, "filter-ethernet-destination-address-" + bsl::to_string(filter.destinationEthernetAddress().size()));
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::label(&script, "filter-ethernet-destination-address-end");
 
     // Reject the packet unless the Ethernet packet carries a protocol that
     // matches the valid packet types.
 
+    PFC::label(&script, "filter-ethernet-protocol");
+
     if (filter.packetType().size() > 0) {
-        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, 12);
+        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_MEM, k_L2_PROTOCOL);
 
         for (bsl::size_t i = 0; i < filter.packetType().size(); ++i) {
             const ntsa::PacketType::Value packetType = filter.packetType()[i];
@@ -486,55 +765,198 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                 PFC::compile(&script,
                              NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                              ntsa::EthernetProtocol::e_IPV4,
-                             "accept-ethernet-protocol",
+                             "filter-ip",
                              0);
             }
             else if (packetType == ntsa::PacketType::e_IPV6) {
                 PFC::compile(&script,
                              NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                              ntsa::EthernetProtocol::e_IPV6,
-                             "accept-ethernet-protocol",
+                             "filter-ip",
                              0);
             }
             else if (packetType == ntsa::PacketType::e_ARP) {
                 PFC::compile(&script,
                              NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                              ntsa::EthernetProtocol::e_ARP,
-                             "accept-ethernet-protocol",
+                             "filter-arp",
                              0);
             }
             else if (packetType == ntsa::PacketType::e_RARP) {
                 PFC::compile(&script,
                              NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                              ntsa::EthernetProtocol::e_RARP,
-                             "accept-ethernet-protocol",
+                             "filter-rarp",
                              0);
             }
         }
 
-        PFC::compile(&script,
-                     NTSU_BPF_JMP + NTSU_BPF_JA + NTSU_BPF_K,
-                     ntsa::EthernetProtocol::e_RARP,
-                     "reject",
-                     0);
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
     }
 
-    PFC::label(&script, "accept-ethernet-protocol");
+    PFC::label(&script, "filter-ethernet-protocol-end");
 
-    // MRM
-#if 1
+    PFC::label(&script, "filter-ip");
+
+    // Detect the Internet Protocol version and jump to the appropriate
+    // layer-3 filter.
+
+    // Load the layer-3 header offset into the index register.
+    //
+    // Instruction:
+    //     X = ipv4_header_offset
+    //
+    // State:
+    //     A = 0
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script, NTSU_BPF_LDX + NTSU_BPF_MEM, k_L3_HEADER_OFFSET);
+
+    // Load the IP header version into the accumulator register. The IP header
+    // version is always stored in the lower 4-bit nibble of the first byte
+    // of either the IPv4 header or the IPv6 header.
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_B + NTSU_BPF_IND, 0);
+
+    // Mask out everything but the 4-bit version in the upper nibble by bitwise
+    // and-ing the accumulator register with 0xF0.
+
+    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_AND + NTSU_BPF_K, 0xF0);
+    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_RSH + NTSU_BPF_K, 4);
+
+    // Jump to the start of the IPv4 filter if the Internet Protocol is 4.
+
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 4,
+                 "filter-ipv4",
+                 0);
+
+    // Otherwise, jump to the start of the IPv6 filter if the Internet Protocol
+    // is 6.
+
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 6,
+                 "filter-ipv6",
+                 0);
+
+    // Otherwise, reject the packet.
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
 
     PFC::label(&script, "filter-ipv4");
 
-    PFC::label(&script, "filter-source-ipv4-address");
+    // Load the IPv4 header version and length into the accumulator register.
+    //
+    // Instruction:
+    //     A = (byte) packet[ethernet_header_length + 0]
+    //
+    // State:
+    //     A = <IPv4 header version and length in 32-bit words>
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_B + NTSU_BPF_IND, 0);
+
+    // Mask out everything but the 4-bit header length in the lower nibble by
+    // bitwise and-ing the accumulator register with 0x0F.
+    //
+    // Instruction:
+    //     A = A & 0x0F
+    //
+    // State:
+    //     A = <IPv4 header length in 32-bit words>
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_AND + NTSU_BPF_K, 0x0F);
+
+    // Multiply the accumulator register by 4 (since the IPv4 header length
+    // measures 32-bit words) to convert the length from the number of 32-bit
+    // words to the number of bytes.
+    //
+    // Instruction:
+    //     A = A * 4
+    //
+    // State:
+    //     A = <IPv4 header length in bytes>
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_MUL + NTSU_BPF_K, 4);
+
+    // Store the accumulator register into scratch memory to remember the
+    // IPv4 header length.
+    //
+    // Instruction:
+    //     ip_header_length = A
+    //
+    // State:
+    //     A = <IPv4 header length in bytes>
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L3_HEADER_LENGTH);
+
+    // Add the IPv4 header length to the offset to the start of the IPV4 packet
+    // to calculate the offset to the start of the transport header.
+
+    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_ADD + NTSU_BPF_X, 0);
+
+    // Store the accumulator register into scratch memory to remember the
+    // layer-4 header offset.
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L4_HEADER_OFFSET);
+
+    // Load the IPv4 packet length into the accumulator register.
+
+    PFC::compile(&script,
+                 NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
+                 ntsa::Ipv4Header::k_TOTAL_LENGTH_OFFSET);
+
+    // Store the accumulator register into scratch memory to remember the
+    // protocol carried by the IPv4 packet.
+    //
+    // Instruction:
+    //     ip_header_protocol = A
+    //
+    // State:
+    //     A = <IPv4 packet length>
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L3_PACKET_LENGTH);
+
+    // Load the protocol carried by the IPv4 packet into the accumulator
+    // register.
+    //
+    // Instruction:
+    //     A = (byte) packet[ipv4_header_offset + 9]
+    //
+    // State:
+    //     A = <IPv4 protocol>
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script,
+                 NTSU_BPF_LD + NTSU_BPF_B + NTSU_BPF_IND,
+                 ntsa::Ipv4Header::k_PROTOCOL_OFFSET);
+
+    // Store the accumulator register into scratch memory to remember the
+    // protocol carried by the IPv4 packet.
+    //
+    // Instruction:
+    //     ip_header_protocol = A
+    //
+    // State:
+    //     A = <IPv4 protocol>
+    //     X = ipv4_header_offset
+
+    PFC::compile(&script, NTSU_BPF_ST, k_L3_PROTOCOL);
+
+    PFC::label(&script, "filter-ipv4-source-address");
 
     if (filter.sourceIpv4Address().has_value()) {
         // Load the 32-bit source IP address from its absolute position inside
         // an IPv4 packet inside an Ethernet packet.
 
         PFC::compile(&script,
-                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS,
-                     ntsa::EthernetHeader::k_MIN_HEADER_LENGTH +
+                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
                      ntsa::Ipv4Header::k_SOURCE_ADDRESS_OFFSET);
 
         // Compare with the required source IP address.
@@ -542,21 +964,20 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
         PFC::compile(&script,
                      NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                      filter.sourceIpv4Address().value().value(),
-                     "accept-source-ipv4-address",
+                     0,
                      "reject");
     }
 
-    PFC::label(&script, "accept-source-ipv4-address");
+    PFC::label(&script, "filter-ipv4-source-address-end");
 
-    PFC::label(&script, "filter-destination-ipv4-address");
+    PFC::label(&script, "filter-ipv4-destination-address");
 
     if (filter.destinationIpv4Address().has_value()) {
         // Load the 32-bit destination IP address from its absolute position
         // inside an IPv4 packet inside an Ethernet packet.
 
         PFC::compile(&script,
-                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS,
-                     ntsa::EthernetHeader::k_MIN_HEADER_LENGTH +
+                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
                      ntsa::Ipv4Header::k_DESTINATION_ADDRESS_OFFSET);
 
         // Compare with the required destination IP address.
@@ -564,24 +985,297 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
         PFC::compile(&script,
                      NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                      filter.destinationIpv4Address().value().value(),
-                     "accept-destination-ipv4-address",
+                     0,
                      "reject");
     }
 
-    PFC::label(&script, "accept-destination-ipv4-address");
+    PFC::label(&script, "filter-ipv4-destination-address-end");
 
-    // PFC::label(&script, "filter-ipv6");
+    /// Load the transport protocol into the accumulator register.
+
+    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_MEM, k_L3_PROTOCOL);
+
+    // Jump to the start of the TCP filter if the protocol carried by the IPv4
+    // packet is TCP.
+
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 ntsa::Ipv4Header::k_PROTOCOL_TCP,
+                 "filter-tcp",
+                 0);
+
+    // Jump to the start of the UDP filter if the protocol carried by the IPv4
+    // packet is UDP.
+
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 ntsa::Ipv4Header::k_PROTOCOL_UDP,
+                 "filter-udp",
+                 0);
+
+    // Jump to the start of the ICMP filter if the protocol carried by the IPv4
+    // packet is ICMP.
+
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 ntsa::Ipv4Header::k_PROTOCOL_ICMP,
+                 "filter-icmp",
+                 0);
+
+    // Jump to the start of the IGMP filter if the protocol carried by the IPv4
+    // packet is IGMP.
+
+    PFC::compile(&script,
+                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                 ntsa::Ipv4Header::k_PROTOCOL_ICMP,
+                 "filter-igmp",
+                 0);
+
+    // Otherwise, accept the packet.
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+
+    PFC::label(&script, "filter-ipv4-end");
+
+    PFC::label(&script, "filter-ipv6");
+
+    PFC::label(&script, "filter-ipv4-end");
 
     PFC::label(&script, "filter-tcp");
 
-    if (filter.sourceTcpPort().size() > 0) {
-    }
-    PFC::label(&script, "accept-source-tcp-port");
+    const bool wantTcp =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_TCP) != filter.packetType().end();
 
-    if (filter.destinationTcpPort().size() > 0) {
+    if (wantTcp) {
+        // Load the layer-4 header offset into the index register.
+        //
+        // Instruction:
+        //     X = tcp_header_offset
+        //
+        // State:
+        //     A = tcp_source_port
+        //     X = tcp_header_offset
+
+        PFC::compile(&script, NTSU_BPF_LDX + NTSU_BPF_MEM, k_L4_HEADER_OFFSET);
+
+        PFC::label(&script, "filter-tcp-source-port");
+
+        if (filter.sourceTcpPort().size() > 0) {
+            // Load the source port into the accumulator register.
+
+            PFC::compile(&script,
+                         NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
+                         ntsa::TcpHeader::k_SOURCE_PORT_OFFSET);
+
+            for (bsl::size_t i = 0; i < filter.sourceTcpPort().size(); ++i) {
+                const ntsa::Port sourceTcpPort = filter.sourceTcpPort()[i];
+
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             sourceTcpPort,
+                             "filter-tcp-source-port-end",
+                             0);
+            }
+
+            PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+        }
+
+        PFC::label(&script, "filter-tcp-source-port-end");
+
+        PFC::label(&script, "filter-tcp-destination-port");
+
+        if (filter.destinationTcpPort().size() > 0) {
+            // Load the destination port into the accumulator register.
+
+            PFC::compile(&script,
+                         NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
+                         ntsa::TcpHeader::k_DESTINATION_PORT_OFFSET);
+
+            for (bsl::size_t i = 0; i < filter.destinationTcpPort().size();
+                 ++i)
+            {
+                const ntsa::Port destinationTcpPort =
+                    filter.destinationTcpPort()[i];
+
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             destinationTcpPort,
+                             "filter-tcp-destination-port-end",
+                             0);
+            }
+
+            PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+        }
+
+        PFC::label(&script, "filter-tcp-destination-port-end");
     }
-    PFC::label(&script, "accept-destination->tcp-port");
-#endif
+    else {
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+
+    PFC::label(&script, "filter-tcp-end");
+
+    PFC::label(&script, "filter-udp");
+
+    const bool wantUdp =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_UDP) != filter.packetType().end();
+
+    if (wantUdp) {
+        // Load the layer-4 header offset into the index register.
+        //
+        // Instruction:
+        //     X = udp_header_offset
+        //
+        // State:
+        //     A = udp_source_port
+        //     X = udp_header_offset
+
+        PFC::compile(&script, NTSU_BPF_LDX + NTSU_BPF_MEM, k_L4_HEADER_OFFSET);
+
+        PFC::label(&script, "filter-udp-source-port");
+
+        if (filter.sourceUdpPort().size() > 0) {
+            // Load the source port into the accumulator register.
+
+            PFC::compile(&script,
+                         NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
+                         ntsa::UdpHeader::k_SOURCE_PORT_OFFSET);
+
+            for (bsl::size_t i = 0; i < filter.sourceUdpPort().size(); ++i) {
+                const ntsa::Port sourceUdpPort = filter.sourceUdpPort()[i];
+
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             sourceUdpPort,
+                             "filter-udp-source-port-end",
+                             0);
+            }
+
+            PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+        }
+
+        PFC::label(&script, "filter-udp-source-port-end");
+
+        PFC::label(&script, "filter-udp-destination-port");
+
+        if (filter.destinationUdpPort().size() > 0) {
+            // Load the destination port into the accumulator register.
+
+            PFC::compile(&script,
+                         NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
+                         ntsa::UdpHeader::k_DESTINATION_PORT_OFFSET);
+
+            for (bsl::size_t i = 0; i < filter.destinationUdpPort().size();
+                 ++i)
+            {
+                const ntsa::Port destinationUdpPort =
+                    filter.destinationUdpPort()[i];
+
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             destinationUdpPort,
+                             "filter-udp-destination-port-end",
+                             0);
+            }
+
+            PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+        }
+
+        PFC::label(&script, "filter-udp-destination-port-end");
+    }
+    else {
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+
+    PFC::label(&script, "filter-udp-end");
+
+    PFC::label(&script, "filter-icmp");
+
+    const bool wantIcmp =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_ICMP) != filter.packetType().end();
+
+    if (wantIcmp) {
+        // TODO
+    }
+    else {
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+
+    PFC::label(&script, "filter-icmp-end");
+
+    PFC::label(&script, "filter-igmp");
+
+    const bool wantIgmp =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_IGMP) != filter.packetType().end();
+
+    if (wantIgmp) {
+        // TODO
+    }
+    else {
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+
+    PFC::label(&script, "filter-igmp-end");
+
+    PFC::label(&script, "filter-arp");
+
+    const bool wantArp =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_ARP) != filter.packetType().end();
+
+    if (wantArp) {
+        // TODO
+    }
+    else {
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+
+    PFC::label(&script, "filter-arp-end");
+
+    PFC::label(&script, "filter-rarp");
+
+    const bool wantRarp =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_RARP) != filter.packetType().end();
+
+    if (wantRarp) {
+        // TODO
+    }
+    else {
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
+
+    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+
+    PFC::label(&script, "filter-rarp-end");
+
+
 
     PFC::label(&script, "accept");
     PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, (u_int)(-1));
@@ -614,6 +1308,421 @@ void PacketUtil::rejectAll(PacketFilter::Program* program)
     PacketFilter::Script script;
     PacketFilter::Compiler::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, 0);
     PacketFilter::Compiler::link(program, script);
+}
+
+bool PacketUtil::execute(
+    const PacketFilter::Program&                program,
+    const bsl::shared_ptr<ntsa::Packet>&        packet,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
+{
+    ntsa::Error error;
+
+    ntsa::PacketEncoderContext packetEncoderContext;
+    ntsa::PacketEncoderOptions packetEncoderOptions;
+
+    bdlbb::BlobBuffer packetBuffer;
+    packetFactory->createIncomingBlobBuffer(&packetBuffer);
+
+    error = packet->encode(&packetEncoderContext,
+                           &packetBuffer,
+                           packetEncoderOptions);
+    if (error) {
+        BALL_LOG_ERROR << "Failed to encode packet: " << error << BALL_LOG_END;
+        return false;
+    }
+
+    return PacketUtil::execute(program, packetBuffer);
+}
+
+#define NTSU_PACKETUTIL_LOG_INSTRUCTION(begin, pc, description)               \
+    do {                                                                      \
+        const bsl::size_t position =                                          \
+            static_cast<bsl::size_t>((pc) - (begin));                         \
+        BALL_LOG_TRACE << "Packet filter executing [" << (position)           \
+                       << "]: " << (description)                              \
+                       << " [ k = " << static_cast<bsl::uint32_t>((pc)->k)    \
+                       << " jt = " << static_cast<bsl::uint32_t>((pc)->jt)    \
+                       << " jf = " << static_cast<bsl::uint32_t>((pc)->jf)    \
+                       << " ]" << BALL_LOG_END;                               \
+    } while (false)
+
+#define NTSU_EXTRACT_BE_U_2(p)                                                \
+    ((uint16_t)(((uint16_t)(*((const uint8_t*)(p) + 0)) << 8) |               \
+                ((uint16_t)(*((const uint8_t*)(p) + 1)) << 0)))
+
+#define NTSU_EXTRACT_BE_U_4(p)                                                \
+    ((uint32_t)(((uint32_t)(*((const uint8_t*)(p) + 0)) << 24) |              \
+                ((uint32_t)(*((const uint8_t*)(p) + 1)) << 16) |              \
+                ((uint32_t)(*((const uint8_t*)(p) + 2)) << 8) |               \
+                ((uint32_t)(*((const uint8_t*)(p) + 3)) << 0)))
+
+bool PacketUtil::execute(const PacketFilter::Program& program,
+                         const bdlbb::BlobBuffer&     packet)
+{
+    if (program.empty()) {
+        return true;
+    }
+
+    const bsl::uint8_t* input = reinterpret_cast<bsl::uint8_t*>(packet.data());
+    bsl::uint32_t       inputSize = static_cast<bsl::uint32_t>(packet.size());
+
+    enum { k_SCRATCH_WORDS = 16 };
+
+    bsl::uint32_t scratch[k_SCRATCH_WORDS];
+    NTSCFG_MEMORY_ZERO(scratch, sizeof scratch);
+
+    bsl::uint32_t A = 0;
+    bsl::uint32_t X = 0;
+
+    bsl::uint32_t k = 0;
+
+    bsl::uint32_t result = 0;
+
+    const PacketFilter::Instruction* pcBegin = &program.front();
+    const PacketFilter::Instruction* pcEnd   = pcBegin + program.size();
+    const PacketFilter::Instruction* pc      = pcBegin - 1;
+
+    bool done = false;
+
+    while (!done) {
+        ++pc;
+
+        if (pc >= pcEnd) {
+            BALL_LOG_ERROR << "Invalid PC" << BALL_LOG_END;
+            return false;
+        }
+
+        switch (pc->code) {
+        case NTSU_BPF_RET | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "RET+K");
+            result = pc->k;
+            done   = true;
+            break;
+
+        case NTSU_BPF_RET | NTSU_BPF_A:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "RET+A");
+            result = A;
+            done   = true;
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_W | NTSU_BPF_ABS:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+W+ABS");
+            k = pc->k;
+            if (k > inputSize || sizeof(bsl::int32_t) > inputSize - k) {
+                return 0;
+            }
+            A = NTSU_EXTRACT_BE_U_4(&input[k]);
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_H | NTSU_BPF_ABS:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+H+ABS");
+            k = pc->k;
+            if (k > inputSize || sizeof(bsl::int16_t) > inputSize - k) {
+                return 0;
+            }
+            A = NTSU_EXTRACT_BE_U_2(&input[k]);
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_B | NTSU_BPF_ABS:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+B+ABS");
+            k = pc->k;
+            if (k >= inputSize) {
+                return 0;
+            }
+            A = input[k];
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_W | NTSU_BPF_LEN:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+W+LEN");
+            A = inputSize;
+            break;
+
+        case NTSU_BPF_LDX | NTSU_BPF_W | NTSU_BPF_LEN:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LDX+W+LEN");
+            X = inputSize;
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_W | NTSU_BPF_IND:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+W+IND");
+            k = X + pc->k;
+            if (pc->k > inputSize || X > inputSize - pc->k ||
+                sizeof(bsl::int32_t) > inputSize - k)
+            {
+                return 0;
+            }
+            A = NTSU_EXTRACT_BE_U_4(&input[k]);
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_H | NTSU_BPF_IND:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+H+IND");
+            k = X + pc->k;
+            if (X > inputSize || pc->k > inputSize - X ||
+                sizeof(bsl::int16_t) > inputSize - k)
+            {
+                return 0;
+            }
+            A = NTSU_EXTRACT_BE_U_2(&input[k]);
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_B | NTSU_BPF_IND:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+B+IND");
+            k = X + pc->k;
+            if (pc->k >= inputSize || X >= inputSize - pc->k) {
+                return 0;
+            }
+            A = input[k];
+            break;
+
+        case NTSU_BPF_LDX | NTSU_BPF_B | NTSU_BPF_MSH:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LDX+B+MSH");
+            k = pc->k;
+            if (k >= inputSize) {
+                return 0;
+            }
+            X = (input[pc->k] & 0x0F) << 2;
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_IMM:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+IMM");
+            A = pc->k;
+            break;
+
+        case NTSU_BPF_LDX | NTSU_BPF_IMM:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LDX+IMM");
+            X = pc->k;
+            break;
+
+        case NTSU_BPF_LD | NTSU_BPF_MEM:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LD+MEM");
+            A = scratch[pc->k];
+            break;
+
+        case NTSU_BPF_LDX | NTSU_BPF_MEM:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LDX+MEM");
+            X = scratch[pc->k];
+            break;
+
+        case NTSU_BPF_ST:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "ST");
+            scratch[pc->k] = A;
+            break;
+
+        case NTSU_BPF_STX:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "STX");
+            scratch[pc->k] = X;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JA:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JA");
+            pc += pc->k;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JGT | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JGT+K");
+            pc += (A > pc->k) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JGE | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JGE+K");
+            pc += (A >= pc->k) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JEQ | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JEQ+K");
+            pc += (A == pc->k) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JSET | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JSET+K");
+            pc += ((A & pc->k) != 0) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JGT | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JGT+X");
+            pc += (A > X) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JGE | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JGE+X");
+            pc += (A >= X) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JEQ | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JEQ+X");
+            pc += (A == X) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_JMP | NTSU_BPF_JSET | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "JSET+X");
+            pc += (A & X) ? pc->jt : pc->jf;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_ADD | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "ADD+X");
+            A += X;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_SUB | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "SUB+X");
+            A -= X;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_MUL | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "MUL+X");
+            A *= X;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_DIV | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "DIV+X");
+            if (X == 0)
+                return 0;
+            A /= X;
+            break;
+
+#if 0
+		case NTSU_BPF_ALU|NTSU_BPF_MOD|NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "MOD+X");
+			if (X == 0)
+				return 0;
+			A %= X;
+			break;
+#endif
+
+        case NTSU_BPF_ALU | NTSU_BPF_AND | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "AND+X");
+            A &= X;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_OR | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "OR+X");
+            A |= X;
+            break;
+
+#if 0
+		case NTSU_BPF_ALU|NTSU_BPF_XOR|NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "XOR+X");
+			A ^= X;
+			break;
+#endif
+
+        case NTSU_BPF_ALU | NTSU_BPF_LSH | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LSH+X");
+            if (X < 32)
+                A <<= X;
+            else
+                A = 0;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_RSH | NTSU_BPF_X:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "RSH+X");
+            if (X < 32)
+                A >>= X;
+            else
+                A = 0;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_ADD | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "ADD+K");
+            A += pc->k;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_SUB | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "SUB+K");
+            A -= pc->k;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_MUL | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "MUL+K");
+            A *= pc->k;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_DIV | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "DIV+K");
+            A /= pc->k;
+            break;
+
+#if 0
+		case NTSU_BPF_ALU|NTSU_BPF_MOD|NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "MOD+K");
+			A %= pc->k;
+			break;
+#endif
+
+        case NTSU_BPF_ALU | NTSU_BPF_AND | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "AND+K");
+            A &= pc->k;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_OR | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "OR+K");
+            A |= pc->k;
+            break;
+
+#if 0
+		case NTSU_BPF_ALU|NTSU_BPF_XOR|NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "XOR+K");
+			A ^= pc->k;
+			break;
+#endif
+
+        case NTSU_BPF_ALU | NTSU_BPF_LSH | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "LSH+K");
+            A <<= pc->k;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_RSH | NTSU_BPF_K:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "RSH+K");
+            A >>= pc->k;
+            break;
+
+        case NTSU_BPF_ALU | NTSU_BPF_NEG:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "NEG");
+            A = (0U - A);
+            break;
+
+        case NTSU_BPF_MISC | NTSU_BPF_TAX:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "TAX");
+            X = A;
+            break;
+
+        case NTSU_BPF_MISC | NTSU_BPF_TXA:
+            NTSU_PACKETUTIL_LOG_INSTRUCTION(pcBegin, pc, "TXA");
+            A = X;
+            break;
+
+        default:
+            BALL_LOG_ERROR << "Invalid code " << pc->code << BALL_LOG_END;
+            return false;
+        }
+
+        BALL_LOG_DEBUG << "State:"
+                       << "\nBPF A = " << A << " X = " << X
+                       << "\nLink Header Offset =      " << scratch[0]
+                       << "\nLink Header Length =      " << scratch[1]
+                       << "\nLink Packet Size =        " << scratch[2]
+                       << "\nLink Protocol =           " << scratch[3]
+                       << "\nNetwork Header Offset =   " << scratch[4]
+                       << "\nNetwork Header Length =   " << scratch[5]
+                       << "\nNetwork Packet Size =     " << scratch[6]
+                       << "\nNetwork Protocol =        " << scratch[7]
+                       << "\nTransport Header Offset = " << scratch[8]
+                       << "\nTransport Header Length = " << scratch[9]
+                       << "\nTransport Packet Size   = " << scratch[10]
+                       << "\nTransport Protocol =      " << scratch[11]
+                       << BALL_LOG_END;
+    }
+
+    if (result == 0) {
+        return false;
+    }
+    else {
+        if (inputSize <= result) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 }
 
 }  // close package namespace

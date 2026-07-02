@@ -24,11 +24,16 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_error.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
+#include <ntsa_packet.h>
+#include <ntsa_packetfactory.h>
+#include <ntsa_packetpool.h>
 #include <ntsa_packetfilter.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
+#include <bdlbb_blob.h>
 #include <bsl_memory.h>
 #include <bsl_string.h>
+#include <bsl_variant.h>
 #include <bsl_vector.h>
 #include <ball_log.h>
 
@@ -164,7 +169,6 @@ namespace ntsu {
 /// instructions indicated by the "false" jump target.
 #define NTSU_BPF_JSET 0x40
 
-
 /// The instruction uses a constant value as its source operand, instead of
 /// a register.
 #define NTSU_BPF_K 0x00
@@ -175,7 +179,6 @@ namespace ntsu {
 /// The instruction uses the value in the accumulator register as its source
 /// operand.
 #define NTSU_BPF_A 0x10
-
 
 /// Copy the value of the accumulator register to the index register.
 #define NTSU_BPF_TAX 0x00
@@ -226,6 +229,8 @@ class PacketFilter
         bsl::uint16_t getMisc(bsl::uint16_t code);
     };
 
+    typedef bsl::variant<bsl::uint32_t, bsl::string> Symbol;
+
     /// Describe a packet filter program instruction.
     class Command
     {
@@ -233,10 +238,10 @@ class PacketFilter
         Command();
 
         bsl::vector<bsl::string> label;
-        bsl::uint16_t code;
-        const char*   jt;
-        const char*   jf;
-        bsl::uint32_t k;
+        bsl::uint16_t            code;
+        Symbol                   jt;
+        Symbol                   jf;
+        Symbol                   k;
     };
 
     /// Define a type alias for a sequence of packet filter commands that
@@ -263,29 +268,60 @@ class PacketFilter
     class Compiler
     {
       public:
+        static const bsl::size_t k_SYMBOL_TYPE_LITERAL = 0;
+        static const bsl::size_t k_SYMBOL_TYPE_LABEL   = 1;
+
         /// Defines a map of labels to their absolute instruction positions.
         typedef bsl::map<bsl::string, bsl::size_t> LabelMap;
 
+        /// Return the next command.
+        static Command* emit(Script* script);
+
         /// Label the next instruction in the specified 'script' with the
         /// specified 'label'.
-        static void label(Script* script, const char* label);
+        static void label(Script* script, const bsl::string& label);
 
-        /// Add the command to the specified 'script' with the specified
-        /// 'label' to execute the specified statement operation 'code' and
-        /// operand 'k'.
+        /// Add the command to the specified 'script' to execute the specified
+        /// statement operation 'code' and operand 'k'.
         static void compile(Script*       script,
                             bsl::uint16_t code,
                             bsl::uint32_t k);
 
-        /// Add the command to the specified 'script' with the specified
-        /// 'label' to execute a jump operation 'code' for the
-        /// specified operand 'k', jumping to the relative offset 'jt' if true
-        /// and the specified relative offset 'jf' if false.
-        static void compile(Script*       script,
-                            bsl::uint16_t code,
-                            bsl::uint32_t k,
-                            const char*   jt,
-                            const char*   jf);
+        /// Add the command to the specified 'script' to execute the specified
+        /// statement operation 'code' and operand 'k'.
+        static void compile(Script*            script,
+                            bsl::uint16_t      code,
+                            const bsl::string& k);
+
+        /// Add the command to the specified 'script' to execute a jump
+        /// operation 'code' for the specified operand 'k', jumping to the
+        /// relative offset 'jt' if true and the specified relative offset 'jf'
+        /// if false.
+        static void compile(Script*            script,
+                            bsl::uint16_t      code,
+                            bsl::uint32_t      k,
+                            const bsl::string& jt,
+                            const bsl::string& jf);
+
+        /// Add the command to the specified 'script' to execute a jump
+        /// operation 'code' for the specified operand 'k', jumping to the
+        /// relative offset 'jt' if true and the specified relative offset 'jf'
+        /// if false.
+        static void compile(Script*            script,
+                            bsl::uint16_t      code,
+                            bsl::uint32_t      k,
+                            bsl::uint8_t       jt,
+                            const bsl::string& jf);
+
+        /// Add the command to the specified 'script' to execute a jump
+        /// operation 'code' for the specified operand 'k', jumping to the
+        /// relative offset 'jt' if true and the specified relative offset 'jf'
+        /// if false.
+        static void compile(Script*            script,
+                            bsl::uint16_t      code,
+                            bsl::uint32_t      k,
+                            const bsl::string& jt,
+                            bsl::uint8_t       jf);
 
         /// Load into the specified 'program' the instructions that are
         /// the linked equivalent of commands in the specified 'script'.
@@ -296,12 +332,21 @@ class PacketFilter
         /// instruction positions in the specified 'script'. Return the error.
         static ntsa::Error analyze(LabelMap* labelMap, const Script& script);
 
-        /// Load into the specified 'jump' target the relative offset from the
-        /// specified 'pc' (program counter) to the absolute index of the
-        /// instruction having the specified 'label', if any. Return the error.
-        static ntsa::Error resolve(bsl::uint8_t*   jump,
+        /// Load into the specified 'value' jump target the relative offset
+        /// from the specified 'pc' (program counter) to the absolute index of
+        /// the instruction having the specified 'label', if any. Return the
+        /// error.
+        static ntsa::Error resolve(bsl::uint8_t*   value,
                                    bsl::size_t     pc,
-                                   const char*     label,
+                                   const Symbol&   symbol,
+                                   const LabelMap& labelMap);
+
+        /// Load into the specified 'value' constant the relative offset from
+        /// the specified 'pc' (program counter) to the absolute index of the
+        /// instruction having the specified 'label', if any. Return the error.
+        static ntsa::Error resolve(bsl::uint32_t*  value,
+                                   bsl::size_t     pc,
+                                   const Symbol&   symbol,
                                    const LabelMap& labelMap);
     };
 };
@@ -335,6 +380,19 @@ class PacketUtil
 
     /// Load into the specified 'program' a program to reject all packets.
     static void rejectAll(PacketFilter::Program* program);
+
+    /// Execute the specified packet filter 'program' on the specified
+    /// 'packet'. Return true if the packet is accepted, and return false if
+    /// the packet is rejected.
+    static bool execute(const PacketFilter::Program& program,
+                        const bsl::shared_ptr<ntsa::Packet>&        packet,
+                        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory);
+
+    /// Execute the specified packet filter 'program' on the specified
+    /// 'packet'. Return true if the packet is accepted, and return false if
+    /// the packet is rejected.
+    static bool execute(const PacketFilter::Program& program,
+                        const bdlbb::BlobBuffer&     packet);
 };
 
 }  // end namespace ntsu

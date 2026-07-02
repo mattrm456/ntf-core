@@ -144,9 +144,9 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
         printer.printAttribute("packetType", d_packetType);
     }
 
-    if (d_sourceEthernetAddress.has_value()) {
+    if (d_sourceEthernetAddress.size() > 0) {
         printer.printAttribute("sourceEthernetAddress",
-                               d_sourceEthernetAddress.value());
+                               d_sourceEthernetAddress);
     }
 
     if (d_sourceIpv4Address.has_value()) {
@@ -165,9 +165,9 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
         printer.printAttribute("sourceUdpPort", d_sourceUdpPort);
     }
 
-    if (d_destinationEthernetAddress.has_value()) {
+    if (d_destinationEthernetAddress.size() > 0) {
         printer.printAttribute("destinationEthernetAddress",
-                               d_destinationEthernetAddress.value());
+                               d_destinationEthernetAddress);
     }
 
     if (d_destinationIpv4Address.has_value()) {

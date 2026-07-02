@@ -36,6 +36,7 @@ DeviceConfig::DeviceConfig(bslma::Allocator* basicAllocator)
 , d_incomingMinThreads()
 , d_incomingMaxThreads()
 , d_incomingMaxPackets()
+, d_promiscuous()
 {
 }
 
@@ -53,6 +54,7 @@ DeviceConfig::DeviceConfig(const DeviceConfig& original,
 , d_incomingMinThreads(original.d_incomingMinThreads)
 , d_incomingMaxThreads(original.d_incomingMaxThreads)
 , d_incomingMaxPackets(original.d_incomingMaxPackets)
+, d_promiscuous(original.d_promiscuous)
 {
 }
 
@@ -75,6 +77,7 @@ DeviceConfig& DeviceConfig::operator=(const DeviceConfig& other)
         d_incomingMinThreads    = other.d_incomingMinThreads;
         d_incomingMaxThreads    = other.d_incomingMaxThreads;
         d_incomingMaxPackets    = other.d_incomingMaxPackets;
+        d_promiscuous = other.d_promiscuous;
     }
 
     return *this;
@@ -94,6 +97,7 @@ void DeviceConfig::reset()
     d_incomingMinThreads.reset();
     d_incomingMaxThreads.reset();
     d_incomingMaxPackets.reset();
+    d_promiscuous.reset();
 }
 
 void DeviceConfig::setDriverName(const bsl::string& value)
@@ -154,6 +158,11 @@ void DeviceConfig::setIncomingMaxThreads(bsl::size_t value)
 void DeviceConfig::setIncomingMaxPackets(bsl::size_t value)
 {
     d_incomingMaxPackets = value;
+}
+
+void DeviceConfig::setPromiscuous(bool value)
+{
+    d_promiscuous = value;
 }
 
 const bdlb::NullableValue<bsl::string>& DeviceConfig::driverName() const
@@ -224,6 +233,11 @@ DeviceConfig::incomingMaxPackets() const
     return d_incomingMaxPackets;
 }
 
+const bdlb::NullableValue<bool>& DeviceConfig::promiscuous() const
+{
+    return d_promiscuous;
+}
+
 bool DeviceConfig::equals(const DeviceConfig& other) const
 {
     return d_driverName           == other.d_driverName         &&
@@ -237,7 +251,8 @@ bool DeviceConfig::equals(const DeviceConfig& other) const
            d_incomingPacketFilter == other.d_incomingPacketFilter &&
            d_incomingMinThreads   == other.d_incomingMinThreads &&
            d_incomingMaxThreads   == other.d_incomingMaxThreads &&
-           d_incomingMaxPackets   == other.d_incomingMaxPackets;
+           d_incomingMaxPackets   == other.d_incomingMaxPackets &&
+           d_promiscuous == other.d_promiscuous;
 }
 
 bool DeviceConfig::less(const DeviceConfig& other) const
@@ -330,7 +345,15 @@ bool DeviceConfig::less(const DeviceConfig& other) const
         return false;
     }
 
-    return d_incomingMaxPackets < other.d_incomingMaxPackets;
+    if (d_incomingMaxPackets < other.d_incomingMaxPackets) {
+        return true;
+    }
+
+    if (other.d_incomingMaxPackets < d_incomingMaxPackets) {
+        return false;
+    }
+
+    return d_promiscuous < other.d_promiscuous;
 }
 
 bsl::ostream& DeviceConfig::print(bsl::ostream& stream,
@@ -395,6 +418,11 @@ bsl::ostream& DeviceConfig::print(bsl::ostream& stream,
     if (!d_incomingMaxPackets.isNull()) {
         printer.printAttribute(
             "incomingMaxPackets", d_incomingMaxPackets.value());
+    }
+
+    if (!d_promiscuous.isNull()) {
+        printer.printAttribute(
+            "promiscuous", d_promiscuous.value());
     }
 
     printer.end();
