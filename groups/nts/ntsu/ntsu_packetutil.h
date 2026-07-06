@@ -40,8 +40,6 @@ BSLS_IDENT("$Id: $")
 namespace BloombergLP {
 namespace ntsu {
 
-/* instruction classes */
-
 /// Load a value from the network packet and store it in the accumulator
 /// register.
 #define NTSU_BPF_LD 0x00
@@ -66,8 +64,6 @@ namespace ntsu {
 
 /// Perform a register copy.
 #define NTSU_BPF_MISC 0x07
-
-/* ld/ldx fields */
 
 /// Load a 32-bit word from memory.
 #define NTSU_BPF_W 0x00
@@ -95,8 +91,6 @@ namespace ntsu {
 
 /// Load a value, mask it with 0x0F, and multiplies the result by 4.
 #define NTSU_BPF_MSH 0xa0
-
-/* alu/jmp fields */
 
 /// Add a constant value or value of the index register to the value of the
 /// accumulator register and store the result in the accumulator register.

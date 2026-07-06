@@ -226,15 +226,21 @@ BSLS_IDENT_RCSID(ntsu_packetutil_cpp, "$Id$ $CSID$")
 
 #endif
 
-#define NTSU_EXTRACT_BE_U_2(p)                                                \
-    ((uint16_t)(((uint16_t)(*((const uint8_t*)(p) + 0)) << 8) |               \
-                ((uint16_t)(*((const uint8_t*)(p) + 1)) << 0)))
+#define NTSU_DECODE_BE_U16(p)                                                 \
+    ((bsl::uint16_t)(((bsl::uint16_t)(*((const bsl::uint8_t*)(p) + 0))        \
+                      << 8) |                                                 \
+                     ((bsl::uint16_t)(*((const bsl::uint8_t*)(p) + 1))        \
+                      << 0)))
 
-#define NTSU_EXTRACT_BE_U_4(p)                                                \
-    ((uint32_t)(((uint32_t)(*((const uint8_t*)(p) + 0)) << 24) |              \
-                ((uint32_t)(*((const uint8_t*)(p) + 1)) << 16) |              \
-                ((uint32_t)(*((const uint8_t*)(p) + 2)) << 8) |               \
-                ((uint32_t)(*((const uint8_t*)(p) + 3)) << 0)))
+#define NTSU_DECODE_BE_U32(p)                                                 \
+    ((bsl::uint32_t)(((bsl::uint32_t)(*((const bsl::uint8_t*)(p) + 0))        \
+                      << 24) |                                                \
+                     ((bsl::uint32_t)(*((const bsl::uint8_t*)(p) + 1))        \
+                      << 16) |                                                \
+                     ((bsl::uint32_t)(*((const bsl::uint8_t*)(p) + 2))        \
+                      << 8) |                                                 \
+                     ((bsl::uint32_t)(*((const bsl::uint8_t*)(p) + 3))        \
+                      << 0)))
 
 namespace BloombergLP {
 namespace ntsu {
@@ -619,13 +625,15 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
         if (deviceType == ntsa::DeviceType::e_LOCAL) {
             PFC::compile(&script,
                          NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                         BSLS_BYTEORDER_BE_U32_TO_HOST(static_cast<bsl::uint32_t>(AF_INET)),
+                         BSLS_BYTEORDER_BE_U32_TO_HOST(
+                             static_cast<bsl::uint32_t>(AF_INET)),
                          "filter-loopback-ipv4",
                          0);
 
             PFC::compile(&script,
                          NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                         BSLS_BYTEORDER_BE_U32_TO_HOST(static_cast<bsl::uint32_t>(AF_INET6)),
+                         BSLS_BYTEORDER_BE_U32_TO_HOST(
+                             static_cast<bsl::uint32_t>(AF_INET6)),
                          "filter-loopback-ipv6",
                          0);
         }
@@ -929,51 +937,6 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                      0);
 
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
-
-// MRM
-#if 0
-        if (filter.packetType().size() > 0) {
-            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_MEM, k_L2_PROTOCOL);
-
-
-            for (bsl::size_t i = 0; i < filter.packetType().size(); ++i) {
-                const ntsa::PacketType::Value packetType =
-                    filter.packetType()[i];
-
-                if (packetType == ntsa::PacketType::e_IPV4) {
-                    PFC::compile(&script,
-                                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                                 ntsa::EthernetProtocol::e_IPV4,
-                                 "filter-ip",
-                                 0);
-                }
-                else if (packetType == ntsa::PacketType::e_IPV6) {
-                    PFC::compile(&script,
-                                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                                 ntsa::EthernetProtocol::e_IPV6,
-                                 "filter-ip",
-                                 0);
-                }
-                else if (packetType == ntsa::PacketType::e_ARP) {
-                    PFC::compile(&script,
-                                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                                 ntsa::EthernetProtocol::e_ARP,
-                                 "filter-arp",
-                                 0);
-                }
-                else if (packetType == ntsa::PacketType::e_RARP) {
-                    PFC::compile(&script,
-                                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                                 ntsa::EthernetProtocol::e_RARP,
-                                 "filter-rarp",
-                                 0);
-                }
-            }
-
-            PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
-
-        }
-#endif
 
         PFC::label(&script, "filter-ethernet-protocol-end");
 
@@ -1444,7 +1407,10 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                   ntsa::PacketType::e_ICMP) != filter.packetType().end();
 
     if (wantIcmp) {
-        // TODO
+        // TODO: Implement a filter for ICMP. Until this is implemented, accept
+        // all ICMP packets.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
     }
     else {
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
@@ -1463,7 +1429,10 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                   ntsa::PacketType::e_IGMP) != filter.packetType().end();
 
     if (wantIgmp) {
-        // TODO
+        // TODO: Implement a filter for IGMP. Until this is implemented, accept
+        // all IGMP packets.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
     }
     else {
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
@@ -1482,7 +1451,10 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                   ntsa::PacketType::e_ARP) != filter.packetType().end();
 
     if (wantArp) {
-        // TODO
+        // TODO: Implement a filter for ARP. Until this is implemented, accept
+        // all ARP packets.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
     }
     else {
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
@@ -1501,7 +1473,10 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                   ntsa::PacketType::e_RARP) != filter.packetType().end();
 
     if (wantRarp) {
-        // TODO
+        // TODO: Implement a filter for RARP. Until this is implemented, accept
+        // all RARP packets.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
     }
     else {
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
@@ -1598,7 +1573,7 @@ bool PacketUtil::execute(const PacketFilter::Program& program,
             if (k > inputSize || sizeof(bsl::int32_t) > inputSize - k) {
                 return 0;
             }
-            A = NTSU_EXTRACT_BE_U_4(&input[k]);
+            A = NTSU_DECODE_BE_U32(&input[k]);
             break;
 
         case NTSU_BPF_LD | NTSU_BPF_H | NTSU_BPF_ABS:
@@ -1607,7 +1582,7 @@ bool PacketUtil::execute(const PacketFilter::Program& program,
             if (k > inputSize || sizeof(bsl::int16_t) > inputSize - k) {
                 return 0;
             }
-            A = NTSU_EXTRACT_BE_U_2(&input[k]);
+            A = NTSU_DECODE_BE_U16(&input[k]);
             break;
 
         case NTSU_BPF_LD | NTSU_BPF_B | NTSU_BPF_ABS:
@@ -1637,7 +1612,7 @@ bool PacketUtil::execute(const PacketFilter::Program& program,
             {
                 return 0;
             }
-            A = NTSU_EXTRACT_BE_U_4(&input[k]);
+            A = NTSU_DECODE_BE_U32(&input[k]);
             break;
 
         case NTSU_BPF_LD | NTSU_BPF_H | NTSU_BPF_IND:
@@ -1648,7 +1623,7 @@ bool PacketUtil::execute(const PacketFilter::Program& program,
             {
                 return 0;
             }
-            A = NTSU_EXTRACT_BE_U_2(&input[k]);
+            A = NTSU_DECODE_BE_U16(&input[k]);
             break;
 
         case NTSU_BPF_LD | NTSU_BPF_B | NTSU_BPF_IND:

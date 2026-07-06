@@ -270,8 +270,9 @@ void DeviceUtilTest::writer(
         error = packetQueue->dequeue(&packet);
         if (error) {
             if (error != ntsa::Error(ntsa::Error::e_EOF)) {
-                BALL_LOG_ERROR << "Failed to dequeue packet from packet queue: "
-                               << BALL_LOG_END;
+                BALL_LOG_ERROR
+                    << "Failed to dequeue packet from packet queue: "
+                    << BALL_LOG_END;
             }
             break;
         }
@@ -335,6 +336,24 @@ void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
     NTSCFG_TEST_GT(incomingRxBufferSize, 0);
 
     error = ntsu::DeviceUtil::setBlocking(incomingDevice, false);
+    NTSCFG_TEST_OK(error);
+
+    ntsa::PacketFilter incomingPacketFilter;
+
+    incomingPacketFilter.addPacketType(ntsa::PacketType::e_ETHERNET);
+    incomingPacketFilter.addPacketType(ntsa::PacketType::e_IPV4);
+    incomingPacketFilter.addPacketType(ntsa::PacketType::e_UDP);
+
+    incomingPacketFilter.addDestinationEthernetAddress(
+        ntsa::EthernetAddress(adapter.ethernetAddress()));
+    incomingPacketFilter.addDestinationIpv4Address(
+        adapter.ipv4Address().value());
+    incomingPacketFilter.addDestinationUdpPort(4001);
+
+    error = ntsu::DeviceUtil::applyFilter(incomingDevice,
+                                          incomingDeviceType,
+                                          adapter,
+                                          incomingPacketFilter);
     NTSCFG_TEST_OK(error);
 
     bsl::shared_ptr<ntsa::PacketPool> incomingPacketPool;

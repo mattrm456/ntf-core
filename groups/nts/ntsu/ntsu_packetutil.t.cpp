@@ -348,7 +348,6 @@ void PacketUtilTest::verifyFilter(
     NTSCFG_TEST_EQ(found, expected);
 }
 
-
 void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 {
     ntsa::Error error;
@@ -456,8 +455,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Accept: source Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -471,8 +469,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Accept: source Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -486,8 +483,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Accept: source Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -501,8 +497,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Reject: source Ethernet address does not match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -515,8 +510,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Accept: destination Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -530,8 +524,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Accept: destination Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -545,8 +538,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Accept: destination Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -560,8 +552,7 @@ void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 
     // Reject: destination Ethernet address does not match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_TCP);
@@ -1148,8 +1139,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Accept: source Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);
@@ -1163,8 +1153,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Accept: source Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);
@@ -1178,8 +1167,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Accept: source Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);
@@ -1193,8 +1181,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Reject: source Ethernet address does not match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);
@@ -1207,8 +1194,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Accept: destination Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);
@@ -1222,8 +1208,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Accept: destination Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);
@@ -1237,8 +1222,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Accept: destination Ethernet address match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);
@@ -1252,8 +1236,7 @@ void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 
     // Reject: destination Ethernet address does not match
 
-    if (deviceType == ntsa::DeviceType::e_ETHERNET)
-    {
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
         filter.addPacketType(ntsa::PacketType::e_UDP);

@@ -263,26 +263,29 @@ namespace ntsu {
         BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet)                      \
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device, packet)              \
     do {                                                                      \
         bsl::stringstream ss;                                                 \
-        ss << "Incoming packet dropped = " << (packet);                       \
+        ss << "Device descriptor " << (device)                                \
+           << " incoming packet dropped = " << (packet);                      \
                                                                               \
         BSLS_LOG_WARN("%s", ss.str().c_str());                                \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet)                           \
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet)                   \
     do {                                                                      \
         bsl::stringstream ss;                                                 \
-        ss << "Incoming packet = " << (packet);                               \
+        ss << "Device descriptor " << (device)                                \
+           << " incoming packet = " << (packet);                              \
                                                                               \
         BSLS_LOG_DEBUG("%s", ss.str().c_str());                               \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(packet, buffer)                   \
+#define NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(device, packet, buffer)           \
     do {                                                                      \
         bsl::stringstream ss;                                                 \
-        ss << "Outgoing packet " << (packet) << ":\n"                         \
+        ss << "Device descriptor " << (device) << " outgoing packet "         \
+           << (packet) << ":\n"                                               \
            << bdlb::PrintStringHexDumper((buffer).data(), (buffer).size());   \
                                                                               \
         BSLS_LOG_DEBUG("%s", ss.str().c_str());                               \
@@ -388,6 +391,13 @@ class DeviceUtil::Impl
                                    ntsa::DeviceType::Value   deviceType,
                                    const ntsa::Adapter&      adapter,
                                    const ntsa::PacketFilter& filter);
+
+    /// Apply the specified packet filter 'program' to the specified 'device'.
+    /// Return the error.
+    static ntsa::Error applyFilter(ntsa::Handle            device,
+                                   ntsa::DeviceType::Value deviceType,
+                                   const ntsa::Adapter&    adapter,
+                                   const ntsu::PacketFilter::Program& program);
 
     /// Print a formatted, human-readable description of the specified
     /// 'dataLinkType' to the specified 'stream'. Return a reference to the
@@ -931,6 +941,33 @@ ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
     return ntsa::Error();
 }
 
+ntsa::Error DeviceUtil::Impl::applyFilter(
+    ntsa::Handle                       device,
+    ntsa::DeviceType::Value            deviceType,
+    const ntsa::Adapter&               adapter,
+    const ntsu::PacketFilter::Program& program)
+{
+    ntsa::Error error;
+    int         rc;
+
+    struct bpf_program bpf;
+    NTSCFG_MEMORY_ZERO(&bpf, sizeof bpf);
+
+    bpf.bf_insns = const_cast<struct bpf_insn*>(
+        reinterpret_cast<const struct bpf_insn*>(&program.front()));
+    bpf.bf_len = static_cast<u_int>(program.size());
+
+    rc = ioctl(device, BIOCSETF, &bpf);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "apply packet filter", error);
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
 bsl::ostream& DeviceUtil::Impl::printDataLinkType(bsl::ostream& stream,
                                                   bsl::uint32_t dataLinkType)
 {
@@ -1120,18 +1157,20 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         }
     }
 
-    // Configure the packet filter.
+    // Configure the initial packet filter to reject all packets. The
+    // actual device type cannot be determined until the file descriptor is
+    // bound to an interface, but the packet filter program based upon the
+    // real packet filter specification cannot be implemented until the
+    // device type is known, so initially suppress all packets.
 
-    ntsa::PacketFilter packetFilter;
-    if (configuration.incomingPacketFilter().has_value()) {
-        packetFilter = configuration.incomingPacketFilter().value();
-    }
+    ntsu::PacketFilter::Program rejectAll;
+    ntsu::PacketUtil::rejectAll(&rejectAll);
 
     if (loopback) {
         error = DeviceUtil::Impl::applyFilter(device,
                                               ntsa::DeviceType::e_LOCAL,
                                               adapter,
-                                              packetFilter);
+                                              rejectAll);
         if (error) {
             return error;
         }
@@ -1140,7 +1179,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         error = DeviceUtil::Impl::applyFilter(device,
                                               ntsa::DeviceType::e_ETHERNET,
                                               adapter,
-                                              packetFilter);
+                                              rejectAll);
         if (error) {
             return error;
         }
@@ -1197,6 +1236,19 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     }
 
     error = DeviceUtil::Impl::convertFromDataLinkType(type, dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    // Configure the packet filter.
+
+    ntsa::PacketFilter packetFilter;
+    if (configuration.incomingPacketFilter().has_value()) {
+        packetFilter = configuration.incomingPacketFilter().value();
+    }
+
+    error =
+        DeviceUtil::Impl::applyFilter(device, *type, adapter, packetFilter);
     if (error) {
         return error;
     }
@@ -1495,7 +1547,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
 
         buffer.setSize(encoder.position());
 
-        NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(packet, buffer);
+        NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(device, packet, buffer);
 
         do {
             ssize_t bytesSent =
@@ -1557,7 +1609,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
 
         buffer.setSize(encoder.position());
 
-        NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(packet, buffer);
+        NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(device, packet, buffer);
 
         do {
             ssize_t bytesSent =
@@ -1714,7 +1766,8 @@ ntsa::Error DeviceUtil::dequeuePacket(
                                        decoderOptions);
                 if (error) {
                     if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
-                        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet);
+                        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device,
+                                                                 packet);
                     }
                     else {
                         NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
@@ -1723,7 +1776,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
                     }
                 }
                 else {
-                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet);
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
 
                     error = packetQueue->enqueue(NTSCFG_MOVE(packet));
                     if (error) {
@@ -1749,7 +1802,8 @@ ntsa::Error DeviceUtil::dequeuePacket(
                                                                decoderOptions);
                 if (error) {
                     if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
-                        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet);
+                        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device,
+                                                                 packet);
                     }
                     else {
                         NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
@@ -1759,7 +1813,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
                     }
                 }
                 else {
-                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet);
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
 
                     error = packetQueue->enqueue(NTSCFG_MOVE(packet));
                     if (error) {
@@ -1794,7 +1848,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 packet->decode(&decoderContext, packetBuffer, decoderOptions);
             if (error) {
                 if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
-                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(packet);
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device, packet);
                 }
                 else {
                     NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
@@ -1803,7 +1857,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 }
             }
             else {
-                NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(packet);
+                NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
 
                 error = packetQueue->enqueue(NTSCFG_MOVE(packet));
                 if (error) {
