@@ -26,8 +26,8 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv6address.h>
 #include <ntsa_packet.h>
 #include <ntsa_packetfactory.h>
-#include <ntsa_packetpool.h>
 #include <ntsa_packetfilter.h>
+#include <ntsa_packetpool.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlbb_blob.h>
@@ -385,14 +385,209 @@ class PacketUtil
     /// 'packet'. Return true if the packet is accepted, and return false if
     /// the packet is rejected.
     static bool execute(const PacketFilter::Program& program,
-                        const bsl::shared_ptr<ntsa::Packet>&        packet,
-                        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory);
-
-    /// Execute the specified packet filter 'program' on the specified
-    /// 'packet'. Return true if the packet is accepted, and return false if
-    /// the packet is rejected.
-    static bool execute(const PacketFilter::Program& program,
                         const bdlbb::BlobBuffer&     packet);
+
+    /// Return a new TCP packet created by the specified 'packetFactory' from
+    /// the specified 'sourceEthernetAddress', 'sourceIpv4Address', and
+    /// 'sourceTcpPort' to the specified 'destinationEthernetAddress',
+    /// 'destinationIpv4Address', and 'destinationTcpPort'.
+    static bsl::shared_ptr<ntsa::Packet> createTcp(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        ntsa::Port                                  sourceTcpPort,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        ntsa::Port                                  destinationTcpPort);
+
+    /// Return a new TCP packet created by the specified 'packetFactory' from
+    /// the specified 'sourceEthernetAddress', 'sourceIpv6Address', and
+    /// 'sourceTcpPort' to the specified 'destinationEthernetAddress',
+    /// 'destinationIpv6Address', and 'destinationTcpPort'.
+    static bsl::shared_ptr<ntsa::Packet> createTcp(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv6Address&                    sourceIpv6Address,
+        ntsa::Port                                  sourceTcpPort,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv6Address&                    destinationIpv6Address,
+        ntsa::Port                                  destinationTcpPort);
+
+    /// Return a new UDP packet created by the specified 'packetFactory' from
+    /// the specified 'sourceEthernetAddress', 'sourceIpv4Address', and
+    /// 'sourceUdpPort' to the specified 'destinationEthernetAddress',
+    /// 'destinationIpv4Address', and 'destinationUdpPort'.
+    static bsl::shared_ptr<ntsa::Packet> createUdp(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        ntsa::Port                                  sourceUdpPort,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        ntsa::Port                                  destinationUdpPort);
+
+    /// Return a new UDP packet created by the specified 'packetFactory' from
+    /// the specified 'sourceEthernetAddress', 'sourceIpv6Address', and
+    /// 'sourceUdpPort' to the specified 'destinationEthernetAddress',
+    /// 'destinationIpv6Address', and 'destinationUdpPort'.
+    static bsl::shared_ptr<ntsa::Packet> createUdp(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv6Address&                    sourceIpv6Address,
+        ntsa::Port                                  sourceUdpPort,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv6Address&                    destinationIpv6Address,
+        ntsa::Port                                  destinationUdpPort);
+
+    /// Return a new ICMP echo request packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' and
+    /// 'sourceIpv4Address' to the specified 'destinationEthernetAddress' and
+    /// 'destinationIpv4Address' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIcmpEchoRequest(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IcmpEchoRequest&                payload);
+
+    /// Return a new ICMP echo response packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' and
+    /// 'sourceIpv4Address' to the specified 'destinationEthernetAddress' and
+    /// 'destinationIpv4Address' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIcmpEchoResponse(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IcmpEchoResponse&               payload);
+
+    /// Return a new ICMP router request packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' and
+    /// 'sourceIpv4Address' to the specified 'destinationEthernetAddress' and
+    /// 'destinationIpv4Address' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIcmpRouterRequest(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IcmpRouterRequest&              payload);
+
+    /// Return a new ICMP router response packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' and
+    /// 'sourceIpv4Address' to the specified 'destinationEthernetAddress' and
+    /// 'destinationIpv4Address' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIcmpRouterResponse(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IcmpRouterResponse&             payload);
+
+    /// Return a new ICMP unreachable packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' and
+    /// 'sourceIpv4Address' to the specified 'destinationEthernetAddress' and
+    /// 'destinationIpv4Address' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIcmpUnreachable(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IcmpUnreachable&                payload);
+
+    /// Return a new ICMP timeout packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' and
+    /// 'sourceIpv4Address' to the specified 'destinationEthernetAddress' and
+    /// 'destinationIpv4Address' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIcmpTimeout(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IcmpTimeout&                    payload);
+
+    /// Return a new ICMP problem packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' and
+    /// 'sourceIpv4Address' to the specified 'destinationEthernetAddress' and
+    /// 'destinationIpv4Address' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIcmpProblem(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IcmpProblem&                    payload);
+
+    /// Return a new IGMP join packet created by the specified 'packetFactory'
+    /// from the specified 'sourceEthernetAddress' and 'sourceIpv4Address' to
+    /// the specified 'destinationEthernetAddress' and 'destinationIpv4Address'
+    /// with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIgmpJoin(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IgmpJoin&                       payload);
+
+    /// Return a new IGMP leave packet created by the specified 'packetFactory'
+    /// from the specified 'sourceEthernetAddress' and 'sourceIpv4Address' to
+    /// the specified 'destinationEthernetAddress' and 'destinationIpv4Address'
+    /// with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIgmpLeave(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IgmpLeave&                      payload);
+
+    /// Return a new IGMP query packet created by the specified 'packetFactory'
+    /// from the specified 'sourceEthernetAddress' and 'sourceIpv4Address' to
+    /// the specified 'destinationEthernetAddress' and 'destinationIpv4Address'
+    /// with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIgmpQuery(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IgmpQuery&                      payload);
+
+    /// Return a new IGMP report packet created by the specified 'packetFactory'
+    /// from the specified 'sourceEthernetAddress' and 'sourceIpv4Address' to
+    /// the specified 'destinationEthernetAddress' and 'destinationIpv4Address'
+    /// with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createIgmpReport(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::Ipv4Address&                    sourceIpv4Address,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::Ipv4Address&                    destinationIpv4Address,
+        const ntsa::IgmpReport&                     payload);
+
+    /// Return a new ARP request packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' to the
+    /// specified 'destinationEthernetAddress' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createArpRequest(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::ArpRequest&                     payload);
+
+    /// Return a new ARP response packet created by the specified
+    /// 'packetFactory' from the specified 'sourceEthernetAddress' to the
+    /// specified 'destinationEthernetAddress' with the specified 'payload'.
+    static bsl::shared_ptr<ntsa::Packet> createArpResponse(
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::EthernetAddress&                sourceEthernetAddress,
+        const ntsa::EthernetAddress&                destinationEthernetAddress,
+        const ntsa::ArpResponse&                    payload);
 };
 
 }  // end namespace ntsu

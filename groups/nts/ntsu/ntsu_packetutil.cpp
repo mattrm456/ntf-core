@@ -566,7 +566,9 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     // Load the 2-byte tag protocol identifier (TPID) field into the
     // accumulator register.
 
-    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, ntsa::EthernetHeader::k_TPID_OFFSET);
+    PFC::compile(&script,
+                 NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS,
+                 ntsa::EthernetHeader::k_TPID_OFFSET);
 
     // The Ethernet tag protocol identifier will be set to 0x8100 if the
     // Ethernet frame is 802.1Q tagged, and will indicate the layer-3 protocol
@@ -639,28 +641,16 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
     PFC::label(&script, "store-ethernet-attributes-end");
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     // Reject the packet unless its source Ethernet address is allowed by
     // the filter.
 
     PFC::label(&script, "filter-ethernet-source-address");
 
     if (filter.sourceEthernetAddress().size() > 0) {
-        for (bsl::size_t i = 0; i < filter.sourceEthernetAddress().size(); ++i) {
-            PFC::label(&script, "filter-ethernet-source-address-" + bsl::to_string(i));
+        for (bsl::size_t i = 0; i < filter.sourceEthernetAddress().size(); ++i)
+        {
+            PFC::label(&script,
+                       "filter-ethernet-source-address-" + bsl::to_string(i));
 
             const ntsa::EthernetAddress& ethernetAddress =
                 filter.sourceEthernetAddress()[i];
@@ -675,36 +665,36 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                 (static_cast<bsl::uint32_t>(ethernetAddress[4]) << 8) |
                 (static_cast<bsl::uint32_t>(ethernetAddress[5]));
 
-            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS, ntsa::EthernetHeader::k_SOURCE_ADDRESS_OFFSET);
             PFC::compile(&script,
-                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                         ethernetAddress0,
-                         0,
-                         "filter-ethernet-source-address-" + bsl::to_string(i + 1));
+                         NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS,
+                         ntsa::EthernetHeader::k_SOURCE_ADDRESS_OFFSET);
+            PFC::compile(
+                &script,
+                NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                ethernetAddress0,
+                0,
+                "filter-ethernet-source-address-" + bsl::to_string(i + 1));
 
-            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, ntsa::EthernetHeader::k_SOURCE_ADDRESS_OFFSET + sizeof(bsl::uint32_t));
             PFC::compile(&script,
-                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                         ethernetAddress4,
-                         "filter-ethernet-source-address-end",
-                         "filter-ethernet-source-address-" + bsl::to_string(i + 1));
+                         NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS,
+                         ntsa::EthernetHeader::k_SOURCE_ADDRESS_OFFSET +
+                             sizeof(bsl::uint32_t));
+            PFC::compile(
+                &script,
+                NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                ethernetAddress4,
+                "filter-ethernet-source-address-end",
+                "filter-ethernet-source-address-" + bsl::to_string(i + 1));
         }
 
-        PFC::label(&script, "filter-ethernet-source-address-" + bsl::to_string(filter.sourceEthernetAddress().size()));
+        PFC::label(&script,
+                   "filter-ethernet-source-address-" +
+                       bsl::to_string(filter.sourceEthernetAddress().size()));
 
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
     }
 
     PFC::label(&script, "filter-ethernet-source-address-end");
-
-
-
-
-
-
-
-
-
 
     // Reject the packet unless its destination Ethernet address is allowed by
     // the filter.
@@ -712,8 +702,12 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     PFC::label(&script, "filter-ethernet-destination-address");
 
     if (filter.destinationEthernetAddress().size() > 0) {
-        for (bsl::size_t i = 0; i < filter.destinationEthernetAddress().size(); ++i) {
-            PFC::label(&script, "filter-ethernet-destination-address-" + bsl::to_string(i));
+        for (bsl::size_t i = 0; i < filter.destinationEthernetAddress().size();
+             ++i)
+        {
+            PFC::label(
+                &script,
+                "filter-ethernet-destination-address-" + bsl::to_string(i));
 
             const ntsa::EthernetAddress& ethernetAddress =
                 filter.destinationEthernetAddress()[i];
@@ -728,22 +722,32 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                 (static_cast<bsl::uint32_t>(ethernetAddress[4]) << 8) |
                 (static_cast<bsl::uint32_t>(ethernetAddress[5]));
 
-            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS, ntsa::EthernetHeader::k_DESTINATION_ADDRESS_OFFSET);
+            PFC::compile(&script,
+                         NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS,
+                         ntsa::EthernetHeader::k_DESTINATION_ADDRESS_OFFSET);
             PFC::compile(&script,
                          NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                          ethernetAddress0,
                          0,
-                         "filter-ethernet-destination-address-" + bsl::to_string(i + 1));
+                         "filter-ethernet-destination-address-" +
+                             bsl::to_string(i + 1));
 
-            PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS, ntsa::EthernetHeader::k_DESTINATION_ADDRESS_OFFSET + sizeof(bsl::uint32_t));
+            PFC::compile(&script,
+                         NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_ABS,
+                         ntsa::EthernetHeader::k_DESTINATION_ADDRESS_OFFSET +
+                             sizeof(bsl::uint32_t));
             PFC::compile(&script,
                          NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
                          ethernetAddress4,
                          "filter-ethernet-destination-address-end",
-                         "filter-ethernet-destination-address-" + bsl::to_string(i + 1));
+                         "filter-ethernet-destination-address-" +
+                             bsl::to_string(i + 1));
         }
 
-        PFC::label(&script, "filter-ethernet-destination-address-" + bsl::to_string(filter.destinationEthernetAddress().size()));
+        PFC::label(
+            &script,
+            "filter-ethernet-destination-address-" +
+                bsl::to_string(filter.destinationEthernetAddress().size()));
 
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
     }
@@ -951,42 +955,52 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
     PFC::label(&script, "filter-ipv4-source-address");
 
-    if (filter.sourceIpv4Address().has_value()) {
-        // Load the 32-bit source IP address from its absolute position inside
+    if (filter.sourceIpv4Address().size() > 0) {
+        // Load the 32-bit source IPv4 address from its absolute position inside
         // an IPv4 packet inside an Ethernet packet.
 
         PFC::compile(&script,
                      NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
                      ntsa::Ipv4Header::k_SOURCE_ADDRESS_OFFSET);
 
-        // Compare with the required source IP address.
+        // Compare with each allowed source IPv4 address.
 
-        PFC::compile(&script,
-                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                     filter.sourceIpv4Address().value().value(),
-                     0,
-                     "reject");
+        for (bsl::size_t i = 0; i < filter.sourceIpv4Address().size(); ++i) {
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         filter.sourceIpv4Address()[i].value(),
+                         "filter-ipv4-source-address-end",
+                         0);
+        }
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
     }
 
     PFC::label(&script, "filter-ipv4-source-address-end");
 
     PFC::label(&script, "filter-ipv4-destination-address");
 
-    if (filter.destinationIpv4Address().has_value()) {
-        // Load the 32-bit destination IP address from its absolute position
+    if (filter.destinationIpv4Address().size() > 0) {
+        // Load the 32-bit destination IPv4 address from its absolute position
         // inside an IPv4 packet inside an Ethernet packet.
 
         PFC::compile(&script,
                      NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
                      ntsa::Ipv4Header::k_DESTINATION_ADDRESS_OFFSET);
 
-        // Compare with the required destination IP address.
+        // Compare with each allowed destination IPv4 address.
 
-        PFC::compile(&script,
-                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                     filter.destinationIpv4Address().value().value(),
-                     0,
-                     "reject");
+        for (bsl::size_t i = 0; i < filter.destinationIpv4Address().size();
+             ++i)
+        {
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         filter.destinationIpv4Address()[i].value(),
+                         "filter-ipv4-destination-address-end",
+                         0);
+        }
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
     }
 
     PFC::label(&script, "filter-ipv4-destination-address-end");
@@ -1070,6 +1084,8 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
                          NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
                          ntsa::TcpHeader::k_SOURCE_PORT_OFFSET);
 
+            // Compare with each allowed source TCP port.
+
             for (bsl::size_t i = 0; i < filter.sourceTcpPort().size(); ++i) {
                 const ntsa::Port sourceTcpPort = filter.sourceTcpPort()[i];
 
@@ -1093,6 +1109,8 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
             PFC::compile(&script,
                          NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
                          ntsa::TcpHeader::k_DESTINATION_PORT_OFFSET);
+
+            // Compare with each allowed destination TCP port.
 
             for (bsl::size_t i = 0; i < filter.destinationTcpPort().size();
                  ++i)
@@ -1275,10 +1293,8 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
     PFC::label(&script, "filter-rarp-end");
 
-
-
     PFC::label(&script, "accept");
-    PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, (u_int)(-1));
+    PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, static_cast<bsl::uint32_t>(INT_MAX));
 
     PFC::label(&script, "reject");
     PFC::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, 0);
@@ -1299,7 +1315,7 @@ void PacketUtil::acceptAll(PacketFilter::Program* program)
     PacketFilter::Script script;
     PacketFilter::Compiler::compile(&script,
                                     NTSU_BPF_RET + NTSU_BPF_K,
-                                    (u_int)(-1));
+                                    static_cast<bsl::uint32_t>(INT_MAX));
     PacketFilter::Compiler::link(program, script);
 }
 
@@ -1308,30 +1324,6 @@ void PacketUtil::rejectAll(PacketFilter::Program* program)
     PacketFilter::Script script;
     PacketFilter::Compiler::compile(&script, NTSU_BPF_RET + NTSU_BPF_K, 0);
     PacketFilter::Compiler::link(program, script);
-}
-
-bool PacketUtil::execute(
-    const PacketFilter::Program&                program,
-    const bsl::shared_ptr<ntsa::Packet>&        packet,
-    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
-{
-    ntsa::Error error;
-
-    ntsa::PacketEncoderContext packetEncoderContext;
-    ntsa::PacketEncoderOptions packetEncoderOptions;
-
-    bdlbb::BlobBuffer packetBuffer;
-    packetFactory->createIncomingBlobBuffer(&packetBuffer);
-
-    error = packet->encode(&packetEncoderContext,
-                           &packetBuffer,
-                           packetEncoderOptions);
-    if (error) {
-        BALL_LOG_ERROR << "Failed to encode packet: " << error << BALL_LOG_END;
-        return false;
-    }
-
-    return PacketUtil::execute(program, packetBuffer);
 }
 
 #define NTSU_PACKETUTIL_LOG_INSTRUCTION(begin, pc, description)               \
@@ -1723,6 +1715,566 @@ bool PacketUtil::execute(const PacketFilter::Program& program,
             return false;
         }
     }
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createTcp(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    ntsa::Port                                  sourceTcpPort,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    ntsa::Port                                  destinationTcpPort)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_TCP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::TcpPacket& tcpPacket = ipv4Packet.payload().makeTcp();
+
+    tcpPacket.header().setSourcePort(sourceTcpPort);
+    tcpPacket.header().setDestinationPort(destinationTcpPort);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createTcp(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv6Address&                    sourceIpv6Address,
+    ntsa::Port                                  sourceTcpPort,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv6Address&                    destinationIpv6Address,
+    ntsa::Port                                  destinationTcpPort)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV6);
+
+    ntsa::Ipv6Packet& ipv6Packet = ethernetPacket.payload().makeIpv6();
+
+    ipv6Packet.header().setSourceAddress(sourceIpv6Address);
+    ipv6Packet.header().setDestinationAddress(destinationIpv6Address);
+    ipv6Packet.header().setNextHeader(ntsa::Ipv6Header::k_PROTOCOL_TCP);
+
+    ntsa::TcpPacket& tcpPacket = ipv6Packet.payload().makeTcp();
+
+    tcpPacket.header().setSourcePort(sourceTcpPort);
+    tcpPacket.header().setDestinationPort(destinationTcpPort);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createUdp(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    ntsa::Port                                  sourceUdpPort,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    ntsa::Port                                  destinationUdpPort)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_UDP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::UdpPacket& udpPacket = ipv4Packet.payload().makeUdp();
+
+    udpPacket.header().setSourcePort(sourceUdpPort);
+    udpPacket.header().setDestinationPort(destinationUdpPort);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createUdp(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv6Address&                    sourceIpv6Address,
+    ntsa::Port                                  sourceUdpPort,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv6Address&                    destinationIpv6Address,
+    ntsa::Port                                  destinationUdpPort)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV6);
+
+    ntsa::Ipv6Packet& ipv6Packet = ethernetPacket.payload().makeIpv6();
+
+    ipv6Packet.header().setSourceAddress(sourceIpv6Address);
+    ipv6Packet.header().setDestinationAddress(destinationIpv6Address);
+    ipv6Packet.header().setNextHeader(ntsa::Ipv6Header::k_PROTOCOL_UDP);
+
+    ntsa::UdpPacket& udpPacket = ipv6Packet.payload().makeUdp();
+
+    udpPacket.header().setSourcePort(sourceUdpPort);
+    udpPacket.header().setDestinationPort(destinationUdpPort);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIcmpEchoRequest(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IcmpEchoRequest&                payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_ICMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IcmpPacket& icmpPacket = ipv4Packet.payload().makeIcmp();
+
+    icmpPacket.header().setType(ntsa::IcmpType::e_ECHO_REQUEST);
+    icmpPacket.header().setCode(0);
+
+    icmpPacket.payload().makeEchoRequest(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIcmpEchoResponse(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IcmpEchoResponse&               payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_ICMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IcmpPacket& icmpPacket = ipv4Packet.payload().makeIcmp();
+
+    icmpPacket.header().setType(ntsa::IcmpType::e_ECHO_RESPONSE);
+    icmpPacket.header().setCode(0);
+
+    icmpPacket.payload().makeEchoResponse(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIcmpRouterRequest(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IcmpRouterRequest&              payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_ICMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IcmpPacket& icmpPacket = ipv4Packet.payload().makeIcmp();
+
+    icmpPacket.header().setType(ntsa::IcmpType::e_ROUTER_REQUEST);
+    icmpPacket.header().setCode(0);
+
+    icmpPacket.payload().makeRouterRequest(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIcmpRouterResponse(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IcmpRouterResponse&             payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_ICMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IcmpPacket& icmpPacket = ipv4Packet.payload().makeIcmp();
+
+    icmpPacket.header().setType(ntsa::IcmpType::e_ROUTER_RESPONSE);
+    icmpPacket.header().setCode(0);
+
+    icmpPacket.payload().makeRouterResponse(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIcmpUnreachable(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IcmpUnreachable&                payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_ICMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IcmpPacket& icmpPacket = ipv4Packet.payload().makeIcmp();
+
+    icmpPacket.header().setType(ntsa::IcmpType::e_UNREACHABLE);
+    icmpPacket.header().setCode(0);
+
+    icmpPacket.payload().makeUnreachable(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIcmpTimeout(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IcmpTimeout&                    payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_ICMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IcmpPacket& icmpPacket = ipv4Packet.payload().makeIcmp();
+
+    icmpPacket.header().setType(ntsa::IcmpType::e_TIMEOUT);
+    icmpPacket.header().setCode(0);
+
+    icmpPacket.payload().makeTimeout(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIcmpProblem(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IcmpProblem&                    payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_ICMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IcmpPacket& icmpPacket = ipv4Packet.payload().makeIcmp();
+
+    icmpPacket.header().setType(ntsa::IcmpType::e_PROBLEM);
+    icmpPacket.header().setCode(0);
+
+    icmpPacket.payload().makeProblem(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIgmpJoin(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IgmpJoin&                       payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_IGMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IgmpPacket& igmpPacket = ipv4Packet.payload().makeIgmp();
+
+    igmpPacket.header().setType(ntsa::IgmpType::e_REPORT_V2);
+    igmpPacket.header().setMaxResponseCode(0);
+
+    igmpPacket.payload().makeJoin(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIgmpLeave(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IgmpLeave&                      payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_IGMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IgmpPacket& igmpPacket = ipv4Packet.payload().makeIgmp();
+
+    igmpPacket.header().setType(ntsa::IgmpType::e_LEAVE);
+    igmpPacket.header().setMaxResponseCode(0);
+
+    igmpPacket.payload().makeLeave(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIgmpQuery(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IgmpQuery&                      payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_IGMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IgmpPacket& igmpPacket = ipv4Packet.payload().makeIgmp();
+
+    igmpPacket.header().setType(ntsa::IgmpType::e_QUERY);
+    igmpPacket.header().setMaxResponseCode(30);
+
+    igmpPacket.payload().makeQuery(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createIgmpReport(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::Ipv4Address&                    sourceIpv4Address,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::Ipv4Address&                    destinationIpv4Address,
+    const ntsa::IgmpReport&                     payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4Packet = ethernetPacket.payload().makeIpv4();
+
+    ipv4Packet.header().setSourceAddress(sourceIpv4Address);
+    ipv4Packet.header().setDestinationAddress(destinationIpv4Address);
+    ipv4Packet.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_IGMP);
+    ipv4Packet.header().setPreserve(true);
+
+    ntsa::IgmpPacket& igmpPacket = ipv4Packet.payload().makeIgmp();
+
+    igmpPacket.header().setType(ntsa::IgmpType::e_REPORT_V3);
+    igmpPacket.header().setMaxResponseCode(0);
+
+    igmpPacket.payload().makeReport(payload);
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createArpRequest(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::ArpRequest&                     payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_ARP);
+
+    ntsa::ArpPacket& arpPacket = ethernetPacket.payload().makeArp();
+
+    arpPacket.header().setHardwareType(
+        ntsa::ArpHeader::k_HARDWARE_TYPE_ETHERNET);
+    arpPacket.header().setHardwareAddressLength(sizeof(ntsa::EthernetAddress));
+    arpPacket.header().setProtocolType(ntsa::ArpHeader::k_PROTOCOL_TYPE_IPV4);
+    arpPacket.header().setProtocolAddressLength(sizeof(ntsa::Ipv4Address));
+    arpPacket.header().setOperation(ntsa::ArpType::e_REQUEST);
+
+    arpPacket.payload().makeRequest(payload);
+
+    return packet;
+}
+
+bsl::shared_ptr<ntsa::Packet> PacketUtil::createArpResponse(
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::EthernetAddress&                sourceEthernetAddress,
+    const ntsa::EthernetAddress&                destinationEthernetAddress,
+    const ntsa::ArpResponse&                    payload)
+{
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createOutgoingPacket(&packet);
+
+    ntsa::EthernetPacket& ethernetPacket = packet->makeEthernet();
+
+    ethernetPacket.header().setSource(sourceEthernetAddress);
+    ethernetPacket.header().setDestination(destinationEthernetAddress);
+    ethernetPacket.header().setProtocol(ntsa::EthernetProtocol::e_ARP);
+
+    ntsa::ArpPacket& arpPacket = ethernetPacket.payload().makeArp();
+
+    arpPacket.header().setHardwareType(
+        ntsa::ArpHeader::k_HARDWARE_TYPE_ETHERNET);
+    arpPacket.header().setHardwareAddressLength(sizeof(ntsa::EthernetAddress));
+    arpPacket.header().setProtocolType(ntsa::ArpHeader::k_PROTOCOL_TYPE_IPV4);
+    arpPacket.header().setProtocolAddressLength(sizeof(ntsa::Ipv4Address));
+    arpPacket.header().setOperation(ntsa::ArpType::e_REQUEST);
+
+    arpPacket.payload().makeResponse(payload);
+
+    return packet;
 }
 
 }  // close package namespace

@@ -36,6 +36,48 @@ BSLS_IDENT_RCSID(ntsu_packetutil_t_cpp, "$Id$ $CSID$")
 #endif
 #endif
 
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+#include <netinet/in.h>
+#include <sys/socket.h>
+#endif
+
+#if defined(BSLS_PLATFORM_OS_LINUX)
+#include <netinet/in.h>
+#include <sys/socket.h>
+#endif
+
+#if defined(BSLS_PLATFORM_OS_WINDOWS)
+#ifdef NTDDI_VERSION
+#undef NTDDI_VERSION
+#endif
+#ifdef WINVER
+#undef WINVER
+#endif
+#ifdef _WIN32_WINNT
+#undef _WIN32_WINNT
+#endif
+#define NTDDI_VERSION 0x06000100
+#define WINVER 0x0600
+#define _WIN32_WINNT 0x0600
+#ifndef _WINSOCK_DEPRECATED_NO_WARNINGS
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+// clang-format off
+#include <windows.h>
+#include <winerror.h>
+#include <winsock2.h>
+#include <mswsock.h>
+#include <ws2tcpip.h>
+// clang-format on
+#ifdef interface
+#undef interface
+#endif
+#pragma comment(lib, "ws2_32")
+#endif
+
 using namespace BloombergLP;
 
 namespace BloombergLP {
@@ -46,15 +88,18 @@ class PacketUtilTest
 {
     BALL_LOG_SET_CLASS_CATEGORY("NTSU.PACKETUTIL.TEST");
 
-    /// Discover the loopback device and load its adapter into the specified
-    /// 'result'. Return true if such a loopback device is found, and false
-    /// otherwise.
+    // Discover the loopback device and load its adapter into the specified
+    // 'result'. Return true if such a loopback device is found, and false
+    // otherwise.
     static bool discoverLoopback(ntsa::Adapter* result);
 
-    /// Discover the default device and load its adapter into the specified
-    /// 'result'. Return true if such a default device is found, and false
-    /// otherwise.
+    // Discover the default device and load its adapter into the specified
+    // 'result'. Return true if such a default device is found, and false
+    // otherwise.
     static bool discoverDefault(ntsa::Adapter* result);
+
+    // Return a packet factory.
+    static bsl::shared_ptr<ntsa::PacketFactory> createPacketFactory();
 
     // Return a packet created through the specified 'packetFactory' from the
     // specified 'adapter' to that same 'adapter'.
@@ -62,21 +107,56 @@ class PacketUtilTest
         const ntsa::Adapter&                        adapter,
         const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory);
 
-    /// Execute the specified packet filter 'program' on the specified
-    /// 'packetData'. Return true if the packet is allowed, and return false if
-    /// the packet is rejected.
+    // Load into the specified 'result' the encoding of the specified 'packet'
+    // created through the specified 'packetFactory' suitable for filtering
+    // through a device of the specified 'deviceType'.
+    static void encodePacket(
+        bdlbb::BlobBuffer*                          result,
+        const bsl::shared_ptr<ntsa::Packet>&        packet,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        ntsa::DeviceType::Value                     deviceType);
+
+    // Execute the specified packet filter 'program' on the specified
+    // 'packetData'. Return true if the packet is allowed, and return false if
+    // the packet is rejected.
     static bool execute(const ntsu::PacketFilter::Program& program,
                         const bdlbb::BlobBuffer&           packetData);
 
+    // Verify the specified 'packetFilter' for the specified 'adapter' of the
+    // specified 'deviceType' returns the specified expected 'result' when run
+    // on the specified 'packet' created through the specified 'packetFactory'.
+    static void verifyFilter(
+        const bsl::shared_ptr<ntsa::Packet>&        packet,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsa::PacketFilter&                   packetFilter,
+        const ntsa::Adapter&                        adapter,
+        ntsa::DeviceType::Value                     deviceType,
+        bool                                        result);
+
   public:
-    // TODO
+    // Verify constants match the constants defined by the operating system
+    // and/or thirdparty libraries.
     static void verifyConstants();
 
-    // TODO
-    static void verifyFilterLoopback();
+    // Verify a program that accepts all Ethernet packets.
+    static void verifyEthernetAcceptAll();
 
-    // TODO
-    static void verifyFilterDefault();
+    // Verify a program that rejects all Ethernet packets.
+    static void verifyEthernetRejectAll();
+
+    // Verify a program that conditionally accepts or rejects TCP/IPv4 Ethernet
+    // packets.
+    static void verifyEthernetIpv4Tcp();
+
+    // Verify a program that conditionally accepts or rejects UDP/IPv4 Ethernet
+    // packets.
+    static void verifyEthernetIpv4Udp();
+
+    // Verify a program that accepts all loopback packets.
+    static void verifyLoopbackAcceptAll();
+
+    // Verify a program that rejects all loopback packets.
+    static void verifyLoopbackRejectAll();
 };
 
 bool PacketUtilTest::discoverLoopback(ntsa::Adapter* result)
@@ -113,6 +193,17 @@ bool PacketUtilTest::discoverDefault(ntsa::Adapter* result)
     }
 
     return false;
+}
+
+bsl::shared_ptr<ntsa::PacketFactory> PacketUtilTest::createPacketFactory()
+{
+    bsl::shared_ptr<ntsa::PacketPool> packetPool;
+    packetPool.createInplace(NTSCFG_TEST_ALLOCATOR,
+                             static_cast<bsl::size_t>(ntsa::PacketPool::k_MTU),
+                             static_cast<bsl::size_t>(ntsa::PacketPool::k_MTU),
+                             NTSCFG_TEST_ALLOCATOR);
+
+    return packetPool;
 }
 
 bsl::shared_ptr<ntsa::Packet> PacketUtilTest::createPacket(
@@ -166,17 +257,95 @@ bsl::shared_ptr<ntsa::Packet> PacketUtilTest::createPacket(
     return packet;
 }
 
-#if NTS_BUILD_WITH_PCAP
+void PacketUtilTest::encodePacket(
+    bdlbb::BlobBuffer*                          result,
+    const bsl::shared_ptr<ntsa::Packet>&        packet,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    ntsa::DeviceType::Value                     deviceType)
+{
+    ntsa::Error error;
+
+    result->reset();
+
+    NTSCFG_TEST_TRUE(packet);
+    NTSCFG_TEST_TRUE(packet->isEthernet());
+
+    ntsa::PacketEncoderContext packetEncoderContext;
+    ntsa::PacketEncoderOptions packetEncoderOptions;
+
+    bdlbb::BlobBuffer packetBuffer;
+    packetFactory->createIncomingBlobBuffer(&packetBuffer);
+    NTSCFG_TEST_EQ(packetBuffer.size(),
+                   static_cast<bsl::size_t>(ntsa::PacketPool::k_MTU));
+
+    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
+        error = packet->encode(&packetEncoderContext,
+                               &packetBuffer,
+                               packetEncoderOptions);
+        NTSCFG_TEST_OK(error);
+    }
+    else if (deviceType == ntsa::DeviceType::e_LOCAL ||
+             deviceType == ntsa::DeviceType::e_LOOPBACK)
+    {
+        bsl::uint32_t protocol = 0;
+
+        if (packet->ethernet().payload().isIpv4()) {
+            protocol = AF_INET;
+        }
+        else if (packet->ethernet().payload().isIpv6()) {
+            protocol = AF_INET6;
+        }
+        else {
+            NTSCFG_TEST_TRUE(false);
+        }
+
+        if (deviceType == ntsa::DeviceType::e_LOOPBACK) {
+            protocol = BSLS_BYTEORDER_HOST_TO_BE(protocol);
+        }
+
+        ntsa::PacketEncoder packetEncoder(&packetBuffer);
+
+        error = packetEncoder.encodeRaw(&protocol, sizeof protocol);
+        NTSCFG_TEST_OK(error);
+
+        if (packet->ethernet().payload().isIpv4()) {
+            const ntsa::Ipv4Packet& ipv4 = packet->ethernet().payload().ipv4();
+
+            error = ipv4.encode(&packetEncoderContext,
+                                &packetEncoder,
+                                packetEncoderOptions);
+            NTSCFG_TEST_OK(error);
+        }
+        else if (packet->ethernet().payload().isIpv6()) {
+            const ntsa::Ipv6Packet& ipv6 = packet->ethernet().payload().ipv6();
+
+            error = ipv6.encode(&packetEncoderContext,
+                                &packetEncoder,
+                                packetEncoderOptions);
+            NTSCFG_TEST_OK(error);
+        }
+        else {
+            NTSCFG_TEST_TRUE(false);
+        }
+
+        error = packetEncoder.flush();
+        NTSCFG_TEST_OK(error);
+
+        packetBuffer.setSize(packetEncoder.position());
+    }
+    else {
+        NTSCFG_TEST_TRUE(false);
+    }
+
+    *result = packetBuffer;
+}
 
 bool PacketUtilTest::execute(const ntsu::PacketFilter::Program& program,
                              const bdlbb::BlobBuffer&           packetData)
 {
-    bool ourResult = ntsu::PacketUtil::execute(program, packetData);
+#if NTS_BUILD_WITH_PCAP
 
-    BALL_LOG_DEBUG << "OurResult = " << ourResult << BALL_LOG_END;
-
-
-    pcap_t *dead_handle = pcap_open_dead(DLT_EN10MB, 65535);
+    const bool ourResult = ntsu::PacketUtil::execute(program, packetData);
 
     struct bpf_program fp;
     NTSCFG_MEMORY_ZERO(&fp, sizeof fp);
@@ -191,39 +360,57 @@ bool PacketUtilTest::execute(const ntsu::PacketFilter::Program& program,
     md.len    = packetData.size();
     md.caplen = packetData.size();
 
-    // Evaluate the packet directly against the compiled BPF program
-    // Returns non-zero on a match, or zero if it fails the filter.
-
-    int match = pcap_offline_filter(
+    const int match = pcap_offline_filter(
         &fp,
         &md,
         reinterpret_cast<const bsl::uint8_t*>(packetData.data()));
 
-    pcap_close(dead_handle);
+    NTSCFG_TEST_ASSERT(match >= 0);
 
-    if (match) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
+    const bool theirResult = match != 0;
+
+    NTSCFG_TEST_EQ(ourResult, theirResult);
+
+    return ourResult;
 
 #else
 
-bool PacketUtilTest::execute(const ntsu::PacketFilter::Program& program,
-                             const bdlbb::BlobBuffer&           packetData)
-{
-    NTSCFG_NOT_IMPLEMENTED();
-    return false;
-}
+    return ntsu::PacketUtil::execute(program, packetData);
 
 #endif
+}
 
-#if defined(BSLS_PLATFORM_OS_DARWIN)
+void PacketUtilTest::verifyFilter(
+    const bsl::shared_ptr<ntsa::Packet>&        packet,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsa::PacketFilter&                   packetFilter,
+    const ntsa::Adapter&                        adapter,
+    ntsa::DeviceType::Value                     deviceType,
+    bool                                        result)
+{
+    ntsa::Error error;
+
+    bdlbb::BlobBuffer packetBuffer;
+    PacketUtilTest::encodePacket(&packetBuffer,
+                                 packet,
+                                 packetFactory,
+                                 deviceType);
+
+    ntsu::PacketFilter::Program program;
+    error =
+        ntsu::PacketUtil::compile(&program, deviceType, adapter, packetFilter);
+    NTSCFG_TEST_OK(error);
+
+    const bool expected = result;
+    const bool found    = PacketUtilTest::execute(program, packetBuffer);
+
+    NTSCFG_TEST_EQ(found, expected);
+}
 
 NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyConstants)
 {
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
     NTSCFG_TEST_EQ(NTSU_BPF_LD, BPF_LD);
     NTSCFG_TEST_EQ(NTSU_BPF_LDX, BPF_LDX);
     NTSCFG_TEST_EQ(NTSU_BPF_ST, BPF_ST);
@@ -266,32 +453,12 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyConstants)
 
     NTSCFG_TEST_EQ(NTSU_BPF_TAX, BPF_TAX);
     NTSCFG_TEST_EQ(NTSU_BPF_TXA, BPF_TXA);
-}
-
-#else
-
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyConstants)
-{
-}
 
 #endif
-
-#if NTS_BUILD_WITH_PCAP
-
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyFilterLoopback)
-{
-    BALL_LOG_DEBUG << "Verifying packet filter with libcap" << BALL_LOG_END;
-
-    ntsa::Adapter adapter;
-    if (!PacketUtilTest::discoverLoopback(&adapter)) {
-        return;
-    }
 }
 
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyFilterDefault)
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetAcceptAll)
 {
-    BALL_LOG_DEBUG << "Verifying packet filter with libcap" << BALL_LOG_END;
-
     ntsa::Error error;
 
     ntsa::Adapter adapter;
@@ -299,62 +466,154 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyFilterDefault)
         return;
     }
 
-    bsl::shared_ptr<ntsa::PacketPool> packetPool;
-    packetPool.createInplace(NTSCFG_TEST_ALLOCATOR,
-                             static_cast<bsl::size_t>(ntsa::PacketPool::k_MTU),
-                             static_cast<bsl::size_t>(ntsa::PacketPool::k_MTU),
-                             NTSCFG_TEST_ALLOCATOR);
+    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
+        PacketUtilTest::createPacketFactory();
 
-    bsl::shared_ptr<ntsa::Packet> packet = createPacket(adapter, packetPool);
-
-    ntsa::PacketEncoderContext packetEncoderContext;
-    ntsa::PacketEncoderOptions packetEncoderOptions;
+    bsl::shared_ptr<ntsa::Packet> packet =
+        createPacket(adapter, packetFactory);
 
     bdlbb::BlobBuffer packetBuffer;
-    packetPool->createIncomingBlobBuffer(&packetBuffer);
-    NTSCFG_TEST_EQ(packetBuffer.size(),
-                   static_cast<bsl::size_t>(ntsa::PacketPool::k_MTU));
+    PacketUtilTest::encodePacket(&packetBuffer,
+                                 packet,
+                                 packetFactory,
+                                 ntsa::DeviceType::e_ETHERNET);
 
-    error = packet->encode(&packetEncoderContext,
-                           &packetBuffer,
-                           packetEncoderOptions);
-    NTSCFG_TEST_OK(error);
+    ntsu::PacketFilter::Program program;
+    ntsu::PacketUtil::acceptAll(&program);
 
-    BALL_LOG_DEBUG << "Packet = " << packet << BALL_LOG_END;
+    const bool accept = PacketUtilTest::execute(program, packetBuffer);
+    NTSCFG_TEST_TRUE(accept);
+}
 
-    BALL_LOG_DEBUG << "Packet encoded length " << packetBuffer.size()
-                   << BALL_LOG_END;
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetRejectAll)
+{
+    ntsa::Error error;
 
-    BALL_LOG_DEBUG << "Packet encoded data:\n"
-                   << bdlb::PrintStringHexDumper(packetBuffer.data(),
-                                                 packetBuffer.size())
-                   << BALL_LOG_END;
-
-#if 0
-    {
-        ntsu::PacketFilter::Program program;
-        ntsu::PacketUtil::acceptAll(&program);
-
-        const bool result = PacketUtilTest::execute(program, packetBuffer);
-        BALL_LOG_INFO << "acceptAll = " << result << BALL_LOG_END;
+    ntsa::Adapter adapter;
+    if (!PacketUtilTest::discoverDefault(&adapter)) {
+        return;
     }
 
-    {
-        ntsu::PacketFilter::Program program;
-        ntsu::PacketUtil::rejectAll(&program);
+    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
+        PacketUtilTest::createPacketFactory();
 
-        const bool result = PacketUtilTest::execute(program, packetBuffer);
-        BALL_LOG_INFO << "rejectAll = " << result << BALL_LOG_END;
+    bsl::shared_ptr<ntsa::Packet> packet =
+        createPacket(adapter, packetFactory);
+
+    bdlbb::BlobBuffer packetBuffer;
+    PacketUtilTest::encodePacket(&packetBuffer,
+                                 packet,
+                                 packetFactory,
+                                 ntsa::DeviceType::e_ETHERNET);
+
+    ntsu::PacketFilter::Program program;
+    ntsu::PacketUtil::rejectAll(&program);
+
+    const bool accept = PacketUtilTest::execute(program, packetBuffer);
+    NTSCFG_TEST_FALSE(accept);
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
+{
+    ntsa::Error error;
+
+    ntsa::Adapter adapter;
+    if (!PacketUtilTest::discoverDefault(&adapter)) {
+        return;
     }
-#endif
+
+    if (adapter.ipv4Address().isNull()) {
+        return;
+    }
+
+    const ntsa::EthernetAddress sourceEthernetAddress(
+        adapter.ethernetAddress());
+
+    const ntsa::Ipv4Address sourceIpv4Address = adapter.ipv4Address().value();
+
+    const ntsa::Port sourceTcpPort = 32767;
+
+    const ntsa::EthernetAddress destinationEthernetAddress(
+        adapter.ethernetAddress());
+
+    const ntsa::Ipv4Address destinationIpv4Address =
+        adapter.ipv4Address().value();
+
+    const ntsa::Port destinationTcpPort = 80;
+
+    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
+        PacketUtilTest::createPacketFactory();
+
+    bsl::shared_ptr<ntsa::Packet> packet =
+        ntsu::PacketUtil::createTcp(packetFactory,
+                                    sourceEthernetAddress,
+                                    sourceIpv4Address,
+                                    sourceTcpPort,
+                                    destinationEthernetAddress,
+                                    destinationIpv4Address,
+                                    destinationTcpPort);
+
+    bdlbb::BlobBuffer payload;
+    packetFactory->createOutgoingBlobBuffer(&payload);
+
+    NTSCFG_MEMORY_COPY(payload.data(), "Hello, world!", 13);
+    payload.setSize(13);
+
+    packet->ethernet().payload().ipv4().payload().tcp().setPayload(payload);
+
+    bsl::vector<ntsa::EthernetAddress> destinationEthernetAddressVector;
+
+
+    {
+        ntsa::PacketFilter packetFilter;
+        packetFilter.addPacketType(ntsa::PacketType::e_IPV4);
+        packetFilter.addPacketType(ntsa::PacketType::e_TCP);
+
+        packetFilter.addDestinationEthernetAddress(destinationEthernetAddress);
+
+        packetFilter.addDestinationEthernetAddress(
+            ntsa::EthernetAddress::broadcast());
+
+        PacketUtilTest::verifyFilter(packet,
+                                     packetFactory,
+                                     packetFilter,
+                                     adapter,
+                                     ntsa::DeviceType::e_ETHERNET,
+                                     true);
+    }
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
+{
+    ntsa::Error error;
+
+    ntsa::Adapter adapter;
+    if (!PacketUtilTest::discoverDefault(&adapter)) {
+        return;
+    }
+
+    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
+        PacketUtilTest::createPacketFactory();
+
+    bsl::shared_ptr<ntsa::Packet> packet =
+        createPacket(adapter, packetFactory);
+
+    bdlbb::BlobBuffer packetBuffer;
+
+    PacketUtilTest::encodePacket(&packetBuffer,
+                                 packet,
+                                 packetFactory,
+                                 ntsa::DeviceType::e_ETHERNET);
 
     {
         ntsa::PacketFilter packetFilter;
         packetFilter.addPacketType(ntsa::PacketType::e_IPV4);
         packetFilter.addPacketType(ntsa::PacketType::e_UDP);
 
-        packetFilter.addDestinationEthernetAddress(ntsa::EthernetAddress(adapter.ethernetAddress()));
-        packetFilter.addDestinationEthernetAddress(ntsa::EthernetAddress::broadcast());
+        packetFilter.addDestinationEthernetAddress(
+            ntsa::EthernetAddress(adapter.ethernetAddress()));
+        packetFilter.addDestinationEthernetAddress(
+            ntsa::EthernetAddress::broadcast());
 
         ntsu::PacketFilter::Program program;
         error = ntsu::PacketUtil::compile(&program,
@@ -363,22 +622,66 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyFilterDefault)
                                           packetFilter);
         NTSCFG_TEST_OK(error);
 
-        const bool result = PacketUtilTest::execute(program, packetBuffer);
-        BALL_LOG_INFO << "filter = " << result << BALL_LOG_END;
+        const bool accept = PacketUtilTest::execute(program, packetBuffer);
+        NTSCFG_TEST_TRUE(accept);
     }
 }
 
-#else
-
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyFilterLoopback)
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLoopbackAcceptAll)
 {
+    ntsa::Error error;
+
+    ntsa::Adapter adapter;
+    if (!PacketUtilTest::discoverLoopback(&adapter)) {
+        return;
+    }
+
+    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
+        PacketUtilTest::createPacketFactory();
+
+    bsl::shared_ptr<ntsa::Packet> packet =
+        createPacket(adapter, packetFactory);
+
+    bdlbb::BlobBuffer packetBuffer;
+    PacketUtilTest::encodePacket(&packetBuffer,
+                                 packet,
+                                 packetFactory,
+                                 ntsa::DeviceType::e_LOCAL);
+
+    ntsu::PacketFilter::Program program;
+    ntsu::PacketUtil::acceptAll(&program);
+
+    const bool accept = PacketUtilTest::execute(program, packetBuffer);
+    NTSCFG_TEST_TRUE(accept);
 }
 
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyFilterDefault)
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLoopbackRejectAll)
 {
-}
+    ntsa::Error error;
 
-#endif
+    ntsa::Adapter adapter;
+    if (!PacketUtilTest::discoverLoopback(&adapter)) {
+        return;
+    }
+
+    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
+        PacketUtilTest::createPacketFactory();
+
+    bsl::shared_ptr<ntsa::Packet> packet =
+        createPacket(adapter, packetFactory);
+
+    bdlbb::BlobBuffer packetBuffer;
+    PacketUtilTest::encodePacket(&packetBuffer,
+                                 packet,
+                                 packetFactory,
+                                 ntsa::DeviceType::e_LOCAL);
+
+    ntsu::PacketFilter::Program program;
+    ntsu::PacketUtil::rejectAll(&program);
+
+    const bool accept = PacketUtilTest::execute(program, packetBuffer);
+    NTSCFG_TEST_FALSE(accept);
+}
 
 }  // close namespace ntsu
 }  // close namespace BloombergLP

@@ -34,7 +34,7 @@ bool PacketFilter::equals(const PacketFilter& other) const
            d_destinationEthernetAddress ==
                other.d_destinationEthernetAddress &&
            d_destinationIpv4Address == other.d_destinationIpv4Address &&
-            d_destinationIpv6Address == other.d_destinationIpv6Address &&
+           d_destinationIpv6Address == other.d_destinationIpv6Address &&
            d_destinationTcpPort == other.d_destinationTcpPort &&
            d_destinationUdpPort == other.d_destinationUdpPort &&
            d_flags == other.d_flags;
@@ -134,8 +134,8 @@ bool PacketFilter::less(const PacketFilter& other) const
 }
 
 bsl::ostream& PacketFilter::print(bsl::ostream& stream,
-                                          int           level,
-                                          int           spacesPerLevel) const
+                                  int           level,
+                                  int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
@@ -149,12 +149,14 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
                                d_sourceEthernetAddress);
     }
 
-    if (d_sourceIpv4Address.has_value()) {
-        printer.printAttribute("sourceIpv4Address", d_sourceIpv4Address.value());
+    if (d_sourceIpv4Address.size() > 0) {
+        printer.printAttribute("sourceIpv4Address",
+                               d_sourceIpv4Address);
     }
 
-    if (d_sourceIpv6Address.has_value()) {
-        printer.printAttribute("sourceIpv6Address", d_sourceIpv6Address.value());
+    if (d_sourceIpv6Address.size() > 0) {
+        printer.printAttribute("sourceIpv6Address",
+                               d_sourceIpv6Address);
     }
 
     if (d_sourceTcpPort.size() > 0) {
@@ -170,24 +172,22 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
                                d_destinationEthernetAddress);
     }
 
-    if (d_destinationIpv4Address.has_value()) {
+    if (d_destinationIpv4Address.size() > 0) {
         printer.printAttribute("destinationIpv4Address",
-                               d_destinationIpv4Address.value());
+                               d_destinationIpv4Address);
     }
 
-    if (d_destinationIpv6Address.has_value()) {
+    if (d_destinationIpv6Address.size() > 0) {
         printer.printAttribute("destinationIpv6Address",
-                               d_destinationIpv6Address.value());
+                               d_destinationIpv6Address);
     }
 
     if (d_destinationTcpPort.size() > 0) {
-        printer.printAttribute("destinationTcpPort",
-                               d_destinationTcpPort);
+        printer.printAttribute("destinationTcpPort", d_destinationTcpPort);
     }
 
     if (d_destinationUdpPort.size() > 0) {
-        printer.printAttribute("destinationUdpPort",
-                               d_destinationUdpPort);
+        printer.printAttribute("destinationUdpPort", d_destinationUdpPort);
     }
 
     if (d_flags != 0) {

@@ -36,6 +36,16 @@ namespace ntsu {
 // Provide tests for 'ntsu::DeviceUtil'.
 class DeviceUtilTest
 {
+    /// Discover the loopback device and load its adapter into the specified
+    /// 'result'. Return true if such a loopback device is found, and false
+    /// otherwise.
+    static bool discoverLoopback(ntsa::Adapter* result);
+
+    /// Discover the default device and load its adapter into the specified
+    /// 'result'. Return true if such a default device is found, and false
+    /// otherwise.
+    static bool discoverDefault(ntsa::Adapter* result);
+
     // Return a packet created through the specified 'packetFactory' from the
     // specified 'adapter' to that same 'adapter'.
     static bsl::shared_ptr<ntsa::Packet> createPacket(
@@ -73,6 +83,42 @@ class DeviceUtilTest
     // network interface.
     static void verifyDefault();
 };
+
+bool DeviceUtilTest::discoverLoopback(ntsa::Adapter* result)
+{
+    bsl::vector<ntsa::Adapter> adapterList;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterList);
+
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& candidateAdapter = adapterList[i];
+        if (candidateAdapter.ipv4Address().has_value()) {
+            if (candidateAdapter.ipv4Address().value().isLoopback()) {
+                *result = candidateAdapter;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool DeviceUtilTest::discoverDefault(ntsa::Adapter* result)
+{
+    bsl::vector<ntsa::Adapter> adapterList;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterList);
+
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& candidateAdapter = adapterList[i];
+        if (candidateAdapter.ipv4Address().has_value()) {
+            if (!candidateAdapter.ipv4Address().value().isLoopback()) {
+                *result = candidateAdapter;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 bsl::shared_ptr<ntsa::Packet> DeviceUtilTest::createPacket(
     const ntsa::Adapter&                        adapter,
@@ -415,25 +461,12 @@ NTSCFG_TEST_FUNCTION(ntsu::DeviceUtilTest::verifyLoopback)
         return;
     }
 
-    bdlb::NullableValue<ntsa::Adapter> adapter;
-    {
-        bsl::vector<ntsa::Adapter> adapterList;
-        ntsu::AdapterUtil::discoverAdapterList(&adapterList);
-
-        for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
-            const ntsa::Adapter& candidateAdapter = adapterList[i];
-            if (candidateAdapter.ipv4Address().has_value()) {
-                if (candidateAdapter.ipv4Address().value().isLoopback()) {
-                    adapter = candidateAdapter;
-                    break;
-                }
-            }
-        }
+    ntsa::Adapter adapter;
+    if (!DeviceUtilTest::discoverLoopback(&adapter)) {
+        return;
     }
 
-    if (adapter.has_value()) {
-        DeviceUtilTest::verifyAdapter(adapter.value());
-    }
+    DeviceUtilTest::verifyAdapter(adapter);
 }
 
 NTSCFG_TEST_FUNCTION(ntsu::DeviceUtilTest::verifyDefault)
@@ -444,25 +477,12 @@ NTSCFG_TEST_FUNCTION(ntsu::DeviceUtilTest::verifyDefault)
         return;
     }
 
-    bdlb::NullableValue<ntsa::Adapter> adapter;
-    {
-        bsl::vector<ntsa::Adapter> adapterList;
-        ntsu::AdapterUtil::discoverAdapterList(&adapterList);
-
-        for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
-            const ntsa::Adapter& candidateAdapter = adapterList[i];
-            if (candidateAdapter.ipv4Address().has_value()) {
-                if (!candidateAdapter.ipv4Address().value().isLoopback()) {
-                    adapter = candidateAdapter;
-                    break;
-                }
-            }
-        }
+    ntsa::Adapter adapter;
+    if (!DeviceUtilTest::discoverDefault(&adapter)) {
+        return;
     }
 
-    if (adapter.has_value()) {
-        DeviceUtilTest::verifyAdapter(adapter.value());
-    }
+    DeviceUtilTest::verifyAdapter(adapter);
 }
 
 }  // close namespace ntsu
