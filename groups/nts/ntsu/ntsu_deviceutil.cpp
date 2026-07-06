@@ -907,7 +907,7 @@ ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
     int         rc;
 
     ntsu::PacketFilter::Program program;
-    error = ntsu::PacketUtil::compile(&program, deviceType, adapter, filter);
+    error = ntsu::PacketUtil::compile(&program, deviceType, filter);
     if (error) {
         BALL_LOG_ERROR << "Failed to compiler packet filter program: " << error
                        << BALL_LOG_END;

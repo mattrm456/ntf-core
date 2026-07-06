@@ -372,7 +372,6 @@ class PacketUtil
     /// Return the error.
     static ntsa::Error compile(PacketFilter::Program*    program,
                                ntsa::DeviceType::Value   deviceType,
-                               const ntsa::Adapter&      adapter,
                                const ntsa::PacketFilter& filter);
 
     /// Load into the specified 'program' a program to accept all packets.

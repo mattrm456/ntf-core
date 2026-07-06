@@ -88,24 +88,8 @@ class PacketUtilTest
 {
     BALL_LOG_SET_CLASS_CATEGORY("NTSU.PACKETUTIL.TEST");
 
-    // Discover the loopback device and load its adapter into the specified
-    // 'result'. Return true if such a loopback device is found, and false
-    // otherwise.
-    static bool discoverLoopback(ntsa::Adapter* result);
-
-    // Discover the default device and load its adapter into the specified
-    // 'result'. Return true if such a default device is found, and false
-    // otherwise.
-    static bool discoverDefault(ntsa::Adapter* result);
-
     // Return a packet factory.
     static bsl::shared_ptr<ntsa::PacketFactory> createPacketFactory();
-
-    // Return a packet created through the specified 'packetFactory' from the
-    // specified 'adapter' to that same 'adapter'.
-    static bsl::shared_ptr<ntsa::Packet> createPacket(
-        const ntsa::Adapter&                        adapter,
-        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory);
 
     // Load into the specified 'result' the encoding of the specified 'packet'
     // created through the specified 'packetFactory' suitable for filtering
@@ -122,14 +106,20 @@ class PacketUtilTest
     static bool execute(const ntsu::PacketFilter::Program& program,
                         const bdlbb::BlobBuffer&           packetData);
 
-    // Verify the specified 'packetFilter' for the specified 'adapter' of the
-    // specified 'deviceType' returns the specified expected 'result' when run
-    // on the specified 'packet' created through the specified 'packetFactory'.
+    // Verify the specified 'packetFilter' for the specified 'deviceType'
+    // returns the specified expected 'result' when run on the specified
+    // 'packet' created through the specified 'packetFactory'.
     static void verifyFilter(
         const bsl::shared_ptr<ntsa::Packet>&        packet,
         const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
         const ntsa::PacketFilter&                   packetFilter,
-        const ntsa::Adapter&                        adapter,
+        ntsa::DeviceType::Value                     deviceType,
+        bool                                        result);
+
+    static void verifyFilter(
+        const bsl::shared_ptr<ntsa::Packet>&        packet,
+        const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+        const ntsu::PacketFilter::Program&          packetFilterProgram,
         ntsa::DeviceType::Value                     deviceType,
         bool                                        result);
 
@@ -138,12 +128,6 @@ class PacketUtilTest
     // and/or thirdparty libraries.
     static void verifyConstants();
 
-    // Verify a program that accepts all Ethernet packets.
-    static void verifyEthernetAcceptAll();
-
-    // Verify a program that rejects all Ethernet packets.
-    static void verifyEthernetRejectAll();
-
     // Verify a program that conditionally accepts or rejects TCP/IPv4 Ethernet
     // packets.
     static void verifyEthernetIpv4Tcp();
@@ -151,49 +135,7 @@ class PacketUtilTest
     // Verify a program that conditionally accepts or rejects UDP/IPv4 Ethernet
     // packets.
     static void verifyEthernetIpv4Udp();
-
-    // Verify a program that accepts all loopback packets.
-    static void verifyLoopbackAcceptAll();
-
-    // Verify a program that rejects all loopback packets.
-    static void verifyLoopbackRejectAll();
 };
-
-bool PacketUtilTest::discoverLoopback(ntsa::Adapter* result)
-{
-    bsl::vector<ntsa::Adapter> adapterList;
-    ntsu::AdapterUtil::discoverAdapterList(&adapterList);
-
-    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
-        const ntsa::Adapter& candidateAdapter = adapterList[i];
-        if (candidateAdapter.ipv4Address().has_value()) {
-            if (candidateAdapter.ipv4Address().value().isLoopback()) {
-                *result = candidateAdapter;
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-bool PacketUtilTest::discoverDefault(ntsa::Adapter* result)
-{
-    bsl::vector<ntsa::Adapter> adapterList;
-    ntsu::AdapterUtil::discoverAdapterList(&adapterList);
-
-    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
-        const ntsa::Adapter& candidateAdapter = adapterList[i];
-        if (candidateAdapter.ipv4Address().has_value()) {
-            if (!candidateAdapter.ipv4Address().value().isLoopback()) {
-                *result = candidateAdapter;
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
 
 bsl::shared_ptr<ntsa::PacketFactory> PacketUtilTest::createPacketFactory()
 {
@@ -204,57 +146,6 @@ bsl::shared_ptr<ntsa::PacketFactory> PacketUtilTest::createPacketFactory()
                              NTSCFG_TEST_ALLOCATOR);
 
     return packetPool;
-}
-
-bsl::shared_ptr<ntsa::Packet> PacketUtilTest::createPacket(
-    const ntsa::Adapter&                        adapter,
-    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
-{
-    bsl::shared_ptr<ntsa::Packet> packet;
-    packetFactory->createOutgoingPacket(&packet);
-
-    ntsa::EthernetPacket& ethernet = packet->makeEthernet();
-
-    ntsa::EthernetAddress sourceEthernetAddress;
-    ntsa::EthernetAddress destinationEthernetAddress;
-
-    sourceEthernetAddress.parse(adapter.ethernetAddress());
-    destinationEthernetAddress.parse(adapter.ethernetAddress());
-
-    ethernet.header().setSource(sourceEthernetAddress);
-    ethernet.header().setDestination(destinationEthernetAddress);
-
-    ethernet.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
-
-    ntsa::Ipv4Packet& ipv4 = ethernet.payload().makeIpv4();
-
-    ntsa::Ipv4Address sourceIpv4Address      = adapter.ipv4Address().value();
-    ntsa::Ipv4Address destinationIpv4Address = adapter.ipv4Address().value();
-
-    ipv4.header().setSourceAddress(sourceIpv4Address);
-    ipv4.header().setDestinationAddress(destinationIpv4Address);
-
-    ipv4.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_UDP);
-    ipv4.header().setId(1);
-    ipv4.header().setPreserve(true);
-
-    ntsa::UdpPacket& udp = ipv4.payload().makeUdp();
-
-    const ntsa::Port sourceUdpPort      = 3001;
-    const ntsa::Port destinationUdpPort = 4001;
-
-    udp.header().setSourcePort(sourceUdpPort);
-    udp.header().setDestinationPort(destinationUdpPort);
-
-    bdlbb::BlobBuffer payload;
-    packetFactory->createOutgoingBlobBuffer(&payload);
-
-    NTSCFG_MEMORY_COPY(payload.data(), "Hello, world!", 13);
-    payload.setSize(13);
-
-    udp.setPayload(payload);
-
-    return packet;
 }
 
 void PacketUtilTest::encodePacket(
@@ -384,7 +275,34 @@ void PacketUtilTest::verifyFilter(
     const bsl::shared_ptr<ntsa::Packet>&        packet,
     const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
     const ntsa::PacketFilter&                   packetFilter,
-    const ntsa::Adapter&                        adapter,
+    ntsa::DeviceType::Value                     deviceType,
+    bool                                        result)
+{
+    BALL_LOG_INFO << "Filtering packet " << packet << " through filter "
+                  << packetFilter << BALL_LOG_END;
+
+    ntsa::Error error;
+
+    bdlbb::BlobBuffer packetBuffer;
+    PacketUtilTest::encodePacket(&packetBuffer,
+                                 packet,
+                                 packetFactory,
+                                 deviceType);
+
+    ntsu::PacketFilter::Program program;
+    error = ntsu::PacketUtil::compile(&program, deviceType, packetFilter);
+    NTSCFG_TEST_OK(error);
+
+    const bool expected = result;
+    const bool found    = PacketUtilTest::execute(program, packetBuffer);
+
+    NTSCFG_TEST_EQ(found, expected);
+}
+
+void PacketUtilTest::verifyFilter(
+    const bsl::shared_ptr<ntsa::Packet>&        packet,
+    const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
+    const ntsu::PacketFilter::Program&          packetFilterProgram,
     ntsa::DeviceType::Value                     deviceType,
     bool                                        result)
 {
@@ -396,13 +314,9 @@ void PacketUtilTest::verifyFilter(
                                  packetFactory,
                                  deviceType);
 
-    ntsu::PacketFilter::Program program;
-    error =
-        ntsu::PacketUtil::compile(&program, deviceType, adapter, packetFilter);
-    NTSCFG_TEST_OK(error);
-
     const bool expected = result;
-    const bool found    = PacketUtilTest::execute(program, packetBuffer);
+    const bool found =
+        PacketUtilTest::execute(packetFilterProgram, packetBuffer);
 
     NTSCFG_TEST_EQ(found, expected);
 }
@@ -457,101 +371,54 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyConstants)
 #endif
 }
 
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetAcceptAll)
-{
-    ntsa::Error error;
-
-    ntsa::Adapter adapter;
-    if (!PacketUtilTest::discoverDefault(&adapter)) {
-        return;
-    }
-
-    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
-        PacketUtilTest::createPacketFactory();
-
-    bsl::shared_ptr<ntsa::Packet> packet =
-        createPacket(adapter, packetFactory);
-
-    bdlbb::BlobBuffer packetBuffer;
-    PacketUtilTest::encodePacket(&packetBuffer,
-                                 packet,
-                                 packetFactory,
-                                 ntsa::DeviceType::e_ETHERNET);
-
-    ntsu::PacketFilter::Program program;
-    ntsu::PacketUtil::acceptAll(&program);
-
-    const bool accept = PacketUtilTest::execute(program, packetBuffer);
-    NTSCFG_TEST_TRUE(accept);
-}
-
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetRejectAll)
-{
-    ntsa::Error error;
-
-    ntsa::Adapter adapter;
-    if (!PacketUtilTest::discoverDefault(&adapter)) {
-        return;
-    }
-
-    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
-        PacketUtilTest::createPacketFactory();
-
-    bsl::shared_ptr<ntsa::Packet> packet =
-        createPacket(adapter, packetFactory);
-
-    bdlbb::BlobBuffer packetBuffer;
-    PacketUtilTest::encodePacket(&packetBuffer,
-                                 packet,
-                                 packetFactory,
-                                 ntsa::DeviceType::e_ETHERNET);
-
-    ntsu::PacketFilter::Program program;
-    ntsu::PacketUtil::rejectAll(&program);
-
-    const bool accept = PacketUtilTest::execute(program, packetBuffer);
-    NTSCFG_TEST_FALSE(accept);
-}
-
 NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 {
     ntsa::Error error;
 
-    ntsa::Adapter adapter;
-    if (!PacketUtilTest::discoverDefault(&adapter)) {
-        return;
-    }
+    const ntsa::DeviceType::Value deviceType = ntsa::DeviceType::e_ETHERNET;
 
-    if (adapter.ipv4Address().isNull()) {
-        return;
-    }
+    const ntsa::EthernetAddress sourceEthernetAddressA("1a:b2:c3:d4:5e:f6");
 
-    const ntsa::EthernetAddress sourceEthernetAddress(
-        adapter.ethernetAddress());
+    const ntsa::EthernetAddress sourceEthernetAddressB("2b:2f:57:57:11:65");
 
-    const ntsa::Ipv4Address sourceIpv4Address = adapter.ipv4Address().value();
+    const ntsa::EthernetAddress sourceEthernetAddressC("3c:c9:0c:06:8d:0a");
 
-    const ntsa::Port sourceTcpPort = 32767;
+    const ntsa::Ipv4Address sourceIpv4AddressA("192.168.1.100");
+    const ntsa::Ipv4Address sourceIpv4AddressB("192.168.1.101");
+    const ntsa::Ipv4Address sourceIpv4AddressC("192.168.1.102");
 
-    const ntsa::EthernetAddress destinationEthernetAddress(
-        adapter.ethernetAddress());
+    const ntsa::Port sourceTcpPortA = 40000;
+    const ntsa::Port sourceTcpPortB = 40001;
+    const ntsa::Port sourceTcpPortC = 40002;
 
-    const ntsa::Ipv4Address destinationIpv4Address =
-        adapter.ipv4Address().value();
+    const ntsa::EthernetAddress destinationEthernetAddressA(
+        "4a:2b:3c:4d:5e:6f");
 
-    const ntsa::Port destinationTcpPort = 80;
+    const ntsa::EthernetAddress destinationEthernetAddressB(
+        "5b:88:4f:2b:c5:dd");
+
+    const ntsa::EthernetAddress destinationEthernetAddressC(
+        "6c:3e:1a:6f:44:c3");
+
+    const ntsa::Ipv4Address destinationIpv4AddressA("10.0.1.200");
+    const ntsa::Ipv4Address destinationIpv4AddressB("10.0.1.201");
+    const ntsa::Ipv4Address destinationIpv4AddressC("10.0.1.202");
+
+    const ntsa::Port destinationTcpPortA = 80;
+    const ntsa::Port destinationTcpPortB = 81;
+    const ntsa::Port destinationTcpPortC = 82;
 
     bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
         PacketUtilTest::createPacketFactory();
 
     bsl::shared_ptr<ntsa::Packet> packet =
         ntsu::PacketUtil::createTcp(packetFactory,
-                                    sourceEthernetAddress,
-                                    sourceIpv4Address,
-                                    sourceTcpPort,
-                                    destinationEthernetAddress,
-                                    destinationIpv4Address,
-                                    destinationTcpPort);
+                                    sourceEthernetAddressA,
+                                    sourceIpv4AddressA,
+                                    sourceTcpPortA,
+                                    destinationEthernetAddressA,
+                                    destinationIpv4AddressA,
+                                    destinationTcpPortA);
 
     bdlbb::BlobBuffer payload;
     packetFactory->createOutgoingBlobBuffer(&payload);
@@ -561,25 +428,632 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     packet->ethernet().payload().ipv4().payload().tcp().setPayload(payload);
 
-    bsl::vector<ntsa::EthernetAddress> destinationEthernetAddressVector;
+    {
+        ntsu::PacketFilter::Program program;
+        ntsu::PacketUtil::acceptAll(&program);
 
+        verifyFilter(packet, packetFactory, program, deviceType, true);
+    }
 
     {
-        ntsa::PacketFilter packetFilter;
-        packetFilter.addPacketType(ntsa::PacketType::e_IPV4);
-        packetFilter.addPacketType(ntsa::PacketType::e_TCP);
+        ntsu::PacketFilter::Program program;
+        ntsu::PacketUtil::rejectAll(&program);
 
-        packetFilter.addDestinationEthernetAddress(destinationEthernetAddress);
+        verifyFilter(packet, packetFactory, program, deviceType, false);
+    }
 
-        packetFilter.addDestinationEthernetAddress(
+    {
+        ntsa::PacketFilter filter;
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Reject: packet type missing IPv4
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV6);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(
             ntsa::EthernetAddress::broadcast());
 
-        PacketUtilTest::verifyFilter(packet,
-                                     packetFactory,
-                                     packetFilter,
-                                     adapter,
-                                     ntsa::DeviceType::e_ETHERNET,
-                                     true);
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Reject: packet type missing TCP
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(
+            ntsa::EthernetAddress::broadcast());
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: source Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Reject: source Ethernet address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: destination Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Reject: destination Ethernet address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: source TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceTcpPort(sourceTcpPortA);
+        filter.addSourceTcpPort(sourceTcpPortB);
+        filter.addSourceTcpPort(sourceTcpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceTcpPort(sourceTcpPortA);
+        filter.addSourceTcpPort(sourceTcpPortB);
+        filter.addSourceTcpPort(sourceTcpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceTcpPort(sourceTcpPortB);
+        filter.addSourceTcpPort(sourceTcpPortC);
+        filter.addSourceTcpPort(sourceTcpPortA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceTcpPort(sourceTcpPortC);
+        filter.addSourceTcpPort(sourceTcpPortA);
+        filter.addSourceTcpPort(sourceTcpPortB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source TCP port does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceTcpPort(sourceTcpPortB);
+        filter.addSourceTcpPort(sourceTcpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: destination TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addDestinationTcpPort(destinationTcpPortA);
+        filter.addDestinationTcpPort(destinationTcpPortB);
+        filter.addDestinationTcpPort(destinationTcpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationTcpPort(destinationTcpPortA);
+        filter.addDestinationTcpPort(destinationTcpPortB);
+        filter.addDestinationTcpPort(destinationTcpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationTcpPort(destinationTcpPortB);
+        filter.addDestinationTcpPort(destinationTcpPortC);
+        filter.addDestinationTcpPort(destinationTcpPortA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination TCP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationTcpPort(destinationTcpPortC);
+        filter.addDestinationTcpPort(destinationTcpPortA);
+        filter.addDestinationTcpPort(destinationTcpPortB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination TCP port does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationTcpPort(destinationTcpPortB);
+        filter.addDestinationTcpPort(destinationTcpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
     }
 }
 
@@ -587,100 +1061,686 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 {
     ntsa::Error error;
 
-    ntsa::Adapter adapter;
-    if (!PacketUtilTest::discoverDefault(&adapter)) {
-        return;
-    }
+    const ntsa::DeviceType::Value deviceType = ntsa::DeviceType::e_ETHERNET;
+
+    const ntsa::EthernetAddress sourceEthernetAddressA("1a:b2:c3:d4:5e:f6");
+
+    const ntsa::EthernetAddress sourceEthernetAddressB("2b:2f:57:57:11:65");
+
+    const ntsa::EthernetAddress sourceEthernetAddressC("3c:c9:0c:06:8d:0a");
+
+    const ntsa::Ipv4Address sourceIpv4AddressA("192.168.1.100");
+    const ntsa::Ipv4Address sourceIpv4AddressB("192.168.1.101");
+    const ntsa::Ipv4Address sourceIpv4AddressC("192.168.1.102");
+
+    const ntsa::Port sourceUdpPortA = 40000;
+    const ntsa::Port sourceUdpPortB = 40001;
+    const ntsa::Port sourceUdpPortC = 40002;
+
+    const ntsa::EthernetAddress destinationEthernetAddressA(
+        "4a:2b:3c:4d:5e:6f");
+
+    const ntsa::EthernetAddress destinationEthernetAddressB(
+        "5b:88:4f:2b:c5:dd");
+
+    const ntsa::EthernetAddress destinationEthernetAddressC(
+        "6c:3e:1a:6f:44:c3");
+
+    const ntsa::Ipv4Address destinationIpv4AddressA("10.0.1.200");
+    const ntsa::Ipv4Address destinationIpv4AddressB("10.0.1.201");
+    const ntsa::Ipv4Address destinationIpv4AddressC("10.0.1.202");
+
+    const ntsa::Port destinationUdpPortA = 80;
+    const ntsa::Port destinationUdpPortB = 81;
+    const ntsa::Port destinationUdpPortC = 82;
 
     bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
         PacketUtilTest::createPacketFactory();
 
     bsl::shared_ptr<ntsa::Packet> packet =
-        createPacket(adapter, packetFactory);
+        ntsu::PacketUtil::createUdp(packetFactory,
+                                    sourceEthernetAddressA,
+                                    sourceIpv4AddressA,
+                                    sourceUdpPortA,
+                                    destinationEthernetAddressA,
+                                    destinationIpv4AddressA,
+                                    destinationUdpPortA);
 
-    bdlbb::BlobBuffer packetBuffer;
+    bdlbb::BlobBuffer payload;
+    packetFactory->createOutgoingBlobBuffer(&payload);
 
-    PacketUtilTest::encodePacket(&packetBuffer,
-                                 packet,
-                                 packetFactory,
-                                 ntsa::DeviceType::e_ETHERNET);
+    NTSCFG_MEMORY_COPY(payload.data(), "Hello, world!", 13);
+    payload.setSize(13);
+
+    packet->ethernet().payload().ipv4().payload().udp().setPayload(payload);
 
     {
-        ntsa::PacketFilter packetFilter;
-        packetFilter.addPacketType(ntsa::PacketType::e_IPV4);
-        packetFilter.addPacketType(ntsa::PacketType::e_UDP);
+        ntsu::PacketFilter::Program program;
+        ntsu::PacketUtil::acceptAll(&program);
 
-        packetFilter.addDestinationEthernetAddress(
-            ntsa::EthernetAddress(adapter.ethernetAddress()));
-        packetFilter.addDestinationEthernetAddress(
+        verifyFilter(packet, packetFactory, program, deviceType, true);
+    }
+
+    {
+        ntsu::PacketFilter::Program program;
+        ntsu::PacketUtil::rejectAll(&program);
+
+        verifyFilter(packet, packetFactory, program, deviceType, false);
+    }
+
+    {
+        ntsa::PacketFilter filter;
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Reject: packet type missing IPv4
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV6);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(
             ntsa::EthernetAddress::broadcast());
 
-        ntsu::PacketFilter::Program program;
-        error = ntsu::PacketUtil::compile(&program,
-                                          ntsa::DeviceType::e_ETHERNET,
-                                          adapter,
-                                          packetFilter);
-        NTSCFG_TEST_OK(error);
-
-        const bool accept = PacketUtilTest::execute(program, packetBuffer);
-        NTSCFG_TEST_TRUE(accept);
-    }
-}
-
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLoopbackAcceptAll)
-{
-    ntsa::Error error;
-
-    ntsa::Adapter adapter;
-    if (!PacketUtilTest::discoverLoopback(&adapter)) {
-        return;
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
     }
 
-    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
-        PacketUtilTest::createPacketFactory();
+    // Reject: packet type missing UDP
 
-    bsl::shared_ptr<ntsa::Packet> packet =
-        createPacket(adapter, packetFactory);
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_TCP);
 
-    bdlbb::BlobBuffer packetBuffer;
-    PacketUtilTest::encodePacket(&packetBuffer,
-                                 packet,
-                                 packetFactory,
-                                 ntsa::DeviceType::e_LOCAL);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
 
-    ntsu::PacketFilter::Program program;
-    ntsu::PacketUtil::acceptAll(&program);
+        filter.addDestinationEthernetAddress(
+            ntsa::EthernetAddress::broadcast());
 
-    const bool accept = PacketUtilTest::execute(program, packetBuffer);
-    NTSCFG_TEST_TRUE(accept);
-}
-
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLoopbackRejectAll)
-{
-    ntsa::Error error;
-
-    ntsa::Adapter adapter;
-    if (!PacketUtilTest::discoverLoopback(&adapter)) {
-        return;
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
     }
 
-    bsl::shared_ptr<ntsa::PacketFactory> packetFactory =
-        PacketUtilTest::createPacketFactory();
+    // Accept: source Ethernet address match
 
-    bsl::shared_ptr<ntsa::Packet> packet =
-        createPacket(adapter, packetFactory);
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
 
-    bdlbb::BlobBuffer packetBuffer;
-    PacketUtilTest::encodePacket(&packetBuffer,
-                                 packet,
-                                 packetFactory,
-                                 ntsa::DeviceType::e_LOCAL);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
 
-    ntsu::PacketFilter::Program program;
-    ntsu::PacketUtil::rejectAll(&program);
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
 
-    const bool accept = PacketUtilTest::execute(program, packetBuffer);
-    NTSCFG_TEST_FALSE(accept);
+    // Accept: source Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Reject: source Ethernet address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: destination Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination Ethernet address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Reject: destination Ethernet address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source IPv4 address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination IPv4 address does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: source UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceUdpPort(sourceUdpPortA);
+        filter.addSourceUdpPort(sourceUdpPortB);
+        filter.addSourceUdpPort(sourceUdpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceUdpPort(sourceUdpPortA);
+        filter.addSourceUdpPort(sourceUdpPortB);
+        filter.addSourceUdpPort(sourceUdpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceUdpPort(sourceUdpPortB);
+        filter.addSourceUdpPort(sourceUdpPortC);
+        filter.addSourceUdpPort(sourceUdpPortA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceUdpPort(sourceUdpPortC);
+        filter.addSourceUdpPort(sourceUdpPortA);
+        filter.addSourceUdpPort(sourceUdpPortB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: source UDP port does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addSourceUdpPort(sourceUdpPortB);
+        filter.addSourceUdpPort(sourceUdpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
+
+    // Accept: destination UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addDestinationUdpPort(destinationUdpPortA);
+        filter.addDestinationUdpPort(destinationUdpPortB);
+        filter.addDestinationUdpPort(destinationUdpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationUdpPort(destinationUdpPortA);
+        filter.addDestinationUdpPort(destinationUdpPortB);
+        filter.addDestinationUdpPort(destinationUdpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationUdpPort(destinationUdpPortB);
+        filter.addDestinationUdpPort(destinationUdpPortC);
+        filter.addDestinationUdpPort(destinationUdpPortA);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination UDP port match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationUdpPort(destinationUdpPortC);
+        filter.addDestinationUdpPort(destinationUdpPortA);
+        filter.addDestinationUdpPort(destinationUdpPortB);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, true);
+    }
+
+    // Accept: destination UDP port does not match
+
+    {
+        ntsa::PacketFilter filter;
+        filter.addPacketType(ntsa::PacketType::e_IPV4);
+        filter.addPacketType(ntsa::PacketType::e_UDP);
+
+        filter.addSourceEthernetAddress(sourceEthernetAddressC);
+        filter.addSourceEthernetAddress(sourceEthernetAddressB);
+        filter.addSourceEthernetAddress(sourceEthernetAddressA);
+
+        filter.addDestinationEthernetAddress(destinationEthernetAddressC);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressB);
+        filter.addDestinationEthernetAddress(destinationEthernetAddressA);
+
+        filter.addSourceIpv4Address(sourceIpv4AddressA);
+        filter.addSourceIpv4Address(sourceIpv4AddressB);
+        filter.addSourceIpv4Address(sourceIpv4AddressC);
+
+        filter.addDestinationIpv4Address(destinationIpv4AddressA);
+        filter.addDestinationIpv4Address(destinationIpv4AddressB);
+        filter.addDestinationIpv4Address(destinationIpv4AddressC);
+
+        filter.addDestinationUdpPort(destinationUdpPortB);
+        filter.addDestinationUdpPort(destinationUdpPortC);
+
+        verifyFilter(packet, packetFactory, filter, deviceType, false);
+    }
 }
 
 }  // close namespace ntsu
