@@ -116,6 +116,9 @@ class PacketUtilTest
         ntsa::DeviceType::Value                     deviceType,
         bool                                        result);
 
+    // Verify the specified 'packetFilterProgram' or the specified 'deviceType'
+    // returns the specified expected 'result' when run on the specified
+    // 'packet' created through the specified 'packetFactory'.
     static void verifyFilter(
         const bsl::shared_ptr<ntsa::Packet>&        packet,
         const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory,
@@ -123,18 +126,42 @@ class PacketUtilTest
         ntsa::DeviceType::Value                     deviceType,
         bool                                        result);
 
+    /// Verify a variety of packet filtering for TCP/IPv4 packets over the
+    /// specified 'deviceType'.
+    static void verifyIpv4Tcp(ntsa::DeviceType::Value deviceType);
+
+    /// Verify a variety of packet filtering for UDP/IPv4 packets over the
+    /// specified 'deviceType'.
+    static void verifyIpv4Udp(ntsa::DeviceType::Value deviceType);
+
   public:
     // Verify constants match the constants defined by the operating system
     // and/or thirdparty libraries.
     static void verifyConstants();
 
-    // Verify a program that conditionally accepts or rejects TCP/IPv4 Ethernet
-    // packets.
+    // Verify programs that conditionally accepts or rejects TCP/IPv4 packets
+    // received by an Ethernet device.
     static void verifyEthernetIpv4Tcp();
 
-    // Verify a program that conditionally accepts or rejects UDP/IPv4 Ethernet
-    // packets.
+    // Verify programs that conditionally accepts or rejects UDP/IPv4 packets
+    // received by an Ethernet device.
     static void verifyEthernetIpv4Udp();
+
+    // Verify programs that conditionally accepts or rejects TCP/IPv4 packets
+    // received by a DLT_NULL loopback device.
+    static void verifyLocalIpv4Tcp();
+
+    // Verify programs that conditionally accepts or rejects UDP/IPv4 packets
+    // received by a DLT_NULL loopback device.
+    static void verifyLocalIpv4Udp();
+
+    // Verify programs that conditionally accepts or rejects TCP/IPv4 packets
+    // received by a DLT_LOOP loopback device.
+    static void verifyLoopbackIpv4Tcp();
+
+    // Verify programs that conditionally accepts or rejects UDP/IPv4 packets
+    // received by a DLT_LOOP loopback device.
+    static void verifyLoopbackIpv4Udp();
 };
 
 bsl::shared_ptr<ntsa::PacketFactory> PacketUtilTest::createPacketFactory()
@@ -321,61 +348,10 @@ void PacketUtilTest::verifyFilter(
     NTSCFG_TEST_EQ(found, expected);
 }
 
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyConstants)
-{
-#if defined(BSLS_PLATFORM_OS_DARWIN)
 
-    NTSCFG_TEST_EQ(NTSU_BPF_LD, BPF_LD);
-    NTSCFG_TEST_EQ(NTSU_BPF_LDX, BPF_LDX);
-    NTSCFG_TEST_EQ(NTSU_BPF_ST, BPF_ST);
-    NTSCFG_TEST_EQ(NTSU_BPF_STX, BPF_STX);
-    NTSCFG_TEST_EQ(NTSU_BPF_ALU, BPF_ALU);
-    NTSCFG_TEST_EQ(NTSU_BPF_JMP, BPF_JMP);
-    NTSCFG_TEST_EQ(NTSU_BPF_RET, BPF_RET);
-    NTSCFG_TEST_EQ(NTSU_BPF_MISC, NTSU_BPF_MISC);
-
-    NTSCFG_TEST_EQ(NTSU_BPF_W, BPF_W);
-    NTSCFG_TEST_EQ(NTSU_BPF_H, BPF_H);
-    NTSCFG_TEST_EQ(NTSU_BPF_B, BPF_B);
-
-    NTSCFG_TEST_EQ(NTSU_BPF_IMM, BPF_IMM);
-    NTSCFG_TEST_EQ(NTSU_BPF_ABS, BPF_ABS);
-    NTSCFG_TEST_EQ(NTSU_BPF_IND, BPF_IND);
-    NTSCFG_TEST_EQ(NTSU_BPF_MEM, BPF_MEM);
-    NTSCFG_TEST_EQ(NTSU_BPF_LEN, BPF_LEN);
-    NTSCFG_TEST_EQ(NTSU_BPF_MSH, BPF_MSH);
-
-    NTSCFG_TEST_EQ(NTSU_BPF_ADD, BPF_ADD);
-    NTSCFG_TEST_EQ(NTSU_BPF_SUB, BPF_SUB);
-    NTSCFG_TEST_EQ(NTSU_BPF_MUL, BPF_MUL);
-    NTSCFG_TEST_EQ(NTSU_BPF_DIV, BPF_DIV);
-    NTSCFG_TEST_EQ(NTSU_BPF_OR, BPF_OR);
-    NTSCFG_TEST_EQ(NTSU_BPF_AND, BPF_AND);
-    NTSCFG_TEST_EQ(NTSU_BPF_LSH, BPF_LSH);
-    NTSCFG_TEST_EQ(NTSU_BPF_RSH, BPF_RSH);
-    NTSCFG_TEST_EQ(NTSU_BPF_NEG, BPF_NEG);
-    NTSCFG_TEST_EQ(NTSU_BPF_JA, BPF_JA);
-    NTSCFG_TEST_EQ(NTSU_BPF_JEQ, BPF_JEQ);
-    NTSCFG_TEST_EQ(NTSU_BPF_JGT, BPF_JGT);
-    NTSCFG_TEST_EQ(NTSU_BPF_JGE, BPF_JGE);
-    NTSCFG_TEST_EQ(NTSU_BPF_JSET, BPF_JSET);
-
-    NTSCFG_TEST_EQ(NTSU_BPF_K, BPF_K);
-    NTSCFG_TEST_EQ(NTSU_BPF_X, BPF_X);
-
-    NTSCFG_TEST_EQ(NTSU_BPF_A, BPF_A);
-
-    NTSCFG_TEST_EQ(NTSU_BPF_TAX, BPF_TAX);
-    NTSCFG_TEST_EQ(NTSU_BPF_TXA, BPF_TXA);
-
-#endif
-}
-
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
+void PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::Value deviceType)
 {
     ntsa::Error error;
-
-    const ntsa::DeviceType::Value deviceType = ntsa::DeviceType::e_ETHERNET;
 
     const ntsa::EthernetAddress sourceEthernetAddressA("1a:b2:c3:d4:5e:f6");
 
@@ -480,6 +456,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Accept: source Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -494,6 +471,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Accept: source Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -508,6 +486,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Accept: source Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -522,6 +501,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Reject: source Ethernet address does not match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -535,6 +515,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Accept: destination Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -549,6 +530,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Accept: destination Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -563,6 +545,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Accept: destination Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -577,6 +560,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
 
     // Reject: destination Ethernet address does not match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1057,11 +1041,9 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
     }
 }
 
-NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
+void PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::Value deviceType)
 {
     ntsa::Error error;
-
-    const ntsa::DeviceType::Value deviceType = ntsa::DeviceType::e_ETHERNET;
 
     const ntsa::EthernetAddress sourceEthernetAddressA("1a:b2:c3:d4:5e:f6");
 
@@ -1166,6 +1148,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Accept: source Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1180,6 +1163,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Accept: source Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1194,6 +1178,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Accept: source Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1208,6 +1193,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Reject: source Ethernet address does not match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1221,6 +1207,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Accept: destination Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1235,6 +1222,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Accept: destination Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1249,6 +1237,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Accept: destination Ethernet address match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1263,6 +1252,7 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
     // Reject: destination Ethernet address does not match
 
+    if (deviceType == ntsa::DeviceType::e_ETHERNET)
     {
         ntsa::PacketFilter filter;
         filter.addPacketType(ntsa::PacketType::e_IPV4);
@@ -1741,6 +1731,86 @@ NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
 
         verifyFilter(packet, packetFactory, filter, deviceType, false);
     }
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyConstants)
+{
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
+    NTSCFG_TEST_EQ(NTSU_BPF_LD, BPF_LD);
+    NTSCFG_TEST_EQ(NTSU_BPF_LDX, BPF_LDX);
+    NTSCFG_TEST_EQ(NTSU_BPF_ST, BPF_ST);
+    NTSCFG_TEST_EQ(NTSU_BPF_STX, BPF_STX);
+    NTSCFG_TEST_EQ(NTSU_BPF_ALU, BPF_ALU);
+    NTSCFG_TEST_EQ(NTSU_BPF_JMP, BPF_JMP);
+    NTSCFG_TEST_EQ(NTSU_BPF_RET, BPF_RET);
+    NTSCFG_TEST_EQ(NTSU_BPF_MISC, NTSU_BPF_MISC);
+
+    NTSCFG_TEST_EQ(NTSU_BPF_W, BPF_W);
+    NTSCFG_TEST_EQ(NTSU_BPF_H, BPF_H);
+    NTSCFG_TEST_EQ(NTSU_BPF_B, BPF_B);
+
+    NTSCFG_TEST_EQ(NTSU_BPF_IMM, BPF_IMM);
+    NTSCFG_TEST_EQ(NTSU_BPF_ABS, BPF_ABS);
+    NTSCFG_TEST_EQ(NTSU_BPF_IND, BPF_IND);
+    NTSCFG_TEST_EQ(NTSU_BPF_MEM, BPF_MEM);
+    NTSCFG_TEST_EQ(NTSU_BPF_LEN, BPF_LEN);
+    NTSCFG_TEST_EQ(NTSU_BPF_MSH, BPF_MSH);
+
+    NTSCFG_TEST_EQ(NTSU_BPF_ADD, BPF_ADD);
+    NTSCFG_TEST_EQ(NTSU_BPF_SUB, BPF_SUB);
+    NTSCFG_TEST_EQ(NTSU_BPF_MUL, BPF_MUL);
+    NTSCFG_TEST_EQ(NTSU_BPF_DIV, BPF_DIV);
+    NTSCFG_TEST_EQ(NTSU_BPF_OR, BPF_OR);
+    NTSCFG_TEST_EQ(NTSU_BPF_AND, BPF_AND);
+    NTSCFG_TEST_EQ(NTSU_BPF_LSH, BPF_LSH);
+    NTSCFG_TEST_EQ(NTSU_BPF_RSH, BPF_RSH);
+    NTSCFG_TEST_EQ(NTSU_BPF_NEG, BPF_NEG);
+    NTSCFG_TEST_EQ(NTSU_BPF_JA, BPF_JA);
+    NTSCFG_TEST_EQ(NTSU_BPF_JEQ, BPF_JEQ);
+    NTSCFG_TEST_EQ(NTSU_BPF_JGT, BPF_JGT);
+    NTSCFG_TEST_EQ(NTSU_BPF_JGE, BPF_JGE);
+    NTSCFG_TEST_EQ(NTSU_BPF_JSET, BPF_JSET);
+
+    NTSCFG_TEST_EQ(NTSU_BPF_K, BPF_K);
+    NTSCFG_TEST_EQ(NTSU_BPF_X, BPF_X);
+
+    NTSCFG_TEST_EQ(NTSU_BPF_A, BPF_A);
+
+    NTSCFG_TEST_EQ(NTSU_BPF_TAX, BPF_TAX);
+    NTSCFG_TEST_EQ(NTSU_BPF_TXA, BPF_TXA);
+
+#endif
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Tcp)
+{
+    PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::e_ETHERNET);
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyEthernetIpv4Udp)
+{
+    PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::e_ETHERNET);
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLocalIpv4Tcp)
+{
+    PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::e_LOCAL);
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLocalIpv4Udp)
+{
+    PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::e_LOCAL);
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLoopbackIpv4Tcp)
+{
+    PacketUtilTest::verifyIpv4Tcp(ntsa::DeviceType::e_LOOPBACK);
+}
+
+NTSCFG_TEST_FUNCTION(ntsu::PacketUtilTest::verifyLoopbackIpv4Udp)
+{
+    PacketUtilTest::verifyIpv4Udp(ntsa::DeviceType::e_LOOPBACK);
 }
 
 }  // close namespace ntsu

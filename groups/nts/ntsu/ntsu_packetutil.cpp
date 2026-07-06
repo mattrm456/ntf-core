@@ -575,26 +575,111 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
     program->clear();
 
-    // This implementation only supports non-loopback Ethernet devices for now.
+    PFS script;
 
     if (deviceType == ntsa::DeviceType::e_LOCAL ||
         deviceType == ntsa::DeviceType::e_LOOPBACK)
     {
-        PacketUtil::acceptAll(program);
-        return ntsa::Error();
+        // Filter the loopback packet.
+
+        PFC::label(&script, "filter-loopback");
+
+        // Load the wire length into the accumulator register.
+
+        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_LEN, 0);
+
+        // The accumulator register into scratch memory to remember the
+        // loopback packet length.
+
+        PFC::compile(&script, NTSU_BPF_ST, k_L2_PACKET_LENGTH);
+
+        // The loopback header is defined by a single 32-bit integer indicating
+        // the protocol. Load the constant layer-2 protocol length into the
+        // accumulator.
+
+        PFC::compile(&script,
+                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_K,
+                     sizeof(bsl::uint32_t));
+
+        // Store the accumulator register into scratch memory to remember the
+        // loopback header length.
+
+        PFC::compile(&script, NTSU_BPF_ST, k_L2_HEADER_LENGTH);
+
+        // Store the accumulator register into scratch memory to remember the
+        // layer-3 header offset.
+
+        PFC::compile(&script, NTSU_BPF_ST, k_L3_HEADER_OFFSET);
+
+        // Load the 4-byte loopback protocol field into the accumulator
+        // register.
+
+        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_ABS, 0);
+
+        if (deviceType == ntsa::DeviceType::e_LOCAL) {
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         BSLS_BYTEORDER_BE_U32_TO_HOST(static_cast<bsl::uint32_t>(AF_INET)),
+                         "filter-loopback-ipv4",
+                         0);
+
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         BSLS_BYTEORDER_BE_U32_TO_HOST(static_cast<bsl::uint32_t>(AF_INET6)),
+                         "filter-loopback-ipv6",
+                         0);
+        }
+        else {
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         static_cast<bsl::uint32_t>(AF_INET),
+                         "filter-loopback-ipv4",
+                         0);
+
+            PFC::compile(&script,
+                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                         static_cast<bsl::uint32_t>(AF_INET),
+                         "filter-loopback-ipv6",
+                         0);
+        }
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+
+        PFC::label(&script, "filter-loopback-ipv4");
+
+        // Load the pseudo-Ethernet protocol into the accumulator register.
+
+        PFC::compile(&script,
+                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_K,
+                     ntsa::EthernetProtocol::e_IPV4);
+
+        // Store the accumulator register into scratch memory to remember the
+        // protocol carried by the pseudo-Ethernet packet.
+
+        PFC::compile(&script, NTSU_BPF_ST, k_L2_PROTOCOL);
+
+        // Unconditionally jump to the IP filter.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "filter-ip");
+
+        PFC::label(&script, "filter-loopback-ipv6");
+
+        // Load the pseudo-Ethernet protocol into the accumulator register.
+
+        PFC::compile(&script,
+                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_K,
+                     ntsa::EthernetProtocol::e_IPV6);
+
+        // Store the accumulator register into scratch memory to remember the
+        // protocol carried by the pseudo-Ethernet packet.
+
+        PFC::compile(&script, NTSU_BPF_ST, k_L2_PROTOCOL);
+
+        // Unconditionally jump to the IP filter.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "filter-ip");
     }
-
-    // This implementation only supports Ethernet link-level packet types.
-
-    if (deviceType != ntsa::DeviceType::e_ETHERNET) {
-        BALL_LOG_ERROR << "Failed to compile packet filter: the device type "
-                       << deviceType << " is not supported" << BALL_LOG_END;
-        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-    }
-
-    PFS script;
-
-    if (deviceType == ntsa::DeviceType::e_ETHERNET) {
+    else if (deviceType == ntsa::DeviceType::e_ETHERNET) {
         // Filter the Ethernet packet.
 
         PFC::label(&script, "filter-ethernet");
@@ -751,8 +836,8 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
         PFC::label(&script, "filter-ethernet-source-address-end");
 
-        // Reject the packet unless its destination Ethernet address is allowed by
-        // the filter.
+        // Reject the packet unless its destination Ethernet address is allowed
+        // by the filter.
 
         PFC::label(&script, "filter-ethernet-destination-address");
 
@@ -817,8 +902,39 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
         PFC::label(&script, "filter-ethernet-protocol");
 
+        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_MEM, k_L2_PROTOCOL);
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::EthernetProtocol::e_IPV4,
+                     "filter-ip",
+                     0);
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::EthernetProtocol::e_IPV6,
+                     "filter-ip",
+                     0);
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::EthernetProtocol::e_ARP,
+                     "filter-arp",
+                     0);
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::EthernetProtocol::e_RARP,
+                     "filter-rarp",
+                     0);
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+
+// MRM
+#if 0
         if (filter.packetType().size() > 0) {
             PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_MEM, k_L2_PROTOCOL);
+
 
             for (bsl::size_t i = 0; i < filter.packetType().size(); ++i) {
                 const ntsa::PacketType::Value packetType =
@@ -855,11 +971,18 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
             }
 
             PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+
         }
+#endif
 
         PFC::label(&script, "filter-ethernet-protocol-end");
 
         PFC::label(&script, "filter-ethernet-end");
+    }
+    else {
+        BALL_LOG_ERROR << "Failed to compile packet filter: the device type "
+                       << deviceType << " is not supported" << BALL_LOG_END;
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
     }
 
     PFC::label(&script, "filter-ip");
@@ -913,209 +1036,240 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 
     PFC::label(&script, "filter-ipv4");
 
-    // Load the IPv4 header version and length into the accumulator register.
-    //
-    // Instruction:
-    //     A = (byte) packet[ethernet_header_length + 0]
-    //
-    // State:
-    //     A = <IPv4 header version and length in 32-bit words>
-    //     X = ipv4_header_offset
+    const bool wantIpv4 =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_IPV4) != filter.packetType().end();
 
-    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_B + NTSU_BPF_IND, 0);
+    if (wantIpv4) {
+        // Load the IPv4 header version and length into the accumulator
+        // register.
+        //
+        // Instruction:
+        //     A = (byte) packet[ethernet_header_length + 0]
+        //
+        // State:
+        //     A = <IPv4 header version and length in 32-bit words>
+        //     X = ipv4_header_offset
 
-    // Mask out everything but the 4-bit header length in the lower nibble by
-    // bitwise and-ing the accumulator register with 0x0F.
-    //
-    // Instruction:
-    //     A = A & 0x0F
-    //
-    // State:
-    //     A = <IPv4 header length in 32-bit words>
-    //     X = ipv4_header_offset
+        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_B + NTSU_BPF_IND, 0);
 
-    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_AND + NTSU_BPF_K, 0x0F);
+        // Mask out everything but the 4-bit header length in the lower nibble
+        // by bitwise and-ing the accumulator register with 0x0F.
+        //
+        // Instruction:
+        //     A = A & 0x0F
+        //
+        // State:
+        //     A = <IPv4 header length in 32-bit words>
+        //     X = ipv4_header_offset
 
-    // Multiply the accumulator register by 4 (since the IPv4 header length
-    // measures 32-bit words) to convert the length from the number of 32-bit
-    // words to the number of bytes.
-    //
-    // Instruction:
-    //     A = A * 4
-    //
-    // State:
-    //     A = <IPv4 header length in bytes>
-    //     X = ipv4_header_offset
+        PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_AND + NTSU_BPF_K, 0x0F);
 
-    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_MUL + NTSU_BPF_K, 4);
+        // Multiply the accumulator register by 4 (since the IPv4 header length
+        // measures 32-bit words) to convert the length from the number of
+        // 32-bit words to the number of bytes.
+        //
+        // Instruction:
+        //     A = A * 4
+        //
+        // State:
+        //     A = <IPv4 header length in bytes>
+        //     X = ipv4_header_offset
 
-    // Store the accumulator register into scratch memory to remember the
-    // IPv4 header length.
-    //
-    // Instruction:
-    //     ip_header_length = A
-    //
-    // State:
-    //     A = <IPv4 header length in bytes>
-    //     X = ipv4_header_offset
+        PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_MUL + NTSU_BPF_K, 4);
 
-    PFC::compile(&script, NTSU_BPF_ST, k_L3_HEADER_LENGTH);
+        // Store the accumulator register into scratch memory to remember the
+        // IPv4 header length.
+        //
+        // Instruction:
+        //     ip_header_length = A
+        //
+        // State:
+        //     A = <IPv4 header length in bytes>
+        //     X = ipv4_header_offset
 
-    // Add the IPv4 header length to the offset to the start of the IPV4 packet
-    // to calculate the offset to the start of the transport header.
+        PFC::compile(&script, NTSU_BPF_ST, k_L3_HEADER_LENGTH);
 
-    PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_ADD + NTSU_BPF_X, 0);
+        // Add the IPv4 header length to the offset to the start of the IPV4
+        // packet to calculate the offset to the start of the transport header.
 
-    // Store the accumulator register into scratch memory to remember the
-    // layer-4 header offset.
+        PFC::compile(&script, NTSU_BPF_ALU + NTSU_BPF_ADD + NTSU_BPF_X, 0);
 
-    PFC::compile(&script, NTSU_BPF_ST, k_L4_HEADER_OFFSET);
+        // Store the accumulator register into scratch memory to remember the
+        // layer-4 header offset.
 
-    // Load the IPv4 packet length into the accumulator register.
+        PFC::compile(&script, NTSU_BPF_ST, k_L4_HEADER_OFFSET);
 
-    PFC::compile(&script,
-                 NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
-                 ntsa::Ipv4Header::k_TOTAL_LENGTH_OFFSET);
-
-    // Store the accumulator register into scratch memory to remember the
-    // protocol carried by the IPv4 packet.
-    //
-    // Instruction:
-    //     ip_header_protocol = A
-    //
-    // State:
-    //     A = <IPv4 packet length>
-    //     X = ipv4_header_offset
-
-    PFC::compile(&script, NTSU_BPF_ST, k_L3_PACKET_LENGTH);
-
-    // Load the protocol carried by the IPv4 packet into the accumulator
-    // register.
-    //
-    // Instruction:
-    //     A = (byte) packet[ipv4_header_offset + 9]
-    //
-    // State:
-    //     A = <IPv4 protocol>
-    //     X = ipv4_header_offset
-
-    PFC::compile(&script,
-                 NTSU_BPF_LD + NTSU_BPF_B + NTSU_BPF_IND,
-                 ntsa::Ipv4Header::k_PROTOCOL_OFFSET);
-
-    // Store the accumulator register into scratch memory to remember the
-    // protocol carried by the IPv4 packet.
-    //
-    // Instruction:
-    //     ip_header_protocol = A
-    //
-    // State:
-    //     A = <IPv4 protocol>
-    //     X = ipv4_header_offset
-
-    PFC::compile(&script, NTSU_BPF_ST, k_L3_PROTOCOL);
-
-    PFC::label(&script, "filter-ipv4-source-address");
-
-    if (filter.sourceIpv4Address().size() > 0) {
-        // Load the 32-bit source IPv4 address from its absolute position inside
-        // an IPv4 packet inside an Ethernet packet.
+        // Load the IPv4 packet length into the accumulator register.
 
         PFC::compile(&script,
-                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
-                     ntsa::Ipv4Header::k_SOURCE_ADDRESS_OFFSET);
+                     NTSU_BPF_LD + NTSU_BPF_H + NTSU_BPF_IND,
+                     ntsa::Ipv4Header::k_TOTAL_LENGTH_OFFSET);
 
-        // Compare with each allowed source IPv4 address.
+        // Store the accumulator register into scratch memory to remember the
+        // protocol carried by the IPv4 packet.
+        //
+        // Instruction:
+        //     ip_header_protocol = A
+        //
+        // State:
+        //     A = <IPv4 packet length>
+        //     X = ipv4_header_offset
 
-        for (bsl::size_t i = 0; i < filter.sourceIpv4Address().size(); ++i) {
-            PFC::compile(&script,
-                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                         BSLS_BYTEORDER_BE_U32_TO_HOST(
-                             filter.sourceIpv4Address()[i].value()),
-                         "filter-ipv4-source-address-end",
-                         0);
-        }
+        PFC::compile(&script, NTSU_BPF_ST, k_L3_PACKET_LENGTH);
 
-        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
-    }
-
-    PFC::label(&script, "filter-ipv4-source-address-end");
-
-    PFC::label(&script, "filter-ipv4-destination-address");
-
-    if (filter.destinationIpv4Address().size() > 0) {
-        // Load the 32-bit destination IPv4 address from its absolute position
-        // inside an IPv4 packet inside an Ethernet packet.
+        // Load the protocol carried by the IPv4 packet into the accumulator
+        // register.
+        //
+        // Instruction:
+        //     A = (byte) packet[ipv4_header_offset + 9]
+        //
+        // State:
+        //     A = <IPv4 protocol>
+        //     X = ipv4_header_offset
 
         PFC::compile(&script,
-                     NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
-                     ntsa::Ipv4Header::k_DESTINATION_ADDRESS_OFFSET);
+                     NTSU_BPF_LD + NTSU_BPF_B + NTSU_BPF_IND,
+                     ntsa::Ipv4Header::k_PROTOCOL_OFFSET);
 
-        // Compare with each allowed destination IPv4 address.
+        // Store the accumulator register into scratch memory to remember the
+        // protocol carried by the IPv4 packet.
+        //
+        // Instruction:
+        //     ip_header_protocol = A
+        //
+        // State:
+        //     A = <IPv4 protocol>
+        //     X = ipv4_header_offset
 
-        for (bsl::size_t i = 0; i < filter.destinationIpv4Address().size();
-             ++i)
-        {
+        PFC::compile(&script, NTSU_BPF_ST, k_L3_PROTOCOL);
+
+        PFC::label(&script, "filter-ipv4-source-address");
+
+        if (filter.sourceIpv4Address().size() > 0) {
+            // Load the 32-bit source IPv4 address from its absolute position
+            // inside an IPv4 packet inside an Ethernet packet.
+
             PFC::compile(&script,
-                         NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                         BSLS_BYTEORDER_BE_U32_TO_HOST(
-                             filter.destinationIpv4Address()[i].value()),
-                         "filter-ipv4-destination-address-end",
-                         0);
+                         NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
+                         ntsa::Ipv4Header::k_SOURCE_ADDRESS_OFFSET);
+
+            // Compare with each allowed source IPv4 address.
+
+            for (bsl::size_t i = 0; i < filter.sourceIpv4Address().size(); ++i)
+            {
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             BSLS_BYTEORDER_BE_U32_TO_HOST(
+                                 filter.sourceIpv4Address()[i].value()),
+                             "filter-ipv4-source-address-end",
+                             0);
+            }
+
+            PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
         }
 
+        PFC::label(&script, "filter-ipv4-source-address-end");
+
+        PFC::label(&script, "filter-ipv4-destination-address");
+
+        if (filter.destinationIpv4Address().size() > 0) {
+            // Load the 32-bit destination IPv4 address from its absolute
+            // position inside an IPv4 packet inside an Ethernet packet.
+
+            PFC::compile(&script,
+                         NTSU_BPF_LD + NTSU_BPF_W + NTSU_BPF_IND,
+                         ntsa::Ipv4Header::k_DESTINATION_ADDRESS_OFFSET);
+
+            // Compare with each allowed destination IPv4 address.
+
+            for (bsl::size_t i = 0; i < filter.destinationIpv4Address().size();
+                 ++i)
+            {
+                PFC::compile(&script,
+                             NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                             BSLS_BYTEORDER_BE_U32_TO_HOST(
+                                 filter.destinationIpv4Address()[i].value()),
+                             "filter-ipv4-destination-address-end",
+                             0);
+            }
+
+            PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+        }
+
+        PFC::label(&script, "filter-ipv4-destination-address-end");
+
+        /// Load the transport protocol into the accumulator register.
+
+        PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_MEM, k_L3_PROTOCOL);
+
+        // Jump to the start of the TCP filter if the protocol carried by the
+        // IPv4 packet is TCP.
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::Ipv4Header::k_PROTOCOL_TCP,
+                     "filter-tcp",
+                     0);
+
+        // Jump to the start of the UDP filter if the protocol carried by the
+        // IPv4 packet is UDP.
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::Ipv4Header::k_PROTOCOL_UDP,
+                     "filter-udp",
+                     0);
+
+        // Jump to the start of the ICMP filter if the protocol carried by the
+        // IPv4 packet is ICMP.
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::Ipv4Header::k_PROTOCOL_ICMP,
+                     "filter-icmp",
+                     0);
+
+        // Jump to the start of the IGMP filter if the protocol carried by the
+        // IPv4 packet is IGMP.
+
+        PFC::compile(&script,
+                     NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
+                     ntsa::Ipv4Header::k_PROTOCOL_ICMP,
+                     "filter-igmp",
+                     0);
+
+        // Otherwise, accept the packet.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+    }
+    else {
         PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
     }
-
-    PFC::label(&script, "filter-ipv4-destination-address-end");
-
-    /// Load the transport protocol into the accumulator register.
-
-    PFC::compile(&script, NTSU_BPF_LD + NTSU_BPF_MEM, k_L3_PROTOCOL);
-
-    // Jump to the start of the TCP filter if the protocol carried by the IPv4
-    // packet is TCP.
-
-    PFC::compile(&script,
-                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                 ntsa::Ipv4Header::k_PROTOCOL_TCP,
-                 "filter-tcp",
-                 0);
-
-    // Jump to the start of the UDP filter if the protocol carried by the IPv4
-    // packet is UDP.
-
-    PFC::compile(&script,
-                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                 ntsa::Ipv4Header::k_PROTOCOL_UDP,
-                 "filter-udp",
-                 0);
-
-    // Jump to the start of the ICMP filter if the protocol carried by the IPv4
-    // packet is ICMP.
-
-    PFC::compile(&script,
-                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                 ntsa::Ipv4Header::k_PROTOCOL_ICMP,
-                 "filter-icmp",
-                 0);
-
-    // Jump to the start of the IGMP filter if the protocol carried by the IPv4
-    // packet is IGMP.
-
-    PFC::compile(&script,
-                 NTSU_BPF_JMP + NTSU_BPF_JEQ + NTSU_BPF_K,
-                 ntsa::Ipv4Header::k_PROTOCOL_ICMP,
-                 "filter-igmp",
-                 0);
-
-    // Otherwise, accept the packet.
-
-    PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
 
     PFC::label(&script, "filter-ipv4-end");
 
     PFC::label(&script, "filter-ipv6");
+
+    const bool wantIpv6 =
+        filter.packetType().empty() ||
+        bsl::find(filter.packetType().begin(),
+                  filter.packetType().end(),
+                  ntsa::PacketType::e_IPV6) != filter.packetType().end();
+
+    if (wantIpv6) {
+        // TODO: Implement a filter for IPv6. This will require a
+        // fixed-capacity, forward-only jump sequence to iterate through the
+        // IPv6 headers until the transport protocol of the IPv6 packet payload
+        // is discovered. Until this is implemented, accept all IPv6 packets.
+
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "accept");
+    }
+    else {
+        PFC::compile(&script, NTSU_BPF_JMP + NTSU_BPF_JA, "reject");
+    }
 
     PFC::label(&script, "filter-ipv4-end");
 
