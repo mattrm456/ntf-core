@@ -159,7 +159,7 @@ namespace ntsu {
         BALL_LOG_TRACE_BLOCK                                                  \
         {                                                                     \
             BALL_LOG_OUTPUT_STREAM                                            \
-                << "BPF device descriptor " << (device)                       \
+                << "Network device descriptor " << (device)                   \
                 << " open [ interface = " << (adapter).name()                 \
                 << " path = " << (path) << " bufferSize = " << (bufferSize)   \
                 << " readTimeout = " << (readTimeout) << " dataLinkType = ";  \
@@ -179,116 +179,178 @@ namespace ntsu {
 
 #define NTSU_DEVICEUTIL_LOG_OPEN_DISABLED()                                   \
     do {                                                                      \
-        BALL_LOG_ERROR << "BPF device driver failed to open: "                \
+        BALL_LOG_ERROR << "Network device failed to open: "                   \
                        << "not enabled for either reading or writing"         \
                        << BALL_LOG_END;                                       \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_OPEN_FAILED(error)                                \
     do {                                                                      \
-        BALL_LOG_ERROR << "BPF device failed to open: " << (error)            \
+        BALL_LOG_ERROR << "Network device failed to open: " << (error)        \
                        << BALL_LOG_END;                                       \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_CLOSE_STARTING(device)                            \
     do {                                                                      \
-        BALL_LOG_TRACE << "BPF device descriptor " << (device)                \
+        BALL_LOG_TRACE << "Network device descriptor " << (device)            \
                        << " close starting" << BALL_LOG_END;                  \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_CLOSE_COMPLETE(device)                            \
     do {                                                                      \
-        BALL_LOG_TRACE << "BPF device descriptor " << (device)                \
+        BALL_LOG_TRACE << "Network device descriptor " << (device)            \
                        << " close complete" << BALL_LOG_END;                  \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_CLOSE_FAILED(device, error)                       \
     do {                                                                      \
-        BALL_LOG_ERROR << "BPF device descriptor " << (device)                \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
                        << " close failed: " << (error) << BALL_LOG_END;       \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_ERROR(device, operation, error)                   \
     do {                                                                      \
-        BALL_LOG_ERROR << "BPF device descriptor " << (device)                \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
                        << " failed to " << (operation) << ": " << (error)     \
                        << BALL_LOG_END;                                       \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(buffer, packet, error)       \
+#define NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(device,                      \
+                                                 buffer,                      \
+                                                 packet,                      \
+                                                 error)                       \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device driver failed to decode packet " << (packet) << ": "    \
-           << (error) << "\n"                                                 \
-           << bdlb::PrintStringHexDumper((buffer).data(), (buffer).size());   \
-                                                                              \
-        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to decode packet " << (packet) << ": "      \
+                       << (error) << "\n"                                     \
+                       << bdlb::PrintStringHexDumper((buffer).data(),         \
+                                                     (buffer).size())         \
+                       << BALL_LOG_END;                                       \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error)               \
+#define NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(device, packet, error)       \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device driver failed to encode packet " << (packet) << ": "    \
-           << (error);                                                        \
-                                                                              \
-        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to encode packet " << (packet) << ": "      \
+                       << (error) << BALL_LOG_END;                            \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(packet, error)                \
+#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device, packet, error)        \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device driver failed to write packet " << (packet) << ": "     \
-           << (error);                                                        \
-                                                                              \
-        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to write packet " << (packet) << ": "       \
+                       << (error) << BALL_LOG_END;                            \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(packet)                   \
+#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(device, packet)           \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device driver failed to write packet " << (packet) << ": EOF"; \
-                                                                              \
-        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to write packet " << (packet) << ": EOF"    \
+                       << BALL_LOG_END;                                       \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(packet,       \
+#define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(device,       \
+                                                                packet,       \
                                                                 buffer,       \
                                                                 bytesSent)    \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device driver failed to write packet " << (packet)             \
-           << ": unexpected number of bytes sent: expected "                  \
-           << (buffer).size() << " but found " << (bytesSent);                \
-                                                                              \
-        BSLS_LOG_ERROR("%s", ss.str().c_str());                               \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to write packet " << (packet)               \
+                       << ": unexpected number of bytes sent: expected "      \
+                       << (buffer).size() << " but found " << (bytesSent);    \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device, packet)              \
+#define NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR(device, error)                \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device descriptor " << (device)                                \
-           << " incoming packet dropped = " << (packet);                      \
-                                                                              \
-        BSLS_LOG_WARN("%s", ss.str().c_str());                                \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to read packet: " << (error)                \
+                       << BALL_LOG_END;                                       \
     } while (false)
 
-#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet)                   \
+#define NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR_EOF(device)                   \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device descriptor " << (device)                                \
-           << " incoming packet = " << (packet);                              \
-                                                                              \
-        BSLS_LOG_DEBUG("%s", ss.str().c_str());                               \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to read packet: EOF" << BALL_LOG_END;       \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_READER_UNEXPECTED_BYTES_RECEIVED(          \
+    device,                                                                   \
+    buffer,                                                                   \
+    bytesReceived)                                                            \
+    do {                                                                      \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << "failed to read packet: unexpected number of "      \
+                          "bytes received: expected at most "                 \
+                       << (buffer).size() << " but found " << (bytesReceived) \
+                       << BALL_LOG_END;                                       \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_READER_BPF_HEADER(device, bpf)             \
+    do {                                                                      \
+        BALL_LOG_TRACE << "Network device descriptor " << (device)            \
+                       << " read packet meta-data "                           \
+                       << "[ caplen = "                                       \
+                       << static_cast<bsl::size_t>((bpf)->bh_caplen)          \
+                       << " datalen = "                                       \
+                       << static_cast<bsl::size_t>((bpf)->bh_datalen)         \
+                       << " hdrlen = "                                        \
+                       << static_cast<bsl::size_t>((bpf)->bh_hdrlen) << " ]"  \
+                       << BALL_LOG_END;                                       \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_READER_BPF_HEADER_INCOHERENT(device, bpf)  \
+    do {                                                                      \
+        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
+                       << " failed to read packet: the captured length "      \
+                       << static_cast<bsl::size_t>((bpf)->bh_caplen)          \
+                       << " does not match the data length "                  \
+                       << static_cast<bsl::size_t>((bpf)->bh_datalen)         \
+                       << BALL_LOG_END;                                       \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_IPV6(device, packetType, buffer)  \
+    do {                                                                      \
+        BALL_LOG_WARN                                                         \
+            << "Network device descriptor " << (device)                       \
+            << " incoming packet dropped: the protocol IPv6 is unsupported\n" \
+            << bdlb::PrintStringHexDumper((buffer).data(), (buffer).size())   \
+            << BALL_LOG_END;                                                  \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_UNKNOWN(device,                   \
+                                                    packetType,               \
+                                                    buffer)                   \
+    do {                                                                      \
+        BALL_LOG_WARN << "Network device descriptor " << (device)             \
+                      << " incoming packet dropped: the protocol "            \
+                      << static_cast<bsl::size_t>(packetType)                 \
+                      << "is unsupported\n"                                   \
+                      << bdlb::PrintStringHexDumper((buffer).data(),          \
+                                                    (buffer).size())          \
+                      << BALL_LOG_END;                                        \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device, packet, buffer)      \
+    do {                                                                      \
+        BALL_LOG_WARN << "Network device descriptor " << (device)             \
+                      << " incoming packet dropped = " << (packet) << ":\n"   \
+                      << bdlb::PrintStringHexDumper((buffer).data(),          \
+                                                    (buffer).size())          \
+                      << BALL_LOG_END;                                        \
+    } while (false)
+
+#define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet, buffer)           \
+    do {                                                                      \
+        BALL_LOG_TRACE << "Network device descriptor " << (device)            \
+                       << " incoming packet = " << (packet) \
+                       << BALL_LOG_END;                                       \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(device, packet, buffer)           \
     do {                                                                      \
-        bsl::stringstream ss;                                                 \
-        ss << "Device descriptor " << (device) << " outgoing packet "         \
-           << (packet) << ":\n"                                               \
-           << bdlb::PrintStringHexDumper((buffer).data(), (buffer).size());   \
-                                                                              \
-        BSLS_LOG_DEBUG("%s", ss.str().c_str());                               \
+        BALL_LOG_TRACE << "Network device descriptor " << (device)            \
+                       << " outgoing packet " << (packet) \
+                       << BALL_LOG_END;                                       \
     } while (false)
 
 /// Provide a private, platform-specific implementation of utilities for
@@ -1117,7 +1179,8 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     if (incoming) {
         error = DeviceUtil::Impl::setReadTimeout(
-            device, bsls::TimeInterval(60, 0));
+            device,
+            bsls::TimeInterval(60 * 60 * 24, 0));
         if (error) {
             return error;
         }
@@ -1139,7 +1202,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     // Configure the visibility of transmitted packets.
 
-    error = DeviceUtil::Impl::setSeeSent(device, loopback);
+    error = DeviceUtil::Impl::setSeeSent(device, true);  // MRM: was: loopback
     if (error) {
         return error;
     }
@@ -1520,7 +1583,9 @@ ntsa::Error DeviceUtil::enqueuePacket(
 
             error = ipv4.encode(&encoderContext, &encoder, encoderOptions);
             if (error) {
-                NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error);
+                NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(device,
+                                                         packet,
+                                                         error);
                 return error;
             }
         }
@@ -1553,7 +1618,9 @@ ntsa::Error DeviceUtil::enqueuePacket(
 
             error = ipv6.encode(&encoderContext, &encoder, encoderOptions);
             if (error) {
-                NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error);
+                NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(device,
+                                                         packet,
+                                                         error);
                 return error;
             }
         }
@@ -1583,15 +1650,16 @@ ntsa::Error DeviceUtil::enqueuePacket(
                 if (error == ntsa::Error(ntsa::Error::e_INTERRUPTED)) {
                     continue;
                 }
-                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(packet, error);
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device, packet, error);
                 return error;
             }
             else if (bytesSent == 0) {
-                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(packet);
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(device, packet);
                 return ntsa::Error(ntsa::Error::e_EOF);
             }
             else if (bytesSent < static_cast<ssize_t>(buffer.size())) {
                 NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    device,
                     packet,
                     buffer,
                     bytesSent);
@@ -1599,6 +1667,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
             }
             else if (bytesSent > static_cast<ssize_t>(buffer.size())) {
                 NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    device,
                     packet,
                     buffer,
                     bytesSent);
@@ -1619,7 +1688,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
 
         error = ethernet.encode(&encoderContext, &encoder, encoderOptions);
         if (error) {
-            NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(packet, error);
+            NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(device, packet, error);
             return error;
         }
 
@@ -1645,15 +1714,16 @@ ntsa::Error DeviceUtil::enqueuePacket(
                 if (error == ntsa::Error(ntsa::Error::e_INTERRUPTED)) {
                     continue;
                 }
-                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(packet, error);
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device, packet, error);
                 return error;
             }
             else if (bytesSent == 0) {
-                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(packet);
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(device, packet);
                 return ntsa::Error(ntsa::Error::e_EOF);
             }
             else if (bytesSent < static_cast<ssize_t>(buffer.size())) {
                 NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    device,
                     packet,
                     buffer,
                     bytesSent);
@@ -1661,6 +1731,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
             }
             else if (bytesSent > static_cast<ssize_t>(buffer.size())) {
                 NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                    device,
                     packet,
                     buffer,
                     bytesSent);
@@ -1687,32 +1758,22 @@ ntsa::Error DeviceUtil::dequeuePacket(
 
     bsl::memset(buffer.data(), 0, static_cast<bsl::size_t>(buffer.size()));
 
-    // MRM
-#if 0
-    BALL_LOG_DEBUG << "BPF device driver read starting" << BALL_LOG_END;
-#endif
-
     ssize_t bytesRead =
         ::read(device, buffer.data(), static_cast<bsl::size_t>(buffer.size()));
 
-    // MRM
-#if 0
-    BALL_LOG_DEBUG << "BPF device driver read complete: rc = " << bytesRead
-                   << BALL_LOG_END;
-#endif
-
     if (bytesRead < 0) {
         error = ntsa::Error::last();
-        BSLS_LOG_ERROR("BPF device driver failed to read packet: %s",
-                       error.text().c_str());
+        NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR(device, error);
         return error;
     }
     else if (bytesRead == 0) {
-        BSLS_LOG_ERROR("BPF device driver failed to read packet: EOF");
+        NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR_EOF(device);
         return ntsa::Error(ntsa::Error::e_EOF);
     }
     else if (bytesRead > static_cast<ssize_t>(buffer.size())) {
-        BSLS_LOG_ERROR("BPF device driver failed to read packet: too long");
+        NTSU_DEVICEUTIL_LOG_PACKET_READER_UNEXPECTED_BYTES_RECEIVED(device,
+                                                                    buffer,
+                                                                    bytesRead);
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
@@ -1727,22 +1788,11 @@ ntsa::Error DeviceUtil::dequeuePacket(
     while (metaFrame < metaFrameEnd) {
         struct bpf_hdr* bpf = reinterpret_cast<struct bpf_hdr*>(metaFrame);
 
-        // MRM
-#if 1
-        BSLS_LOG_TRACE("BPF device read packet meta-data "
-                       "[ caplen = %zu datalen = %zu hdrlen = %zu ]",
-                       static_cast<bsl::size_t>(bpf->bh_caplen),
-                       static_cast<bsl::size_t>(bpf->bh_datalen),
-                       static_cast<bsl::size_t>(bpf->bh_hdrlen));
-#endif
+        // NTSU_DEVICEUTIL_LOG_PACKET_READER_BPF_HEADER(device, bpf);
 
         if (bpf->bh_caplen != bpf->bh_datalen) {
-            BSLS_LOG_ERROR("BPF device driver failed to read packet: "
-                           "the captured length %zu "
-                           "does not match the data length %zu",
-                           static_cast<bsl::size_t>(bpf->bh_caplen),
-                           static_cast<bsl::size_t>(bpf->bh_datalen));
-
+            NTSU_DEVICEUTIL_LOG_PACKET_READER_BPF_HEADER_INCOHERENT(device,
+                                                                    bpf);
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
@@ -1788,16 +1838,20 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 if (error) {
                     if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
                         NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device,
-                                                                 packet);
+                                                                 packet,
+                                                                 packetBuffer);
                     }
                     else {
-                        NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
+                        NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(device,
+                                                                 packetBuffer,
                                                                  packet,
                                                                  error);
                     }
                 }
                 else {
-                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device,
+                                                        packet,
+                                                        packetBuffer);
 
                     error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
                     if (error) {
@@ -1824,17 +1878,21 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 if (error) {
                     if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
                         NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device,
-                                                                 packet);
+                                                                 packet,
+                                                                 packetBuffer);
                     }
                     else {
-                        NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
+                        NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(device,
+                                                                 packetBuffer,
                                                                  packet,
                                                                  error);
                         return error;
                     }
                 }
                 else {
-                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device,
+                                                        packet,
+                                                        packetBuffer);
 
                     error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
                     if (error) {
@@ -1843,13 +1901,14 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 }
             }
             else if (packetType == PF_INET6) {
-                BSLS_LOG_WARN(
-                    "BPF device driver dropping loopback IPv6 packet");
+                NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_IPV6(device,
+                                                         packetType,
+                                                         packetBuffer);
             }
             else {
-                BSLS_LOG_ERROR("BPF device driver failed to decode packet: "
-                               "unsupported loopback device packet type: %zu",
-                               static_cast<bsl::size_t>(packetType));
+                NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_UNKNOWN(device,
+                                                            packetType,
+                                                            packetBuffer);
             }
         }
         else {
@@ -1869,16 +1928,21 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 packet->decode(&decoderContext, packetBuffer, decoderOptions);
             if (error) {
                 if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
-                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device, packet);
+                    NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device,
+                                                             packet,
+                                                             packetBuffer);
                 }
                 else {
-                    NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(packetBuffer,
+                    NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(device,
+                                                             packetBuffer,
                                                              packet,
                                                              error);
                 }
             }
             else {
-                NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
+                NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device,
+                                                    packet,
+                                                    packetBuffer);
 
                 error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
                 if (error) {

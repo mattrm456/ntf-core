@@ -120,11 +120,6 @@ void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device,
     bsls::TimeInterval deadline = now + duration;
 
     while (true) {
-        // now = bdlt::CurrentTime::now();
-        // if (now >= deadline) {
-        //     break;
-        // }
-
         bsl::shared_ptr<ntsa::Packet> packet;
         error = device->dequeuePacket(&packet);
         if (error) {
@@ -153,6 +148,8 @@ void DeviceTest::writer(const bsl::shared_ptr<ntsi::Device>& device,
 
     bsls::TimeInterval now      = bdlt::CurrentTime::now();
     bsls::TimeInterval deadline = now + duration;
+
+    bsl::uint16_t nextId = 1;
 
     while (true) {
         now = bdlt::CurrentTime::now();
@@ -186,7 +183,7 @@ void DeviceTest::writer(const bsl::shared_ptr<ntsi::Device>& device,
         ipv4.header().setDestinationAddress(destinationIpv4Address);
 
         ipv4.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_UDP);
-        ipv4.header().setId(1);
+        ipv4.header().setId(nextId++);
         ipv4.header().setPreserve(true);
 
         ntsa::UdpPacket& udp = ipv4.payload().makeUdp();
@@ -231,14 +228,12 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
     incomingPacketFilter.addPacketType(ntsa::PacketType::e_UDP);
     incomingPacketFilter.addPacketType(ntsa::PacketType::e_ICMP);
 
-    #if 0
     incomingPacketFilter.addDestinationEthernetAddress(
         ntsa::EthernetAddress(adapter.ethernetAddress()));
 
     incomingPacketFilter.addDestinationIpv4Address(
         adapter.ipv4Address().value());
     incomingPacketFilter.addDestinationUdpPort(4001);
-    #endif
 
     ntsa::DeviceConfig deviceConfig(NTSCFG_TEST_ALLOCATOR);
     deviceConfig.setAdapterName(adapter.name());
