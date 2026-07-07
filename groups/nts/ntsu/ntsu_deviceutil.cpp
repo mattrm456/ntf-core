@@ -1115,9 +1115,12 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     // Configure the read timeout.
 
-    error = DeviceUtil::Impl::setReadTimeout(device, bsls::TimeInterval(1, 0));
-    if (error) {
-        return error;
+    if (incoming) {
+        error = DeviceUtil::Impl::setReadTimeout(
+            device, bsls::TimeInterval(60, 0));
+        if (error) {
+            return error;
+        }
     }
 
     // Configure blocking mode.
@@ -1136,7 +1139,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     // Configure the visibility of transmitted packets.
 
-    error = DeviceUtil::Impl::setSeeSent(device, true);
+    error = DeviceUtil::Impl::setSeeSent(device, loopback);
     if (error) {
         return error;
     }
@@ -1150,7 +1153,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     // Configure promiscuity.
 
-    if (configuration.promiscuous().value_or(false)) {
+    if (incoming && configuration.promiscuous().value_or(false)) {
         error = DeviceUtil::Impl::setPromiscuous(device, true);
         if (error) {
             return error;
@@ -1163,25 +1166,27 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     // real packet filter specification cannot be implemented until the
     // device type is known, so initially suppress all packets.
 
-    ntsu::PacketFilter::Program rejectAll;
-    ntsu::PacketUtil::rejectAll(&rejectAll);
+    if (incoming) {
+        ntsu::PacketFilter::Program rejectAll;
+        ntsu::PacketUtil::rejectAll(&rejectAll);
 
-    if (loopback) {
-        error = DeviceUtil::Impl::applyFilter(device,
-                                              ntsa::DeviceType::e_LOCAL,
-                                              adapter,
-                                              rejectAll);
-        if (error) {
-            return error;
+        if (loopback) {
+            error = DeviceUtil::Impl::applyFilter(device,
+                                                  ntsa::DeviceType::e_LOCAL,
+                                                  adapter,
+                                                  rejectAll);
+            if (error) {
+                return error;
+            }
         }
-    }
-    else {
-        error = DeviceUtil::Impl::applyFilter(device,
-                                              ntsa::DeviceType::e_ETHERNET,
-                                              adapter,
-                                              rejectAll);
-        if (error) {
-            return error;
+        else {
+            error = DeviceUtil::Impl::applyFilter(device,
+                                                  ntsa::DeviceType::e_ETHERNET,
+                                                  adapter,
+                                                  rejectAll);
+            if (error) {
+                return error;
+            }
         }
     }
 
@@ -1205,9 +1210,11 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     bsls::TimeInterval readTimeout;
 
-    error = DeviceUtil::Impl::getReadTimeout(device, &readTimeout);
-    if (error) {
-        return error;
+    if (incoming) {
+        error = DeviceUtil::Impl::getReadTimeout(device, &readTimeout);
+        if (error) {
+            return error;
+        }
     }
 
     // Get the supported data link types.
@@ -1242,15 +1249,29 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
     // Configure the packet filter.
 
-    ntsa::PacketFilter packetFilter;
-    if (configuration.incomingPacketFilter().has_value()) {
-        packetFilter = configuration.incomingPacketFilter().value();
-    }
+    if (incoming) {
+        if (configuration.incomingPacketFilter().has_value()) {
+            error = DeviceUtil::Impl::applyFilter(
+                device,
+                *type,
+                adapter,
+                configuration.incomingPacketFilter().value());
+            if (error) {
+                return error;
+            }
+        }
+        else {
+            ntsu::PacketFilter::Program acceptAll;
+            ntsu::PacketUtil::acceptAll(&acceptAll);
 
-    error =
-        DeviceUtil::Impl::applyFilter(device, *type, adapter, packetFilter);
-    if (error) {
-        return error;
+            error = DeviceUtil::Impl::applyFilter(device,
+                                                  *type,
+                                                  adapter,
+                                                  acceptAll);
+            if (error) {
+                return error;
+            }
+        }
     }
 
     NTSU_DEVICEUTIL_LOG_OPEN(device,
@@ -1707,7 +1728,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
         struct bpf_hdr* bpf = reinterpret_cast<struct bpf_hdr*>(metaFrame);
 
         // MRM
-#if 0
+#if 1
         BSLS_LOG_TRACE("BPF device read packet meta-data "
                        "[ caplen = %zu datalen = %zu hdrlen = %zu ]",
                        static_cast<bsl::size_t>(bpf->bh_caplen),
@@ -1778,7 +1799,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 else {
                     NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
 
-                    error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+                    error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
                     if (error) {
                         return error;
                     }
@@ -1815,7 +1836,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
                 else {
                     NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
 
-                    error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+                    error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
                     if (error) {
                         return error;
                     }
@@ -1859,7 +1880,7 @@ ntsa::Error DeviceUtil::dequeuePacket(
             else {
                 NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet);
 
-                error = packetQueue->enqueue(NTSCFG_MOVE(packet));
+                error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
                 if (error) {
                     return error;
                 }

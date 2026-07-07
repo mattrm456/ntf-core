@@ -39,7 +39,8 @@ void PacketQueue::shutdown()
     d_queue.disable();
 }
 
-ntsa::Error PacketQueue::enqueue(const bsl::shared_ptr<ntsa::Packet>& packet)
+ntsa::Error PacketQueue::enqueuePacket(
+    const bsl::shared_ptr<ntsa::Packet>& packet)
 {
     int rc = d_queue.tryPushBack(packet);
     if (rc != 0) {
@@ -54,7 +55,7 @@ ntsa::Error PacketQueue::enqueue(const bsl::shared_ptr<ntsa::Packet>& packet)
     return ntsa::Error();
 }
 
-ntsa::Error PacketQueue::enqueue(
+ntsa::Error PacketQueue::enqueuePacket(
     bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet)
 {
     int rc = d_queue.tryPushBack(NTSCFG_MOVE(packet));
@@ -70,7 +71,7 @@ ntsa::Error PacketQueue::enqueue(
     return ntsa::Error();
 }
 
-ntsa::Error PacketQueue::dequeue(bsl::shared_ptr<ntsa::Packet>* result)
+ntsa::Error PacketQueue::dequeuePacket(bsl::shared_ptr<ntsa::Packet>* result)
 {
     result->reset();
 

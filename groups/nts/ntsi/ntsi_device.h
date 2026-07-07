@@ -52,11 +52,11 @@ class PacketSender
     virtual ~PacketSender();
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(
+    virtual ntsa::Error enqueuePacket(
         const bsl::shared_ptr<ntsa::Packet>& packet) = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(
+    virtual ntsa::Error enqueuePacket(
         bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet) = 0;
 };
 
@@ -74,7 +74,7 @@ class PacketReceiver
 
     /// Load into the specified 'result' the next packet received. Return the
     /// error.
-    virtual ntsa::Error dequeue(bsl::shared_ptr<ntsa::Packet>* result) = 0;
+    virtual ntsa::Error dequeuePacket(bsl::shared_ptr<ntsa::Packet>* result) = 0;
 };
 
 /// Provide an abstract representation of a network device.
@@ -115,17 +115,17 @@ class Device : public ntsa::PacketFactory,
         BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(const bsl::shared_ptr<ntsa::Packet>& packet)
+    virtual ntsa::Error enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)
         BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueue(
+    virtual ntsa::Error enqueuePacket(
         bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet)
         BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Load into the specified 'result' the next packet received. Return the
     /// error.
-    virtual ntsa::Error dequeue(bsl::shared_ptr<ntsa::Packet>* result)
+    virtual ntsa::Error dequeuePacket(bsl::shared_ptr<ntsa::Packet>* result)
         BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Close the device. Return the error.

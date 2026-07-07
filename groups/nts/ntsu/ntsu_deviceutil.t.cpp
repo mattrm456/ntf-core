@@ -267,7 +267,7 @@ void DeviceUtilTest::writer(
         }
 
         bsl::shared_ptr<ntsa::Packet> packet;
-        error = packetQueue->dequeue(&packet);
+        error = packetQueue->dequeuePacket(&packet);
         if (error) {
             if (error != ntsa::Error(ntsa::Error::e_EOF)) {
                 BALL_LOG_ERROR
@@ -444,7 +444,7 @@ void DeviceUtilTest::verifyAdapter(const ntsa::Adapter& adapter)
     bsl::shared_ptr<ntsa::Packet> packet =
         DeviceUtilTest::createPacket(adapter, outgoingPacketPool);
 
-    error = outgoingPacketQueue->enqueue(packet);
+    error = outgoingPacketQueue->enqueuePacket(packet);
     NTSCFG_TEST_OK(error);
 
     bslmt::ThreadUtil::sleep(duration);

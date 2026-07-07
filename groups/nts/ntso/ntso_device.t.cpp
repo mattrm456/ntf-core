@@ -39,8 +39,19 @@ namespace ntso {
 // Provide tests for 'ntso::Device'.
 class DeviceTest
 {
+    /// Discover the loopback device and load its adapter into the specified
+    /// 'result'. Return true if such a loopback device is found, and false
+    /// otherwise.
+    static bool discoverLoopback(ntsa::Adapter* result);
+
+    /// Discover the default device and load its adapter into the specified
+    /// 'result'. Return true if such a default device is found, and false
+    /// otherwise.
+    static bool discoverDefault(ntsa::Adapter* result);
+
     // Execute the reader loop.
-    static void reader(const bsl::shared_ptr<ntsi::Device>& device);
+    static void reader(const bsl::shared_ptr<ntsi::Device>& device,
+                       const bsls::TimeInterval&            duration);
 
     // Execute the writer loop.
     static void writer(const bsl::shared_ptr<ntsi::Device>& device,
@@ -62,15 +73,60 @@ class DeviceTest
     static void verifyDefault();
 };
 
-void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device)
+bool DeviceTest::discoverLoopback(ntsa::Adapter* result)
+{
+    bsl::vector<ntsa::Adapter> adapterList;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterList);
+
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& candidateAdapter = adapterList[i];
+        if (candidateAdapter.ipv4Address().has_value()) {
+            if (candidateAdapter.ipv4Address().value().isLoopback()) {
+                *result = candidateAdapter;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool DeviceTest::discoverDefault(ntsa::Adapter* result)
+{
+    bsl::vector<ntsa::Adapter> adapterList;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterList);
+
+    for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
+        const ntsa::Adapter& candidateAdapter = adapterList[i];
+        if (candidateAdapter.ipv4Address().has_value()) {
+            if (!candidateAdapter.ipv4Address().value().isLoopback()) {
+                *result = candidateAdapter;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device,
+                        const bsls::TimeInterval&            duration)
 {
     ntsa::Error error;
 
     BALL_LOG_INFO << "Test reader thread starting" << BALL_LOG_END;
 
+    bsls::TimeInterval now      = bdlt::CurrentTime::now();
+    bsls::TimeInterval deadline = now + duration;
+
     while (true) {
+        // now = bdlt::CurrentTime::now();
+        // if (now >= deadline) {
+        //     break;
+        // }
+
         bsl::shared_ptr<ntsa::Packet> packet;
-        error = device->dequeue(&packet);
+        error = device->dequeuePacket(&packet);
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_EOF)) {
                 BALL_LOG_INFO << "Device dequeued EOF" << BALL_LOG_END;
@@ -83,8 +139,6 @@ void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device)
                 break;
             }
         }
-
-        BALL_LOG_INFO << "Incoming packet = " << packet << BALL_LOG_END;
     }
 
     BALL_LOG_INFO << "Test reader thread complete" << BALL_LOG_END;
@@ -97,9 +151,15 @@ void DeviceTest::writer(const bsl::shared_ptr<ntsi::Device>& device,
 
     BALL_LOG_INFO << "Test writer thread starting" << BALL_LOG_END;
 
-    bsls::TimeInterval deadline = bdlt::CurrentTime::now() + duration;
+    bsls::TimeInterval now      = bdlt::CurrentTime::now();
+    bsls::TimeInterval deadline = now + duration;
 
     while (true) {
+        now = bdlt::CurrentTime::now();
+        if (now >= deadline) {
+            break;
+        }
+
         bsl::shared_ptr<ntsa::Packet> packet;
         device->createOutgoingPacket(&packet);
 
@@ -108,6 +168,7 @@ void DeviceTest::writer(const bsl::shared_ptr<ntsi::Device>& device,
         ntsa::EthernetAddress sourceEthernetAddress;
         ntsa::EthernetAddress destinationEthernetAddress;
 
+        sourceEthernetAddress.parse(device->adapter().ethernetAddress());
         destinationEthernetAddress.parse(device->adapter().ethernetAddress());
 
         ethernet.header().setSource(sourceEthernetAddress);
@@ -144,26 +205,14 @@ void DeviceTest::writer(const bsl::shared_ptr<ntsi::Device>& device,
 
         udp.setPayload(payload);
 
-        BALL_LOG_ERROR << "Enqueuing packet " << packet << BALL_LOG_END;
-
-        error = device->enqueue(packet);
+        error = device->enqueuePacket(packet);
         NTSCFG_TEST_OK(error);
 
-        const bsls::TimeInterval now = bdlt::CurrentTime::now();
-        if (now >= deadline) {
-            break;
-        }
-
         bsls::TimeInterval interval;
-        interval.setTotalMilliseconds(100);
+        interval.setTotalMilliseconds(250);
 
         bslmt::ThreadUtil::sleep(interval);
     }
-
-    NTSCFG_TEST_LOG_DEBUG << "Closing device" << NTSCFG_TEST_LOG_END;
-
-    error = device->close();
-    NTSCFG_TEST_OK(error);
 
     BALL_LOG_INFO << "Test writer thread complete" << BALL_LOG_END;
 }
@@ -175,6 +224,75 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
     ntsa::Error error;
     int         rc;
 
+    ntsa::PacketFilter incomingPacketFilter;
+
+    incomingPacketFilter.addPacketType(ntsa::PacketType::e_ETHERNET);
+    incomingPacketFilter.addPacketType(ntsa::PacketType::e_IPV4);
+    incomingPacketFilter.addPacketType(ntsa::PacketType::e_UDP);
+    incomingPacketFilter.addPacketType(ntsa::PacketType::e_ICMP);
+
+    #if 0
+    incomingPacketFilter.addDestinationEthernetAddress(
+        ntsa::EthernetAddress(adapter.ethernetAddress()));
+
+    incomingPacketFilter.addDestinationIpv4Address(
+        adapter.ipv4Address().value());
+    incomingPacketFilter.addDestinationUdpPort(4001);
+    #endif
+
+    ntsa::DeviceConfig deviceConfig(NTSCFG_TEST_ALLOCATOR);
+    deviceConfig.setAdapterName(adapter.name());
+    deviceConfig.setIncomingEnabled(true);
+    deviceConfig.setOutgoingEnabled(true);
+    deviceConfig.setIncomingPacketFilter(incomingPacketFilter);
+
+    bsl::shared_ptr<ntsi::Device> device =
+        ntso::DeviceUtil::createDevice(
+            deviceConfig, NTSCFG_TEST_ALLOCATOR);
+
+    error = device->open();
+    NTSCFG_TEST_OK(error);
+
+    bsls::TimeInterval duration = bsls::TimeInterval(3, 0);
+
+    bslmt::ThreadGroup incomingThreadGroup(NTSCFG_TEST_ALLOCATOR);
+    bslmt::ThreadGroup outgoingThreadGroup(NTSCFG_TEST_ALLOCATOR);
+
+    {
+        bslmt::ThreadAttributes incomingThreadAttributes;
+        incomingThreadAttributes.setThreadName("test-incoming");
+
+        rc = incomingThreadGroup.addThread(
+            bdlf::BindUtil::bind(
+                &DeviceTest::reader, device, duration),
+                incomingThreadAttributes);
+        NTSCFG_TEST_EQ(rc, 0);
+    }
+
+    {
+        bslmt::ThreadAttributes outgoingThreadAttributes;
+        outgoingThreadAttributes.setThreadName("test-outgoing");
+
+        rc = outgoingThreadGroup.addThread(
+            bdlf::BindUtil::bind(
+                &DeviceTest::writer, device, duration),
+                outgoingThreadAttributes);
+        NTSCFG_TEST_EQ(rc, 0);
+    }
+
+    bslmt::ThreadUtil::sleep(duration);
+
+    BALL_LOG_WARN << "Closing device" << BALL_LOG_END;
+
+    outgoingThreadGroup.joinAll();
+
+    error = device->close();
+    NTSCFG_TEST_OK(error);
+
+    incomingThreadGroup.joinAll();
+
+    // MRM
+#if 0
     ntsa::DeviceConfig incomingDeviceConfig(NTSCFG_TEST_ALLOCATOR);
     incomingDeviceConfig.setAdapterName(adapter.name());
     incomingDeviceConfig.setIncomingEnabled(true);
@@ -199,8 +317,7 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
     error = outgoingDevice->open();
     NTSCFG_TEST_OK(error);
 
-    bsls::TimeInterval duration = bsls::TimeInterval(1, 0);
-    bsls::TimeInterval deadline = bdlt::CurrentTime::now() + duration;
+    bsls::TimeInterval duration = bsls::TimeInterval(3, 0);
 
     bslmt::ThreadGroup incomingThreadGroup(NTSCFG_TEST_ALLOCATOR);
     bslmt::ThreadGroup outgoingThreadGroup(NTSCFG_TEST_ALLOCATOR);
@@ -211,7 +328,7 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
 
         rc = incomingThreadGroup.addThread(
             bdlf::BindUtil::bind(
-                &DeviceTest::reader, incomingDevice),
+                &DeviceTest::reader, incomingDevice, duration),
                 incomingThreadAttributes);
         NTSCFG_TEST_EQ(rc, 0);
     }
@@ -227,12 +344,18 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
         NTSCFG_TEST_EQ(rc, 0);
     }
 
-    outgoingThreadGroup.joinAll();
+    bslmt::ThreadUtil::sleep(duration);
+
+    error = outgoingDevice->close();
+    NTSCFG_TEST_OK(error);
 
     error = incomingDevice->close();
     NTSCFG_TEST_OK(error);
 
+    outgoingThreadGroup.joinAll();
     incomingThreadGroup.joinAll();
+
+#endif
 }
 
 NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyLoopback)
@@ -243,67 +366,12 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyLoopback)
         return;
     }
 
-    bdlb::NullableValue<ntsa::Adapter> adapter;
-    {
-        bsl::vector<ntsa::Adapter> adapterList;
-        ntsu::AdapterUtil::discoverAdapterList(&adapterList);
-
-        for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
-            const ntsa::Adapter& candidateAdapter = adapterList[i];
-            if (candidateAdapter.ipv4Address().has_value()) {
-                if (candidateAdapter.ipv4Address().value().isLoopback()) {
-                    adapter = candidateAdapter;
-                    break;
-                }
-            }
-        }
+    ntsa::Adapter adapter;
+    if (!DeviceTest::discoverLoopback(&adapter)) {
+        return;
     }
 
-    if (adapter.has_value()) {
-        DeviceTest::verifyAdapter(adapter.value());
-    }
-
-
-#if 0
-    ntsa::Error error;
-    int         rc;
-
-    ntsa::DeviceConfig deviceConfig(NTSCFG_TEST_ALLOCATOR);
-    deviceConfig.setAdapterName("lo0");
-
-    bsl::shared_ptr<ntsi::Device> device = ntso::DeviceUtil::createDevice(
-        deviceConfig, NTSCFG_TEST_ALLOCATOR);
-
-    error = device->open();
-    NTSCFG_TEST_OK(error);
-
-    bsls::TimeInterval duration = bsls::TimeInterval(10, 0);
-    bsls::TimeInterval deadline = bdlt::CurrentTime::now() + duration;
-
-    bslmt::ThreadGroup threadGroup(NTSCFG_TEST_ALLOCATOR);
-
-    {
-        bslmt::ThreadAttributes threadAttributes;
-        threadAttributes.setThreadName("reader");
-
-        rc = threadGroup.addThread(
-            bdlf::BindUtil::bind(
-                &DeviceTest::reader, device), threadAttributes);
-        NTSCFG_TEST_EQ(rc, 0);
-    }
-
-    {
-        bslmt::ThreadAttributes threadAttributes;
-        threadAttributes.setThreadName("writer");
-
-        rc = threadGroup.addThread(
-            bdlf::BindUtil::bind(
-                &DeviceTest::writer, device, duration), threadAttributes);
-        NTSCFG_TEST_EQ(rc, 0);
-    }
-
-    threadGroup.joinAll();
-#endif
+    DeviceTest::verifyAdapter(adapter);
 }
 
 NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyDefault)
@@ -314,25 +382,12 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyDefault)
         return;
     }
 
-    bdlb::NullableValue<ntsa::Adapter> adapter;
-    {
-        bsl::vector<ntsa::Adapter> adapterList;
-        ntsu::AdapterUtil::discoverAdapterList(&adapterList);
-
-        for (bsl::size_t i = 0; i < adapterList.size(); ++i) {
-            const ntsa::Adapter& candidateAdapter = adapterList[i];
-            if (candidateAdapter.ipv4Address().has_value()) {
-                if (!candidateAdapter.ipv4Address().value().isLoopback()) {
-                    adapter = candidateAdapter;
-                    break;
-                }
-            }
-        }
+    ntsa::Adapter adapter;
+    if (!DeviceTest::discoverDefault(&adapter)) {
+        return;
     }
 
-    if (adapter.has_value()) {
-        DeviceTest::verifyAdapter(adapter.value());
-    }
+    DeviceTest::verifyAdapter(adapter);
 }
 
 }  // close namespace ntso
