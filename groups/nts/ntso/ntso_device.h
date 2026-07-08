@@ -42,13 +42,6 @@ BSLS_IDENT("$Id: $")
 #include <bsl_memory.h>
 #include <ball_log.h>
 
-// #if NTS_BUILD_WITH_RAW_SOCKETS
-#define NTSO_DEVICE_ENABLED 1
-// #else
-// #define NTSO_DEVICE_ENABLED 0
-// #endif
-
-#if NTSO_DEVICE_ENABLED
 namespace BloombergLP {
 namespace ntso {
 
@@ -164,6 +157,9 @@ class Network : public ntsi::Network
 
     /// The map of RX devices indexed by their IPv6 address.
     DeviceByIpv6Address d_rxDeviceByIpv6Address;
+
+    /// The packet filter.
+    ntsa::PacketFilter d_packetFilter;
 
     /// The adapter vector.
     bsl::vector<ntsa::Adapter> d_adapterVector;
@@ -309,5 +305,4 @@ class NetworkUtil
 
 }  // close package namespace
 }  // close enterprise namespace
-#endif
 #endif

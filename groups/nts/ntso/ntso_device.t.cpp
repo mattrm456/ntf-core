@@ -32,7 +32,8 @@ BSLS_IDENT_RCSID(ntso_device_t_cpp, "$Id$ $CSID$")
 
 using namespace BloombergLP;
 
-#if NTSO_DEVICE_ENABLED
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
 namespace BloombergLP {
 namespace ntso {
 
@@ -285,72 +286,6 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
     NTSCFG_TEST_OK(error);
 
     incomingThreadGroup.joinAll();
-
-    // MRM
-#if 0
-    ntsa::DeviceConfig incomingDeviceConfig(NTSCFG_TEST_ALLOCATOR);
-    incomingDeviceConfig.setAdapterName(adapter.name());
-    incomingDeviceConfig.setIncomingEnabled(true);
-    incomingDeviceConfig.setOutgoingEnabled(false);
-
-    bsl::shared_ptr<ntsi::Device> incomingDevice =
-        ntso::DeviceUtil::createDevice(
-            incomingDeviceConfig, NTSCFG_TEST_ALLOCATOR);
-
-    error = incomingDevice->open();
-    NTSCFG_TEST_OK(error);
-
-    ntsa::DeviceConfig outgoingDeviceConfig(NTSCFG_TEST_ALLOCATOR);
-    outgoingDeviceConfig.setAdapterName(adapter.name());
-    outgoingDeviceConfig.setIncomingEnabled(false);
-    outgoingDeviceConfig.setOutgoingEnabled(true);
-
-    bsl::shared_ptr<ntsi::Device> outgoingDevice =
-        ntso::DeviceUtil::createDevice(
-            outgoingDeviceConfig, NTSCFG_TEST_ALLOCATOR);
-
-    error = outgoingDevice->open();
-    NTSCFG_TEST_OK(error);
-
-    bsls::TimeInterval duration = bsls::TimeInterval(3, 0);
-
-    bslmt::ThreadGroup incomingThreadGroup(NTSCFG_TEST_ALLOCATOR);
-    bslmt::ThreadGroup outgoingThreadGroup(NTSCFG_TEST_ALLOCATOR);
-
-    {
-        bslmt::ThreadAttributes incomingThreadAttributes;
-        incomingThreadAttributes.setThreadName("test-incoming");
-
-        rc = incomingThreadGroup.addThread(
-            bdlf::BindUtil::bind(
-                &DeviceTest::reader, incomingDevice, duration),
-                incomingThreadAttributes);
-        NTSCFG_TEST_EQ(rc, 0);
-    }
-
-    {
-        bslmt::ThreadAttributes outgoingThreadAttributes;
-        outgoingThreadAttributes.setThreadName("test-outgoing");
-
-        rc = outgoingThreadGroup.addThread(
-            bdlf::BindUtil::bind(
-                &DeviceTest::writer, outgoingDevice, duration),
-                outgoingThreadAttributes);
-        NTSCFG_TEST_EQ(rc, 0);
-    }
-
-    bslmt::ThreadUtil::sleep(duration);
-
-    error = outgoingDevice->close();
-    NTSCFG_TEST_OK(error);
-
-    error = incomingDevice->close();
-    NTSCFG_TEST_OK(error);
-
-    outgoingThreadGroup.joinAll();
-    incomingThreadGroup.joinAll();
-
-#endif
 }
 
 NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyLoopback)
@@ -387,4 +322,5 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyDefault)
 
 }  // close namespace ntso
 }  // close namespace BloombergLP
+
 #endif

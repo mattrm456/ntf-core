@@ -18,8 +18,6 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 
-#if NTSO_DEVICE_ENABLED
-
 #include <ntsa_adapter.h>
 #include <ntsa_packet.h>
 #include <ntsa_packetdecoder.h>
@@ -70,8 +68,6 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #include <bsl_unordered_map.h>
 #include <bsl_unordered_set.h>
 #include <bsl_vector.h>
-
-
 
 #define NTSO_DEVICE_LOG_PACKET_DECODER_ERROR(buffer, packet, error)           \
     do {                                                                      \
@@ -299,6 +295,10 @@ class Device : public ntsi::Device
     /// the associated device.
     void createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
         BSLS_KEYWORD_OVERRIDE;
+
+    /// Apply the specified packet 'filter' to incoming packets. Return the
+    /// error.
+    ntsa::Error applyFilter(const ntsa::PacketFilter& filter) BSLS_KEYWORD_OVERRIDE;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
     ntsa::Error enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)
@@ -684,6 +684,18 @@ void Device::createOutgoingBlobBuffer(bdlbb::BlobBuffer* result)
 void Device::createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
 {
     d_incomingPacketFactory->createIncomingBlobBuffer(result);
+}
+
+ntsa::Error Device::applyFilter(const ntsa::PacketFilter& filter)
+{
+    LockGuard lock(&d_mutex);
+
+    if (d_incomingDeviceHandle == ntsa::k_INVALID_HANDLE) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsu::DeviceUtil::applyFilter(
+        d_incomingDeviceHandle, d_incomingDeviceType, d_adapter, filter);
 }
 
 ntsa::Error Device::enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)
@@ -1362,6 +1374,7 @@ Network::Network(bslma::Allocator* basicAllocator)
 , d_rxDeviceByEthernetAddress(basicAllocator)
 , d_rxDeviceByIpv4Address(basicAllocator)
 , d_rxDeviceByIpv6Address(basicAllocator)
+, d_packetFilter(basicAllocator)
 , d_ethernetRouteTable(basicAllocator)
 , d_ipv4RouteTable(basicAllocator)
 , d_ipv6RouteTable(basicAllocator)
@@ -1617,5 +1630,3 @@ bsl::shared_ptr<ntsi::Network> NetworkUtil::createNetwork(
 
 }  // close package namespace
 }  // close enterprise namespace
-
-#endif

@@ -23,6 +23,7 @@ BSLS_IDENT_RCSID(ntsf_system_cpp, "$Id$ $CSID$")
 #include <ntsb_resolver.h>
 #include <ntsb_streamsocket.h>
 #include <ntscfg_limits.h>
+#include <ntso_device.h>
 #include <ntso_devpoll.h>
 #include <ntso_epoll.h>
 #include <ntso_eventport.h>
@@ -557,6 +558,21 @@ bsl::shared_ptr<ntsi::Resolver> System::createResolver(
     resolver.createInplace(allocator, configuration, allocator);
 
     return resolver;
+}
+
+
+bsl::shared_ptr<ntsi::Device> System::createDevice(
+    const ntsa::DeviceConfig& configuration,
+    bslma::Allocator*         basicAllocator)
+{
+    ntsa::Error error;
+
+    error = ntsf::System::initialize();
+    BSLS_ASSERT_OPT(!error);
+
+    bslma::Allocator* allocator = bslma::Default::allocator(basicAllocator);
+
+    return ntso::DeviceUtil::createDevice(configuration, allocator);
 }
 
 ntsa::Error System::bind(ntsa::Handle          socket,

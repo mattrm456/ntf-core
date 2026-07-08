@@ -28,6 +28,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntsa_packetfactory.h>
+#include <ntsa_packetfilter.h>
 #include <ntscfg_platform.h>
 #include <ntsi_descriptor.h>
 #include <ntsscm_version.h>
@@ -113,6 +114,10 @@ class Device : public ntsa::PacketFactory,
     /// the associated device.
     virtual void createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
         BSLS_KEYWORD_OVERRIDE = 0;
+
+    /// Apply the specified packet 'filter' to incoming packets. Return the
+    /// error.
+    virtual ntsa::Error applyFilter(const ntsa::PacketFilter& filter) = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
     virtual ntsa::Error enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)

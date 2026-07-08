@@ -20,6 +20,7 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_adapter.h>
+#include <ntsa_deviceconfig.h>
 #include <ntsa_error.h>
 #include <ntsa_reactorconfig.h>
 #include <ntsa_resolverconfig.h>
@@ -29,6 +30,7 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_transport.h>
 #include <ntscfg_platform.h>
 #include <ntsi_datagramsocket.h>
+#include <ntsi_device.h>
 #include <ntsi_listenersocket.h>
 #include <ntsi_reactor.h>
 #include <ntsi_resolver.h>
@@ -916,6 +918,13 @@ struct System {
     /// is 0, the currently installed default allocator is used.
     static bsl::shared_ptr<ntsi::Resolver> createResolver(
         const ntsa::ResolverConfig& configuration,
+        bslma::Allocator*           basicAllocator = 0);
+
+    /// Create a new device having the specified 'configuration'. Optionally
+    /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
+    /// is 0, the currently installed default allocator is used.
+    static bsl::shared_ptr<ntsi::Device> createDevice(
+        const ntsa::DeviceConfig& configuration,
         bslma::Allocator*           basicAllocator = 0);
 
     /// Bind the specified 'socket' to the specified source 'endpoint'. If
