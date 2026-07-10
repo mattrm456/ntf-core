@@ -191,35 +191,16 @@ void DeviceUtilTest::reader(
             break;
         }
 
-        // MRM
-#if 0
-        BALL_LOG_TRACE << "Device descriptor " << device
-                       << " wait until readable starting: "
-                       << BALL_LOG_END;
-#endif
-
         error = ntsu::DeviceUtil::waitUntilReadable(device, deadline);
-
-// MRM
-#if 0
-        BALL_LOG_TRACE << "Device descriptor " << device
-                       << " wait until readable complete: "
-                       << error
-                       << BALL_LOG_END;
-#endif
-
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
-                bsls::TimeInterval interval;
-                interval.setTotalMilliseconds(200);
-                bslmt::ThreadUtil::sleep(interval);
+                BALL_LOG_DEBUG << "Network device descriptor " << device
+                               << " timed out waiting to become readable"
+                               << BALL_LOG_END;
                 continue;
             }
-            else if (error == ntsa::Error(ntsa::Error::e_EOF)) {
-                break;
-            }
             else {
-                BALL_LOG_ERROR << "Device descriptor " << device
+                BALL_LOG_ERROR << "Network device descriptor " << device
                                << " failed to wait until readable: " << error
                                << BALL_LOG_END;
                 break;
@@ -231,16 +212,25 @@ void DeviceUtilTest::reader(
                                                 packetQueue,
                                                 packetFactory);
         if (error) {
-            BALL_LOG_ERROR << "Device descriptor " << device
-                           << " failed to dequeue packet: " << error
-                           << BALL_LOG_END;
-            break;
+            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                BALL_LOG_DEBUG << "Network device descriptor " << device
+                               << " read would block"
+                               << BALL_LOG_END;
+                continue;
+            }
+            else if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                BALL_LOG_DEBUG << "Network device descriptor " << device
+                               << " read EOF"
+                               << BALL_LOG_END;
+                break;
+            }
+            else {
+                BALL_LOG_ERROR << "Network device descriptor " << device
+                               << " failed to dequeue packet: " << error
+                               << BALL_LOG_END;
+                break;
+            }
         }
-
-        bsls::TimeInterval interval;
-        interval.setTotalMilliseconds(100);
-
-        bslmt::ThreadUtil::sleep(interval);
     }
 
     BALL_LOG_INFO << "Test reader thread complete" << BALL_LOG_END;
@@ -266,12 +256,29 @@ void DeviceUtilTest::writer(
             break;
         }
 
+        error = ntsu::DeviceUtil::waitUntilWritable(device, deadline);
+        if (error) {
+            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                BALL_LOG_DEBUG << "Network device descriptor " << device
+                               << " timed out waiting to become writable"
+                               << BALL_LOG_END;
+                continue;
+            }
+            else {
+                BALL_LOG_ERROR << "Device descriptor " << device
+                               << " failed to wait until writable: " << error
+                               << BALL_LOG_END;
+                break;
+            }
+        }
+
         bsl::shared_ptr<ntsa::Packet> packet;
         error = packetQueue->dequeuePacket(&packet);
         if (error) {
             if (error != ntsa::Error(ntsa::Error::e_EOF)) {
                 BALL_LOG_ERROR
                     << "Failed to dequeue packet from packet queue: "
+                    << error
                     << BALL_LOG_END;
             }
             break;
@@ -279,23 +286,29 @@ void DeviceUtilTest::writer(
 
         NTSCFG_TEST_TRUE(packet);
 
-        error = ntsu::DeviceUtil::waitUntilWritable(device, deadline);
-        if (error) {
-            BALL_LOG_ERROR << "Device descriptor " << device
-                           << " failed to wait until writable: " << error
-                           << BALL_LOG_END;
-            // break;
-        }
-
         error = ntsu::DeviceUtil::enqueuePacket(device,
                                                 deviceType,
                                                 packet,
                                                 packetFactory);
         if (error) {
-            BALL_LOG_ERROR << "Device descriptor " << device
-                           << " failed to enqueue packet: " << error
-                           << BALL_LOG_END;
-            break;
+            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                BALL_LOG_DEBUG << "Network device descriptor " << device
+                               << " write would block"
+                               << BALL_LOG_END;
+                continue;
+            }
+            else if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                BALL_LOG_DEBUG << "Network device descriptor " << device
+                               << " write EOF"
+                               << BALL_LOG_END;
+                break;
+            }
+            else {
+                BALL_LOG_ERROR << "Device descriptor " << device
+                               << " failed to enqueue packet: " << error
+                               << BALL_LOG_END;
+                break;
+            }
         }
     }
 

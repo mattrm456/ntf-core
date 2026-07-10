@@ -123,7 +123,7 @@ NTSCFG_TEST_FUNCTION(ntsu::RouteUtilTest::verifyIpv4RouteTable)
     const bsl::size_t W6 = ntsa::Ipv6Address::MAX_TEXT_LENGTH + 4;
 
     bsl::stringstream ss;
-    ss << bsl::left << bsl::setw(W4) << "DstAddr";
+    ss << bsl::left << bsl::setw(W4 + 4) << "DstAddr";
     ss << bsl::left << bsl::setw(W4) << "DstMask";
 
     ss << bsl::left << bsl::setw(WN) << "GtwName";
@@ -229,7 +229,7 @@ NTSCFG_TEST_FUNCTION(ntsu::RouteUtilTest::verifyIpv4RouteTable)
             ifcIp = "-";
         }
 
-        ss << bsl::left << bsl::setw(W4) << dstAddr;
+        ss << bsl::left << bsl::setw(W4 + 4) << dstAddr;
         ss << bsl::left << bsl::setw(W4) << dstMask;
 
         ss << bsl::left << bsl::setw(WN) << gtwName;

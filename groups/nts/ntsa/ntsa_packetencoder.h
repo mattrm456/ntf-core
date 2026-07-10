@@ -331,7 +331,7 @@ ntsa::Error PacketEncoder::encodeUint32(bdlb::BigEndianUint32 value)
 }
 
 NTSCFG_INLINE
-ntsa::Error PacketEncoder::encodeInt64(bsls::Types::Int64 value)
+ntsa::Error PacketEncoder::encodeInt64(bsl::int64_t value)
 {
     BSLMF_ASSERT(sizeof(bsls::Types::Int64) == sizeof(bdlb::BigEndianInt64));
 
@@ -340,7 +340,7 @@ ntsa::Error PacketEncoder::encodeInt64(bsls::Types::Int64 value)
     }
 
     bdlb::BigEndianInt64 bigEndianValue;
-    bigEndianValue = value;
+    bigEndianValue = static_cast<bsls::Types::Int64>(value);
 
     bsl::memcpy(d_current, &bigEndianValue, sizeof(bigEndianValue));
 
@@ -368,7 +368,7 @@ ntsa::Error PacketEncoder::encodeInt64(bdlb::BigEndianInt64 value)
 }
 
 NTSCFG_INLINE
-ntsa::Error PacketEncoder::encodeUint64(bsls::Types::Uint64 value)
+ntsa::Error PacketEncoder::encodeUint64(bsl::uint64_t value)
 {
     BSLMF_ASSERT(sizeof(bsls::Types::Uint64) == sizeof(bdlb::BigEndianUint64));
 
@@ -377,7 +377,7 @@ ntsa::Error PacketEncoder::encodeUint64(bsls::Types::Uint64 value)
     }
 
     bdlb::BigEndianUint64 bigEndianValue;
-    bigEndianValue = value;
+    bigEndianValue = static_cast<bsls::Types::Uint64>(value);
 
     bsl::memcpy(d_current, &bigEndianValue, sizeof(bigEndianValue));
 

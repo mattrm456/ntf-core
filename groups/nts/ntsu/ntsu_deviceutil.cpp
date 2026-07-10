@@ -105,10 +105,13 @@ BSLS_IDENT_RCSID(ntsu_deviceutil_cpp, "$Id$ $CSID$")
 #endif
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
+#include <linux/capability.h>
 #include <linux/errqueue.h>
+#include <linux/filter.h>
+#include <linux/if_arp.h>
 #include <linux/if_ether.h>
+#include <linux/if_packet.h>
 #include <netinet/ip.h>
-#include <netpacket/packet.h>
 #endif
 
 #if defined(BSLS_PLATFORM_OS_WINDOWS)
@@ -143,9 +146,6 @@ BSLS_IDENT_RCSID(ntsu_deviceutil_cpp, "$Id$ $CSID$")
 #pragma comment(lib, "ws2_32")
 #endif
 
-namespace BloombergLP {
-namespace ntsu {
-
 #if defined(BSLS_PLATFORM_OS_DARWIN)
 
 #define NTSU_DEVICEUTIL_LOG_OPEN(device,                                      \
@@ -174,8 +174,23 @@ namespace ntsu {
                 (dataLinkTypeSupport));                                       \
                                                                               \
             BALL_LOG_OUTPUT_STREAM << " ]";                                   \
-        };                                                                    \
+        }                                                                     \
     } while (false)
+
+#elif defined(BSLS_PLATFORM_OS_LINUX)
+
+#define NTSU_DEVICEUTIL_LOG_OPEN(device, adapter) \
+    do {                                                                      \
+        BALL_LOG_TRACE_BLOCK                                                  \
+        {                                                                     \
+            BALL_LOG_OUTPUT_STREAM                                            \
+                << "Network device descriptor " << (device)                   \
+                << " open [ interface = " << (adapter).name();                \
+            BALL_LOG_OUTPUT_STREAM << " ]";                                   \
+        }                                                                     \
+    } while (false)
+
+#endif
 
 #define NTSU_DEVICEUTIL_LOG_OPEN_DISABLED()                                   \
     do {                                                                      \
@@ -221,7 +236,7 @@ namespace ntsu {
                                                  error)                       \
     do {                                                                      \
         BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to decode packet " << (packet) << ": "      \
+                       << " failed to decode packet " << (packet) << ": "     \
                        << (error) << "\n"                                     \
                        << bdlb::PrintStringHexDumper((buffer).data(),         \
                                                      (buffer).size())         \
@@ -231,21 +246,21 @@ namespace ntsu {
 #define NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(device, packet, error)       \
     do {                                                                      \
         BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to encode packet " << (packet) << ": "      \
+                       << " failed to encode packet " << (packet) << ": "     \
                        << (error) << BALL_LOG_END;                            \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device, packet, error)        \
     do {                                                                      \
         BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to write packet " << (packet) << ": "       \
+                       << " failed to write packet " << (packet) << ": "      \
                        << (error) << BALL_LOG_END;                            \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(device, packet)           \
     do {                                                                      \
-        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to write packet " << (packet) << ": EOF"    \
+        BALL_LOG_TRACE << "Network device descriptor " << (device)            \
+                       << " failed to write packet " << (packet) << ": EOF"   \
                        << BALL_LOG_END;                                       \
     } while (false)
 
@@ -255,7 +270,7 @@ namespace ntsu {
                                                                 bytesSent)    \
     do {                                                                      \
         BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to write packet " << (packet)               \
+                       << " failed to write packet " << (packet)              \
                        << ": unexpected number of bytes sent: expected "      \
                        << (buffer).size() << " but found " << (bytesSent);    \
     } while (false)
@@ -263,14 +278,14 @@ namespace ntsu {
 #define NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR(device, error)                \
     do {                                                                      \
         BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to read packet: " << (error)                \
+                       << " failed to read packet: " << (error)               \
                        << BALL_LOG_END;                                       \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR_EOF(device)                   \
     do {                                                                      \
-        BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to read packet: EOF" << BALL_LOG_END;       \
+        BALL_LOG_TRACE << "Network device descriptor " << (device)            \
+                       << " failed to read packet: EOF" << BALL_LOG_END;      \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_PACKET_READER_UNEXPECTED_BYTES_RECEIVED(          \
@@ -279,7 +294,7 @@ namespace ntsu {
     bytesReceived)                                                            \
     do {                                                                      \
         BALL_LOG_ERROR << "Network device descriptor " << (device)            \
-                       << "failed to read packet: unexpected number of "      \
+                       << " failed to read packet: unexpected number of "     \
                           "bytes received: expected at most "                 \
                        << (buffer).size() << " but found " << (bytesReceived) \
                        << BALL_LOG_END;                                       \
@@ -352,6 +367,13 @@ namespace ntsu {
                        << " outgoing packet " << (packet) \
                        << BALL_LOG_END;                                       \
     } while (false)
+
+
+
+namespace BloombergLP {
+namespace ntsu {
+
+#if defined(BSLS_PLATFORM_OS_DARWIN)
 
 /// Provide a private, platform-specific implementation of utilities for
 /// link-level devices.
@@ -764,8 +786,8 @@ ntsa::Error DeviceUtil::Impl::setReadTimeout(ntsa::Handle              device,
     struct timeval tv;
     NTSCFG_MEMORY_ZERO(&tv, sizeof tv);
 
-    tv.tv_sec  = 1;
-    tv.tv_usec = 0;
+    tv.tv_sec  = static_cast<time_t>(value.seconds());
+    tv.tv_usec = static_cast<suseconds_t>(value.nanoseconds() / 1000);
 
     rc = ioctl(device, BIOCSRTIMEOUT, &tv);
     if (rc < 0) {
@@ -828,7 +850,7 @@ ntsa::Error DeviceUtil::Impl::getDataLinkType(ntsa::Handle   device,
     ntsa::Error error;
     int         rc;
 
-    *result = false;
+    *result = 0;
 
     unsigned int dataLinkType = 0;
 
@@ -1643,15 +1665,19 @@ ntsa::Error DeviceUtil::enqueuePacket(
                         buffer.data(),
                         static_cast<bsl::size_t>(buffer.size()));
             if (bytesSent < 0) {
-                error = ntsa::Error::last();
-                if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                int lastError = errno;
+                if (error == EWOULDBLOCK) {
+                    return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+                }
+                else if (error == EINTR) {
                     continue;
                 }
-                if (error == ntsa::Error(ntsa::Error::e_INTERRUPTED)) {
-                    continue;
+                else {
+                    error = ntsa::Error(lastError);
+                    NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(
+                        device, packet, error);
+                    return error;
                 }
-                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device, packet, error);
-                return error;
             }
             else if (bytesSent == 0) {
                 NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(device, packet);
@@ -1707,15 +1733,19 @@ ntsa::Error DeviceUtil::enqueuePacket(
                         buffer.data(),
                         static_cast<bsl::size_t>(buffer.size()));
             if (bytesSent < 0) {
-                error = ntsa::Error::last();
-                if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                int lastError = errno;
+                if (error == EWOULDBLOCK) {
+                    return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+                }
+                else if (error == EINTR) {
                     continue;
                 }
-                if (error == ntsa::Error(ntsa::Error::e_INTERRUPTED)) {
-                    continue;
+                else {
+                    error = ntsa::Error(lastError);
+                    NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(
+                        device, packet, error);
+                    return error;
                 }
-                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device, packet, error);
-                return error;
             }
             else if (bytesSent == 0) {
                 NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(device, packet);
@@ -1762,9 +1792,18 @@ ntsa::Error DeviceUtil::dequeuePacket(
         ::read(device, buffer.data(), static_cast<bsl::size_t>(buffer.size()));
 
     if (bytesRead < 0) {
-        error = ntsa::Error::last();
-        NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR(device, error);
-        return error;
+        int lastError = errno;
+        if (lastError == EWOULDBLOCK) {
+            return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+        }
+        else if (lastError == EINTR) {
+            return ntsa::Error(ntsa::Error::e_INTERRUPTED);
+        }
+        else {
+            error = ntsa::Error(lastError);
+            NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR(device, error);
+            return error;
+        }
     }
     else if (bytesRead == 0) {
         NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR_EOF(device);
@@ -1959,7 +1998,22 @@ ntsa::Error DeviceUtil::dequeuePacket(
 
 ntsa::Error DeviceUtil::shutdown(ntsa::Handle device)
 {
-    return DeviceUtil::setBlocking(device, false);
+    ntsa::Error error;
+
+    bsls::TimeInterval readTimeout;
+    readTimeout.setTotalMilliseconds(1);
+
+    error = DeviceUtil::Impl::setReadTimeout(device, readTimeout);
+    if (error) {
+        return error;
+    }
+
+    error = DeviceUtil::Impl::setBlocking(device, false);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::close(ntsa::Handle device)
@@ -1997,6 +2051,401 @@ bool DeviceUtil::isSupported()
 
 #elif defined(BSLS_PLATFORM_OS_LINUX)
 
+/// Provide a private, platform-specific implementation of utilities for
+/// link-level devices.
+class DeviceUtil::Impl
+{
+  public:
+    /// Enumerates the constants used by the implementation.
+    enum Constant {
+        /// The default TX buffer size.
+        k_DEFAULT_TX_BUFFER_SIZE = 2048,
+
+        /// The default RX buffer size.
+        k_DEFAULT_RX_BUFFER_SIZE = 65536
+    };
+
+    /// Set the promiscuous mode of the specified 'device' to the specified
+    /// 'value'. Return the error.
+    static ntsa::Error setPromiscuous(ntsa::Handle         device, 
+                                      const ntsa::Adapter& adapter, 
+                                      bool                 value);
+
+    /// Set the blocking mode of the specified 'device' to the specified
+    /// 'value'. Return the error.
+    static ntsa::Error setBlocking(ntsa::Handle device, bool value);
+
+    /// Get the blocking mode of the specified 'device' and load it into the
+    /// specified 'result'. Return the error.
+    static ntsa::Error getBlocking(ntsa::Handle device, bool* result);
+
+    /// Set the read timeout of the specified 'device' to the specified
+    /// 'value'. Return the error.
+    static ntsa::Error setReadTimeout(ntsa::Handle              device,
+                                      const bsls::TimeInterval& value);
+
+    /// Get the read timeout of the specified 'device' and load it into the
+    /// specified 'result'. Return the error.
+    static ntsa::Error getReadTimeout(ntsa::Handle        device,
+                                      bsls::TimeInterval* result);
+
+    /// Set the network interface of the specified 'device' to the specified
+    /// 'value'. Return the error.
+    static ntsa::Error setAdapter(ntsa::Handle         device,
+                                  const ntsa::Adapter& value);
+
+    /// Get the network interface of the specified 'device' and load it into
+    /// the specified 'result'. Return the error.
+    static ntsa::Error getAdapter(ntsa::Handle device, ntsa::Adapter* result);
+
+    /// Get the data link type of the specified 'device' and load it into the
+    /// specified 'result'. Return the error.
+    static ntsa::Error getDataLinkType(ntsa::Handle         device,
+                                       const ntsa::Adapter& adapter,
+                                       bsl::uint32_t*       result);
+
+    /// Get the device type of the specified 'device' and load it into the
+    /// specified 'result'. Return the error.
+    static ntsa::Error getDeviceType(ntsa::Handle             device,
+                                     const ntsa::Adapter&     adapter,
+                                     ntsa::DeviceType::Value* result);
+
+    /// Apply the specified packet 'filter' to the specified 'device'. Return
+    /// the error.
+    static ntsa::Error applyFilter(ntsa::Handle              device,
+                                   ntsa::DeviceType::Value   deviceType,
+                                   const ntsa::Adapter&      adapter,
+                                   const ntsa::PacketFilter& filter);
+
+    /// Apply the specified packet filter 'program' to the specified 'device'.
+    /// Return the error.
+    static ntsa::Error applyFilter(ntsa::Handle            device,
+                                   ntsa::DeviceType::Value deviceType,
+                                   const ntsa::Adapter&    adapter,
+                                   const ntsu::PacketFilter::Program& program);
+
+    /// Load into the specified 'result' the device type converted from the
+    /// specified 'dataLinkType'. Return the error.
+    static ntsa::Error convertFromDataLinkType(ntsa::DeviceType::Value* result,
+                                               bsl::uint32_t dataLinkType);
+};
+
+ntsa::Error DeviceUtil::Impl::setPromiscuous(
+    ntsa::Handle         device, 
+    const ntsa::Adapter& adapter,
+    bool                 value)
+{
+    ntsa::Error error;
+    int         rc;
+
+    struct packet_mreq mr;
+    NTSCFG_MEMORY_ZERO(&mr, sizeof mr);
+
+    mr.mr_ifindex = static_cast<int>(adapter.index());
+    mr.mr_type    = PACKET_MR_PROMISC;
+
+    rc = setsockopt(device, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof mr);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "set promiscuous mode", error);
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::setBlocking(ntsa::Handle device, bool value)
+{
+    ntsa::Error error;
+    int         rc;
+
+    int flags = fcntl(device, F_GETFL, 0);
+    if (flags < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "get blocking mode", error);
+        return error;
+    }
+
+    if (value) {
+        flags &= ~O_NONBLOCK;
+    }
+    else {
+        flags |= O_NONBLOCK;
+    }
+
+    rc = fcntl(device, F_SETFL, flags);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "set blocking mode", error);
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::getBlocking(ntsa::Handle device, bool* result)
+{
+    ntsa::Error error;
+
+    *result = false;
+
+    int flags = fcntl(device, F_GETFL, 0);
+    if (flags < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "get blocking mode", error);
+        return error;
+    }
+
+    *result = ((flags & O_NONBLOCK) == 0);
+
+    return ntsa::Error();
+}
+
+
+ntsa::Error DeviceUtil::Impl::setReadTimeout(ntsa::Handle              device,
+                                             const bsls::TimeInterval& value)
+{
+    ntsa::Error error;
+    int         rc;
+
+    struct timeval tv;
+    NTSCFG_MEMORY_ZERO(&tv, sizeof tv);
+
+    tv.tv_sec  = static_cast<time_t>(value.seconds());
+    tv.tv_usec = static_cast<suseconds_t>(value.nanoseconds() / 1000);
+
+    rc = ::setsockopt(device, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    if (rc != 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "set receive timeout", error);
+        return error;
+
+    }
+}
+
+ntsa::Error DeviceUtil::Impl::getReadTimeout(ntsa::Handle        device,
+                                             bsls::TimeInterval* result)
+{
+    ntsa::Error error;
+    int         rc;
+
+    *result = bsls::TimeInterval();
+
+    struct timeval tv;
+    NTSCFG_MEMORY_ZERO(&tv, sizeof tv);
+
+    socklen_t tvLength = static_cast<socklen_t>(sizeof(tv));
+
+    rc = ::getsockopt(device, SOL_SOCKET, SO_RCVTIMEO, &tv, &tvLength);
+    if (rc != 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "get receive timeout", error);
+        return error;
+    }
+
+    result->addSeconds(static_cast<bsls::Types::Int64>(tv.tv_sec));
+    result->addMicroseconds(static_cast<bsls::Types::Int64>(tv.tv_usec));
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::setAdapter(ntsa::Handle         device,
+                                         const ntsa::Adapter& value)
+{
+    ntsa::Error error;
+    int         rc;
+
+    struct ifreq ifr;
+    NTSCFG_MEMORY_ZERO(&ifr, sizeof ifr);
+    strncpy(ifr.ifr_name, value.name().c_str(), IFNAMSIZ - 1);
+
+    rc = setsockopt(device, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof ifr);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "set network interface", error);
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::getAdapter(ntsa::Handle   device,
+                                         ntsa::Adapter* result)
+{
+    ntsa::Error error;
+    int         rc;
+
+    result->reset();
+
+    struct ifreq ifr;
+    NTSCFG_MEMORY_ZERO(&ifr, sizeof ifr);
+
+    socklen_t ifrLength = sizeof ifr;
+
+    rc = getsockopt(device, SOL_SOCKET, SO_BINDTODEVICE, &ifr, &ifrLength);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "set network interface", error);
+        return error;
+    }
+
+    bsl::size_t nameLength = bsl::strlen(ifr.ifr_name);
+
+    bsl::string name(ifr.ifr_name, nameLength);
+
+    bsl::vector<ntsa::Adapter> adapterVector;
+    ntsu::AdapterUtil::discoverAdapterList(&adapterVector);
+
+    for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
+        if (adapterVector[i].name() == name) {
+            *result = adapterVector[i];
+            break;
+        }
+    }
+
+    if (result->name().empty()) {
+        return ntsa::Error(ntsa::Error::e_EOF);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::getDataLinkType(
+    ntsa::Handle         device,
+    const ntsa::Adapter& adapter,
+    bsl::uint32_t*       result)
+{
+    ntsa::Error error;
+    int         rc;
+
+    *result = 0;
+
+    struct ifreq ifr;
+    NTSCFG_MEMORY_ZERO(&ifr, sizeof ifr);
+    strncpy(ifr.ifr_name, adapter.name().c_str(), IFNAMSIZ - 1);
+
+    rc = ::ioctl(device, SIOCGIFHWADDR, &ifr);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "get interface", error);
+        return error;
+    }
+
+    *result = static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_hwaddr.sa_family);
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::getDeviceType(ntsa::Handle             device,
+                                            const ntsa::Adapter&     adapter,
+                                            ntsa::DeviceType::Value* result)
+{
+    ntsa::Error error;
+
+    bsl::uint32_t dataLinkType;
+    error = DeviceUtil::Impl::getDataLinkType(device, adapter, &dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    error = DeviceUtil::Impl::convertFromDataLinkType(result, dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
+                                          ntsa::DeviceType::Value   deviceType,
+                                          const ntsa::Adapter&      adapter,
+                                          const ntsa::PacketFilter& filter)
+{
+    ntsa::Error error;
+    int         rc;
+
+    ntsu::PacketFilter::Program program;
+    error = ntsu::PacketUtil::compile(&program, deviceType, filter);
+    if (error) {
+        BALL_LOG_ERROR << "Failed to compiler packet filter program: " << error
+                       << BALL_LOG_END;
+        return error;
+    }
+
+    struct sock_fprog bpf;
+    NTSCFG_MEMORY_ZERO(&bpf, sizeof bpf);
+
+    bpf.filter = const_cast<struct sock_filter*>(
+        reinterpret_cast<const struct sock_filter*>(&program.front()));
+    bpf.len = static_cast<unsigned short>(program.size());
+
+    rc = setsockopt(device, SOL_SOCKET, SO_ATTACH_FILTER, &bpf, sizeof bpf);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "apply packet filter", error);
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::applyFilter(
+    ntsa::Handle                       device,
+    ntsa::DeviceType::Value            deviceType,
+    const ntsa::Adapter&               adapter,
+    const ntsu::PacketFilter::Program& program)
+{
+    ntsa::Error error;
+    int         rc;
+
+    struct sock_fprog bpf;
+    NTSCFG_MEMORY_ZERO(&bpf, sizeof bpf);
+
+    bpf.filter = const_cast<struct sock_filter*>(
+        reinterpret_cast<const struct sock_filter*>(&program.front()));
+    bpf.len = static_cast<unsigned short>(program.size());
+
+    rc = setsockopt(device, SOL_SOCKET, SO_ATTACH_FILTER, &bpf, sizeof bpf);
+    if (rc < 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_ERROR(device, "apply packet filter", error);
+        return error;
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error DeviceUtil::Impl::convertFromDataLinkType(
+        ntsa::DeviceType::Value* result,
+        bsl::uint32_t            dataLinkType)
+{
+    if (dataLinkType == ARPHRD_LOOPBACK) {
+        *result = ntsa::DeviceType::e_ETHERNET;
+    }
+    else if (dataLinkType == ARPHRD_ETHER) {
+        *result = ntsa::DeviceType::e_ETHERNET;
+    }
+    else if (dataLinkType == ARPHRD_IEEE80211) {
+        *result = ntsa::DeviceType::e_WIRELESS;
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
 ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
                              ntsa::DeviceType::Value*  type,
                              bsl::size_t*              txBufferSize,
@@ -2004,15 +2453,211 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
                              const ntsa::Adapter&      adapter,
                              const ntsa::DeviceConfig& configuration)
 {
+    ntsa::Error error;
+    int         rc;
+
     *result       = ntsa::k_INVALID_HANDLE;
     *type         = ntsa::DeviceType::e_UNDEFINED;
     *txBufferSize = 0;
     *rxBufferSize = 0;
 
-    NTSCFG_WARNING_UNUSED(adapter);
-    NTSCFG_WARNING_UNUSED(configuration);
+    const int domain   = AF_PACKET; 
+    const int mode     = SOCK_RAW | SOCK_CLOEXEC;
+    const int protocol = htons(ETH_P_ALL);
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    bool loopback = false;
+    if (adapter.ipv4Address().has_value() &&
+        adapter.ipv4Address().value().isLoopback())
+    {
+        loopback = true;
+    }
+
+    const bool outgoing = configuration.outgoingEnabled().value_or(false);
+    const bool incoming = configuration.incomingEnabled().value_or(false);
+
+    ntsa::Handle device = ::socket(domain, mode, protocol);
+    if (device < 0) {
+        const int lastError = errno;
+        error = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_OPEN_FAILED(error);
+        return error;
+    }
+
+    ntsu::DeviceGuard guard(device);
+
+    // Configure blocking mode.
+
+    error = DeviceUtil::Impl::setBlocking(device, true);
+    if (error) {
+        return error;
+    }
+
+    // Configure promiscuity.
+
+    if (incoming && configuration.promiscuous().value_or(false)) {
+        error = DeviceUtil::Impl::setPromiscuous(device, adapter, true);
+        if (error) {
+            return error;
+        }
+    }
+
+
+    // Configure see sent.
+
+    if (loopback)
+    {
+        int ignoreOutgoing = 1;
+        rc = setsockopt(device, 
+                        SOL_PACKET, 
+                        PACKET_IGNORE_OUTGOING, 
+                        &ignoreOutgoing, 
+                        sizeof ignoreOutgoing);
+
+        if (rc != 0) {
+            const int lastError = errno;
+            error               = ntsa::Error(lastError);
+            NTSU_DEVICEUTIL_LOG_ERROR(device, "set see sent", error);
+        }
+    }
+
+    // Configure the initial packet filter to reject all packets. The
+    // actual device type cannot be determined until the file descriptor is
+    // bound to an interface, but the packet filter program based upon the
+    // real packet filter specification cannot be implemented until the
+    // device type is known, so initially suppress all packets.
+
+    if (incoming) {
+        ntsu::PacketFilter::Program rejectAll;
+        ntsu::PacketUtil::rejectAll(&rejectAll);
+
+        if (loopback) {
+            error = DeviceUtil::Impl::applyFilter(device,
+                                                  ntsa::DeviceType::e_LOCAL,
+                                                  adapter,
+                                                  rejectAll);
+            if (error) {
+                return error;
+            }
+        }
+        else {
+            error = DeviceUtil::Impl::applyFilter(device,
+                                                  ntsa::DeviceType::e_ETHERNET,
+                                                  adapter,
+                                                  rejectAll);
+            if (error) {
+                return error;
+            }
+        }
+    }
+
+    // Bind to the network interface.
+
+    {
+        struct ifreq ifr;
+        NTSCFG_MEMORY_ZERO(&ifr, sizeof ifr);
+        strncpy(ifr.ifr_name, adapter.name().c_str(), IFNAMSIZ - 1);
+
+        rc = ::ioctl(device, SIOCGIFINDEX, &ifr);
+        if (rc < 0) {
+            const int lastError = errno;
+            error               = ntsa::Error(lastError);
+            NTSU_DEVICEUTIL_LOG_ERROR(device, "get interface", error);
+            return error;
+        }
+
+        if (static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue) != 
+            adapter.index()) 
+        {
+            BALL_LOG_ERROR 
+                << "Failed to open device: network interface index "
+                << "mismatch: expected " 
+                << adapter.index() 
+                << " but found " 
+                << static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue) 
+                << BALL_LOG_END;
+
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        struct sockaddr_ll sll;
+        NTSCFG_MEMORY_ZERO(&sll, sizeof sll);
+
+        sll.sll_family = AF_PACKET;
+        sll.sll_ifindex = ifr.ifr_ifindex;
+        sll.sll_protocol = htons(ETH_P_ALL); 
+
+        rc = ::bind(device, 
+                    reinterpret_cast<struct sockaddr *>(&sll), 
+                    sizeof sll);
+        if (rc != 0) {
+            const int lastError = errno;
+            error               = ntsa::Error(lastError);
+            NTSU_DEVICEUTIL_LOG_ERROR(device, "bind", error);
+            return error;
+        }
+    }
+
+    // Configure the network interface.
+
+    error = DeviceUtil::Impl::setAdapter(device, adapter);
+    if (error) {
+        return error;
+    }
+
+    // Get the data link type.
+
+    bsl::uint32_t dataLinkType = ARPHRD_VOID;
+
+    error = DeviceUtil::Impl::getDataLinkType(device, adapter, &dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    error = DeviceUtil::Impl::convertFromDataLinkType(type, dataLinkType);
+    if (error) {
+        return error;
+    }
+
+    // Configure the packet filter.
+
+    if (incoming) {
+        if (configuration.incomingPacketFilter().has_value()) {
+            error = DeviceUtil::Impl::applyFilter(
+                device,
+                *type,
+                adapter,
+                configuration.incomingPacketFilter().value());
+            if (error) {
+                return error;
+            }
+        }
+        else {
+            ntsu::PacketFilter::Program acceptAll;
+            ntsu::PacketUtil::acceptAll(&acceptAll);
+
+            error = DeviceUtil::Impl::applyFilter(device,
+                                                  *type,
+                                                  adapter,
+                                                  acceptAll);
+            if (error) {
+                return error;
+            }
+        }
+    }
+
+    NTSU_DEVICEUTIL_LOG_OPEN(device, adapter);
+
+    guard.release();
+
+    *result = device;
+
+    *txBufferSize =
+        static_cast<bsl::size_t>(DeviceUtil::Impl::k_DEFAULT_TX_BUFFER_SIZE);
+
+    *rxBufferSize = 
+        static_cast<bsl::size_t>(DeviceUtil::Impl::k_DEFAULT_RX_BUFFER_SIZE);
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
@@ -2020,52 +2665,87 @@ ntsa::Error DeviceUtil::applyFilter(ntsa::Handle              device,
                                     const ntsa::Adapter&      adapter,
                                     const ntsa::PacketFilter& filter)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(deviceType);
-    NTSCFG_WARNING_UNUSED(adapter);
-    NTSCFG_WARNING_UNUSED(filter);
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    return DeviceUtil::Impl::applyFilter(device, deviceType, adapter, filter);
 }
 
 ntsa::Error DeviceUtil::setBlocking(ntsa::Handle device, bool value)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(value);
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    return DeviceUtil::Impl::setBlocking(device, value);
 }
 
 ntsa::Error DeviceUtil::getBlocking(ntsa::Handle device, bool* result)
 {
-    *result = false;
-
-    NTSCFG_WARNING_UNUSED(device);
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    return DeviceUtil::Impl::getBlocking(device, result);
 }
 
 ntsa::Error DeviceUtil::waitUntilReadable(ntsa::Handle device)
 {
-    NTSCFG_WARNING_UNUSED(device);
+    struct ::pollfd pfd;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    pfd.fd      = device;
+    pfd.events  = POLLIN | POLLHUP | POLLERR | POLLNVAL;
+    pfd.revents = 0;
+
+    int rc = ::poll(&pfd, 1, -1);
+    if (rc < 0) {
+        return ntsa::Error(errno);
+    }
+
+    if (rc == 0) {
+        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    if (((pfd.revents & POLLIN) != 0) || ((pfd.revents & POLLHUP) != 0)) {
+        return ntsa::Error();
+    }
+
+    return ntsa::Error::invalid();
 }
 
 ntsa::Error DeviceUtil::waitUntilReadable(ntsa::Handle              device,
                                           const bsls::TimeInterval& timeout)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(timeout);
+    struct ::pollfd pfd;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    pfd.fd      = device;
+    pfd.events  = POLLIN | POLLHUP | POLLERR | POLLNVAL;
+    pfd.revents = 0;
+
+    bsls::TimeInterval now = bdlt::CurrentTime::now();
+
+    bsls::TimeInterval delta;
+    if (timeout > now) {
+        delta = timeout - now;
+    }
+
+    bsl::int64_t milliseconds =
+        static_cast<bsl::int64_t>(delta.totalMilliseconds());
+
+    if (milliseconds > bsl::numeric_limits<int>::max()) {
+        milliseconds = bsl::numeric_limits<int>::max();
+    }
+
+    int rc = ::poll(&pfd, 1, static_cast<int>(milliseconds));
+    if (rc < 0) {
+        return ntsa::Error(errno);
+    }
+
+    if (rc == 0) {
+        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    if (((pfd.revents & POLLIN) != 0) || ((pfd.revents & POLLHUP) != 0)) {
+        return ntsa::Error();
+    }
+
+    return ntsa::Error::invalid();
 }
 
 ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle device)
 {
     NTSCFG_WARNING_UNUSED(device);
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle              device,
@@ -2073,24 +2753,71 @@ ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle              device,
 {
     NTSCFG_WARNING_UNUSED(device);
     NTSCFG_WARNING_UNUSED(timeout);
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::waitUntilError(ntsa::Handle device)
 {
-    NTSCFG_WARNING_UNUSED(device);
+    struct ::pollfd pfd;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    pfd.fd      = device;
+    pfd.events  = POLLERR | POLLNVAL;
+    pfd.revents = 0;
+
+    int rc = ::poll(&pfd, 1, -1);
+    if (rc < 0) {
+        return ntsa::Error(errno);
+    }
+
+    if (rc == 0) {
+        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    if ((pfd.revents & POLLERR) != 0) {
+        return ntsa::Error();
+    }
+
+    return ntsa::Error::invalid();
 }
 
 ntsa::Error DeviceUtil::waitUntilError(ntsa::Handle              device,
                                        const bsls::TimeInterval& timeout)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(timeout);
+    struct ::pollfd pfd;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    pfd.fd      = device;
+    pfd.events  = POLLERR | POLLNVAL;
+    pfd.revents = 0;
+
+    bsls::TimeInterval now = bdlt::CurrentTime::now();
+
+    bsls::TimeInterval delta;
+    if (timeout > now) {
+        delta = timeout - now;
+    }
+
+    bsl::int64_t milliseconds =
+        static_cast<bsl::int64_t>(delta.totalMilliseconds());
+
+    if (milliseconds > bsl::numeric_limits<int>::max()) {
+        milliseconds = bsl::numeric_limits<int>::max();
+    }
+
+    int rc = ::poll(&pfd, 1, static_cast<int>(milliseconds));
+    if (rc < 0) {
+        return ntsa::Error(errno);
+    }
+
+    if (rc == 0) {
+        return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+    }
+
+    if ((pfd.revents & POLLERR) != 0) {
+        return ntsa::Error();
+    }
+
+    return ntsa::Error::invalid();
 }
 
 ntsa::Error DeviceUtil::enqueuePacket(
@@ -2099,12 +2826,87 @@ ntsa::Error DeviceUtil::enqueuePacket(
     const bsl::shared_ptr<ntsa::Packet>&        packet,
     const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(deviceType);
-    NTSCFG_WARNING_UNUSED(packet);
-    NTSCFG_WARNING_UNUSED(packetFactory);
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    if (device == ntsa::k_INVALID_HANDLE) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (deviceType != ntsa::DeviceType::e_ETHERNET) {
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    }
+
+    if (!packet) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!packet->isEthernet()) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!packetFactory) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+    
+    bdlbb::BlobBuffer packetBuffer;
+    packetFactory->createOutgoingBlobBuffer(&packetBuffer);
+
+    ntsa::PacketEncoderContext encoderContext;
+    ntsa::PacketEncoderOptions encoderOptions;
+
+    error = packet->encode(&encoderContext, &packetBuffer, encoderOptions);
+    if (error) {
+        NTSU_DEVICEUTIL_LOG_PACKET_ENCODER_ERROR(device, packet, error);
+        return error;
+    }
+
+    NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(device, packet, buffer);
+
+    do {
+        ssize_t bytesSent = 
+            ::send(device,
+                   packetBuffer.data(),
+                   static_cast<bsl::size_t>(packetBuffer.size()),
+                   MSG_NOSIGNAL);
+        if (bytesSent < 0) {
+            int lastError = errno;
+            if (error == EWOULDBLOCK) {
+                return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+            }
+            else if (error == EINTR) {
+                continue;
+            }
+            else {
+                error = ntsa::Error(lastError);
+                NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device, packet, error);
+                return error;
+            }
+        }
+        else if (bytesSent == 0) {
+            NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR_EOF(device, packet);
+            return ntsa::Error(ntsa::Error::e_EOF);
+        }
+        else if (bytesSent < static_cast<ssize_t>(packetBuffer.size())) {
+            NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                device,
+                packet,
+                packetBuffer,
+                bytesSent);
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+        else if (bytesSent > static_cast<ssize_t>(packetBuffer.size())) {
+            NTSU_DEVICEUTIL_LOG_PACKET_WRITER_UNEXPECTED_BYTES_SENT(
+                device,
+                packet,
+                packetBuffer,
+                bytesSent);
+            return ntsa::Error(ntsa::Error::e_INVALID);
+        }
+
+        BSLS_ASSERT(bytesSent == static_cast<ssize_t>(packetBuffer.size()));
+    } while (false);
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::dequeuePacket(
@@ -2113,26 +2915,137 @@ ntsa::Error DeviceUtil::dequeuePacket(
     const bsl::shared_ptr<ntsa::PacketQueue>&   packetQueue,
     const bsl::shared_ptr<ntsa::PacketFactory>& packetFactory)
 {
-    NTSCFG_WARNING_UNUSED(device);
-    NTSCFG_WARNING_UNUSED(deviceType);
-    NTSCFG_WARNING_UNUSED(packetQueue);
-    NTSCFG_WARNING_UNUSED(packetFactory);
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    if (device == ntsa::k_INVALID_HANDLE) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (deviceType != ntsa::DeviceType::e_ETHERNET) {
+        return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    }
+
+    if (!packetQueue) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    if (!packetFactory) {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    bdlbb::BlobBuffer packetBuffer;
+    packetFactory->createIncomingBlobBuffer(&packetBuffer);
+
+    ssize_t bytesRead = ::recv(device, 
+                               packetBuffer.data(), 
+                               static_cast<bsl::size_t>(packetBuffer.size()), 
+                               0);
+
+    if (bytesRead < 0) {
+        int lastError = errno;
+        if (lastError == EWOULDBLOCK) {
+            return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
+        }
+        else if (lastError == EINTR) {
+            return ntsa::Error(ntsa::Error::e_INTERRUPTED);
+        }
+        else {
+            error = ntsa::Error(lastError);
+            NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR(device, error);
+            return error;
+        }
+    }
+    else if (bytesRead == 0) {
+        NTSU_DEVICEUTIL_LOG_PACKET_READER_ERROR_EOF(device);
+        return ntsa::Error(ntsa::Error::e_EOF);
+    }
+    else if (bytesRead > static_cast<ssize_t>(packetBuffer.size())) {
+        NTSU_DEVICEUTIL_LOG_PACKET_READER_UNEXPECTED_BYTES_RECEIVED(
+            device, packetBuffer, bytesRead);
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    BSLS_ASSERT(bytesRead > 0);
+    BSLS_ASSERT(bytesRead <= static_cast<ssize_t>(packetBuffer.size()));
+
+    packetBuffer.setSize(static_cast<int>(bytesRead));
+
+    ntsa::PacketDecoderContext decoderContext;
+    ntsa::PacketDecoderOptions decoderOptions;
+
+    bsl::shared_ptr<ntsa::Packet> packet;
+    packetFactory->createIncomingPacket(&packet);
+
+    packet->makeEthernet();
+
+    error = packet->decode(&decoderContext, packetBuffer, decoderOptions);
+    if (error) {
+        if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
+            NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device,
+                                                        packet,
+                                                        packetBuffer);
+        }
+        else {
+            NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(device,
+                                                        packetBuffer,
+                                                        packet,
+                                                        error);
+        }
+    }
+    else {
+        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device,
+                                            packet,
+                                            packetBuffer);
+
+        error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
+        if (error) {
+            return error;
+        }
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::shutdown(ntsa::Handle device)
 {
-    NTSCFG_WARNING_UNUSED(device);
+    ntsa::Error error;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    bsls::TimeInterval readTimeout;
+    readTimeout.setTotalMilliseconds(1);
+
+    error = DeviceUtil::Impl::setReadTimeout(device, readTimeout);
+    if (error) {
+        return error;
+    }
+
+    error = DeviceUtil::Impl::setBlocking(device, false);
+    if (error) {
+        return error;
+    }
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::close(ntsa::Handle device)
 {
-    NTSCFG_WARNING_UNUSED(device);
+    ntsa::Error error;
+    int         rc;
 
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+    if (device == ntsa::k_INVALID_HANDLE) {
+        return ntsa::Error();
+    }
+
+    rc = ::close(device);
+    if (rc != 0) {
+        const int lastError = errno;
+        error               = ntsa::Error(lastError);
+        NTSU_DEVICEUTIL_LOG_CLOSE_FAILED(device, error);
+        return error;
+    }
+
+    NTSU_DEVICEUTIL_LOG_CLOSE_COMPLETE(device);
+
+    return ntsa::Error();
 }
 
 bool DeviceUtil::isSupported()

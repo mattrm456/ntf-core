@@ -145,7 +145,7 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntso {
 
-#if defined(BSLS_PLATFORM_OS_DARWIN)
+#if defined(BSLS_PLATFORM_OS_DARWIN) || defined(BSLS_PLATFORM_OS_LINUX)
 
 /// @brief @internal
 /// Provide an implementation of the 'ntso::Device' interface to send and
@@ -343,6 +343,11 @@ ntsa::Error Device::openDriver()
             return error;
         }
 
+        error = ntsu::DeviceUtil::setBlocking(d_outgoingDeviceHandle, true);
+        if (error) {
+            return error;
+        }
+
         bsl::shared_ptr<ntsa::PacketPool> outgoingPacketPool;
         outgoingPacketPool.createInplace(
             d_allocator_p,
@@ -368,6 +373,11 @@ ntsa::Error Device::openDriver()
             d_adapter,
             deviceConfig);
 
+        if (error) {
+            return error;
+        }
+
+        error = ntsu::DeviceUtil::setBlocking(d_outgoingDeviceHandle, false);
         if (error) {
             return error;
         }
@@ -473,7 +483,7 @@ void Device::processOutgoingPacketQueue()
 
     BSLS_LOG_INFO("Outgoing packet queue thread starting");
 
-    while (true) {
+    while (d_outgoingState == e_OPEN) {
         bsl::shared_ptr<ntsa::Packet> packet;
         error = d_outgoingPacketQueue->dequeuePacket(&packet);
         if (!packet || packet->isUndefined()) {
@@ -503,7 +513,7 @@ void Device::processIncomingPacketQueue()
 
     BSLS_LOG_INFO("Incoming packet queue thread starting");
 
-    while (true) {
+    while (d_incomingState == e_OPEN) {
         error = ntsu::DeviceUtil::dequeuePacket(
             d_incomingDeviceHandle,
             d_incomingDeviceType,
@@ -512,7 +522,12 @@ void Device::processIncomingPacketQueue()
 
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                BSLS_LOG_INFO(
+                    "Incoming packet queue thread shutting down: EOF");
                 break;
+            }
+            else if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+
             }
             else {
                 BSLS_LOG_ERROR("Failed to dequeuePacket packet: %s",
@@ -773,6 +788,7 @@ class Device : public ntsi::Device
     /// specify a 'basicAllocator' used to supply memory. If 'basicAllocator'
     /// is 0, the currently installed default allocator is used.
     explicit Device(const ntsa::DeviceConfig& configuration,
+                    const ntsa::Adapter&      adapter,
                     bslma::Allocator*         basicAllocator = 0);
 
     /// Destroy this object.
@@ -781,16 +797,44 @@ class Device : public ntsi::Device
     /// Open the device.
     ntsa::Error open() BSLS_KEYWORD_OVERRIDE;
 
-    /// Enqueue the specified 'packet' for transmission. Return the error.
-    ntsa::Error enqueuePacket(const ntsa::Packet& packet) BSLS_KEYWORD_OVERRIDE;
+    /// Load into the specified 'result' a packet suitable to enqueue to to the
+    /// associated device.
+    void createOutgoingPacket(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Load into the specified 'result' a packet suitable to dequeue from the
+    /// associated device.
+    void createIncomingPacket(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Load into the specified 'result' a blob buffer suitable to enqueue to
+    /// to the associated device.
+    void createOutgoingBlobBuffer(bdlbb::BlobBuffer* result)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Load into the specified 'result' a blob buffer suitable to dequeue from
+    /// the associated device.
+    void createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Apply the specified packet 'filter' to incoming packets. Return the
+    /// error.
+    ntsa::Error applyFilter(const ntsa::PacketFilter& filter) 
+        BSLS_KEYWORD_OVERRIDE;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    ntsa::Error enqueuePacket(bslmf::MovableRef<ntsa::Packet> packet)
+    ntsa::Error enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)
+        BSLS_KEYWORD_OVERRIDE;
+
+    /// Enqueue the specified 'packet' for transmission. Return the error.
+    ntsa::Error enqueuePacket(
+        bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet)
         BSLS_KEYWORD_OVERRIDE;
 
     /// Load into the specified 'result' the next packet received. Return the
     /// error.
-    ntsa::Error dequeuePacket(ntsa::Packet* result) BSLS_KEYWORD_OVERRIDE;
+    ntsa::Error dequeuePacket(bsl::shared_ptr<ntsa::Packet>* result)
+        BSLS_KEYWORD_OVERRIDE;
 
     /// Close the device. Return the error.
     ntsa::Error close() BSLS_KEYWORD_OVERRIDE;
@@ -800,8 +844,9 @@ class Device : public ntsi::Device
 };
 
 Device::Device(const ntsa::DeviceConfig& configuration,
+               const ntsa::Adapter&      adapter,
                bslma::Allocator*         basicAllocator)
-: d_adapter(basicAllocator)
+: d_adapter(adapter, basicAllocator)
 , d_config(configuration, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -816,23 +861,51 @@ ntsa::Error Device::open()
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 
-ntsa::Error Device::enqueuePacket(const ntsa::Packet& packet)
-{
-    NTSCFG_WARNING_UNUSED(packet);
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error Device::enqueuePacket(bslmf::MovableRef<ntsa::Packet> packet)
-{
-    NTSCFG_WARNING_UNUSED(packet);
-
-    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
-}
-
-ntsa::Error Device::dequeuePacket(ntsa::Packet* result)
+void Device::createOutgoingPacket(bsl::shared_ptr<ntsa::Packet>* result)
 {
     result->reset();
+}
+
+void Device::createIncomingPacket(bsl::shared_ptr<ntsa::Packet>* result)
+{
+    result->reset();
+}
+
+void Device::createOutgoingBlobBuffer(bdlbb::BlobBuffer* result)
+{
+    result->reset();
+}
+
+void Device::createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
+{
+    result->reset();
+}
+
+ntsa::Error Device::applyFilter(const ntsa::PacketFilter& filter) 
+{
+    NTSCFG_WARNING_UNUSED(filter);
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error Device::enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)
+{
+    NTSCFG_WARNING_UNUSED(packet);
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error Device::enqueuePacket(
+    bslmf::MovableRef<bsl::shared_ptr<ntsa::Packet> > packet)
+{
+    NTSCFG_WARNING_UNUSED(packet);
+
+    return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
+}
+
+ntsa::Error Device::dequeuePacket(bsl::shared_ptr<ntsa::Packet>* result)
+{
+
     return ntsa::Error(ntsa::Error::e_NOT_IMPLEMENTED);
 }
 

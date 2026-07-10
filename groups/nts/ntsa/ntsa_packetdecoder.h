@@ -103,7 +103,7 @@ class PacketDecoder
 
     /// Decode a signed 64-bit integer and load it into the specified
     /// 'result'. Return the error.
-    ntsa::Error decodeInt64(bsls::Types::Int64* result);
+    ntsa::Error decodeInt64(bsl::int64_t* result);
 
     /// Decode a signed 64-bit integer and load it into the specified
     /// 'result'. Return the error.
@@ -111,7 +111,7 @@ class PacketDecoder
 
     /// Decode an unsigned 64-bit integer and load it into the specified
     /// 'result'. Return the error.
-    ntsa::Error decodeUint64(bsls::Types::Uint64* result);
+    ntsa::Error decodeUint64(bsl::uint64_t* result);
 
     /// Decode an unsigned 64-bit integer and load it into the specified
     /// 'result'. Return the error.
@@ -355,7 +355,7 @@ ntsa::Error PacketDecoder::decodeUint32(bdlb::BigEndianUint32* result)
 }
 
 NTSCFG_INLINE
-ntsa::Error PacketDecoder::decodeInt64(bsls::Types::Int64* result)
+ntsa::Error PacketDecoder::decodeInt64(bsl::int64_t* result)
 {
     BSLMF_ASSERT(sizeof(bsls::Types::Int64) == sizeof(bdlb::BigEndianInt64));
 
@@ -368,7 +368,8 @@ ntsa::Error PacketDecoder::decodeInt64(bsls::Types::Int64* result)
                 d_current,
                 sizeof(bigEndianResult));
 
-    *result = static_cast<bsls::Types::Int64>(bigEndianResult);
+    *result = static_cast<bsl::int64_t>(
+        static_cast<bsls::Types::Int64>(bigEndianResult));
 
     d_current += sizeof(bigEndianResult);
     d_size    -= sizeof(bigEndianResult);
@@ -394,7 +395,7 @@ ntsa::Error PacketDecoder::decodeInt64(bdlb::BigEndianInt64* result)
 }
 
 NTSCFG_INLINE
-ntsa::Error PacketDecoder::decodeUint64(bsls::Types::Uint64* result)
+ntsa::Error PacketDecoder::decodeUint64(bsl::uint64_t* result)
 {
     BSLMF_ASSERT(sizeof(bsls::Types::Uint64) == sizeof(bdlb::BigEndianUint64));
 
@@ -407,7 +408,8 @@ ntsa::Error PacketDecoder::decodeUint64(bsls::Types::Uint64* result)
                 d_current,
                 sizeof(bigEndianResult));
 
-    *result = static_cast<bsls::Types::Uint64>(bigEndianResult);
+    *result = static_cast<bsl::uint64_t>(
+        static_cast<bsls::Types::Uint64>(bigEndianResult));
 
     d_current += sizeof(bigEndianResult);
     d_size    -= sizeof(bigEndianResult);

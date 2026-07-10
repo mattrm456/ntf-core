@@ -32,8 +32,6 @@ BSLS_IDENT_RCSID(ntso_device_t_cpp, "$Id$ $CSID$")
 
 using namespace BloombergLP;
 
-#if defined(BSLS_PLATFORM_OS_DARWIN)
-
 namespace BloombergLP {
 namespace ntso {
 
@@ -323,4 +321,3 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyDefault)
 }  // close namespace ntso
 }  // close namespace BloombergLP
 
-#endif
