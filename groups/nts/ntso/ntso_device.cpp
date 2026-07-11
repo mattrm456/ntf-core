@@ -28,6 +28,8 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #include <ntsa_packetencoderoptions.h>
 #include <ntsa_packetqueue.h>
 #include <ntsa_shutdowntype.h>
+#include <ntsb_controller.h>
+#include <ntsi_reactor.h>
 #include <ntscfg_limits.h>
 #include <ntscfg_platform.h>
 #include <ntsu_adapterutil.h>
@@ -36,6 +38,9 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #include <ntsu_routeutil.h>
 #include <ntsu_socketoptionutil.h>
 #include <ntsu_socketutil.h>
+#include <ntso_epoll.h>
+#include <ntso_kqueue.h>
+#include <ntso_poll.h>
 
 #include <bdlb_string.h>
 #include <bdlbb_blob.h>
@@ -48,9 +53,6 @@ BSLS_IDENT_RCSID(ntso_device_cpp, "$Id$ $CSID$")
 #include <bslma_allocator.h>
 #include <bslma_deallocatorguard.h>
 #include <bslma_default.h>
-#include <bslmt_condition.h>
-#include <bslmt_lockguard.h>
-#include <bslmt_mutex.h>
 #include <bslmt_threadattributes.h>
 #include <bslmt_threadgroup.h>
 #include <bslmt_threadutil.h>
@@ -158,13 +160,10 @@ namespace ntso {
 class Device : public ntsi::Device
 {
     /// Define a type alias for a mutex.
-    typedef bslmt::Mutex Mutex;
-
-    /// Define a type alias for a condition variable.
-    typedef bslmt::Condition Condition;
+    typedef ntscfg::Mutex Mutex;
 
     /// Define a type alias for a lock guard.
-    typedef bslmt::LockGuard<bslmt::Mutex> LockGuard;
+    typedef ntscfg::LockGuard LockGuard;
 
     /// Enumerate the operation state.
     enum State {
@@ -219,6 +218,12 @@ class Device : public ntsi::Device
 
     /// The incoming state.
     bsls::AtomicInt d_incomingState;
+
+    /// The polling mechanism.
+    bsl::shared_ptr<ntsi::Reactor> d_reactor;
+
+    /// The polling interruption mechanism.
+    ntsb::Controller d_controller;
 
     /// The adapter.
     ntsa::Adapter d_adapter;
@@ -276,29 +281,30 @@ class Device : public ntsi::Device
     /// Open the device.
     ntsa::Error open() BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'result' a packet suitable to enqueuePacket to to the
+    /// Load into the specified 'result' a packet suitable to enqueue to to the
     /// associated device.
     void createOutgoingPacket(bsl::shared_ptr<ntsa::Packet>* result)
         BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'result' a packet suitable to dequeuePacket from the
+    /// Load into the specified 'result' a packet suitable to dequeue from the
     /// associated device.
     void createIncomingPacket(bsl::shared_ptr<ntsa::Packet>* result)
         BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'result' a blob buffer suitable to enqueuePacket to
+    /// Load into the specified 'result' a blob buffer suitable to enqueue to
     /// to the associated device.
     void createOutgoingBlobBuffer(bdlbb::BlobBuffer* result)
         BSLS_KEYWORD_OVERRIDE;
 
-    /// Load into the specified 'result' a blob buffer suitable to dequeuePacket from
+    /// Load into the specified 'result' a blob buffer suitable to dequeue from
     /// the associated device.
     void createIncomingBlobBuffer(bdlbb::BlobBuffer* result)
         BSLS_KEYWORD_OVERRIDE;
 
     /// Apply the specified packet 'filter' to incoming packets. Return the
     /// error.
-    ntsa::Error applyFilter(const ntsa::PacketFilter& filter) BSLS_KEYWORD_OVERRIDE;
+    ntsa::Error applyFilter(const ntsa::PacketFilter& filter) 
+                            BSLS_KEYWORD_OVERRIDE;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
     ntsa::Error enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)
@@ -377,7 +383,7 @@ ntsa::Error Device::openDriver()
             return error;
         }
 
-        error = ntsu::DeviceUtil::setBlocking(d_outgoingDeviceHandle, false);
+        error = ntsu::DeviceUtil::setBlocking(d_incomingDeviceHandle, false);
         if (error) {
             return error;
         }
@@ -390,6 +396,80 @@ ntsa::Error Device::openDriver()
             d_allocator_p);
 
         d_incomingPacketFactory = incomingPacketPool;
+    }
+
+#if defined(BSLS_PLATFORM_OS_DARWIN)
+
+    {
+        ntsa::ReactorConfig reactorConfig;
+        reactorConfig.setDriverName("kqueue");
+
+        d_reactor = ntso::KqueueUtil::createReactor(
+            reactorConfig, d_allocator_p);
+    }
+   
+#elif defined(BSLS_PLATFORM_OS_LINUX)
+
+    {
+        ntsa::ReactorConfig reactorConfig;
+        reactorConfig.setDriverName("epoll");
+
+        d_reactor = ntso::EpollUtil::createReactor(
+            reactorConfig, d_allocator_p);
+    }
+
+#else
+
+    {
+        ntsa::ReactorConfig reactorConfig;
+        reactorConfig.setDriverName("poll");
+
+        d_reactor = ntso::PollUtil::createReactor(
+            reactorConfig, d_allocator_p);
+    }
+
+#endif
+
+    BSLS_ASSERT_OPT(d_controller.handle() != ntsa::k_INVALID_HANDLE);
+
+    error = d_reactor->attachSocket(d_incomingDeviceHandle);
+    if (error) {
+        BALL_LOG_WARN << "Network device descriptor "
+                      << d_incomingDeviceHandle
+                      << " failed to attach to reactor: " 
+                      << error 
+                      << BALL_LOG_END;
+    }
+
+    error = d_reactor->attachSocket(d_controller.handle());
+    if (error) {
+        BALL_LOG_WARN << "Network controller descriptor "
+                      << d_controller.handle()
+                      << " failed to attach to reactor: " 
+                      << error 
+                      << BALL_LOG_END;
+    }
+
+    error = d_reactor->showReadable(d_incomingDeviceHandle);
+    if (error) {
+        BALL_LOG_ERROR << "Network device descriptor " 
+                       << d_incomingDeviceHandle
+                       << " failed to register interest in readability: "
+                       << error
+                       << BALL_LOG_END;
+
+        return error;
+    }
+
+    error = d_reactor->showReadable(d_controller.handle());
+    if (error) {
+        BALL_LOG_ERROR << "Network controller descriptor " 
+                       << d_controller.handle()
+                       << " failed to register interest in readability: "
+                       << error
+                       << BALL_LOG_END;
+
+        return error;
     }
 
     return ntsa::Error();
@@ -481,12 +561,38 @@ void Device::processOutgoingPacketQueue()
 {
     ntsa::Error error;
 
-    BSLS_LOG_INFO("Outgoing packet queue thread starting");
+    BALL_LOG_DEBUG << "Network device descriptor " 
+                   << d_outgoingDeviceHandle
+                   << " outgoing packet queue thread starting"
+                   << BALL_LOG_END;
 
     while (d_outgoingState == e_OPEN) {
         bsl::shared_ptr<ntsa::Packet> packet;
         error = d_outgoingPacketQueue->dequeuePacket(&packet);
+        if (error) {
+            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                BALL_LOG_DEBUG << "Network device descriptor " 
+                               << d_outgoingDeviceHandle
+                               << " outgoing packet queue has been shut down"
+                               << BALL_LOG_END;
+                break;
+            }
+            else {
+                BALL_LOG_DEBUG 
+                    << "Network device descriptor " 
+                    << d_outgoingDeviceHandle
+                    << " failed to dequeue packet from packet queue: "
+                    << error
+                    << BALL_LOG_END;
+                continue;
+            }
+        }
+
         if (!packet || packet->isUndefined()) {
+            BALL_LOG_DEBUG << "Network device descriptor " 
+                           << d_outgoingDeviceHandle
+                           << " outgoing packet queue has been shut down"
+                           << BALL_LOG_END;
             break;
         }
 
@@ -497,13 +603,30 @@ void Device::processOutgoingPacketQueue()
             d_outgoingPacketFactory);
 
         if (error) {
-            BSLS_LOG_ERROR("Failed to enqueuePacket packet: %s",
-                           error.text().c_str());
-            break;
+            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                BALL_LOG_DEBUG << "Network device descriptor " 
+                               << d_outgoingDeviceHandle
+                               << " write EOF"
+                               << BALL_LOG_END;
+                break;
+            }
+            else {
+                BALL_LOG_ERROR << "Network device descriptor " 
+                               << d_outgoingDeviceHandle
+                               << " failed to enqueue packet "
+                               << packet
+                               << ": " 
+                               << error
+                               << BALL_LOG_END;
+                continue;
+            }
         }
     }
 
-    BSLS_LOG_INFO("Outgoing packet queue thread complete");
+    BALL_LOG_DEBUG << "Network device descriptor " 
+                   << d_outgoingDeviceHandle
+                   << " outgoing packet queue thread complete"
+                   << BALL_LOG_END;
 }
 
 void Device::processIncomingPacketQueue()
@@ -511,32 +634,99 @@ void Device::processIncomingPacketQueue()
     ntsa::Error error;
     int         rc;
 
-    BSLS_LOG_INFO("Incoming packet queue thread starting");
+    BALL_LOG_DEBUG << "Network device descriptor " 
+                   << d_incomingDeviceHandle
+                   << " incoming packet queue thread starting"
+                   << BALL_LOG_END;
 
     while (d_incomingState == e_OPEN) {
-        error = ntsu::DeviceUtil::dequeuePacket(
-            d_incomingDeviceHandle,
-            d_incomingDeviceType,
-            d_incomingPacketQueue,
-            d_incomingPacketFactory);
-
+        ntsa::EventSet                          eventSet;
+        bdlb::NullableValue<bsls::TimeInterval> eventDeadline;
+        
+        error = d_reactor->wait(&eventSet, eventDeadline);
         if (error) {
-            if (error == ntsa::Error(ntsa::Error::e_EOF)) {
-                BSLS_LOG_INFO(
-                    "Incoming packet queue thread shutting down: EOF");
-                break;
-            }
-            else if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
-
+            if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                BALL_LOG_DEBUG << "Network device descriptor " 
+                               << d_incomingDeviceHandle
+                               << " timed out waiting to become readable"
+                               << BALL_LOG_END;
+                continue;
             }
             else {
-                BSLS_LOG_ERROR("Failed to dequeuePacket packet: %s",
-                               error.text().c_str());
+                BALL_LOG_ERROR << "Network device descriptor " 
+                               << d_incomingDeviceHandle
+                               << " failed to wait until readable: " 
+                               << error
+                               << BALL_LOG_END;
+                continue;
+            }
+        }
+
+        ntsa::EventSet::const_iterator it = eventSet.cbegin();
+        ntsa::EventSet::const_iterator et = eventSet.cend();
+
+        for (; it != et; ++it) {
+            const ntsa::Event& event = *it;
+
+            BALL_LOG_TRACE << "Network device descriptor " 
+                           << d_incomingDeviceHandle
+                           << " polled event " 
+                           << event
+                           << BALL_LOG_END;
+
+            if (event.handle() == d_incomingDeviceHandle) {
+                error = ntsu::DeviceUtil::dequeuePacket(
+                    d_incomingDeviceHandle,
+                    d_incomingDeviceType,
+                    d_incomingPacketQueue,
+                    d_incomingPacketFactory);
+
+                if (error) {
+                    if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
+                        BALL_LOG_DEBUG << "Network device descriptor " 
+                                       << d_incomingDeviceHandle
+                                       << " read would block"
+                                       << BALL_LOG_END;
+                        break;
+                    }
+                    else if (error == ntsa::Error(ntsa::Error::e_EOF)) {
+                        BALL_LOG_DEBUG << "Network device descriptor " 
+                                       << d_incomingDeviceHandle
+                                       << " read EOF"
+                                       << BALL_LOG_END;
+                        break;
+                    }
+                    else {
+                        BALL_LOG_ERROR << "Network device descriptor " 
+                                       << d_incomingDeviceHandle
+                                       << " failed to dequeue packet: " 
+                                       << error
+                                       << BALL_LOG_END;
+                        break;
+                    }
+                }
+            }
+            else if (event.handle() == d_controller.handle()) {
+                BALL_LOG_ERROR << "Network device descriptor " 
+                               << d_incomingDeviceHandle
+                               << " polled interrupt" 
+                               << BALL_LOG_END;
+                break;
+            }
+            else {
+                BALL_LOG_ERROR << "Network device descriptor " 
+                               << d_incomingDeviceHandle
+                               << " polled unexpected event " 
+                               << event
+                               << BALL_LOG_END;
             }
         }
     }
 
-    BSLS_LOG_INFO("Incoming packet queue thread complete");
+    BALL_LOG_DEBUG << "Network device descriptor " 
+                   << d_incomingDeviceHandle
+                   << " incoming packet queue thread complete"
+                   << BALL_LOG_END;
 }
 
 void Device::closeOutgoingPacketQueue()
@@ -579,6 +769,8 @@ void Device::closeIncomingPacketQueue()
 
     d_incomingState = e_CLOSING;
 
+    d_controller.interrupt(1);
+
     error = ntsu::DeviceUtil::shutdown(d_incomingDeviceHandle);
     if (error) {
         BALL_LOG_WARN << "Failed to shutdown: " << error << BALL_LOG_END;
@@ -595,10 +787,34 @@ void Device::closeDriver()
 {
     ntsa::Error error;
 
+    error = d_reactor->detachSocket(d_incomingDeviceHandle);
+    if (error) {
+        BALL_LOG_WARN << "Network device descriptor "
+                      << d_incomingDeviceHandle
+                      << " failed to detach from reactor: " 
+                      << error 
+                      << BALL_LOG_END;
+    }
+
+    error = d_reactor->detachSocket(d_controller.handle());
+    if (error) {
+        BALL_LOG_WARN << "Network controller descriptor "
+                      << d_controller.handle()
+                      << " failed to detach from reactor: " 
+                      << error 
+                      << BALL_LOG_END;
+    }
+
+    d_controller.close();
+
     if (d_outgoingDeviceHandle != ntsa::k_INVALID_HANDLE) {
         error = ntsu::DeviceUtil::close(d_outgoingDeviceHandle);
         if (error) {
-            BALL_LOG_WARN << "Failed to close: " << error << BALL_LOG_END;
+            BALL_LOG_WARN << "Network device descriptor "
+                          << d_outgoingDeviceHandle
+                          << " failed to close: " 
+                          << error 
+                          << BALL_LOG_END;
         }
 
         d_outgoingDeviceHandle = ntsa::k_INVALID_HANDLE;
@@ -608,12 +824,18 @@ void Device::closeDriver()
     if (d_incomingDeviceHandle != ntsa::k_INVALID_HANDLE) {
         error = ntsu::DeviceUtil::close(d_incomingDeviceHandle);
         if (error) {
-            BALL_LOG_WARN << "Failed to close: " << error << BALL_LOG_END;
+            BALL_LOG_WARN << "Network device descriptor "
+                          << d_incomingDeviceHandle
+                          << " failed to close: " 
+                          << error 
+                          << BALL_LOG_END;
         }
 
         d_incomingDeviceHandle = ntsa::k_INVALID_HANDLE;
         d_incomingDeviceType   = ntsa::DeviceType::e_UNDEFINED;
     }
+
+    d_controller.close();
 }
 
 Device::Device(const ntsa::DeviceConfig& configuration,
@@ -632,6 +854,8 @@ Device::Device(const ntsa::DeviceConfig& configuration,
 , d_incomingPacketQueue()
 , d_incomingThreadGroup(basicAllocator)
 , d_incomingState(e_DEFAULT)
+, d_reactor()
+, d_controller()
 , d_adapter(adapter, basicAllocator)
 , d_config(configuration, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
@@ -1342,7 +1566,8 @@ ntsa::Error Network::ensureRxDevice(bsl::shared_ptr<ntsi::Device>* device,
     }
 
     ntsa::Adapter adapter;
-    error = ntsu::AdapterUtil::resolveAdapter(&adapter, d_adapterVector, ipv4Address);
+    error = ntsu::AdapterUtil::resolveAdapter(
+        &adapter, d_adapterVector, ipv4Address);
     if (error) {
         return error;
     }

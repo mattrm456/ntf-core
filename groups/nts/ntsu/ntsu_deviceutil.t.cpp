@@ -265,7 +265,7 @@ void DeviceUtilTest::writer(
                 continue;
             }
             else {
-                BALL_LOG_ERROR << "Device descriptor " << device
+                BALL_LOG_ERROR << "Network device descriptor " << device
                                << " failed to wait until writable: " << error
                                << BALL_LOG_END;
                 break;

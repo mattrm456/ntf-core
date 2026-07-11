@@ -127,11 +127,8 @@ void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device,
                 break;
             }
 
-            if (!packet || packet->isUndefined()) {
-                BALL_LOG_INFO << "Device dequeued undefined packet"
-                              << BALL_LOG_END;
-                break;
-            }
+            NTSCFG_TEST_TRUE(packet);
+            NTSCFG_TEST_FALSE(packet->isUndefined());
         }
     }
 
@@ -276,14 +273,22 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
 
     bslmt::ThreadUtil::sleep(duration);
 
-    BALL_LOG_WARN << "Closing device" << BALL_LOG_END;
+    BALL_LOG_WARN << "Join application outgoing thread group starting" << BALL_LOG_END;
 
     outgoingThreadGroup.joinAll();
+
+    BALL_LOG_WARN << "Join application outgoing thread group complete" << BALL_LOG_END;
+
+    BALL_LOG_WARN << "Closing device" << BALL_LOG_END;
 
     error = device->close();
     NTSCFG_TEST_OK(error);
 
+    BALL_LOG_WARN << "Join application incoming thread group starting" << BALL_LOG_END;
+
     incomingThreadGroup.joinAll();
+
+    BALL_LOG_WARN << "Join application incoming thread group complete" << BALL_LOG_END;
 }
 
 NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyLoopback)
