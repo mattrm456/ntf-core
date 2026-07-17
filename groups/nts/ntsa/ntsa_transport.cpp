@@ -89,7 +89,6 @@ int TransportProtocol::fromInt(TransportProtocol::Value* result, int number)
 {
     switch (number) {
     case TransportProtocol::e_UNDEFINED:
-    case TransportProtocol::e_RAW:
     case TransportProtocol::e_TCP:
     case TransportProtocol::e_UDP:
     case TransportProtocol::e_LOCAL:
@@ -105,10 +104,6 @@ int TransportProtocol::fromString(TransportProtocol::Value* result,
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;
-        return 0;
-    }
-    if (bdlb::String::areEqualCaseless(string, "RAW")) {
-        *result = e_RAW;
         return 0;
     }
     if (bdlb::String::areEqualCaseless(string, "TCP")) {
@@ -132,9 +127,6 @@ const char* TransportProtocol::toString(TransportProtocol::Value value)
     switch (value) {
     case e_UNDEFINED: {
         return "UNDEFINED";
-    } break;
-    case e_RAW: {
-        return "RAW";
     } break;
     case e_TCP: {
         return "TCP";
@@ -166,7 +158,6 @@ int TransportDomain::fromInt(TransportDomain::Value* result, int number)
 {
     switch (number) {
     case TransportDomain::e_UNDEFINED:
-    case TransportDomain::e_ETHERNET:
     case TransportDomain::e_IPV4:
     case TransportDomain::e_IPV6:
     case TransportDomain::e_LOCAL:
@@ -182,10 +173,6 @@ int TransportDomain::fromString(TransportDomain::Value*  result,
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;
-        return 0;
-    }
-    if (bdlb::String::areEqualCaseless(string, "ETHERNET")) {
-        *result = e_ETHERNET;
         return 0;
     }
     if (bdlb::String::areEqualCaseless(string, "IPV4")) {
@@ -209,9 +196,6 @@ const char* TransportDomain::toString(TransportDomain::Value value)
     switch (value) {
     case e_UNDEFINED: {
         return "UNDEFINED";
-    } break;
-    case e_ETHERNET: {
-        return "ETHERNET";
     } break;
     case e_IPV4: {
         return "IPV4";
@@ -245,7 +229,6 @@ int TransportMode::fromInt(TransportMode::Value* result, int number)
     case TransportMode::e_UNDEFINED:
     case TransportMode::e_STREAM:
     case TransportMode::e_DATAGRAM:
-    case TransportMode::e_RAW:
         *result = static_cast<TransportMode::Value>(number);
         return 0;
     default:
@@ -268,10 +251,6 @@ int TransportMode::fromString(TransportMode::Value*    result,
         *result = e_DATAGRAM;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "RAW")) {
-        *result = e_RAW;
-        return 0;
-    }
 
     return -1;
 }
@@ -287,9 +266,6 @@ const char* TransportMode::toString(TransportMode::Value value)
     } break;
     case e_DATAGRAM: {
         return "DATAGRAM";
-    } break;
-    case e_RAW: {
-        return "RAW";
     } break;
     }
 
@@ -374,16 +350,11 @@ int Transport::fromInt(Transport::Value* result, int number)
     switch (number) {
     case Transport::e_UNDEFINED:
     case Transport::e_TCP_IPV4_STREAM:
-    case Transport::e_TCP_IPV4_RAW:
     case Transport::e_TCP_IPV6_STREAM:
-    case Transport::e_TCP_IPV6_RAW:
     case Transport::e_UDP_IPV4_DATAGRAM:
-    case Transport::e_UDP_IPV4_RAW:
     case Transport::e_UDP_IPV6_DATAGRAM:
-    case Transport::e_UDP_IPV6_RAW:
     case Transport::e_LOCAL_STREAM:
     case Transport::e_LOCAL_DATAGRAM:
-    case Transport::e_ETHERNET:
         *result = static_cast<Transport::Value>(number);
         return 0;
     default:
@@ -403,32 +374,16 @@ int Transport::fromString(Transport::Value*        result,
         *result = e_TCP_IPV4_STREAM;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "TCP_IPV4_RAW")) {
-        *result = e_TCP_IPV4_RAW;
-        return 0;
-    }
     if (bdlb::String::areEqualCaseless(string, "TCP_IPV6_STREAM")) {
         *result = e_TCP_IPV6_STREAM;
-        return 0;
-    }
-    if (bdlb::String::areEqualCaseless(string, "TCP_IPV6_RAW")) {
-        *result = e_TCP_IPV6_RAW;
         return 0;
     }
     if (bdlb::String::areEqualCaseless(string, "UDP_IPV4_DATAGRAM")) {
         *result = e_UDP_IPV4_DATAGRAM;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "UDP_IPV4_RAW")) {
-        *result = e_UDP_IPV4_RAW;
-        return 0;
-    }
     if (bdlb::String::areEqualCaseless(string, "UDP_IPV6_DATAGRAM")) {
         *result = e_UDP_IPV6_DATAGRAM;
-        return 0;
-    }
-    if (bdlb::String::areEqualCaseless(string, "UDP_IPV6_RAW")) {
-        *result = e_UDP_IPV6_RAW;
         return 0;
     }
     if (bdlb::String::areEqualCaseless(string, "LOCAL_STREAM")) {
@@ -437,10 +392,6 @@ int Transport::fromString(Transport::Value*        result,
     }
     if (bdlb::String::areEqualCaseless(string, "LOCAL_DATAGRAM")) {
         *result = e_LOCAL_DATAGRAM;
-        return 0;
-    }
-    if (bdlb::String::areEqualCaseless(string, "ETHERNET")) {
-        *result = e_ETHERNET;
         return 0;
     }
 
@@ -463,35 +414,20 @@ const char* Transport::toString(Transport::Value value)
     case e_TCP_IPV4_STREAM: {
         return "TCP_IPV4_STREAM";
     } break;
-    case e_TCP_IPV4_RAW: {
-        return "TCP_IPV4_RAW";
-    } break;
     case e_TCP_IPV6_STREAM: {
         return "TCP_IPV6_STREAM";
-    } break;
-    case e_TCP_IPV6_RAW: {
-        return "TCP_IPV6_RAW";
     } break;
     case e_UDP_IPV4_DATAGRAM: {
         return "UDP_IPV4_DATAGRAM";
     } break;
-    case e_UDP_IPV4_RAW: {
-        return "UDP_IPV4_RAW";
-    } break;
     case e_UDP_IPV6_DATAGRAM: {
         return "UDP_IPV6_DATAGRAM";
-    } break;
-    case e_UDP_IPV6_RAW: {
-        return "UDP_IPV6_RAW";
     } break;
     case e_LOCAL_STREAM: {
         return "LOCAL_STREAM";
     } break;
     case e_LOCAL_DATAGRAM: {
         return "LOCAL_DATAGRAM";
-    } break;
-    case e_ETHERNET: {
-        return "ETHERNET";
     } break;
     }
 
@@ -515,32 +451,19 @@ ntsa::TransportMode::Value Transport::getMode(Value value)
         return ntsa::TransportMode::e_DATAGRAM;
     }
 
-    if (value == ntsa::Transport::e_ETHERNET ||
-        value == ntsa::Transport::e_TCP_IPV4_RAW ||
-        value == ntsa::Transport::e_TCP_IPV6_RAW ||
-        value == ntsa::Transport::e_UDP_IPV4_RAW ||
-        value == ntsa::Transport::e_UDP_IPV6_RAW)
-    {
-        return ntsa::TransportMode::e_RAW;
-    }
-
     return ntsa::TransportMode::e_UNDEFINED;
 }
 
 ntsa::TransportDomain::Value Transport::getDomain(Value value)
 {
     if (value == ntsa::Transport::e_TCP_IPV4_STREAM ||
-        value == ntsa::Transport::e_TCP_IPV4_RAW ||
-        value == ntsa::Transport::e_UDP_IPV4_DATAGRAM ||
-        value == ntsa::Transport::e_UDP_IPV4_RAW)
+        value == ntsa::Transport::e_UDP_IPV4_DATAGRAM)
     {
         return ntsa::TransportDomain::e_IPV4;
     }
 
     if (value == ntsa::Transport::e_TCP_IPV6_STREAM ||
-        value == ntsa::Transport::e_TCP_IPV6_RAW ||
-        value == ntsa::Transport::e_UDP_IPV6_DATAGRAM ||
-        value == ntsa::Transport::e_UDP_IPV6_RAW)
+        value == ntsa::Transport::e_UDP_IPV6_DATAGRAM)
     {
         return ntsa::TransportDomain::e_IPV6;
     }
@@ -551,27 +474,19 @@ ntsa::TransportDomain::Value Transport::getDomain(Value value)
         return ntsa::TransportDomain::e_LOCAL;
     }
 
-    if (value == ntsa::Transport::e_ETHERNET) {
-        return ntsa::TransportDomain::e_ETHERNET;
-    }
-
     return ntsa::TransportDomain::e_UNDEFINED;
 }
 
 ntsa::TransportProtocol::Value Transport::getProtocol(Value value)
 {
     if (value == ntsa::Transport::e_TCP_IPV4_STREAM ||
-        value == ntsa::Transport::e_TCP_IPV4_RAW ||
-        value == ntsa::Transport::e_TCP_IPV6_STREAM ||
-        value == ntsa::Transport::e_TCP_IPV6_RAW)
+        value == ntsa::Transport::e_TCP_IPV6_STREAM)
     {
         return ntsa::TransportProtocol::e_TCP;
     }
 
     if (value == ntsa::Transport::e_UDP_IPV4_DATAGRAM ||
-        value == ntsa::Transport::e_UDP_IPV4_RAW ||
-        value == ntsa::Transport::e_UDP_IPV6_DATAGRAM ||
-        value == ntsa::Transport::e_UDP_IPV6_RAW)
+        value == ntsa::Transport::e_UDP_IPV6_DATAGRAM)
     {
         return ntsa::TransportProtocol::e_UDP;
     }
@@ -580,11 +495,6 @@ ntsa::TransportProtocol::Value Transport::getProtocol(Value value)
         value == ntsa::Transport::e_LOCAL_DATAGRAM)
     {
         return ntsa::TransportProtocol::e_LOCAL;
-    }
-
-    if (value == ntsa::Transport::e_ETHERNET)
-    {
-        return ntsa::TransportProtocol::e_RAW;
     }
 
     return ntsa::TransportProtocol::e_UNDEFINED;
@@ -704,9 +614,6 @@ ntsa::Transport::Value TransportSuite::transport() const
             if (d_transportMode == ntsa::TransportMode::e_STREAM) {
                 return ntsa::Transport::e_TCP_IPV4_STREAM;
             }
-            else if (d_transportMode == ntsa::TransportMode::e_RAW) {
-                return ntsa::Transport::e_TCP_IPV4_RAW;
-            }
             else {
                 return ntsa::Transport::e_UNDEFINED;
             }
@@ -714,9 +621,6 @@ ntsa::Transport::Value TransportSuite::transport() const
         else if (d_transportDomain == ntsa::TransportDomain::e_IPV6) {
             if (d_transportMode == ntsa::TransportMode::e_STREAM) {
                 return ntsa::Transport::e_TCP_IPV6_STREAM;
-            }
-            else if (d_transportMode == ntsa::TransportMode::e_RAW) {
-                return ntsa::Transport::e_TCP_IPV6_RAW;
             }
             else {
                 return ntsa::Transport::e_UNDEFINED;
@@ -731,9 +635,6 @@ ntsa::Transport::Value TransportSuite::transport() const
             if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
                 return ntsa::Transport::e_UDP_IPV4_DATAGRAM;
             }
-            else if (d_transportMode == ntsa::TransportMode::e_RAW) {
-                return ntsa::Transport::e_UDP_IPV4_RAW;
-            }
             else {
                 return ntsa::Transport::e_UNDEFINED;
             }
@@ -741,9 +642,6 @@ ntsa::Transport::Value TransportSuite::transport() const
         else if (d_transportDomain == ntsa::TransportDomain::e_IPV6) {
             if (d_transportMode == ntsa::TransportMode::e_DATAGRAM) {
                 return ntsa::Transport::e_UDP_IPV6_DATAGRAM;
-            }
-            else if (d_transportMode == ntsa::TransportMode::e_RAW) {
-                return ntsa::Transport::e_UDP_IPV4_RAW;
             }
             else {
                 return ntsa::Transport::e_UNDEFINED;
@@ -774,9 +672,6 @@ ntsa::Transport::Value TransportSuite::transport() const
         else {
             return ntsa::Transport::e_UNDEFINED;
         }
-    }
-    else if (d_transportDomain == ntsa::TransportDomain::e_ETHERNET) {
-        return ntsa::Transport::e_ETHERNET;
     }
     else {
         return ntsa::Transport::e_UNDEFINED;

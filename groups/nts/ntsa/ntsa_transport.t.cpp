@@ -167,7 +167,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportProtocolTest::verifyFromInt)
         {  0,  1, ntsa::TransportProtocol::e_TCP       },
         {  0,  2, ntsa::TransportProtocol::e_UDP       },
         {  0,  3, ntsa::TransportProtocol::e_LOCAL     },
-        {  0,  4, ntsa::TransportProtocol::e_RAW       },
         { -1, -1, ntsa::TransportProtocol::e_UNDEFINED }
     };
     // clang-format on
@@ -202,7 +201,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportProtocolTest::verifyFromString)
         {  0,  "TCP",       ntsa::TransportProtocol::e_TCP       },
         {  0,  "UDP",       ntsa::TransportProtocol::e_UDP       },
         {  0,  "LOCAL",     ntsa::TransportProtocol::e_LOCAL     },
-        {  0,  "RAW",       ntsa::TransportProtocol::e_RAW       },
         { -1,  "!",         ntsa::TransportProtocol::e_UNDEFINED }
     };
     // clang-format on
@@ -235,8 +233,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportProtocolTest::verifyPrint)
         {  "UNDEFINED", 0 },
         {  "TCP",       1 },
         {  "UDP",       2 },
-        {  "LOCAL",     3 },
-        {  "RAW",       4 }
+        {  "LOCAL",     3 }
     };
     // clang-format on
 
@@ -286,7 +283,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportDomainTest::verifyFromInt)
         {  0,  1, ntsa::TransportDomain::e_IPV4      },
         {  0,  2, ntsa::TransportDomain::e_IPV6      },
         {  0,  3, ntsa::TransportDomain::e_LOCAL     },
-        {  0,  4, ntsa::TransportDomain::e_ETHERNET  },
         { -1, -1, ntsa::TransportDomain::e_UNDEFINED }
     };
     // clang-format on
@@ -321,7 +317,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportDomainTest::verifyFromString)
         {  0,  "IPV4",      ntsa::TransportDomain::e_IPV4      },
         {  0,  "IPV6",      ntsa::TransportDomain::e_IPV6      },
         {  0,  "LOCAL",     ntsa::TransportDomain::e_LOCAL     },
-        {  0,  "ETHERNET",  ntsa::TransportDomain::e_ETHERNET  },
         { -1,  "!",         ntsa::TransportDomain::e_UNDEFINED }
     };
     // clang-format on
@@ -354,8 +349,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportDomainTest::verifyPrint)
         {  "UNDEFINED", 0 },
         {  "IPV4",      1 },
         {  "IPV6",      2 },
-        {  "LOCAL",     3 },
-        {  "ETHERNET",  4 }
+        {  "LOCAL",     3 }
     };
     // clang-format on
 
@@ -404,7 +398,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyFromInt)
         {  0,  0, ntsa::TransportMode::e_UNDEFINED },
         {  0,  1, ntsa::TransportMode::e_STREAM    },
         {  0,  2, ntsa::TransportMode::e_DATAGRAM  },
-        {  0,  3, ntsa::TransportMode::e_RAW       },
         { -1, -1, ntsa::TransportMode::e_UNDEFINED }
     };
     // clang-format on
@@ -438,7 +431,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyFromString)
         {  0,  "UNDEFINED", ntsa::TransportMode::e_UNDEFINED },
         {  0,  "STREAM",    ntsa::TransportMode::e_STREAM    },
         {  0,  "DATAGRAM",  ntsa::TransportMode::e_DATAGRAM  },
-        {  0,  "RAW",       ntsa::TransportMode::e_RAW       },
         { -1,  "!",         ntsa::TransportMode::e_UNDEFINED }
     };
     // clang-format on
@@ -470,8 +462,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyPrint)
     const TestData k_TEST_DATA[] = {
         {  "UNDEFINED", 0 },
         {  "STREAM",    1 },
-        {  "DATAGRAM",  2 },
-        {  "RAW",       3 }
+        {  "DATAGRAM",  2 }
     };
     // clang-format on
 
@@ -637,11 +628,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyFromInt)
         {  0,  4, ntsa::Transport::e_UDP_IPV6_DATAGRAM },
         {  0,  5, ntsa::Transport::e_LOCAL_STREAM      },
         {  0,  6, ntsa::Transport::e_LOCAL_DATAGRAM    },
-        {  0,  7, ntsa::Transport::e_ETHERNET          },
-        {  0,  8, ntsa::Transport::e_UDP_IPV4_RAW      },
-        {  0,  9, ntsa::Transport::e_UDP_IPV6_RAW      },
-        {  0, 10, ntsa::Transport::e_TCP_IPV4_RAW      },
-        {  0, 11, ntsa::Transport::e_TCP_IPV6_RAW      },
         { -1, -1, ntsa::Transport::e_UNDEFINED         }
     };
     // clang-format on
@@ -679,11 +665,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyFromString)
         {  0,  "UDP_IPV6_DATAGRAM", ntsa::Transport::e_UDP_IPV6_DATAGRAM },
         {  0,  "LOCAL_STREAM",      ntsa::Transport::e_LOCAL_STREAM      },
         {  0,  "LOCAL_DATAGRAM",    ntsa::Transport::e_LOCAL_DATAGRAM    },
-        {  0,  "ETHERNET",          ntsa::Transport::e_ETHERNET          },
-        {  0,  "UDP_IPV4_RAW",      ntsa::Transport::e_UDP_IPV4_RAW      },
-        {  0,  "UDP_IPV6_RAW",      ntsa::Transport::e_UDP_IPV6_RAW      },
-        {  0,  "TCP_IPV4_RAW",      ntsa::Transport::e_TCP_IPV4_RAW      },
-        {  0,  "TCP_IPV6_RAW",      ntsa::Transport::e_TCP_IPV6_RAW      },
         { -1,  "!",                 ntsa::Transport::e_UNDEFINED         }
     };
     // clang-format on
@@ -719,12 +700,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyPrint)
         {  "UDP_IPV4_DATAGRAM",   3 },
         {  "UDP_IPV6_DATAGRAM",   4 },
         {  "LOCAL_STREAM",        5 },
-        {  "LOCAL_DATAGRAM",      6 },
-        {  "ETHERNET",            7 },
-        {  "UDP_IPV4_RAW",        8 },
-        {  "UDP_IPV6_RAW",        9 },
-        {  "TCP_IPV4_RAW",       10 },
-        {  "TCP_IPV6_RAW",       11 }
+        {  "LOCAL_DATAGRAM",      6 }
     };
     // clang-format on
 
