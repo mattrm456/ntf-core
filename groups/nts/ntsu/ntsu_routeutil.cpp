@@ -175,7 +175,7 @@ BSLS_IDENT_RCSID(ntsu_routeutil_cpp, "$Id$ $CSID$")
 
 #define NTSU_ROUTEUTIL_LOG_RTAX(type, sa)                                     \
     do {                                                                      \
-        BALL_LOG_ERROR << "Decoding route message payload [ type = "          \
+        BALL_LOG_TRACE << "Decoding route message payload [ type = "          \
                        << (type) << " sa_family = "                           \
                        << static_cast<bsl::uint32_t>((sa)->sa_family)         \
                        << " sa_len = "                                        \
@@ -187,8 +187,9 @@ BSLS_IDENT_RCSID(ntsu_routeutil_cpp, "$Id$ $CSID$")
 
 #define NTSU_ROUTEUTIL_LOG_RTAX(type, sa)                                     \
     do {                                                                      \
-        BALL_LOG_ERROR << "Decoding route message payload [ type = "          \
-                       << (type) << " sa_family = "                           \
+        BALL_LOG_TRACE << "Decoding route message payload [ type = "          \
+                       << (type) << " sa_family = "
+                                         \
                        << static_cast<bsl::uint32_t>((sa)->sa_family)         \
                        << BALL_LOG_END;                                       \
     } while (false)
@@ -243,47 +244,47 @@ class RouteUtil::Impl
     typedef bdlb::NullableValue<bsl::uint32_t> NullableUint32;
 
     /// Decode the specified 'sa' socket address as a route destination.
-    /// Load the IP address into the specified 'ipAddress'. Return the error. 
+    /// Load the IP address into the specified 'ipAddress'. Return the error.
     static ntsa::Error decodeDestination(
         bdlb::NullableValue<ntsa::IpAddress>* ipAddress,
         const sockaddr*                       sa);
 
     /// Decode the specified 'sa' socket address as a route destination.
-    /// Load the IPv4 address into the specified 'ipv4Address'. Return the 
-    /// error. 
+    /// Load the IPv4 address into the specified 'ipv4Address'. Return the
+    /// error.
     static ntsa::Error decodeDestination(
         bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
         const sockaddr*                         sa);
 
     /// Decode the specified 'sa' socket address as a route destination.
-    /// Load the IPv6 address into the specified 'ipv6Address'. Return the 
-    /// error. 
+    /// Load the IPv6 address into the specified 'ipv6Address'. Return the
+    /// error.
     static ntsa::Error decodeDestination(
         bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
         const sockaddr*                         sa);
 
     /// Decode the specified 'sa' socket address as a route destination.
-    /// Load the IPv4 address into the specified 'ipv4Address'. Return the 
-    /// error. 
+    /// Load the IPv4 address into the specified 'ipv4Address'. Return the
+    /// error.
     static ntsa::Error decodeDestination(
         bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
         const sockaddr_in*                      sa);
 
     /// Decode the specified 'sa' socket address as a route destination.
-    /// Load the IPv6 address into the specified 'ipv6Address'. Return the 
-    /// error. 
+    /// Load the IPv6 address into the specified 'ipv6Address'. Return the
+    /// error.
     static ntsa::Error decodeDestination(
         bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
         const sockaddr_in6*                     sa);
 
     /// Decode the specified 'sa' socket address as a network mask. Load the
-    /// IPv4 network mask into the specified 'ipv4Mask'. Return the error. 
+    /// IPv4 network mask into the specified 'ipv4Mask'. Return the error.
     static ntsa::Error decodeNetMask(
         bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Mask,
         const sockaddr*                         sa);
 
     /// Decode the specified 'sa' socket address as a network mask. Load the
-    /// IPv6 network mask into the specified 'ip64Mask'. Return the error. 
+    /// IPv6 network mask into the specified 'ip64Mask'. Return the error.
     static ntsa::Error decodeNetMask(
         bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Mask,
         const sockaddr*                         sa);
@@ -337,7 +338,7 @@ class RouteUtil::Impl
 
     /// Decode the specified 'sa' socket address as a route gateway. Load the
     /// adapter into the specified 'adapterName' and 'adapterIndex'. Load the
-    /// Ethernet address into the specified 'ethernetAddress'. Return the 
+    /// Ethernet address into the specified 'ethernetAddress'. Return the
     /// error.
     static ntsa::Error decodeGateway(
         bdlb::NullableValue<bsl::string>*           adapterName,
@@ -349,7 +350,7 @@ class RouteUtil::Impl
 
     /// Decode the specified 'sa' socket address as a route gateway. Load the
     /// adapter into the specified 'adapterName' and 'adapterIndex'. Load the
-    /// Ethernet address into the specified 'ethernetAddress'. Return the 
+    /// Ethernet address into the specified 'ethernetAddress'. Return the
     /// error.
     static ntsa::Error decodeGateway(
         bdlb::NullableValue<bsl::string>*           adapterName,
@@ -428,7 +429,7 @@ class RouteUtil::Impl
         bdlb::NullableValue<bsl::string>*           adapterName,
         bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
         bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
-        const sockaddr_ll*                          sa);    
+        const sockaddr_ll*                          sa);
 
 #endif
 
@@ -506,25 +507,25 @@ class RouteUtil::Impl
 #endif
 
     /// Decode the specified 'sa' socket address as an IPv4 address. Load the
-    /// IPv4 address into the specified 'ipv4address'. Return the error. 
+    /// IPv4 address into the specified 'ipv4address'. Return the error.
     static ntsa::Error decodeIpv4Address(
         bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
         const sockaddr_in*                      sa);
 
     /// Decode the specified 'sa' socket address as an IPv6 address. Load the
-    /// IPv6 address into the specified 'ipv4address'. Return the error. 
+    /// IPv6 address into the specified 'ipv4address'. Return the error.
     static ntsa::Error decodeIpv6Address(
         bdlb::NullableValue<ntsa::Ipv6Address>* ipv4Address,
         const sockaddr_in6*                     sa);
 
     /// Decode the specified 'sa' socket address as an IPv4 network mask. Load
-    /// the IPv4 network mask into the specified 'ipv4Mask'. Return the error. 
+    /// the IPv4 network mask into the specified 'ipv4Mask'. Return the error.
     static ntsa::Error decodeIpv4Mask(
         bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Mask,
         const sockaddr_in*                      sa);
 
     /// Decode the specified 'sa' socket address as an IPv6 network mask. Load
-    /// the IPv6 network mask into the specified 'ipv6Mask'. Return the error. 
+    /// the IPv6 network mask into the specified 'ipv6Mask'. Return the error.
     static ntsa::Error decodeIpv6Mask(
         bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Mask,
         const sockaddr_in6*                     sa);
@@ -534,7 +535,7 @@ class RouteUtil::Impl
     /// Decode the specified 'sa' socket address as physical device address.
     /// Load the adapter into the specified 'adapterName' and 'adapterIndex'.
     /// Load the Ethernet address into the specified 'ethernetAddress'. Return
-    /// the error. 
+    /// the error.
     static ntsa::Error decodeLink(
         bdlb::NullableValue<bsl::string>*           adapterName,
         bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
@@ -546,7 +547,7 @@ class RouteUtil::Impl
     /// Decode the specified 'sa' socket address as physical device address.
     /// Load the adapter into the specified 'adapterName' and 'adapterIndex'.
     /// Load the Ethernet address into the specified 'ethernetAddress'. Return
-    /// the error. 
+    /// the error.
     static ntsa::Error decodeLink(
         bdlb::NullableValue<bsl::string>*           adapterName,
         bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
@@ -558,7 +559,7 @@ class RouteUtil::Impl
     /// Normalize the specified 'route' by specifying undefined fields in the
     /// 'route' from the specified 'adapterVector' and 'ethernetRouteTable'
     /// according to the fields in the 'route' that are defined. Return the
-    /// error. 
+    /// error.
     static ntsa::Error normalizeRoute(
         ntsa::Ipv4Route*                  route,
         const bsl::vector<ntsa::Adapter>& adapterVector,
@@ -567,7 +568,7 @@ class RouteUtil::Impl
     /// Normalize the specified 'route' by specifying undefined fields in the
     /// 'route' from the specified 'adapterVector' and 'ethernetRouteTable'
     /// according to the fields in the 'route' that are defined. Return the
-    /// error. 
+    /// error.
     static ntsa::Error normalizeRoute(
         ntsa::Ipv6Route*                  route,
         const bsl::vector<ntsa::Adapter>& adapterVector,
@@ -1207,6 +1208,113 @@ ntsa::Error RouteUtil::Impl::decodeIfp(
 }
 
 ntsa::Error RouteUtil::Impl::decodeIfp(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv4Address>*     ipv4Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    NTSU_ROUTEUTIL_LOG_RTAX_IFP(sa);
+
+    if (sa->sa_family == AF_INET) {
+        error = Impl::decodeGateway(ipv4Address,
+                                    reinterpret_cast<const sockaddr_in*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+#if defined(BSLS_PLATFORM_OS_DARWIN) || defined(BSLS_PLATFORM_OS_FREEBSD)
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+#elif defined(BSLS_PLATFORM_OS_LINUX)
+    else if (sa->sa_family == AF_PACKET) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_ll*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+#endif
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error RouteUtil::Impl::decodeIfp(
+    bdlb::NullableValue<bsl::string>*           adapterName,
+    bdlb::NullableValue<bsl::uint32_t>*         adapterIndex,
+    bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
+    bdlb::NullableValue<ntsa::Ipv6Address>*     ipv6Address,
+    const sockaddr*                             sa)
+{
+    ntsa::Error error;
+
+    if (sa == 0) {
+        return ntsa::Error();
+    }
+
+    NTSU_ROUTEUTIL_LOG_RTAX_IFP(sa);
+
+    if (sa->sa_family == AF_INET6) {
+        error = Impl::decodeGateway(ipv6Address,
+                                    reinterpret_cast<const sockaddr_in6*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+#if defined(BSLS_PLATFORM_OS_DARWIN) || defined(BSLS_PLATFORM_OS_FREEBSD)
+    else if (sa->sa_family == AF_LINK) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_dl*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+#elif defined(BSLS_PLATFORM_OS_LINUX)
+    else if (sa->sa_family == AF_PACKET) {
+        error = Impl::decodeGateway(adapterName,
+                                    adapterIndex,
+                                    ethernetAddress,
+                                    reinterpret_cast<const sockaddr_ll*>(sa));
+        if (error) {
+            return error;
+        }
+    }
+#endif
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
+    }
+
+    return ntsa::Error();
+}
+
+ntsa::Error RouteUtil::Impl::decodeIfp(
+    bdlb::NullableValue<ntsa::Ipv4Address>* ipv4Address,
+    const sockaddr_in*                      sa)
+{
+    return Impl::decodeIpv4Address(ipv4Address, sa);
+}
+
+ntsa::Error RouteUtil::Impl::decodeIfp(
     bdlb::NullableValue<ntsa::Ipv6Address>* ipv6Address,
     const sockaddr_in6*                     sa)
 {
@@ -1485,13 +1593,13 @@ ntsa::Error RouteUtil::Impl::decodeLink(
 {
     adapterIndex->makeValue(static_cast<bsl::uint32_t>(sa->sll_ifindex));
 
-    if (static_cast<bsl::size_t>(sa->sll_halen) == 
-        sizeof(ntsa::EthernetAddress)) 
+    if (static_cast<bsl::size_t>(sa->sll_halen) ==
+        sizeof(ntsa::EthernetAddress))
     {
         ethernetAddress->makeValue();
 
         const bsl::size_t bytesCopied = ethernetAddress->value().copyFrom(
-            sa->sll_addr, 
+            sa->sll_addr,
             static_cast<bsl::size_t>(sa->sll_halen));
 
         if (bytesCopied != static_cast<bsl::size_t>(sa->sll_halen)) {
@@ -2022,7 +2130,7 @@ ntsa::Error RouteUtil::Impl::Native::decodeRoutePayload(const sockaddr** rti,
 
             rti[i] = sa;
 
-            sa = Impl::next(sa);
+            sa = ntsu::RouteUtil::Impl::Native::next(sa);
         }
         else {
             rti[i] = 0;
@@ -2094,7 +2202,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
     while (current < bufferEnd) {
         const rt_msghdr* rtm = 0;
-        error = Impl::decodeRouteHeader(&rtm, &current, bufferEnd);
+        error = Impl::Native::decodeRouteHeader(&rtm, &current, bufferEnd);
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_EOF)) {
                 break;
@@ -2108,7 +2216,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
         const sockaddr* rti_info[RTAX_MAX];
         NTSCFG_MEMORY_ZERO(rti_info, sizeof rti_info);
 
-        error = Impl::decodeRoutePayload(rti_info, rtm);
+        error = Impl::Native::decodeRoutePayload(rti_info, rtm);
         if (error) {
             NTSU_ROUTEUTIL_LOG_ERROR_DECODE_ROUTE_PAYLOAD(error);
             return error;
@@ -2242,7 +2350,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
     while (current < bufferEnd) {
         const rt_msghdr* rtm = 0;
-        error = Impl::decodeRouteHeader(&rtm, &current, bufferEnd);
+        error = Impl::Native::decodeRouteHeader(&rtm, &current, bufferEnd);
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_EOF)) {
                 break;
@@ -2256,7 +2364,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
         const sockaddr* rti_info[RTAX_MAX];
         NTSCFG_MEMORY_ZERO(rti_info, sizeof rti_info);
 
-        error = Impl::decodeRoutePayload(rti_info, rtm);
+        error = Impl::Native::decodeRoutePayload(rti_info, rtm);
         if (error) {
             NTSU_ROUTEUTIL_LOG_ERROR_DECODE_ROUTE_PAYLOAD(error);
             return error;
@@ -2366,8 +2474,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
             route.setInterfaceIpv4Address(interfaceIpv4Address.value());
         }
 
-        error = RouteUtil::Impl::normalizeRoute(&route, 
-                                                adapterVector, 
+        error = RouteUtil::Impl::normalizeRoute(&route,
+                                                adapterVector,
                                                 ethernetRouteTable);
         if (error) {
             return error;
@@ -2428,7 +2536,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
     while (current < bufferEnd) {
         const rt_msghdr* rtm = 0;
-        error = Impl::decodeRouteHeader(&rtm, &current, bufferEnd);
+        error = Impl::Native::decodeRouteHeader(&rtm, &current, bufferEnd);
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_EOF)) {
                 break;
@@ -2442,7 +2550,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
         const sockaddr* rti_info[RTAX_MAX];
         NTSCFG_MEMORY_ZERO(rti_info, sizeof rti_info);
 
-        error = Impl::decodeRoutePayload(rti_info, rtm);
+        error = Impl::Native::decodeRoutePayload(rti_info, rtm);
         if (error) {
             NTSU_ROUTEUTIL_LOG_ERROR_DECODE_ROUTE_PAYLOAD(error);
             return error;
@@ -2691,7 +2799,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
     int fd = ::socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (fd < 0) {
-        error = ntsa::Error::last();    
+        error = ntsa::Error::last();
         BALL_LOG_ERROR << "Failed to create netlink socket: "
                        << error
                        << BALL_LOG_END;
@@ -2701,10 +2809,10 @@ ntsa::Error RouteUtil::Impl::Native::load(
     char requestBuffer[8192];
     NTSCFG_MEMORY_ZERO(requestBuffer, sizeof requestBuffer);
 
-    struct nlmsghdr *requestHeader = 
+    struct nlmsghdr *requestHeader =
         reinterpret_cast<struct nlmsghdr *>(requestBuffer);
 
-    struct rtmsg *requestPayload = 
+    struct rtmsg *requestPayload =
         reinterpret_cast<struct rtmsg*>(NLMSG_DATA(requestHeader));
 
     requestHeader->nlmsg_len   = NLMSG_LENGTH(sizeof(struct rtmsg));
@@ -2714,11 +2822,11 @@ ntsa::Error RouteUtil::Impl::Native::load(
     requestPayload->rtm_family = AF_INET;
     requestPayload->rtm_table  = RT_TABLE_MAIN;
 
-    const ssize_t sendResult = 
+    const ssize_t sendResult =
         ::send(fd, requestHeader, requestHeader->nlmsg_len, 0);
 
     if (sendResult < 0) {
-        error = ntsa::Error::last();    
+        error = ntsa::Error::last();
         BALL_LOG_ERROR << "Failed to send to netlink socket: "
                        << error
                        << BALL_LOG_END;
@@ -2727,7 +2835,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
         return error;
     }
 
-    if (static_cast<bsl::size_t>(sendResult) != 
+    if (static_cast<bsl::size_t>(sendResult) !=
         static_cast<bsl::size_t>(requestHeader->nlmsg_len))
     {
         BALL_LOG_ERROR << "Failed to send to netlink socket: expected to send "
@@ -2737,7 +2845,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
                        << " bytes"
                        << BALL_LOG_END;
 
-        ::close(fd);          
+        ::close(fd);
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
@@ -2745,7 +2853,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
         char responseBuffer[8192];
         NTSCFG_MEMORY_ZERO(responseBuffer, sizeof responseBuffer);
 
-        ssize_t receiveResult = 
+        ssize_t receiveResult =
             ::recv(fd, responseBuffer, sizeof responseBuffer, 0);
 
         if (receiveResult < 0) {
@@ -2758,7 +2866,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
             return error;
         }
 
-        struct nlmsghdr *responseHeader = 
+        struct nlmsghdr *responseHeader =
             reinterpret_cast<struct nlmsghdr *>(responseBuffer);
 
         while (NLMSG_OK(responseHeader, receiveResult)) {
@@ -2796,24 +2904,24 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
             struct rtattr *rt_attr = reinterpret_cast<struct rtattr*>(
                 RTM_RTA(responsePayload));
-            
+
             int attr_len = RTM_PAYLOAD(responseHeader);
 
             while (RTA_OK(rt_attr, attr_len)) {
                 if (rt_attr->rta_type == RTA_DST) {
-                    if (rt_attr->rta_len != 
-                        sizeof(struct rtattr) + sizeof(struct in_addr)) 
+                    if (rt_attr->rta_len !=
+                        sizeof(struct rtattr) + sizeof(struct in_addr))
                     {
                         ::close(fd);
                         return ntsa::Error(ntsa::Error::e_INVALID);
                     }
 
-                    const bsl::size_t bytesCopied = 
+                    const bsl::size_t bytesCopied =
                         destinationIpv4Address.makeValue().copyFrom(
                             RTA_DATA(rt_attr),
                             static_cast<bsl::size_t>(sizeof(struct in_addr)));
 
-                    if (bytesCopied != 
+                    if (bytesCopied !=
                         static_cast<bsl::size_t>(sizeof(struct in_addr)))
                     {
                         ::close(fd);
@@ -2822,19 +2930,19 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 }
 
                 if (rt_attr->rta_type == RTA_GATEWAY) {
-                    if (rt_attr->rta_len != 
-                        sizeof(struct rtattr) + sizeof(struct in_addr)) 
+                    if (rt_attr->rta_len !=
+                        sizeof(struct rtattr) + sizeof(struct in_addr))
                     {
                         ::close(fd);
                         return ntsa::Error(ntsa::Error::e_INVALID);
                     }
 
-                    const bsl::size_t bytesCopied = 
+                    const bsl::size_t bytesCopied =
                         gatewayIpv4Address.makeValue().copyFrom(
                             RTA_DATA(rt_attr),
                             static_cast<bsl::size_t>(sizeof(struct in_addr)));
 
-                    if (bytesCopied != 
+                    if (bytesCopied !=
                         static_cast<bsl::size_t>(sizeof(struct in_addr)))
                     {
                         ::close(fd);
@@ -2843,7 +2951,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 }
 
                 if (rt_attr->rta_type == RTA_OIF) {
-                    if (rt_attr->rta_len != 
+                    if (rt_attr->rta_len !=
                         sizeof(struct rtattr) + sizeof(int))
                     {
                         ::close(fd);
@@ -2862,20 +2970,20 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 responsePayload->rtm_dst_len);
 
             if (netmaskPrefix > 0) {
-                bsl::uint32_t netmaskValue = 
+                bsl::uint32_t netmaskValue =
                     ~0U << (32 - static_cast<int>(netmaskPrefix));
 
                 destinationIpv4Mask.makeValue(
                     ntsa::Ipv4Address(htonl(netmaskValue)));
             }
 
-            if (interfaceAdapterIndex.has_value() && 
+            if (interfaceAdapterIndex.has_value() &&
                 interfaceAdapterName.isNull())
             {
                 char adapterName[IFNAMSIZ];
                 NTSCFG_MEMORY_ZERO(adapterName, sizeof adapterName);
 
-                const char* adapterNameResult = 
+                const char* adapterNameResult =
                     if_indextoname(interfaceAdapterIndex.value(), adapterName);
 
                 if (adapterNameResult == adapterName) {
@@ -2883,7 +2991,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 }
             }
 
-            if (interfaceAdapterName.has_value() && 
+            if (interfaceAdapterName.has_value() &&
                 interfaceAdapterIndex.isNull())
             {
                 unsigned int adapterIndex = if_nametoindex(
@@ -2943,7 +3051,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
             if (error) {
                 return error;
             }
-            
+
             result->add(route);
 
             responseHeader = NLMSG_NEXT(responseHeader, receiveResult);
@@ -2971,7 +3079,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
     int fd = ::socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (fd < 0) {
-        error = ntsa::Error::last();    
+        error = ntsa::Error::last();
         BALL_LOG_ERROR << "Failed to create netlink socket: "
                        << error
                        << BALL_LOG_END;
@@ -2981,10 +3089,10 @@ ntsa::Error RouteUtil::Impl::Native::load(
     char requestBuffer[8192];
     NTSCFG_MEMORY_ZERO(requestBuffer, sizeof requestBuffer);
 
-    struct nlmsghdr *requestHeader = 
+    struct nlmsghdr *requestHeader =
         reinterpret_cast<struct nlmsghdr *>(requestBuffer);
 
-    struct rtmsg *requestPayload = 
+    struct rtmsg *requestPayload =
         reinterpret_cast<struct rtmsg*>(NLMSG_DATA(requestHeader));
 
     requestHeader->nlmsg_len   = NLMSG_LENGTH(sizeof(struct rtmsg));
@@ -2994,11 +3102,11 @@ ntsa::Error RouteUtil::Impl::Native::load(
     requestPayload->rtm_family = AF_INET6;
     requestPayload->rtm_table  = RT_TABLE_MAIN;
 
-    const ssize_t sendResult = 
+    const ssize_t sendResult =
         ::send(fd, requestHeader, requestHeader->nlmsg_len, 0);
 
     if (sendResult < 0) {
-        error = ntsa::Error::last();    
+        error = ntsa::Error::last();
         BALL_LOG_ERROR << "Failed to send to netlink socket: "
                        << error
                        << BALL_LOG_END;
@@ -3007,7 +3115,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
         return error;
     }
 
-    if (static_cast<bsl::size_t>(sendResult) != 
+    if (static_cast<bsl::size_t>(sendResult) !=
         static_cast<bsl::size_t>(requestHeader->nlmsg_len))
     {
         BALL_LOG_ERROR << "Failed to send to netlink socket: expected to send "
@@ -3017,7 +3125,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
                        << " bytes"
                        << BALL_LOG_END;
 
-        ::close(fd);          
+        ::close(fd);
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
@@ -3025,7 +3133,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
         char responseBuffer[8192];
         NTSCFG_MEMORY_ZERO(responseBuffer, sizeof responseBuffer);
 
-        ssize_t receiveResult = 
+        ssize_t receiveResult =
             ::recv(fd, responseBuffer, sizeof responseBuffer, 0);
 
         if (receiveResult < 0) {
@@ -3038,7 +3146,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
             return error;
         }
 
-        struct nlmsghdr *responseHeader = 
+        struct nlmsghdr *responseHeader =
             reinterpret_cast<struct nlmsghdr *>(responseBuffer);
 
         while (NLMSG_OK(responseHeader, receiveResult)) {
@@ -3076,24 +3184,24 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
             struct rtattr *rt_attr = reinterpret_cast<struct rtattr*>(
                 RTM_RTA(responsePayload));
-            
+
             int attr_len = RTM_PAYLOAD(responseHeader);
 
             while (RTA_OK(rt_attr, attr_len)) {
                 if (rt_attr->rta_type == RTA_DST) {
-                    if (rt_attr->rta_len != 
-                        sizeof(struct rtattr) + sizeof(struct in6_addr)) 
+                    if (rt_attr->rta_len !=
+                        sizeof(struct rtattr) + sizeof(struct in6_addr))
                     {
                         ::close(fd);
                         return ntsa::Error(ntsa::Error::e_INVALID);
                     }
 
-                    const bsl::size_t bytesCopied = 
+                    const bsl::size_t bytesCopied =
                         destinationIpv6Address.makeValue().copyFrom(
                             RTA_DATA(rt_attr),
                             static_cast<bsl::size_t>(sizeof(struct in6_addr)));
 
-                    if (bytesCopied != 
+                    if (bytesCopied !=
                         static_cast<bsl::size_t>(sizeof(struct in6_addr)))
                     {
                         ::close(fd);
@@ -3102,19 +3210,19 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 }
 
                 if (rt_attr->rta_type == RTA_GATEWAY) {
-                    if (rt_attr->rta_len != 
-                        sizeof(struct rtattr) + sizeof(struct in6_addr)) 
+                    if (rt_attr->rta_len !=
+                        sizeof(struct rtattr) + sizeof(struct in6_addr))
                     {
                         ::close(fd);
                         return ntsa::Error(ntsa::Error::e_INVALID);
                     }
 
-                    const bsl::size_t bytesCopied = 
+                    const bsl::size_t bytesCopied =
                         gatewayIpv6Address.makeValue().copyFrom(
                             RTA_DATA(rt_attr),
                             static_cast<bsl::size_t>(sizeof(struct in6_addr)));
 
-                    if (bytesCopied != 
+                    if (bytesCopied !=
                         static_cast<bsl::size_t>(sizeof(struct in6_addr)))
                     {
                         ::close(fd);
@@ -3123,7 +3231,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 }
 
                 if (rt_attr->rta_type == RTA_OIF) {
-                    if (rt_attr->rta_len != 
+                    if (rt_attr->rta_len !=
                         sizeof(struct rtattr) + sizeof(int))
                     {
                         ::close(fd);
@@ -3162,13 +3270,13 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 destinationIpv6Mask.makeValue().copyFrom(&m, sizeof m);
             }
 
-            if (interfaceAdapterIndex.has_value() && 
+            if (interfaceAdapterIndex.has_value() &&
                 interfaceAdapterName.isNull())
             {
                 char adapterName[IFNAMSIZ];
                 NTSCFG_MEMORY_ZERO(adapterName, sizeof adapterName);
 
-                const char* adapterNameResult = 
+                const char* adapterNameResult =
                     if_indextoname(interfaceAdapterIndex.value(), adapterName);
 
                 if (adapterNameResult == adapterName) {
@@ -3176,7 +3284,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 }
             }
 
-            if (interfaceAdapterName.has_value() && 
+            if (interfaceAdapterName.has_value() &&
                 interfaceAdapterIndex.isNull())
             {
                 unsigned int adapterIndex = if_nametoindex(
@@ -3236,7 +3344,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
             if (error) {
                 return error;
             }
-            
+
             result->add(route);
 
             responseHeader = NLMSG_NEXT(responseHeader, receiveResult);
