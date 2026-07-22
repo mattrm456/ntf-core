@@ -2138,18 +2138,24 @@ ntsa::Error DeviceUtil::Impl::setPromiscuous(
     ntsa::Error error;
     int         rc;
 
-    struct packet_mreq mr;
-    NTSCFG_MEMORY_ZERO(&mr, sizeof mr);
+    if (value) {
+        struct packet_mreq mr;
+        NTSCFG_MEMORY_ZERO(&mr, sizeof mr);
 
-    mr.mr_ifindex = static_cast<int>(adapter.index());
-    mr.mr_type    = PACKET_MR_PROMISC;
+        mr.mr_ifindex = static_cast<int>(adapter.index());
+        mr.mr_type    = PACKET_MR_PROMISC;
 
-    rc = setsockopt(device, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof mr);
-    if (rc < 0) {
-        const int lastError = errno;
-        error               = ntsa::Error(lastError);
-        NTSU_DEVICEUTIL_LOG_ERROR(device, "set promiscuous mode", error);
-        return error;
+        rc = setsockopt(
+            device, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof mr);
+        if (rc < 0) {
+            const int lastError = errno;
+            error               = ntsa::Error(lastError);
+            NTSU_DEVICEUTIL_LOG_ERROR(device, "set promiscuous mode", error);
+            return error;
+        }
+    }
+    else {
+        return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
     return ntsa::Error();
@@ -2224,8 +2230,9 @@ ntsa::Error DeviceUtil::Impl::setReadTimeout(ntsa::Handle              device,
         error               = ntsa::Error(lastError);
         NTSU_DEVICEUTIL_LOG_ERROR(device, "set receive timeout", error);
         return error;
-
     }
+
+    return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::Impl::getReadTimeout(ntsa::Handle        device,
@@ -2370,6 +2377,8 @@ ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
                                           const ntsa::Adapter&      adapter,
                                           const ntsa::PacketFilter& filter)
 {
+    NTSCFG_WARNING_UNUSED(adapter);
+
     ntsa::Error error;
     int         rc;
 
@@ -2405,6 +2414,9 @@ ntsa::Error DeviceUtil::Impl::applyFilter(
     const ntsa::Adapter&               adapter,
     const ntsu::PacketFilter::Program& program)
 {
+    NTSCFG_WARNING_UNUSED(deviceType);
+    NTSCFG_WARNING_UNUSED(adapter);
+
     ntsa::Error error;
     int         rc;
 
@@ -2472,7 +2484,6 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         loopback = true;
     }
 
-    const bool outgoing = configuration.outgoingEnabled().value_or(false);
     const bool incoming = configuration.incomingEnabled().value_or(false);
 
     ntsa::Handle device = ::socket(domain, mode, protocol);
@@ -2484,6 +2495,34 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     }
 
     ntsu::DeviceGuard guard(device);
+
+    if (domain == AF_INET) {
+        const int optionValue = 1;
+
+        const socklen_t optionLength =
+            static_cast<socklen_t>(sizeof optionValue);
+
+        rc = ::setsockopt(
+            *result, IPPROTO_IP, IP_HDRINCL, &optionValue, optionLength);
+        if (rc != 0) {
+            return ntsa::Error(errno);
+        }
+    }
+    else if (domain == AF_INET6) {
+        const int optionValue = 1;
+
+        const socklen_t optionLength =
+            static_cast<socklen_t>(sizeof optionValue);
+
+        rc = ::setsockopt(*result,
+                           IPPROTO_IPV6,
+                           IPV6_HDRINCL,
+                           &optionValue,
+                           optionLength);
+        if (rc != 0) {
+            return ntsa::Error(errno);
+        }
+    }
 
     // Configure blocking mode.
 

@@ -34,13 +34,14 @@ EthernetRoute::EthernetRoute(bslma::Allocator* basicAllocator)
 }
 
 EthernetRoute::EthernetRoute(const EthernetRoute&  original,
-                     bslma::Allocator* basicAllocator)
+                             bslma::Allocator*     basicAllocator)
 : d_domainName(original.d_domainName)
 , d_ethernetAddress(original.d_ethernetAddress)
 , d_ipv4Address(original.d_ipv4Address)
 , d_ipv6Address(original.d_ipv6Address)
 , d_flags(original.d_flags)
 {
+    NTSCFG_WARNING_UNUSED(basicAllocator);
 }
 
 EthernetRoute::~EthernetRoute()

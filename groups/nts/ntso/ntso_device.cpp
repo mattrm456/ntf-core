@@ -632,7 +632,6 @@ void Device::processOutgoingPacketQueue()
 void Device::processIncomingPacketQueue()
 {
     ntsa::Error error;
-    int         rc;
 
     BALL_LOG_DEBUG << "Network device descriptor " 
                    << d_incomingDeviceHandle
@@ -707,9 +706,9 @@ void Device::processIncomingPacketQueue()
                 }
             }
             else if (event.handle() == d_controller.handle()) {
-                BALL_LOG_ERROR << "Network device descriptor " 
+                BALL_LOG_TRACE << "Network device descriptor " 
                                << d_incomingDeviceHandle
-                               << " polled interrupt" 
+                               << " polled control channel" 
                                << BALL_LOG_END;
                 break;
             }
@@ -1665,7 +1664,6 @@ ntsa::Error Network::ensureRxDevice(bsl::shared_ptr<ntsi::Device>* device,
 Network::Network(bslma::Allocator* basicAllocator)
 : d_mutex()
 , d_blobBufferFactory()
-, d_adapterVector(basicAllocator)
 , d_txDeviceByEthernetAddress(basicAllocator)
 , d_txDeviceByIpv4Address(basicAllocator)
 , d_txDeviceByIpv6Address(basicAllocator)
@@ -1673,6 +1671,7 @@ Network::Network(bslma::Allocator* basicAllocator)
 , d_rxDeviceByIpv4Address(basicAllocator)
 , d_rxDeviceByIpv6Address(basicAllocator)
 , d_packetFilter(basicAllocator)
+, d_adapterVector(basicAllocator)
 , d_ethernetRouteTable(basicAllocator)
 , d_ipv4RouteTable(basicAllocator)
 , d_ipv6RouteTable(basicAllocator)

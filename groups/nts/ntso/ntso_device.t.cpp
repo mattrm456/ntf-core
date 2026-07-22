@@ -38,15 +38,21 @@ namespace ntso {
 // Provide tests for 'ntso::Device'.
 class DeviceTest
 {
-    /// Discover the loopback device and load its adapter into the specified
-    /// 'result'. Return true if such a loopback device is found, and false
-    /// otherwise.
+    // Discover the loopback device and load its adapter into the specified
+    // 'result'. Return true if such a loopback device is found, and false
+    // otherwise.
     static bool discoverLoopback(ntsa::Adapter* result);
 
-    /// Discover the default device and load its adapter into the specified
-    /// 'result'. Return true if such a default device is found, and false
-    /// otherwise.
+    // Discover the default device and load its adapter into the specified
+    // 'result'. Return true if such a default device is found, and false
+    // otherwise.
     static bool discoverDefault(ntsa::Adapter* result);
+
+    // Load into the specified 'result' a new packet with the specified 'id' 
+    // intended to be transmitted by the specified 'device'.
+    static void createPacket(bsl::shared_ptr<ntsa::Packet>*       result, 
+                             const bsl::shared_ptr<ntsi::Device>& device,
+                             bsl::uint16_t                        id);
 
     // Execute the reader loop.
     static void reader(const bsl::shared_ptr<ntsi::Device>& device,
@@ -108,6 +114,55 @@ bool DeviceTest::discoverDefault(ntsa::Adapter* result)
     return false;
 }
 
+void DeviceTest::createPacket(bsl::shared_ptr<ntsa::Packet>*       result, 
+                              const bsl::shared_ptr<ntsi::Device>& device,
+                              bsl::uint16_t                        id)
+{
+    device->createOutgoingPacket(result);
+
+    ntsa::EthernetPacket& ethernet = (*result)->makeEthernet();
+
+    ntsa::EthernetAddress sourceEthernetAddress;
+    ntsa::EthernetAddress destinationEthernetAddress;
+
+    sourceEthernetAddress.parse(device->adapter().ethernetAddress());
+    destinationEthernetAddress.parse(device->adapter().ethernetAddress());
+
+    ethernet.header().setSource(sourceEthernetAddress);
+    ethernet.header().setDestination(destinationEthernetAddress);
+
+    ethernet.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
+
+    ntsa::Ipv4Packet& ipv4 = ethernet.payload().makeIpv4();
+
+    ntsa::Ipv4Address sourceIpv4Address = ntsa::Ipv4Address::loopback();
+    ntsa::Ipv4Address destinationIpv4Address =
+        device->adapter().ipv4Address().value();
+
+    ipv4.header().setSourceAddress(sourceIpv4Address);
+    ipv4.header().setDestinationAddress(destinationIpv4Address);
+
+    ipv4.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_UDP);
+    ipv4.header().setId(id);
+    ipv4.header().setPreserve(true);
+
+    ntsa::UdpPacket& udp = ipv4.payload().makeUdp();
+
+    const ntsa::Port sourceUdpPort = 3001;
+    const ntsa::Port destinationUdpPort = 4001;
+
+    udp.header().setSourcePort(sourceUdpPort);
+    udp.header().setDestinationPort(destinationUdpPort);
+
+    bdlbb::BlobBuffer payload;
+    device->createOutgoingBlobBuffer(&payload);
+
+    NTSCFG_MEMORY_COPY(payload.data(), "Hello, world!", 13);
+    payload.setSize(13);
+
+    udp.setPayload(payload);
+}
+
 void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device,
                         const bsls::TimeInterval&            duration)
 {
@@ -126,10 +181,18 @@ void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device,
                 BALL_LOG_INFO << "Device dequeued EOF" << BALL_LOG_END;
                 break;
             }
-
-            NTSCFG_TEST_TRUE(packet);
-            NTSCFG_TEST_FALSE(packet->isUndefined());
+            else {
+                BALL_LOG_ERROR << "Failed to dequeue packet from device: "
+                               << error
+                               << BALL_LOG_END;
+                break;
+            }
         }
+
+        NTSCFG_TEST_TRUE(packet);
+        NTSCFG_TEST_FALSE(packet->isUndefined());
+
+        BALL_LOG_INFO << "Incoming packet " << packet << BALL_LOG_END;
     }
 
     BALL_LOG_INFO << "Test reader thread complete" << BALL_LOG_END;
@@ -154,49 +217,9 @@ void DeviceTest::writer(const bsl::shared_ptr<ntsi::Device>& device,
         }
 
         bsl::shared_ptr<ntsa::Packet> packet;
-        device->createOutgoingPacket(&packet);
+        DeviceTest::createPacket(&packet, device, nextId++);
 
-        ntsa::EthernetPacket& ethernet = packet->makeEthernet();
-
-        ntsa::EthernetAddress sourceEthernetAddress;
-        ntsa::EthernetAddress destinationEthernetAddress;
-
-        sourceEthernetAddress.parse(device->adapter().ethernetAddress());
-        destinationEthernetAddress.parse(device->adapter().ethernetAddress());
-
-        ethernet.header().setSource(sourceEthernetAddress);
-        ethernet.header().setDestination(destinationEthernetAddress);
-
-        ethernet.header().setProtocol(ntsa::EthernetProtocol::e_IPV4);
-
-        ntsa::Ipv4Packet& ipv4 = ethernet.payload().makeIpv4();
-
-        ntsa::Ipv4Address sourceIpv4Address = ntsa::Ipv4Address::loopback();
-        ntsa::Ipv4Address destinationIpv4Address =
-            device->adapter().ipv4Address().value();
-
-        ipv4.header().setSourceAddress(sourceIpv4Address);
-        ipv4.header().setDestinationAddress(destinationIpv4Address);
-
-        ipv4.header().setProtocol(ntsa::Ipv4Header::k_PROTOCOL_UDP);
-        ipv4.header().setId(nextId++);
-        ipv4.header().setPreserve(true);
-
-        ntsa::UdpPacket& udp = ipv4.payload().makeUdp();
-
-        const ntsa::Port sourceUdpPort = 3001;
-        const ntsa::Port destinationUdpPort = 4001;
-
-        udp.header().setSourcePort(sourceUdpPort);
-        udp.header().setDestinationPort(destinationUdpPort);
-
-        bdlbb::BlobBuffer payload;
-        device->createOutgoingBlobBuffer(&payload);
-
-        NTSCFG_MEMORY_COPY(payload.data(), "Hello, world!", 13);
-        payload.setSize(13);
-
-        udp.setPayload(payload);
+        BALL_LOG_INFO << "Outgoing packet " << packet << BALL_LOG_END;
 
         error = device->enqueuePacket(packet);
         NTSCFG_TEST_OK(error);

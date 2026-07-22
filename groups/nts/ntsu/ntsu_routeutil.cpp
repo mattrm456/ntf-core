@@ -188,8 +188,7 @@ BSLS_IDENT_RCSID(ntsu_routeutil_cpp, "$Id$ $CSID$")
 #define NTSU_ROUTEUTIL_LOG_RTAX(type, sa)                                     \
     do {                                                                      \
         BALL_LOG_TRACE << "Decoding route message payload [ type = "          \
-                       << (type) << " sa_family = "
-                                         \
+                       << (type) << " sa_family = "                           \
                        << static_cast<bsl::uint32_t>((sa)->sa_family)         \
                        << BALL_LOG_END;                                       \
     } while (false)
@@ -1591,6 +1590,8 @@ ntsa::Error RouteUtil::Impl::decodeLink(
     bdlb::NullableValue<ntsa::EthernetAddress>* ethernetAddress,
     const sockaddr_ll*                          sa)
 {
+    NTSCFG_WARNING_UNUSED(adapterName);
+
     adapterIndex->makeValue(static_cast<bsl::uint32_t>(sa->sll_ifindex));
 
     if (static_cast<bsl::size_t>(sa->sll_halen) ==
@@ -2708,6 +2709,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
         ntsa::EthernetRouteTable*         result,
         const bsl::vector<ntsa::Adapter>& adapterVector)
 {
+    NTSCFG_WARNING_UNUSED(adapterVector);
+
     result->reset();
 
     bsl::ifstream fs("/proc/net/arp", bsl::ios_base::in);
@@ -2793,7 +2796,6 @@ ntsa::Error RouteUtil::Impl::Native::load(
         const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     ntsa::Error error;
-    int         rc;
 
     result->reset();
 
@@ -3073,7 +3075,6 @@ ntsa::Error RouteUtil::Impl::Native::load(
         const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     ntsa::Error error;
-    int         rc;
 
     result->reset();
 

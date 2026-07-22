@@ -925,7 +925,7 @@ struct System {
     /// is 0, the currently installed default allocator is used.
     static bsl::shared_ptr<ntsi::Device> createDevice(
         const ntsa::DeviceConfig& configuration,
-        bslma::Allocator*           basicAllocator = 0);
+        bslma::Allocator*         basicAllocator = 0);
 
     /// Bind the specified 'socket' to the specified source 'endpoint'. If
     /// the specified 'reuseAddress' flag is set, allow this socket to bind
@@ -1662,6 +1662,10 @@ struct System {
     /// on the system, which may be expensive; prefer to cache the results of
     /// this function when possible.
     static bool supportsTransportLoopback(ntsa::Transport::Value transport);
+
+    /// Return true if raw transport through low-level network devices is 
+    /// supported, otherwise return false.
+    static bool supportsRaw();
 
     /// Load into the specified `result` names of tcp congestion control
     /// algorithms available for the process. Return the error.

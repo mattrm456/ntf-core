@@ -32,6 +32,7 @@ BSLS_IDENT_RCSID(ntsf_system_cpp, "$Id$ $CSID$")
 #include <ntso_pollset.h>
 #include <ntso_select.h>
 #include <ntsu_adapterutil.h>
+#include <ntsu_deviceutil.h>
 #include <ntsu_socketoptionutil.h>
 #include <ntsu_socketutil.h>
 
@@ -1475,6 +1476,11 @@ bool System::supportsTransportLoopback(ntsa::Transport::Value transport)
     BSLS_ASSERT_OPT(!error);
 
     return ntsu::AdapterUtil::supportsTransportLoopback(transport);
+}
+
+bool System::supportsRaw()
+{
+    return ntsu::DeviceUtil::isSupported();
 }
 
 ntsa::Error System::loadTcpCongestionControlAlgorithmSupport(

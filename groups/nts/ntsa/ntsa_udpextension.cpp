@@ -64,8 +64,6 @@ ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder,
         return error;
     }
 
-    const bsl::size_t optionsPosition = decoder->position();
-
     bsl::size_t n = 0;
 
     while (true) {

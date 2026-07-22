@@ -519,10 +519,7 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
 {
     ntsa::Error error;
 
-    typedef ntsu::PacketFilter::Script      PFS;
-    typedef ntsu::PacketFilter::Program     PFP;
-    typedef ntsu::PacketFilter::Instruction PFI;
-    typedef ntsu::PacketFilter::Compiler    PFC;
+    typedef ntsu::PacketFilter::Compiler PFC;
 
     // The index into scratch memory where the offset from the beginning of the
     // packet to the beginning of the layer-2 (e.g. Ethernet) header is stored.
@@ -575,13 +572,18 @@ ntsa::Error PacketUtil::compile(PacketFilter::Program*    program,
     // stored.
     const bsl::uint32_t k_L4_PROTOCOL = 11;
 
+    NTSCFG_WARNING_UNUSED(k_L2_HEADER_OFFSET);
+    NTSCFG_WARNING_UNUSED(k_L4_HEADER_LENGTH);
+    NTSCFG_WARNING_UNUSED(k_L4_PACKET_LENGTH);
+    NTSCFG_WARNING_UNUSED(k_L4_PROTOCOL);
+
     // Start with a blank program. The BPF interpreter guarantees that the
     // accumulator register, the index register, and the scratch memory are
     // zeroed.
 
     program->clear();
 
-    PFS script;
+    ntsu::PacketFilter::Script script;
 
     if (deviceType == ntsa::DeviceType::e_LOCAL ||
         deviceType == ntsa::DeviceType::e_LOOPBACK)
@@ -2379,6 +2381,8 @@ bsl::shared_ptr<ntsa::Packet> PacketUtil::createIgmpReport(
     igmpPacket.header().setMaxResponseCode(0);
 
     igmpPacket.payload().makeReport(payload);
+
+    return packet;
 }
 
 bsl::shared_ptr<ntsa::Packet> PacketUtil::createArpRequest(
