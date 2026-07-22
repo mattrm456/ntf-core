@@ -1600,29 +1600,7 @@ bool AdapterUtil::supportsTransport(ntsa::Transport::Value transport)
         return false;
 #endif
     }
-    else if (transport == ntsa::Transport::e_TCP_IPV4_RAW) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_TCP
-        return AdapterUtil::supportsIpv4();
-#else
-        return false;
-#endif
-    }
     else if (transport == ntsa::Transport::e_TCP_IPV6_STREAM) {
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_TCP
-        return AdapterUtil::supportsIpv6();
-#else
-        return false;
-#endif
-    }
-    else if (transport == ntsa::Transport::e_TCP_IPV6_RAW) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
 #if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_TCP
         return AdapterUtil::supportsIpv6();
 #else
@@ -1636,29 +1614,7 @@ bool AdapterUtil::supportsTransport(ntsa::Transport::Value transport)
         return false;
 #endif
     }
-    else if (transport == ntsa::Transport::e_UDP_IPV4_RAW) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_UDP
-        return AdapterUtil::supportsIpv4();
-#else
-        return false;
-#endif
-    }
     else if (transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_UDP
-        return AdapterUtil::supportsIpv6();
-#else
-        return false;
-#endif
-    }
-    else if (transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
 #if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_UDP
         return AdapterUtil::supportsIpv6();
 #else
@@ -1670,9 +1626,6 @@ bool AdapterUtil::supportsTransport(ntsa::Transport::Value transport)
     }
     else if (transport == ntsa::Transport::e_LOCAL_DATAGRAM) {
         return AdapterUtil::supportsLocalDatagram();
-    }
-    else if (transport == ntsa::Transport::e_ETHERNET) {
-        return AdapterUtil::supportsRaw();
     }
     else {
         return false;
@@ -1688,29 +1641,7 @@ bool AdapterUtil::supportsTransportLoopback(ntsa::Transport::Value transport)
         return false;
 #endif
     }
-    else if (transport == ntsa::Transport::e_TCP_IPV4_RAW) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_TCP
-        return AdapterUtil::supportsIpv4Loopback();
-#else
-        return false;
-#endif
-    }
     else if (transport == ntsa::Transport::e_TCP_IPV6_STREAM) {
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_TCP
-        return AdapterUtil::supportsIpv6Loopback();
-#else
-        return false;
-#endif
-    }
-    else if (transport == ntsa::Transport::e_TCP_IPV6_RAW) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
 #if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_TCP
         return AdapterUtil::supportsIpv6Loopback();
 #else
@@ -1724,29 +1655,7 @@ bool AdapterUtil::supportsTransportLoopback(ntsa::Transport::Value transport)
         return false;
 #endif
     }
-    else if (transport == ntsa::Transport::e_UDP_IPV4_RAW) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_UDP
-        return AdapterUtil::supportsIpv4Loopback();
-#else
-        return false;
-#endif
-    }
     else if (transport == ntsa::Transport::e_UDP_IPV6_DATAGRAM) {
-#if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_UDP
-        return AdapterUtil::supportsIpv6Loopback();
-#else
-        return false;
-#endif
-    }
-    else if (transport == ntsa::Transport::e_UDP_IPV6_RAW) {
-        if (!AdapterUtil::supportsRaw()) {
-            return false;
-        }
-
 #if NTSCFG_BUILD_WITH_TRANSPORT_PROTOCOL_UDP
         return AdapterUtil::supportsIpv6Loopback();
 #else
@@ -1759,64 +1668,9 @@ bool AdapterUtil::supportsTransportLoopback(ntsa::Transport::Value transport)
     else if (transport == ntsa::Transport::e_LOCAL_DATAGRAM) {
         return AdapterUtil::supportsLocalDatagram();
     }
-    else if (transport == ntsa::Transport::e_ETHERNET) {
-        return AdapterUtil::supportsRaw();
-    }
     else {
         return false;
     }
-}
-
-bool AdapterUtil::supportsRaw()
-{
-#if defined(BSLS_PLATFORM_OS_LINUX)
-
-    if (geteuid() == 0) {
-        return true;
-    }
-
-#if defined(_LINUX_CAPABILITY_VERSION_3)
-    const unsigned int k_CAP_VERSION = _LINUX_CAPABILITY_VERSION_3;
-#else
-    const unsigned int k_CAP_VERSION = 0x20080522;
-#endif
-
-#if defined(CAP_NET_RAW)
-    const unsigned int k_CAP_NET_RAW = CAP_NET_RAW;
-#else
-    const unsigned int k_CAP_NET_RAW = 13;
-#endif
-
-#if defined(CAP_TO_INDEX)
-    const unsigned int k_CAP_NET_RAW_INDEX = CAP_TO_INDEX(k_CAP_NET_RAW);
-#else
-    const unsigned int k_CAP_NET_RAW_INDEX = k_CAP_NET_RAW >> 5;
-#endif
-
-#if defined(CAP_TO_MASK)
-    const unsigned int k_CAP_NET_RAW_MASK = CAP_TO_MASK(k_CAP_NET_RAW);
-#else
-    const unsigned int k_CAP_NET_RAW_MASK = (1U << ((k_CAP_NET_RAW) & 31));
-#endif
-
-    struct __user_cap_header_struct header;
-    struct __user_cap_data_struct   data[2];
-
-    header.version = k_CAP_VERSION;
-    header.pid     = 0;
-
-    if (syscall(SYS_capget, &header, data) == -1) {
-        return false;
-    }
-
-    const bool found =
-        (data[k_CAP_NET_RAW_INDEX].effective & k_CAP_NET_RAW_MASK) != 0;
-
-    return found;
-
-#else
-    return false;
-#endif
 }
 
 }  // close package namespace

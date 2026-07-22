@@ -216,10 +216,6 @@ struct AdapterUtil {
     /// the specified 'transport', otherwise return false.
     static bool supportsTransportLoopback(ntsa::Transport::Value transport);
 
-    /// Return true if the current process is priviledged to support raw
-    /// sockets.
-    static bool supportsRaw();
-
   public:
     /// Provide a private implementation.
     class Impl;

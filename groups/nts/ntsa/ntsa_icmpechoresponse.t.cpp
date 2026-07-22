@@ -18,7 +18,7 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntsa_icmpresponse_t_cpp, "$Id$ $CSID$")
 
-#include <ntsa_icmpresponse.h>
+#include <ntsa_icmpechoresponse.h>
 
 using namespace BloombergLP;
 
