@@ -65,57 +65,46 @@ class Ipv4RouteTableTest
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4RouteTableTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

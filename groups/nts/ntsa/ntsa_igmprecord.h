@@ -222,9 +222,9 @@ IgmpRecord::IgmpRecord(bslma::Allocator* basicAllocator)
 
 NTSCFG_INLINE
 IgmpRecord::IgmpRecord(bslmf::MovableRef<IgmpRecord> original) NTSCFG_NOEXCEPT
-: d_type(NTSCFG_MOVE_FROM(original, d_type))
-, d_multicastAddress(NTSCFG_MOVE_FROM(original, d_multicastAddress))
-, d_sourceAddresses(NTSCFG_MOVE_FROM(original, d_sourceAddresses))
+: d_type(NTSCFG_MOVE_FROM(original, d_type)),
+  d_multicastAddress(NTSCFG_MOVE_FROM(original, d_multicastAddress)),
+  d_sourceAddresses(NTSCFG_MOVE_FROM(original, d_sourceAddresses))
 {
     NTSCFG_MOVE_RESET(original);
 }
@@ -247,7 +247,7 @@ NTSCFG_INLINE
 IgmpRecord& IgmpRecord::operator=(bslmf::MovableRef<IgmpRecord> other)
     NTSCFG_NOEXCEPT
 {
-    d_type       = NTSCFG_MOVE_FROM(other, d_type);
+    d_type             = NTSCFG_MOVE_FROM(other, d_type);
     d_multicastAddress = NTSCFG_MOVE_FROM(other, d_multicastAddress);
     d_sourceAddresses  = NTSCFG_MOVE_FROM(other, d_sourceAddresses);
 
@@ -259,7 +259,7 @@ IgmpRecord& IgmpRecord::operator=(bslmf::MovableRef<IgmpRecord> other)
 NTSCFG_INLINE
 IgmpRecord& IgmpRecord::operator=(const IgmpRecord& other)
 {
-    d_type       = other.d_type;
+    d_type             = other.d_type;
     d_multicastAddress = other.d_multicastAddress;
     d_sourceAddresses  = other.d_sourceAddresses;
 
@@ -269,7 +269,7 @@ IgmpRecord& IgmpRecord::operator=(const IgmpRecord& other)
 NTSCFG_INLINE
 void IgmpRecord::reset()
 {
-    d_type       = ntsa::IgmpRecordType::e_UNDEFINED;
+    d_type             = ntsa::IgmpRecordType::e_UNDEFINED;
     d_multicastAddress = ntsa::Ipv4Address();
     d_sourceAddresses.clear();
 }

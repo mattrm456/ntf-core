@@ -50,7 +50,8 @@ ntsa::Error Ipv6Header::decode(ntsa::PacketDecoder* decoder)
         return error;
     }
 
-    d_destinationAddress.copyFrom(destinationAddress, sizeof destinationAddress);
+    d_destinationAddress.copyFrom(destinationAddress,
+                                  sizeof destinationAddress);
 
     return ntsa::Error();
 }
@@ -84,8 +85,8 @@ ntsa::Error Ipv6Header::encode(ntsa::PacketEncoder* encoder) const
 }
 
 bsl::ostream& Ipv6Header::print(bsl::ostream& stream,
-                                    int           level,
-                                    int           spacesPerLevel) const
+                                int           level,
+                                int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

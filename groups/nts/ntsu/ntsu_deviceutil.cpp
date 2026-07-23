@@ -179,7 +179,7 @@ BSLS_IDENT_RCSID(ntsu_deviceutil_cpp, "$Id$ $CSID$")
 
 #elif defined(BSLS_PLATFORM_OS_LINUX)
 
-#define NTSU_DEVICEUTIL_LOG_OPEN(device, adapter) \
+#define NTSU_DEVICEUTIL_LOG_OPEN(device, adapter)                             \
     do {                                                                      \
         BALL_LOG_TRACE_BLOCK                                                  \
         {                                                                     \
@@ -357,18 +357,14 @@ BSLS_IDENT_RCSID(ntsu_deviceutil_cpp, "$Id$ $CSID$")
 #define NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet, buffer)           \
     do {                                                                      \
         BALL_LOG_TRACE << "Network device descriptor " << (device)            \
-                       << " incoming packet = " << (packet) \
-                       << BALL_LOG_END;                                       \
+                       << " incoming packet = " << (packet) << BALL_LOG_END;  \
     } while (false)
 
 #define NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(device, packet, buffer)           \
     do {                                                                      \
         BALL_LOG_TRACE << "Network device descriptor " << (device)            \
-                       << " outgoing packet " << (packet) \
-                       << BALL_LOG_END;                                       \
+                       << " outgoing packet " << (packet) << BALL_LOG_END;    \
     } while (false)
-
-
 
 namespace BloombergLP {
 namespace ntsu {
@@ -1684,8 +1680,9 @@ ntsa::Error DeviceUtil::enqueuePacket(
                 }
                 else {
                     error = ntsa::Error(lastError);
-                    NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(
-                        device, packet, error);
+                    NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device,
+                                                            packet,
+                                                            error);
                     return error;
                 }
             }
@@ -1752,8 +1749,9 @@ ntsa::Error DeviceUtil::enqueuePacket(
                 }
                 else {
                     error = ntsa::Error(lastError);
-                    NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(
-                        device, packet, error);
+                    NTSU_DEVICEUTIL_LOG_PACKET_WRITER_ERROR(device,
+                                                            packet,
+                                                            error);
                     return error;
                 }
             }
@@ -2140,10 +2138,9 @@ class DeviceUtil::Impl
                                                bsl::uint32_t dataLinkType);
 };
 
-ntsa::Error DeviceUtil::Impl::setPromiscuous(
-    ntsa::Handle         device,
-    const ntsa::Adapter& adapter,
-    bool                 value)
+ntsa::Error DeviceUtil::Impl::setPromiscuous(ntsa::Handle         device,
+                                             const ntsa::Adapter& adapter,
+                                             bool                 value)
 {
     ntsa::Error error;
     int         rc;
@@ -2155,8 +2152,11 @@ ntsa::Error DeviceUtil::Impl::setPromiscuous(
         mr.mr_ifindex = static_cast<int>(adapter.index());
         mr.mr_type    = PACKET_MR_PROMISC;
 
-        rc = setsockopt(
-            device, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof mr);
+        rc = setsockopt(device,
+                        SOL_PACKET,
+                        PACKET_ADD_MEMBERSHIP,
+                        &mr,
+                        sizeof mr);
         if (rc < 0) {
             const int lastError = errno;
             error               = ntsa::Error(lastError);
@@ -2220,7 +2220,6 @@ ntsa::Error DeviceUtil::Impl::getBlocking(ntsa::Handle device, bool* result)
 
     return ntsa::Error();
 }
-
 
 ntsa::Error DeviceUtil::Impl::setReadTimeout(ntsa::Handle              device,
                                              const bsls::TimeInterval& value)
@@ -2335,10 +2334,9 @@ ntsa::Error DeviceUtil::Impl::getAdapter(ntsa::Handle   device,
     return ntsa::Error();
 }
 
-ntsa::Error DeviceUtil::Impl::getDataLinkType(
-    ntsa::Handle         device,
-    const ntsa::Adapter& adapter,
-    bsl::uint32_t*       result)
+ntsa::Error DeviceUtil::Impl::getDataLinkType(ntsa::Handle         device,
+                                              const ntsa::Adapter& adapter,
+                                              bsl::uint32_t*       result)
 {
     ntsa::Error error;
     int         rc;
@@ -2449,8 +2447,8 @@ ntsa::Error DeviceUtil::Impl::applyFilter(
 }
 
 ntsa::Error DeviceUtil::Impl::convertFromDataLinkType(
-        ntsa::DeviceType::Value* result,
-        bsl::uint32_t            dataLinkType)
+    ntsa::DeviceType::Value* result,
+    bsl::uint32_t            dataLinkType)
 {
     if (dataLinkType == ARPHRD_LOOPBACK) {
         *result = ntsa::DeviceType::e_ETHERNET;
@@ -2499,7 +2497,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     ntsa::Handle device = ::socket(domain, mode, protocol);
     if (device < 0) {
         const int lastError = errno;
-        error = ntsa::Error(lastError);
+        error               = ntsa::Error(lastError);
         NTSU_DEVICEUTIL_LOG_OPEN_FAILED(error);
         return error;
     }
@@ -2512,8 +2510,11 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         const socklen_t optionLength =
             static_cast<socklen_t>(sizeof optionValue);
 
-        rc = ::setsockopt(
-            *result, IPPROTO_IP, IP_HDRINCL, &optionValue, optionLength);
+        rc = ::setsockopt(*result,
+                          IPPROTO_IP,
+                          IP_HDRINCL,
+                          &optionValue,
+                          optionLength);
         if (rc != 0) {
             return ntsa::Error(errno);
         }
@@ -2525,10 +2526,10 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
             static_cast<socklen_t>(sizeof optionValue);
 
         rc = ::setsockopt(*result,
-                           IPPROTO_IPV6,
-                           IPV6_HDRINCL,
-                           &optionValue,
-                           optionLength);
+                          IPPROTO_IPV6,
+                          IPV6_HDRINCL,
+                          &optionValue,
+                          optionLength);
         if (rc != 0) {
             return ntsa::Error(errno);
         }
@@ -2550,13 +2551,11 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         }
     }
 
-
     // Configure see sent.
 
-    if (loopback)
-    {
+    if (loopback) {
         int ignoreOutgoing = 1;
-        rc = setsockopt(device,
+        rc                 = setsockopt(device,
                         SOL_PACKET,
                         PACKET_IGNORE_OUTGOING,
                         &ignoreOutgoing,
@@ -2617,13 +2616,12 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         if (static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue) !=
             adapter.index())
         {
-            BALL_LOG_ERROR
-                << "Failed to open device: network interface index "
-                << "mismatch: expected "
-                << adapter.index()
-                << " but found "
-                << static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue)
-                << BALL_LOG_END;
+            BALL_LOG_ERROR << "Failed to open device: network interface index "
+                           << "mismatch: expected " << adapter.index()
+                           << " but found "
+                           << static_cast<bsl::uint32_t>(
+                                  ifr.ifr_ifru.ifru_ivalue)
+                           << BALL_LOG_END;
 
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
@@ -2631,12 +2629,12 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
         struct sockaddr_ll sll;
         NTSCFG_MEMORY_ZERO(&sll, sizeof sll);
 
-        sll.sll_family = AF_PACKET;
-        sll.sll_ifindex = ifr.ifr_ifindex;
+        sll.sll_family   = AF_PACKET;
+        sll.sll_ifindex  = ifr.ifr_ifindex;
         sll.sll_protocol = htons(ETH_P_ALL);
 
         rc = ::bind(device,
-                    reinterpret_cast<struct sockaddr *>(&sll),
+                    reinterpret_cast<struct sockaddr*>(&sll),
                     sizeof sll);
         if (rc != 0) {
             const int lastError = errno;
@@ -3010,7 +3008,9 @@ ntsa::Error DeviceUtil::dequeuePacket(
     }
     else if (bytesRead > static_cast<ssize_t>(packetBuffer.size())) {
         NTSU_DEVICEUTIL_LOG_PACKET_READER_UNEXPECTED_BYTES_RECEIVED(
-            device, packetBuffer, bytesRead);
+            device,
+            packetBuffer,
+            bytesRead);
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
@@ -3031,20 +3031,18 @@ ntsa::Error DeviceUtil::dequeuePacket(
     if (error) {
         if (error == ntsa::Error(ntsa::Error::e_NOT_AUTHORIZED)) {
             NTSU_DEVICEUTIL_LOG_PACKET_INCOMING_DROP(device,
-                                                        packet,
-                                                        packetBuffer);
+                                                     packet,
+                                                     packetBuffer);
         }
         else {
             NTSU_DEVICEUTIL_LOG_PACKET_DECODER_ERROR(device,
-                                                        packetBuffer,
-                                                        packet,
-                                                        error);
+                                                     packetBuffer,
+                                                     packet,
+                                                     error);
         }
     }
     else {
-        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device,
-                                            packet,
-                                            packetBuffer);
+        NTSU_DEVICEUTIL_LOG_PACKET_INCOMING(device, packet, packetBuffer);
 
         error = packetQueue->enqueuePacket(NTSCFG_MOVE(packet));
         if (error) {

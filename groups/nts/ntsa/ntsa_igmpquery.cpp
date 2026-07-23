@@ -32,8 +32,8 @@ ntsa::Error IgmpQuery::decode(ntsa::PacketDecoder* decoder)
 
     {
         bsl::uint32_t groupAddressValue;
-        error = decoder->decodeRaw(&groupAddressValue,
-                                   sizeof groupAddressValue);
+        error =
+            decoder->decodeRaw(&groupAddressValue, sizeof groupAddressValue);
         if (error) {
             return error;
         }
@@ -83,8 +83,8 @@ ntsa::Error IgmpQuery::encode(ntsa::PacketEncoder* encoder) const
     {
         const bsl::uint32_t groupAddressValue = d_groupAddress.value();
 
-        error = encoder->encodeRaw(&groupAddressValue,
-                                   sizeof groupAddressValue);
+        error =
+            encoder->encodeRaw(&groupAddressValue, sizeof groupAddressValue);
         if (error) {
             return error;
         }
@@ -123,8 +123,7 @@ ntsa::Error IgmpQuery::encode(ntsa::PacketEncoder* encoder) const
 bool IgmpQuery::equals(const IgmpQuery& other) const
 {
     return d_groupAddress == other.d_groupAddress &&
-           d_flagsAndQrv == other.d_flagsAndQrv &&
-           d_qqic == other.d_qqic &&
+           d_flagsAndQrv == other.d_flagsAndQrv && d_qqic == other.d_qqic &&
            d_sourceAddresses == other.d_sourceAddresses;
 }
 

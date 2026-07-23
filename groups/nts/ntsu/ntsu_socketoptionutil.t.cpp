@@ -26,10 +26,10 @@ BSLS_IDENT_RCSID(ntsu_socketoptionutil_t_cpp, "$Id$ $CSID$")
 #include <ntsu_timestamputil.h>
 
 #if defined(BSLS_PLATFORM_OS_UNIX)
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
+#include <sys/socket.h>
 #endif
 
 #if defined(BSLS_PLATFORM_OS_LINUX)
@@ -1297,7 +1297,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase3)
                                                                      INPUT[i]);
 
                     BSLS_LOG_TRACE("setMulticastLoopback: %s",
-                                  error.text().c_str());
+                                   error.text().c_str());
 
                     if (error) {
                         NTSCFG_TEST_TRUE(error == ntsa::Error::e_INVALID ||
@@ -1320,7 +1320,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase3)
                         INPUT[i]);
 
                     BSLS_LOG_TRACE("setMulticastTimeToLive: %s",
-                                  error.text().c_str());
+                                   error.text().c_str());
 
                     if (error) {
                         NTSCFG_TEST_TRUE(error == ntsa::Error::e_INVALID ||
@@ -1345,7 +1345,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase3)
                 }
 
                 BSLS_LOG_TRACE("setMulticastInterface: %s",
-                              error.text().c_str());
+                               error.text().c_str());
 
                 if (error) {
                     NTSCFG_TEST_TRUE(error == ntsa::Error::e_INVALID ||
@@ -1404,7 +1404,8 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase3)
                             "ff00:0000:0000:0000:0000:0000:0000:0000"));
                 }
 
-                BSLS_LOG_TRACE("leaveMulticastGroup: %s", error.text().c_str());
+                BSLS_LOG_TRACE("leaveMulticastGroup: %s",
+                               error.text().c_str());
 
                 if (error) {
 #if defined(BSLS_PLATFORM_OS_LINUX)
@@ -1441,7 +1442,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase3)
                 }
 
                 BSLS_LOG_TRACE("joinMulticastGroupSource: %s",
-                              error.text().c_str());
+                               error.text().c_str());
 
                 if (error) {
 #if defined(BSLS_PLATFORM_OS_LINUX)
@@ -1478,7 +1479,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase3)
                 }
 
                 BSLS_LOG_TRACE("leaveMulticastGroupSource: %s",
-                              error.text().c_str());
+                               error.text().c_str());
 
                 if (error) {
 #if defined(BSLS_PLATFORM_OS_LINUX)
@@ -1648,7 +1649,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase5)
                 NTSCFG_TEST_OK(error);
                 NTSCFG_TEST_TRUE(timestampIncomingData);
 
-                // Ensure TX timestamps cannot be enabled on the listener 
+                // Ensure TX timestamps cannot be enabled on the listener
                 // socket because TX timestamps can only be enabled on
                 // connected sockets.
 
@@ -1728,8 +1729,9 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase5)
 
                 // Disable both RX and TX timestamps on the connecting socket.
 
-                error = ntsu::SocketOptionUtil::setTimestampIncomingData(
-                    socket, false);
+                error =
+                    ntsu::SocketOptionUtil::setTimestampIncomingData(socket,
+                                                                     false);
                 NTSCFG_TEST_OK(error);
 
                 error = ntsu::SocketOptionUtil::getTimestampIncomingData(
@@ -1738,8 +1740,9 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase5)
                 NTSCFG_TEST_OK(error);
                 NTSCFG_TEST_FALSE(timestampIncomingData);
 
-                error = ntsu::SocketOptionUtil::setTimestampOutgoingData(
-                    socket, false);
+                error =
+                    ntsu::SocketOptionUtil::setTimestampOutgoingData(socket,
+                                                                     false);
                 NTSCFG_TEST_OK(error);
 
                 error = ntsu::SocketOptionUtil::getTimestampOutgoingData(
@@ -2463,7 +2466,7 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketOptionUtilTest::verifyCase10)
         error = ntsu::SocketOptionUtil::getProtocol(&protocol, socket);
         NTSCFG_TEST_TRUE(error);
 #endif
- 
+
         error = ntsu::SocketUtil::close(socket);
         NTSCFG_TEST_OK(error);
     }

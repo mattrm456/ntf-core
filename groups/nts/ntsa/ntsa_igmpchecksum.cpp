@@ -50,8 +50,8 @@ void IgmpChecksum::reset()
 }
 
 void IgmpChecksum::add(const ntsa::Ipv4Address& sourceAddress,
-                      const ntsa::Ipv4Address& destinationAddress,
-                      bsl::size_t              length)
+                       const ntsa::Ipv4Address& destinationAddress,
+                       bsl::size_t              length)
 {
     const bsl::uint8_t* src =
         reinterpret_cast<const bsl::uint8_t*>(&sourceAddress);
@@ -59,17 +59,13 @@ void IgmpChecksum::add(const ntsa::Ipv4Address& sourceAddress,
     const bsl::uint8_t* dst =
         reinterpret_cast<const bsl::uint8_t*>(&destinationAddress);
 
-    d_accumulator +=
-        (static_cast<bsl::uint16_t>(src[0]) << 8) | src[1];
+    d_accumulator += (static_cast<bsl::uint16_t>(src[0]) << 8) | src[1];
 
-    d_accumulator +=
-        (static_cast<bsl::uint16_t>(src[2]) << 8) | src[3];
+    d_accumulator += (static_cast<bsl::uint16_t>(src[2]) << 8) | src[3];
 
-    d_accumulator +=
-        (static_cast<bsl::uint16_t>(dst[0]) << 8) | dst[1];
+    d_accumulator += (static_cast<bsl::uint16_t>(dst[0]) << 8) | dst[1];
 
-    d_accumulator +=
-        (static_cast<bsl::uint16_t>(dst[2]) << 8) | dst[3];
+    d_accumulator += (static_cast<bsl::uint16_t>(dst[2]) << 8) | dst[3];
 
     d_accumulator += static_cast<bsl::uint16_t>(IgmpChecksum::k_PROTOCOL_IGMP);
     d_accumulator += static_cast<bsl::uint16_t>(length);
@@ -81,9 +77,8 @@ void IgmpChecksum::add(const void* data, bsl::size_t size)
     bsl::size_t         n = size;
 
     while (n > 1) {
-        d_accumulator +=
-            (static_cast<bsl::uint16_t>(p[0]) << 8) |
-             static_cast<bsl::uint16_t>(p[1]);
+        d_accumulator += (static_cast<bsl::uint16_t>(p[0]) << 8) |
+                         static_cast<bsl::uint16_t>(p[1]);
         p += 2;
         n -= 2;
     }

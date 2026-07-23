@@ -44,7 +44,7 @@ ntsa::Error IcmpUnreachable::decode(ntsa::PacketDecoder* decoder)
 
     if (payloadSize > 0) {
         d_payloadSize = bsl::min(payloadSize, sizeof d_payloadData);
-        error = decoder->decodeRaw(d_payloadData, d_payloadSize);
+        error         = decoder->decodeRaw(d_payloadData, d_payloadSize);
         if (error) {
             return error;
         }
@@ -102,9 +102,9 @@ void IcmpUnreachable::print(bslim::Printer* printer) const
 }
 
 bsl::ostream& IcmpUnreachable::printData(bsl::ostream&            stream,
-                                     const bslstl::StringRef& data,
-                                     int                      level,
-                                     int                      spacesPerLevel)
+                                         const bslstl::StringRef& data,
+                                         int                      level,
+                                         int spacesPerLevel)
 {
     NTSCFG_WARNING_UNUSED(level);
     NTSCFG_WARNING_UNUSED(spacesPerLevel);

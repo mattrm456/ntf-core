@@ -444,7 +444,7 @@ ntsa::Error PacketEncoder::seek(bsl::size_t position)
 {
     if (d_begin + position <= d_end) {
         d_current  = d_begin + position;
-        d_capacity  = static_cast<bsl::size_t>(d_end - d_current);
+        d_capacity = static_cast<bsl::size_t>(d_end - d_current);
         return ntsa::Error();
     }
     else {

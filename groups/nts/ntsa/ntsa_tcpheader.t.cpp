@@ -56,7 +56,6 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpHeaderTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpHeaderTest::verifyUsage)
 {
-
 }
 
 }  // close namespace ntsa

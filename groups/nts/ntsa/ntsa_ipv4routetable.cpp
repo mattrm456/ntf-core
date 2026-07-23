@@ -25,16 +25,15 @@ BSLS_IDENT_RCSID(ntsa_ipv4routetable_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-class Ipv4RouteTable::Sorter {
-public:
+class Ipv4RouteTable::Sorter
+{
+  public:
     bool operator()(const bsl::shared_ptr<ntsa::Ipv4Route>& lhs,
                     const bsl::shared_ptr<ntsa::Ipv4Route>& rhs) const
     {
-        const bsl::uint32_t lhsMaskLength =
-            lhs->destinationIpv4MaskLength();
+        const bsl::uint32_t lhsMaskLength = lhs->destinationIpv4MaskLength();
 
-        const bsl::uint32_t rhsMaskLength =
-            rhs->destinationIpv4MaskLength();
+        const bsl::uint32_t rhsMaskLength = rhs->destinationIpv4MaskLength();
 
         if (rhsMaskLength < lhsMaskLength) {
             return true;
@@ -106,8 +105,7 @@ bool Ipv4RouteTable::find(
                     route->interfaceEthernetAddress().value();
                 *destinationEthernetAddress =
                     route->gatewayEthernetAddress().value();
-                *sourceIpv4Address =
-                    route->interfaceIpv4Address().value();
+                *sourceIpv4Address = route->interfaceIpv4Address().value();
                 return true;
             }
         }

@@ -65,57 +65,46 @@ class IgmpRecordTest
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpRecordTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

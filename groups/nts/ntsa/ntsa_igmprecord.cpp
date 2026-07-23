@@ -36,8 +36,8 @@ ntsa::Error IgmpRecord::decode(ntsa::PacketDecoder* decoder)
         return error;
     }
 
-    if (ntsa::IgmpRecordType::fromInt(&d_type,
-                                      static_cast<int>(recordType)) != 0)
+    if (ntsa::IgmpRecordType::fromInt(&d_type, static_cast<int>(recordType)) !=
+        0)
     {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }

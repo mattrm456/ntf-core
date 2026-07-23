@@ -58,8 +58,8 @@ class UdpFragmentation
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    UdpFragmentation& operator=(
-        bslmf::MovableRef<UdpFragmentation> other) NTSCFG_NOEXCEPT;
+    UdpFragmentation& operator=(bslmf::MovableRef<UdpFragmentation> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -145,29 +145,25 @@ class UdpFragmentation
 /// 'stream'.
 ///
 /// @related ntsa::UdpFragmentation
-bsl::ostream& operator<<(bsl::ostream&               stream,
-                         const UdpFragmentation& object);
+bsl::ostream& operator<<(bsl::ostream& stream, const UdpFragmentation& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
 /// @related ntsa::UdpFragmentation
-bool operator==(const UdpFragmentation& lhs,
-                const UdpFragmentation& rhs);
+bool operator==(const UdpFragmentation& lhs, const UdpFragmentation& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
 /// @related ntsa::UdpFragmentation
-bool operator!=(const UdpFragmentation& lhs,
-                const UdpFragmentation& rhs);
+bool operator!=(const UdpFragmentation& lhs, const UdpFragmentation& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
 /// @related ntsa::UdpFragmentation
-bool operator<(const UdpFragmentation& lhs,
-               const UdpFragmentation& rhs);
+bool operator<(const UdpFragmentation& lhs, const UdpFragmentation& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.
@@ -188,17 +184,16 @@ UdpFragmentation::UdpFragmentation()
 NTSCFG_INLINE
 UdpFragmentation::UdpFragmentation(
     bslmf::MovableRef<UdpFragmentation> original) NTSCFG_NOEXCEPT
-: d_identifier(NTSCFG_MOVE_FROM(original, d_identifier))
-, d_start(NTSCFG_MOVE_FROM(original, d_start))
-, d_offset(NTSCFG_MOVE_FROM(original, d_offset))
-, d_rdos(NTSCFG_MOVE_FROM(original, d_rdos))
+: d_identifier(NTSCFG_MOVE_FROM(original, d_identifier)),
+  d_start(NTSCFG_MOVE_FROM(original, d_start)),
+  d_offset(NTSCFG_MOVE_FROM(original, d_offset)),
+  d_rdos(NTSCFG_MOVE_FROM(original, d_rdos))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-UdpFragmentation::UdpFragmentation(
-    const UdpFragmentation& original)
+UdpFragmentation::UdpFragmentation(const UdpFragmentation& original)
 : d_identifier(original.d_identifier)
 , d_start(original.d_start)
 , d_offset(original.d_offset)
@@ -216,9 +211,9 @@ UdpFragmentation& UdpFragmentation::operator=(
     bslmf::MovableRef<UdpFragmentation> other) NTSCFG_NOEXCEPT
 {
     d_identifier = NTSCFG_MOVE_FROM(other, d_identifier);
-    d_start = NTSCFG_MOVE_FROM(other, d_start);
-    d_offset = NTSCFG_MOVE_FROM(other, d_offset);
-    d_rdos = NTSCFG_MOVE_FROM(other, d_rdos);
+    d_start      = NTSCFG_MOVE_FROM(other, d_start);
+    d_offset     = NTSCFG_MOVE_FROM(other, d_offset);
+    d_rdos       = NTSCFG_MOVE_FROM(other, d_rdos);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -226,13 +221,12 @@ UdpFragmentation& UdpFragmentation::operator=(
 }
 
 NTSCFG_INLINE
-UdpFragmentation& UdpFragmentation::operator=(
-    const UdpFragmentation& other)
+UdpFragmentation& UdpFragmentation::operator=(const UdpFragmentation& other)
 {
     d_identifier = other.d_identifier;
-    d_start = other.d_start;
-    d_offset = other.d_offset;
-    d_rdos = other.d_rdos;
+    d_start      = other.d_start;
+    d_offset     = other.d_offset;
+    d_rdos       = other.d_rdos;
 
     return *this;
 }
@@ -241,8 +235,8 @@ NTSCFG_INLINE
 void UdpFragmentation::reset()
 {
     d_identifier = 0;
-    d_start = 0;
-    d_offset = 0;
+    d_start      = 0;
+    d_offset     = 0;
     d_rdos.reset();
 }
 
@@ -297,10 +291,8 @@ const bdlb::NullableValue<bsl::uint16_t>& UdpFragmentation::rdos() const
 NTSCFG_INLINE
 bool UdpFragmentation::equals(const UdpFragmentation& other) const
 {
-    return d_identifier == other.d_identifier &&
-           d_start == other.d_start &&
-           d_offset == other.d_offset &&
-           d_rdos == other.d_rdos;
+    return d_identifier == other.d_identifier && d_start == other.d_start &&
+           d_offset == other.d_offset && d_rdos == other.d_rdos;
 }
 
 NTSCFG_INLINE
@@ -345,35 +337,31 @@ NTSCFG_INLINE void UdpFragmentation::hash(HASH_ALGORITHM& algorithm) const
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream&               stream,
-                         const UdpFragmentation& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const UdpFragmentation& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const UdpFragmentation& lhs,
-                const UdpFragmentation& rhs)
+bool operator==(const UdpFragmentation& lhs, const UdpFragmentation& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const UdpFragmentation& lhs,
-                const UdpFragmentation& rhs)
+bool operator!=(const UdpFragmentation& lhs, const UdpFragmentation& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
 NTSCFG_INLINE
-bool operator<(const UdpFragmentation& lhs,
-               const UdpFragmentation& rhs)
+bool operator<(const UdpFragmentation& lhs, const UdpFragmentation& rhs)
 {
     return lhs.less(rhs);
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&             algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&         algorithm,
                               const UdpFragmentation& value)
 {
     value.hash(algorithm);

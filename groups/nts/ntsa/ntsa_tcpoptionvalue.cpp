@@ -109,26 +109,22 @@ bsl::ostream& TcpOptionValue::print(bsl::ostream& stream,
     return stream;
 }
 
-bsl::ostream& operator<<(bsl::ostream&         stream,
-                         const TcpOptionValue& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const TcpOptionValue& object)
 {
     return object.print(stream, 0, -1);
 }
 
-bool operator==(const TcpOptionValue& lhs,
-                const TcpOptionValue& rhs)
+bool operator==(const TcpOptionValue& lhs, const TcpOptionValue& rhs)
 {
     return lhs.equals(rhs);
 }
 
-bool operator!=(const TcpOptionValue& lhs,
-                const TcpOptionValue& rhs)
+bool operator!=(const TcpOptionValue& lhs, const TcpOptionValue& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
-bool operator<(const TcpOptionValue& lhs,
-               const TcpOptionValue& rhs)
+bool operator<(const TcpOptionValue& lhs, const TcpOptionValue& rhs)
 {
     return lhs.less(rhs);
 }

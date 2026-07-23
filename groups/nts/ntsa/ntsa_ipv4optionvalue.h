@@ -50,7 +50,7 @@ class Ipv4OptionValue
     /// The option payload.
     bsl::vector<bsl::uint8_t> d_payload;
 
-public:
+  public:
     /// Create a new IPv4 option value. Optionally specify a 'basicAllocator'
     /// used to supply memory. If 'basicAllocator' is 0, the currently
     /// installed default allocator is used.
@@ -121,22 +121,19 @@ public:
 /// 'rhs', otherwise return false.
 ///
 /// @related ntsa::Ipv4OptionValue
-bool operator==(const Ipv4OptionValue& lhs,
-                const Ipv4OptionValue& rhs);
+bool operator==(const Ipv4OptionValue& lhs, const Ipv4OptionValue& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
 /// @related ntsa::Ipv4OptionValue
-bool operator!=(const Ipv4OptionValue& lhs,
-                const Ipv4OptionValue& rhs);
+bool operator!=(const Ipv4OptionValue& lhs, const Ipv4OptionValue& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
 /// @related ntsa::Ipv4OptionValue
-bool operator<(const Ipv4OptionValue& lhs,
-               const Ipv4OptionValue& rhs);
+bool operator<(const Ipv4OptionValue& lhs, const Ipv4OptionValue& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.

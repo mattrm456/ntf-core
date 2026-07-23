@@ -65,57 +65,46 @@ class IgmpLeaveTest
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpLeaveTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

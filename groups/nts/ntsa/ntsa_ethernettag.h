@@ -245,7 +245,7 @@ void EthernetTag::setGroup(bsl::uint16_t value)
     BSLS_ASSERT(value <= k_MAX_GROUP);
 
     bsl::uint16_t tci = static_cast<bsl::uint16_t>(d_tci);
-    tci = static_cast<bsl::uint16_t>((tci & 0xF000) | (value & 0x0FFF));
+    tci   = static_cast<bsl::uint16_t>((tci & 0xF000) | (value & 0x0FFF));
     d_tci = tci;
 }
 
@@ -253,7 +253,7 @@ NTSCFG_INLINE
 void EthernetTag::setPriority(ntsa::EthernetPriority::Value value)
 {
     bsl::uint16_t tci = static_cast<bsl::uint16_t>(d_tci);
-    tci = static_cast<bsl::uint16_t>(
+    tci               = static_cast<bsl::uint16_t>(
         (tci & 0x1FFF) | (static_cast<bsl::uint16_t>(value) << 13));
     d_tci = tci;
 }
@@ -274,8 +274,8 @@ void EthernetTag::setDroppable(bool value)
 NTSCFG_INLINE
 bsl::uint16_t EthernetTag::group() const
 {
-    return static_cast<bsl::uint16_t>(
-        static_cast<bsl::uint16_t>(d_tci) & 0x0FFF);
+    return static_cast<bsl::uint16_t>(static_cast<bsl::uint16_t>(d_tci) &
+                                      0x0FFF);
 }
 
 NTSCFG_INLINE

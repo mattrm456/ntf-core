@@ -193,14 +193,14 @@ TcpExtension::TcpExtension(bslma::Allocator* basicAllocator)
 
 NTSCFG_INLINE
 TcpExtension::TcpExtension(bslmf::MovableRef<TcpExtension> original)
-    NTSCFG_NOEXCEPT
-: d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
-  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
+    NTSCFG_NOEXCEPT : d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
+                      d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
 }
 
 NTSCFG_INLINE
-TcpExtension::TcpExtension(const TcpExtension& original, bslma::Allocator* basicAllocator)
+TcpExtension::TcpExtension(const TcpExtension& original,
+                           bslma::Allocator*   basicAllocator)
 : d_vector(original.d_vector, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {

@@ -51,8 +51,8 @@ ntsa::Error IcmpRouterRequest::encode(ntsa::PacketEncoder* encoder) const
 }
 
 bsl::ostream& IcmpRouterRequest::print(bsl::ostream& stream,
-                                 int           level,
-                                 int           spacesPerLevel) const
+                                       int           level,
+                                       int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

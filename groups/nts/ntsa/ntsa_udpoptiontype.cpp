@@ -46,8 +46,8 @@ int UdpOptionType::fromInt(UdpOptionType::Value* result, int number)
     }
 }
 
-int UdpOptionType::fromString(UdpOptionType::Value*  result,
-                                const bslstl::StringRef& string)
+int UdpOptionType::fromString(UdpOptionType::Value*    result,
+                              const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;
@@ -57,7 +57,8 @@ int UdpOptionType::fromString(UdpOptionType::Value*  result,
         *result = e_PADDING;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "ADDITIONAL_PAYLOAD_CHECKSUM")) {
+    if (bdlb::String::areEqualCaseless(string, "ADDITIONAL_PAYLOAD_CHECKSUM"))
+    {
         *result = e_ADDITIONAL_PAYLOAD_CHECKSUM;
         return 0;
     }
@@ -69,7 +70,9 @@ int UdpOptionType::fromString(UdpOptionType::Value*  result,
         *result = e_MAX_DATAGRAM_SIZE;
         return 0;
     }
-    if (bdlb::String::areEqualCaseless(string, "MAX_REASSEMBLED_DATAGRAM_SIZE")) {
+    if (bdlb::String::areEqualCaseless(string,
+                                       "MAX_REASSEMBLED_DATAGRAM_SIZE"))
+    {
         *result = e_MAX_REASSEMBLED_DATAGRAM_SIZE;
         return 0;
     }
@@ -133,8 +136,8 @@ const char* UdpOptionType::toString(UdpOptionType::Value value)
     return 0;
 }
 
-bsl::ostream& UdpOptionType::print(bsl::ostream&          stream,
-                                     UdpOptionType::Value value)
+bsl::ostream& UdpOptionType::print(bsl::ostream&        stream,
+                                   UdpOptionType::Value value)
 {
     return stream << toString(value);
 }

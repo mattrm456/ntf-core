@@ -1524,11 +1524,8 @@ ntsa::Error SocketOptionUtil::getDomain(int* domain, ntsa::Handle socket)
     int       optionValue  = 0;
     socklen_t optionLength = static_cast<socklen_t>(sizeof(optionValue));
 
-    rc = getsockopt(socket,
-                    SOL_SOCKET,
-                    SO_DOMAIN,
-                    &optionValue,
-                    &optionLength);
+    rc =
+        getsockopt(socket, SOL_SOCKET, SO_DOMAIN, &optionValue, &optionLength);
 
     if (rc != 0) {
         return ntsa::Error(errno);
@@ -1556,11 +1553,7 @@ ntsa::Error SocketOptionUtil::getType(int* type, ntsa::Handle socket)
     int       optionValue  = 0;
     socklen_t optionLength = static_cast<socklen_t>(sizeof(optionValue));
 
-    rc = getsockopt(socket,
-                    SOL_SOCKET,
-                    SO_TYPE,
-                    &optionValue,
-                    &optionLength);
+    rc = getsockopt(socket, SOL_SOCKET, SO_TYPE, &optionValue, &optionLength);
 
     if (rc != 0) {
         return ntsa::Error(errno);

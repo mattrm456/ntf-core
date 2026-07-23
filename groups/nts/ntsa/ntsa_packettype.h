@@ -55,7 +55,7 @@ struct PacketType {
         /// The packet is an Internet Protocol, version 6 (IPv6) packet.
         e_IPV6 = 5,
 
-         /// The packet is an Internet Control Message Protocol (ICMP) packet.
+        /// The packet is an Internet Control Message Protocol (ICMP) packet.
         e_ICMP = 6,
 
         /// The packet is an Internet Group Management Protocol (IGMP) packet.

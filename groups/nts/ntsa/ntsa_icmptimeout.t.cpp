@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpTimeoutTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

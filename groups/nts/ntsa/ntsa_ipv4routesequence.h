@@ -61,14 +61,15 @@ class Ipv4RouteSequence
     /// Create a new IPv4 route sequence having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    Ipv4RouteSequence(bslmf::MovableRef<Ipv4RouteSequence> original) NTSCFG_NOEXCEPT;
+    Ipv4RouteSequence(bslmf::MovableRef<Ipv4RouteSequence> original)
+        NTSCFG_NOEXCEPT;
 
     /// Create a new IPv4 route sequence having the same value as the specified
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
     Ipv4RouteSequence(const Ipv4RouteSequence& original,
-               bslma::Allocator* basicAllocator = 0);
+                      bslma::Allocator*        basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4RouteSequence();
@@ -76,7 +77,8 @@ class Ipv4RouteSequence
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    Ipv4RouteSequence& operator=(bslmf::MovableRef<Ipv4RouteSequence> other) NTSCFG_NOEXCEPT;
+    Ipv4RouteSequence& operator=(bslmf::MovableRef<Ipv4RouteSequence> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -154,7 +156,8 @@ class Ipv4RouteSequence
 /// into the specified 'stream'. Return a reference to the modifiable 'stream'.
 ///
 /// @related ntsa::Ipv4RouteSequence
-bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4RouteSequence& object);
+bsl::ostream& operator<<(bsl::ostream&            stream,
+                         const Ipv4RouteSequence& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
@@ -189,15 +192,16 @@ Ipv4RouteSequence::Ipv4RouteSequence(bslma::Allocator* basicAllocator)
 }
 
 NTSCFG_INLINE
-Ipv4RouteSequence::Ipv4RouteSequence(bslmf::MovableRef<Ipv4RouteSequence> original) NTSCFG_NOEXCEPT
-: d_index(NTSCFG_MOVE_FROM(original, d_index))
-, d_vector(NTSCFG_MOVE_FROM(original, d_vector))
+Ipv4RouteSequence::Ipv4RouteSequence(
+    bslmf::MovableRef<Ipv4RouteSequence> original) NTSCFG_NOEXCEPT
+: d_index(NTSCFG_MOVE_FROM(original, d_index)),
+  d_vector(NTSCFG_MOVE_FROM(original, d_vector))
 {
 }
 
 NTSCFG_INLINE
 Ipv4RouteSequence::Ipv4RouteSequence(const Ipv4RouteSequence& original,
-                       bslma::Allocator* basicAllocator)
+                                     bslma::Allocator*        basicAllocator)
 : d_index(original.d_index)
 , d_vector(original.d_vector, basicAllocator)
 {
@@ -209,10 +213,10 @@ Ipv4RouteSequence::~Ipv4RouteSequence()
 }
 
 NTSCFG_INLINE
-Ipv4RouteSequence& Ipv4RouteSequence::operator=(bslmf::MovableRef<Ipv4RouteSequence> other)
-    NTSCFG_NOEXCEPT
+Ipv4RouteSequence& Ipv4RouteSequence::operator=(
+    bslmf::MovableRef<Ipv4RouteSequence> other) NTSCFG_NOEXCEPT
 {
-    d_index   = NTSCFG_MOVE_FROM(other, d_index);
+    d_index  = NTSCFG_MOVE_FROM(other, d_index);
     d_vector = NTSCFG_MOVE_FROM(other, d_vector);
 
     NTSCFG_MOVE_RESET(other);
@@ -223,7 +227,7 @@ Ipv4RouteSequence& Ipv4RouteSequence::operator=(bslmf::MovableRef<Ipv4RouteSeque
 NTSCFG_INLINE
 Ipv4RouteSequence& Ipv4RouteSequence::operator=(const Ipv4RouteSequence& other)
 {
-    d_index   = other.d_index;
+    d_index  = other.d_index;
     d_vector = other.d_vector;
 
     return *this;
@@ -235,7 +239,6 @@ void Ipv4RouteSequence::reset()
     d_index = 0;
     d_vector.clear();
 }
-
 
 NTSCFG_INLINE
 void Ipv4RouteSequence::setIndex(bsl::size_t value)
@@ -306,7 +309,7 @@ bool operator<(const Ipv4RouteSequence& lhs, const Ipv4RouteSequence& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&   algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&          algorithm,
                               const Ipv4RouteSequence& value)
 {
     value.hash(algorithm);

@@ -26,7 +26,7 @@ BSLS_IDENT_RCSID(ntsa_igmppacket_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-ntsa::Error IgmpPacket::decode(ntsa::PacketDecoder*     decoder)
+ntsa::Error IgmpPacket::decode(ntsa::PacketDecoder* decoder)
 {
     ntsa::Error error;
 
@@ -95,8 +95,7 @@ ntsa::Error IgmpPacket::decode(ntsa::PacketDecoder*     decoder)
     return ntsa::Error();
 }
 
-ntsa::Error IgmpPacket::encode(
-    ntsa::PacketEncoder*     encoder) const
+ntsa::Error IgmpPacket::encode(ntsa::PacketEncoder* encoder) const
 {
     ntsa::Error error;
 

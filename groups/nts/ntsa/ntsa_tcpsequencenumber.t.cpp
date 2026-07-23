@@ -35,7 +35,6 @@ class TcpSequenceNumberTest
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpSequenceNumberTest::verifyUsage)
 {
-
 }
 
 }  // close namespace ntsa

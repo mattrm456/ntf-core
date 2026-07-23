@@ -19,10 +19,10 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_error.h>
 #include <ntsa_arprequest.h>
 #include <ntsa_arpresponse.h>
 #include <ntsa_arptype.h>
+#include <ntsa_error.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlbb_blob.h>
@@ -84,7 +84,7 @@ class ArpPayload
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
     ArpPayload(const ArpPayload& original,
-                bslma::Allocator*  basicAllocator = 0);
+               bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~ArpPayload();
@@ -92,8 +92,7 @@ class ArpPayload
     /// Assign the value of the specified 'other' object to this object.
     /// Assign an unspecified but valid value to the 'other' object. Return a
     /// reference to this modifiable object.
-    ArpPayload& operator=(bslmf::MovableRef<ArpPayload> other)
-        NTSCFG_NOEXCEPT;
+    ArpPayload& operator=(bslmf::MovableRef<ArpPayload> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -116,8 +115,7 @@ class ArpPayload
 
     /// Select the "response" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::ArpResponse& makeResponse(
-        const ntsa::ArpResponse& value);
+    ntsa::ArpResponse& makeResponse(const ntsa::ArpResponse& value);
 
     /// Return a reference to the modifiable "request" representation. The
     /// behavior is undefined unless 'isRequest()' is true.

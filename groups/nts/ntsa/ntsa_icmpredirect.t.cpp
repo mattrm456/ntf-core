@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRedirectTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

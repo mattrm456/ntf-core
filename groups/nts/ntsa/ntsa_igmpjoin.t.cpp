@@ -65,57 +65,46 @@ class IgmpJoinTest
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpJoinTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

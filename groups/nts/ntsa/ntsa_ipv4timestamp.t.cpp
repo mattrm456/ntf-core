@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv4TimestampTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

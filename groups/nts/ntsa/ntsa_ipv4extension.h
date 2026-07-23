@@ -19,11 +19,11 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_packetdecoder.h>
-#include <ntsa_packetencoder.h>
 #include <ntsa_ipv4header.h>
 #include <ntsa_ipv4option.h>
 #include <ntsa_ipv4optiontype.h>
+#include <ntsa_packetdecoder.h>
+#include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bslim_printer.h>
@@ -78,7 +78,7 @@ class Ipv4Extension
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
     Ipv4Extension(const Ipv4Extension& original,
-                  bslma::Allocator*   basicAllocator = 0);
+                  bslma::Allocator*    basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4Extension();
@@ -193,14 +193,14 @@ Ipv4Extension::Ipv4Extension(bslma::Allocator* basicAllocator)
 
 NTSCFG_INLINE
 Ipv4Extension::Ipv4Extension(bslmf::MovableRef<Ipv4Extension> original)
-    NTSCFG_NOEXCEPT
-: d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
-  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
+    NTSCFG_NOEXCEPT : d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
+                      d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
 }
 
 NTSCFG_INLINE
-Ipv4Extension::Ipv4Extension(const Ipv4Extension& original, bslma::Allocator* basicAllocator)
+Ipv4Extension::Ipv4Extension(const Ipv4Extension& original,
+                             bslma::Allocator*    basicAllocator)
 : d_vector(original.d_vector, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -281,7 +281,7 @@ bool operator<(const Ipv4Extension& lhs, const Ipv4Extension& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&     algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&      algorithm,
                               const Ipv4Extension& value)
 {
     value.hash(algorithm);

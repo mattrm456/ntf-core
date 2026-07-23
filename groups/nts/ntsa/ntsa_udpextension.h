@@ -193,14 +193,14 @@ UdpExtension::UdpExtension(bslma::Allocator* basicAllocator)
 
 NTSCFG_INLINE
 UdpExtension::UdpExtension(bslmf::MovableRef<UdpExtension> original)
-    NTSCFG_NOEXCEPT
-: d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
-  d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
+    NTSCFG_NOEXCEPT : d_vector(NTSCFG_MOVE_FROM(original, d_vector)),
+                      d_allocator_p(NTSCFG_MOVE_FROM(original, d_allocator_p))
 {
 }
 
 NTSCFG_INLINE
-UdpExtension::UdpExtension(const UdpExtension& original, bslma::Allocator* basicAllocator)
+UdpExtension::UdpExtension(const UdpExtension& original,
+                           bslma::Allocator*   basicAllocator)
 : d_vector(original.d_vector, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {

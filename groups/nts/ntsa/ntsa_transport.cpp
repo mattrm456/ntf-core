@@ -520,7 +520,7 @@ TransportSuite::TransportSuite(bslma::Allocator* basicAllocator)
 }
 
 TransportSuite::TransportSuite(const TransportSuite& original,
-                                 bslma::Allocator*      basicAllocator)
+                               bslma::Allocator*     basicAllocator)
 : d_application(original.d_application, basicAllocator)
 , d_transportSecurity(original.d_transportSecurity)
 , d_transportProtocol(original.d_transportProtocol)
@@ -560,14 +560,12 @@ void TransportSuite::setApplication(const bslstl::StringRef& value)
     d_application = value;
 }
 
-void TransportSuite::setTransportSecurity(
-    ntsa::TransportSecurity::Value value)
+void TransportSuite::setTransportSecurity(ntsa::TransportSecurity::Value value)
 {
     d_transportSecurity = value;
 }
 
-void TransportSuite::setTransportProtocol(
-    ntsa::TransportProtocol::Value value)
+void TransportSuite::setTransportProtocol(ntsa::TransportProtocol::Value value)
 {
     d_transportProtocol = value;
 }
@@ -685,11 +683,11 @@ bslma::Allocator* TransportSuite::allocator() const
 
 bool TransportSuite::equals(const TransportSuite& other) const
 {
-    return d_application       == other.d_application &&
+    return d_application == other.d_application &&
            d_transportSecurity == other.d_transportSecurity &&
            d_transportProtocol == other.d_transportProtocol &&
-           d_transportDomain   == other.d_transportDomain &&
-           d_transportMode     == other.d_transportMode;
+           d_transportDomain == other.d_transportDomain &&
+           d_transportMode == other.d_transportMode;
 }
 
 bool TransportSuite::less(const TransportSuite& other) const
@@ -730,8 +728,8 @@ bool TransportSuite::less(const TransportSuite& other) const
 }
 
 bsl::ostream& TransportSuite::print(bsl::ostream& stream,
-                                     int           level,
-                                     int           spacesPerLevel) const
+                                    int           level,
+                                    int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

@@ -65,57 +65,46 @@ class Ipv6RouteTableTest
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6RouteTableTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

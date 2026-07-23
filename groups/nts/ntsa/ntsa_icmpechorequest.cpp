@@ -135,8 +135,8 @@ bool IcmpEchoRequest::less(const IcmpEchoRequest& other) const
 }
 
 bsl::ostream& IcmpEchoRequest::print(bsl::ostream& stream,
-                              int           level,
-                              int           spacesPerLevel) const
+                                     int           level,
+                                     int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
@@ -148,7 +148,7 @@ bsl::ostream& IcmpEchoRequest::print(bsl::ostream& stream,
 
 void IcmpEchoRequest::print(bslim::Printer* printer) const
 {
-    printer->printAttribute("identifier",     this->identifier());
+    printer->printAttribute("identifier", this->identifier());
     printer->printAttribute("sequenceNumber", this->sequenceNumber());
     if (d_data.size() > 0) {
         printer->printForeign(d_data, &IcmpEchoRequest::printData, "data");
@@ -156,9 +156,9 @@ void IcmpEchoRequest::print(bslim::Printer* printer) const
 }
 
 bsl::ostream& IcmpEchoRequest::printData(bsl::ostream&            stream,
-                                  const bdlbb::BlobBuffer& data,
-                                  int                      level,
-                                  int                      spacesPerLevel)
+                                         const bdlbb::BlobBuffer& data,
+                                         int                      level,
+                                         int spacesPerLevel)
 {
     NTSCFG_WARNING_UNUSED(level);
     NTSCFG_WARNING_UNUSED(spacesPerLevel);

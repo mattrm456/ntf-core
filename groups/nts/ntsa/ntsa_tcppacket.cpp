@@ -103,9 +103,9 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoderContext*       context,
             }
 
             checksum.add(context->sourceIpAddress().value().v4(),
-                        context->destinationIpAddress().value().v4(),
-                        packetLength,
-                        ntsa::TcpHeader::k_PROTOCOL_TCP);
+                         context->destinationIpAddress().value().v4(),
+                         packetLength,
+                         ntsa::TcpHeader::k_PROTOCOL_TCP);
         }
         else if (context->sourceIpAddress().value().isV6()) {
             if (!context->destinationIpAddress().value().isV6()) {
@@ -113,9 +113,9 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoderContext*       context,
             }
 
             checksum.add(context->sourceIpAddress().value().v6(),
-                        context->destinationIpAddress().value().v6(),
-                        packetLength,
-                        ntsa::TcpHeader::k_PROTOCOL_TCP);
+                         context->destinationIpAddress().value().v6(),
+                         packetLength,
+                         ntsa::TcpHeader::k_PROTOCOL_TCP);
         }
         else {
             return ntsa::Error(ntsa::Error::e_INVALID);
@@ -127,8 +127,8 @@ ntsa::Error TcpPacket::decode(ntsa::PacketDecoderContext*       context,
 
         if (checksumValue != 0xFFFF) {
             BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
-                        static_cast<bsl::size_t>(d_header.checksum()),
-                        static_cast<bsl::size_t>(checksumValue));
+                          static_cast<bsl::size_t>(d_header.checksum()),
+                          static_cast<bsl::size_t>(checksumValue));
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 

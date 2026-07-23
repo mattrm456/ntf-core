@@ -174,10 +174,10 @@ TcpSequenceRange::TcpSequenceRange()
 }
 
 NTSCFG_INLINE
-TcpSequenceRange::TcpSequenceRange(bslmf::MovableRef<TcpSequenceRange> original)
-    NTSCFG_NOEXCEPT
-: d_oldest(NTSCFG_MOVE_FROM(original, d_oldest))
-, d_newest(NTSCFG_MOVE_FROM(original, d_newest))
+TcpSequenceRange::TcpSequenceRange(
+    bslmf::MovableRef<TcpSequenceRange> original) NTSCFG_NOEXCEPT
+: d_oldest(NTSCFG_MOVE_FROM(original, d_oldest)),
+  d_newest(NTSCFG_MOVE_FROM(original, d_newest))
 {
     NTSCFG_MOVE_RESET(original);
 }
@@ -267,8 +267,7 @@ bool TcpSequenceRange::less(const TcpSequenceRange& other) const
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE
-void TcpSequenceRange::hash(HASH_ALGORITHM& algorithm) const
+NTSCFG_INLINE void TcpSequenceRange::hash(HASH_ALGORITHM& algorithm) const
 {
     using bslh::hashAppend;
 
@@ -301,8 +300,8 @@ bool operator<(const TcpSequenceRange& lhs, const TcpSequenceRange& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE
-void hashAppend(HASH_ALGORITHM& algorithm, const TcpSequenceRange& value)
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&         algorithm,
+                              const TcpSequenceRange& value)
 {
     value.hash(algorithm);
 }

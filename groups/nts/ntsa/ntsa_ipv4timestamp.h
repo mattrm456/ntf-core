@@ -44,8 +44,7 @@ class Ipv4Timestamp
     /// Create a new IPv4 timestamp having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    Ipv4Timestamp(bslmf::MovableRef<Ipv4Timestamp> original)
-        NTSCFG_NOEXCEPT;
+    Ipv4Timestamp(bslmf::MovableRef<Ipv4Timestamp> original) NTSCFG_NOEXCEPT;
 
     /// Create a new IPv4 timestamp having the same value as the specified
     /// 'original' object.
@@ -57,8 +56,8 @@ class Ipv4Timestamp
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    Ipv4Timestamp& operator=(
-        bslmf::MovableRef<Ipv4Timestamp> other) NTSCFG_NOEXCEPT;
+    Ipv4Timestamp& operator=(bslmf::MovableRef<Ipv4Timestamp> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -127,29 +126,25 @@ class Ipv4Timestamp
 /// 'stream'.
 ///
 /// @related ntsa::Ipv4Timestamp
-bsl::ostream& operator<<(bsl::ostream&               stream,
-                         const Ipv4Timestamp& object);
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4Timestamp& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
 ///
 /// @related ntsa::Ipv4Timestamp
-bool operator==(const Ipv4Timestamp& lhs,
-                const Ipv4Timestamp& rhs);
+bool operator==(const Ipv4Timestamp& lhs, const Ipv4Timestamp& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
 /// @related ntsa::Ipv4Timestamp
-bool operator!=(const Ipv4Timestamp& lhs,
-                const Ipv4Timestamp& rhs);
+bool operator!=(const Ipv4Timestamp& lhs, const Ipv4Timestamp& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
 /// @related ntsa::Ipv4Timestamp
-bool operator<(const Ipv4Timestamp& lhs,
-               const Ipv4Timestamp& rhs);
+bool operator<(const Ipv4Timestamp& lhs, const Ipv4Timestamp& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.
@@ -166,17 +161,15 @@ Ipv4Timestamp::Ipv4Timestamp()
 }
 
 NTSCFG_INLINE
-Ipv4Timestamp::Ipv4Timestamp(
-    bslmf::MovableRef<Ipv4Timestamp> original) NTSCFG_NOEXCEPT
-: d_address(NTSCFG_MOVE_FROM(original, d_address)),
-  d_timestamp(NTSCFG_MOVE_FROM(original, d_timestamp))
+Ipv4Timestamp::Ipv4Timestamp(bslmf::MovableRef<Ipv4Timestamp> original)
+    NTSCFG_NOEXCEPT : d_address(NTSCFG_MOVE_FROM(original, d_address)),
+                      d_timestamp(NTSCFG_MOVE_FROM(original, d_timestamp))
 {
     NTSCFG_MOVE_RESET(original);
 }
 
 NTSCFG_INLINE
-Ipv4Timestamp::Ipv4Timestamp(
-    const Ipv4Timestamp& original)
+Ipv4Timestamp::Ipv4Timestamp(const Ipv4Timestamp& original)
 : d_address(original.d_address)
 , d_timestamp(original.d_timestamp)
 {
@@ -188,10 +181,10 @@ Ipv4Timestamp::~Ipv4Timestamp()
 }
 
 NTSCFG_INLINE
-Ipv4Timestamp& Ipv4Timestamp::operator=(
-    bslmf::MovableRef<Ipv4Timestamp> other) NTSCFG_NOEXCEPT
+Ipv4Timestamp& Ipv4Timestamp::operator=(bslmf::MovableRef<Ipv4Timestamp> other)
+    NTSCFG_NOEXCEPT
 {
-    d_address = NTSCFG_MOVE_FROM(other, d_address);
+    d_address   = NTSCFG_MOVE_FROM(other, d_address);
     d_timestamp = NTSCFG_MOVE_FROM(other, d_timestamp);
 
     NTSCFG_MOVE_RESET(other);
@@ -200,10 +193,9 @@ Ipv4Timestamp& Ipv4Timestamp::operator=(
 }
 
 NTSCFG_INLINE
-Ipv4Timestamp& Ipv4Timestamp::operator=(
-    const Ipv4Timestamp& other)
+Ipv4Timestamp& Ipv4Timestamp::operator=(const Ipv4Timestamp& other)
 {
-    d_address = other.d_address;
+    d_address   = other.d_address;
     d_timestamp = other.d_timestamp;
 
     return *this;
@@ -212,7 +204,7 @@ Ipv4Timestamp& Ipv4Timestamp::operator=(
 NTSCFG_INLINE
 void Ipv4Timestamp::reset()
 {
-    d_address = 0;
+    d_address   = 0;
     d_timestamp = 0;
 }
 
@@ -270,35 +262,31 @@ NTSCFG_INLINE void Ipv4Timestamp::hash(HASH_ALGORITHM& algorithm) const
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream&               stream,
-                         const Ipv4Timestamp& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4Timestamp& object)
 {
     return object.print(stream, 0, -1);
 }
 
 NTSCFG_INLINE
-bool operator==(const Ipv4Timestamp& lhs,
-                const Ipv4Timestamp& rhs)
+bool operator==(const Ipv4Timestamp& lhs, const Ipv4Timestamp& rhs)
 {
     return lhs.equals(rhs);
 }
 
 NTSCFG_INLINE
-bool operator!=(const Ipv4Timestamp& lhs,
-                const Ipv4Timestamp& rhs)
+bool operator!=(const Ipv4Timestamp& lhs, const Ipv4Timestamp& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
 NTSCFG_INLINE
-bool operator<(const Ipv4Timestamp& lhs,
-               const Ipv4Timestamp& rhs)
+bool operator<(const Ipv4Timestamp& lhs, const Ipv4Timestamp& rhs)
 {
     return lhs.less(rhs);
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&             algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&      algorithm,
                               const Ipv4Timestamp& value)
 {
     value.hash(algorithm);

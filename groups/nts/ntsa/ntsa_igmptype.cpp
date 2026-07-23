@@ -42,7 +42,7 @@ int IgmpType::fromInt(IgmpType::Value* result, int number)
     }
 }
 
-int IgmpType::fromString(IgmpType::Value*          result,
+int IgmpType::fromString(IgmpType::Value*         result,
                          const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {

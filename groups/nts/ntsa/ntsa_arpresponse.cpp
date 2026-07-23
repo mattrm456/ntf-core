@@ -89,8 +89,8 @@ ntsa::Error ArpResponse::encode(ntsa::PacketEncoder* encoder) const
 }
 
 bsl::ostream& ArpResponse::print(bsl::ostream& stream,
-                                  int           level,
-                                  int           spacesPerLevel) const
+                                 int           level,
+                                 int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

@@ -45,7 +45,7 @@ int IcmpType::fromInt(IcmpType::Value* result, int number)
     }
 }
 
-int IcmpType::fromString(IcmpType::Value*          result,
+int IcmpType::fromString(IcmpType::Value*         result,
                          const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {

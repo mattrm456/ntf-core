@@ -65,57 +65,46 @@ class PacketDecoderContextTest
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketDecoderContextTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

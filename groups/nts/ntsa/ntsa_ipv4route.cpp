@@ -68,21 +68,21 @@ Ipv4Route::~Ipv4Route()
 
 Ipv4Route& Ipv4Route::operator=(const Ipv4Route& other)
 {
-    d_destinationIpv4Address   = other.d_destinationIpv4Address;
-    d_destinationIpv4Mask      = other.d_destinationIpv4Mask;
+    d_destinationIpv4Address    = other.d_destinationIpv4Address;
+    d_destinationIpv4Mask       = other.d_destinationIpv4Mask;
     d_destinationIpv4MaskLength = other.d_destinationIpv4MaskLength;
-    d_gatewayAdapterName       = other.d_gatewayAdapterName;
-    d_gatewayAdapterIndex      = other.d_gatewayAdapterIndex;
-    d_gatewayEthernetAddress   = other.d_gatewayEthernetAddress;
-    d_gatewayIpv4Address       = other.d_gatewayIpv4Address;
-    d_interfaceAdapterName     = other.d_interfaceAdapterName;
-    d_interfaceAdapterIndex    = other.d_interfaceAdapterIndex;
-    d_interfaceEthernetAddress = other.d_interfaceEthernetAddress;
-    d_interfaceIpv4Address     = other.d_interfaceIpv4Address;
-    d_timeToLive               = other.d_timeToLive;
-    d_distance                 = other.d_distance;
-    d_cost                     = other.d_cost;
-    d_flags                    = other.d_flags;
+    d_gatewayAdapterName        = other.d_gatewayAdapterName;
+    d_gatewayAdapterIndex       = other.d_gatewayAdapterIndex;
+    d_gatewayEthernetAddress    = other.d_gatewayEthernetAddress;
+    d_gatewayIpv4Address        = other.d_gatewayIpv4Address;
+    d_interfaceAdapterName      = other.d_interfaceAdapterName;
+    d_interfaceAdapterIndex     = other.d_interfaceAdapterIndex;
+    d_interfaceEthernetAddress  = other.d_interfaceEthernetAddress;
+    d_interfaceIpv4Address      = other.d_interfaceIpv4Address;
+    d_timeToLive                = other.d_timeToLive;
+    d_distance                  = other.d_distance;
+    d_cost                      = other.d_cost;
+    d_flags                     = other.d_flags;
 
     return *this;
 }
@@ -102,8 +102,8 @@ void Ipv4Route::reset()
     d_interfaceIpv4Address.reset();
     d_timeToLive.reset();
     d_distance = 0;
-    d_cost = 0;
-    d_flags = 0;
+    d_cost     = 0;
+    d_flags    = 0;
 }
 
 bool Ipv4Route::equals(const Ipv4Route& other) const
@@ -120,8 +120,7 @@ bool Ipv4Route::equals(const Ipv4Route& other) const
            d_interfaceEthernetAddress == other.d_interfaceEthernetAddress &&
            d_interfaceIpv4Address == other.d_interfaceIpv4Address &&
            d_timeToLive == other.d_timeToLive &&
-           d_distance == other.d_distance &&
-           d_cost == other.d_cost &&
+           d_distance == other.d_distance && d_cost == other.d_cost &&
            d_flags == other.d_flags;
 }
 

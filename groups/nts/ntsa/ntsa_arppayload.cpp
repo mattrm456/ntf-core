@@ -30,8 +30,8 @@ ArpPayload::ArpPayload(bslma::Allocator* basicAllocator)
 {
 }
 
-ArpPayload::ArpPayload(bslmf::MovableRef<ArpPayload> original)
-    NTSCFG_NOEXCEPT : d_type(ntsa::ArpType::e_UNDEFINED)
+ArpPayload::ArpPayload(bslmf::MovableRef<ArpPayload> original) NTSCFG_NOEXCEPT
+: d_type(ntsa::ArpType::e_UNDEFINED)
 {
     ArpPayload& ref = bslmf::MovableRefUtil::access(original);
 
@@ -40,12 +40,10 @@ ArpPayload::ArpPayload(bslmf::MovableRef<ArpPayload> original)
 
     switch (d_type) {
     case ntsa::ArpType::e_REQUEST:
-        new (d_request.buffer())
-            ntsa::ArpRequest(ref.d_request.object());
+        new (d_request.buffer()) ntsa::ArpRequest(ref.d_request.object());
         break;
     case ntsa::ArpType::e_RESPONSE:
-        new (d_response.buffer())
-            ntsa::ArpResponse(ref.d_response.object());
+        new (d_response.buffer()) ntsa::ArpResponse(ref.d_response.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::ArpType::e_UNDEFINED);
@@ -55,14 +53,13 @@ ArpPayload::ArpPayload(bslmf::MovableRef<ArpPayload> original)
 }
 
 ArpPayload::ArpPayload(const ArpPayload& original,
-                         bslma::Allocator*  basicAllocator)
+                       bslma::Allocator* basicAllocator)
 : d_type(original.d_type)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
     switch (d_type) {
     case ntsa::ArpType::e_REQUEST:
-        new (d_request.buffer())
-            ntsa::ArpRequest(original.d_request.object());
+        new (d_request.buffer()) ntsa::ArpRequest(original.d_request.object());
         break;
     case ntsa::ArpType::e_RESPONSE:
         new (d_response.buffer())
@@ -93,12 +90,10 @@ ArpPayload& ArpPayload::operator=(bslmf::MovableRef<ArpPayload> other)
 
     switch (d_type) {
     case ntsa::ArpType::e_REQUEST:
-        new (d_request.buffer())
-            ntsa::ArpRequest(ref.d_request.object());
+        new (d_request.buffer()) ntsa::ArpRequest(ref.d_request.object());
         break;
     case ntsa::ArpType::e_RESPONSE:
-        new (d_response.buffer())
-            ntsa::ArpResponse(ref.d_response.object());
+        new (d_response.buffer()) ntsa::ArpResponse(ref.d_response.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::ArpType::e_UNDEFINED);
@@ -121,12 +116,10 @@ ArpPayload& ArpPayload::operator=(const ArpPayload& other)
 
     switch (d_type) {
     case ntsa::ArpType::e_REQUEST:
-        new (d_request.buffer())
-            ntsa::ArpRequest(other.d_request.object());
+        new (d_request.buffer()) ntsa::ArpRequest(other.d_request.object());
         break;
     case ntsa::ArpType::e_RESPONSE:
-        new (d_response.buffer())
-            ntsa::ArpResponse(other.d_response.object());
+        new (d_response.buffer()) ntsa::ArpResponse(other.d_response.object());
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::ArpType::e_UNDEFINED);
@@ -167,8 +160,7 @@ ntsa::ArpRequest& ArpPayload::makeRequest()
     return d_request.object();
 }
 
-ntsa::ArpRequest& ArpPayload::makeRequest(
-    const ntsa::ArpRequest& value)
+ntsa::ArpRequest& ArpPayload::makeRequest(const ntsa::ArpRequest& value)
 {
     if (d_type == ntsa::ArpType::e_REQUEST) {
         d_request.object() = value;
@@ -196,8 +188,7 @@ ntsa::ArpResponse& ArpPayload::makeResponse()
     return d_response.object();
 }
 
-ntsa::ArpResponse& ArpPayload::makeResponse(
-    const ntsa::ArpResponse& value)
+ntsa::ArpResponse& ArpPayload::makeResponse(const ntsa::ArpResponse& value)
 {
     if (d_type == ntsa::ArpType::e_RESPONSE) {
         d_response.object() = value;
@@ -302,8 +293,8 @@ bool ArpPayload::less(const ArpPayload& other) const
 }
 
 bsl::ostream& ArpPayload::print(bsl::ostream& stream,
-                                 int           level,
-                                 int           spacesPerLevel) const
+                                int           level,
+                                int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

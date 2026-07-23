@@ -46,8 +46,8 @@ int PacketType::fromInt(PacketType::Value* result, int number)
     }
 }
 
-int PacketType::fromString(PacketType::Value*          result,
-                         const bslstl::StringRef& string)
+int PacketType::fromString(PacketType::Value*       result,
+                           const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;

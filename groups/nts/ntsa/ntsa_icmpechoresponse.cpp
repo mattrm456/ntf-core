@@ -136,8 +136,8 @@ bool IcmpEchoResponse::less(const IcmpEchoResponse& other) const
 }
 
 bsl::ostream& IcmpEchoResponse::print(bsl::ostream& stream,
-                              int           level,
-                              int           spacesPerLevel) const
+                                      int           level,
+                                      int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
@@ -157,9 +157,9 @@ void IcmpEchoResponse::print(bslim::Printer* printer) const
 }
 
 bsl::ostream& IcmpEchoResponse::printData(bsl::ostream&            stream,
-                                  const bdlbb::BlobBuffer& data,
-                                  int                      level,
-                                  int                      spacesPerLevel)
+                                          const bdlbb::BlobBuffer& data,
+                                          int                      level,
+                                          int spacesPerLevel)
 {
     NTSCFG_WARNING_UNUSED(level);
     NTSCFG_WARNING_UNUSED(spacesPerLevel);

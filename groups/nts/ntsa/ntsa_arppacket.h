@@ -19,9 +19,9 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
-#include <ntsa_error.h>
 #include <ntsa_arpheader.h>
 #include <ntsa_arppayload.h>
+#include <ntsa_error.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
 #include <ntsa_packetdecoder.h>
@@ -61,8 +61,7 @@ class ArpPacket
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    ArpPacket(const ArpPacket& original,
-               bslma::Allocator* basicAllocator = 0);
+    ArpPacket(const ArpPacket& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~ArpPacket();
@@ -167,8 +166,8 @@ ArpPacket::ArpPacket(bslmf::MovableRef<ArpPacket> original) NTSCFG_NOEXCEPT
 }
 
 NTSCFG_INLINE
-ArpPacket::ArpPacket(const ArpPacket& original,
-                       bslma::Allocator* basicAllocator)
+ArpPacket::ArpPacket(const ArpPacket&  original,
+                     bslma::Allocator* basicAllocator)
 : d_header(original.d_header)
 , d_payload(original.d_payload, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))

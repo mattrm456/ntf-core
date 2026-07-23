@@ -24,10 +24,10 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntsa_udpfragmentation.h>
-#include <ntsa_udpreassembly.h>
-#include <ntsa_udptimepoint.h>
 #include <ntsa_udpoptiontype.h>
 #include <ntsa_udpoptionvalue.h>
+#include <ntsa_udpreassembly.h>
+#include <ntsa_udptimepoint.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
 #include <bdlb_bigendian.h>
@@ -179,8 +179,7 @@ class UdpOption
 
     /// Select the "reassembly" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::UdpReassembly& makeReassembly(
-        const ntsa::UdpReassembly& value);
+    ntsa::UdpReassembly& makeReassembly(const ntsa::UdpReassembly& value);
 
     /// Select the "echoRequest" representation. Return a reference to the
     /// modifiable representation.

@@ -95,8 +95,8 @@ bool Ipv4OptionValue::less(const Ipv4OptionValue& other) const
 }
 
 bsl::ostream& Ipv4OptionValue::print(bsl::ostream& stream,
-                                    int           level,
-                                    int           spacesPerLevel) const
+                                     int           level,
+                                     int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
@@ -109,26 +109,22 @@ bsl::ostream& Ipv4OptionValue::print(bsl::ostream& stream,
     return stream;
 }
 
-bsl::ostream& operator<<(bsl::ostream&         stream,
-                         const Ipv4OptionValue& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const Ipv4OptionValue& object)
 {
     return object.print(stream, 0, -1);
 }
 
-bool operator==(const Ipv4OptionValue& lhs,
-                const Ipv4OptionValue& rhs)
+bool operator==(const Ipv4OptionValue& lhs, const Ipv4OptionValue& rhs)
 {
     return lhs.equals(rhs);
 }
 
-bool operator!=(const Ipv4OptionValue& lhs,
-                const Ipv4OptionValue& rhs)
+bool operator!=(const Ipv4OptionValue& lhs, const Ipv4OptionValue& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
-bool operator<(const Ipv4OptionValue& lhs,
-               const Ipv4OptionValue& rhs)
+bool operator<(const Ipv4OptionValue& lhs, const Ipv4OptionValue& rhs)
 {
     return lhs.less(rhs);
 }

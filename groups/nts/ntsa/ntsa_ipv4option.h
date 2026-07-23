@@ -23,8 +23,8 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_error.h>
 #include <ntsa_ipv4optiontype.h>
 #include <ntsa_ipv4optionvalue.h>
-#include <ntsa_ipv4routesequence.h>
 #include <ntsa_ipv4routeledger.h>
+#include <ntsa_ipv4routesequence.h>
 #include <ntsa_packetdecoder.h>
 #include <ntsa_packetencoder.h>
 #include <ntscfg_platform.h>
@@ -144,8 +144,7 @@ class Ipv4Option
 
     /// Select the "timestamp" representation initially having the specified
     /// 'value'. Return a reference to the modifiable representation.
-    ntsa::Ipv4RouteLedger& makeTimestamp(
-        const ntsa::Ipv4RouteLedger& value);
+    ntsa::Ipv4RouteLedger& makeTimestamp(const ntsa::Ipv4RouteLedger& value);
 
     /// Select the "recordRoute" representation. Return a reference to the
     /// modifiable representation.

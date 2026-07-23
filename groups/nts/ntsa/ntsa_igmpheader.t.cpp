@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IgmpHeaderTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

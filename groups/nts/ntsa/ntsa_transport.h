@@ -409,7 +409,7 @@ class TransportSuite
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
     TransportSuite(const TransportSuite& original,
-                    bslma::Allocator*      basicAllocator = 0);
+                   bslma::Allocator*     basicAllocator = 0);
 
     /// Destroy this object.
     ~TransportSuite();

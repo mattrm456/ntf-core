@@ -73,52 +73,42 @@ NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpRouterResponseTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

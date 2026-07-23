@@ -50,7 +50,7 @@ class TcpOptionValue
     /// The option payload.
     bsl::vector<bsl::uint8_t> d_payload;
 
-public:
+  public:
     /// Create a new TCP option value. Optionally specify a 'basicAllocator'
     /// used to supply memory. If 'basicAllocator' is 0, the currently
     /// installed default allocator is used.
@@ -121,22 +121,19 @@ public:
 /// 'rhs', otherwise return false.
 ///
 /// @related ntsa::TcpOptionValue
-bool operator==(const TcpOptionValue& lhs,
-                const TcpOptionValue& rhs);
+bool operator==(const TcpOptionValue& lhs, const TcpOptionValue& rhs);
 
 /// Return true if the specified 'lhs' does not have the same value as the
 /// specified 'rhs', otherwise return false.
 ///
 /// @related ntsa::TcpOptionValue
-bool operator!=(const TcpOptionValue& lhs,
-                const TcpOptionValue& rhs);
+bool operator!=(const TcpOptionValue& lhs, const TcpOptionValue& rhs);
 
 /// Return true if the specified 'lhs' is "less than" the specified 'rhs',
 /// otherwise return false.
 ///
 /// @related ntsa::TcpOptionValue
-bool operator<(const TcpOptionValue& lhs,
-               const TcpOptionValue& rhs);
+bool operator<(const TcpOptionValue& lhs, const TcpOptionValue& rhs);
 
 /// Contribute the values of the salient attributes of the specified 'value'
 /// to the specified hash 'algorithm'.

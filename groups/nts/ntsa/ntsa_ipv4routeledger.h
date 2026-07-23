@@ -79,14 +79,15 @@ class Ipv4RouteLedger
     /// Create a new IPv4 route ledger having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    Ipv4RouteLedger(bslmf::MovableRef<Ipv4RouteLedger> original) NTSCFG_NOEXCEPT;
+    Ipv4RouteLedger(bslmf::MovableRef<Ipv4RouteLedger> original)
+        NTSCFG_NOEXCEPT;
 
     /// Create a new IPv4 route ledger having the same value as the specified
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
     Ipv4RouteLedger(const Ipv4RouteLedger& original,
-               bslma::Allocator* basicAllocator = 0);
+                    bslma::Allocator*      basicAllocator = 0);
 
     /// Destroy this object.
     ~Ipv4RouteLedger();
@@ -94,7 +95,8 @@ class Ipv4RouteLedger
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    Ipv4RouteLedger& operator=(bslmf::MovableRef<Ipv4RouteLedger> other) NTSCFG_NOEXCEPT;
+    Ipv4RouteLedger& operator=(bslmf::MovableRef<Ipv4RouteLedger> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -221,17 +223,17 @@ Ipv4RouteLedger::Ipv4RouteLedger(bslma::Allocator* basicAllocator)
 }
 
 NTSCFG_INLINE
-Ipv4RouteLedger::Ipv4RouteLedger(bslmf::MovableRef<Ipv4RouteLedger> original) NTSCFG_NOEXCEPT
-: d_index(NTSCFG_MOVE_FROM(original, d_index))
-, d_overflow(NTSCFG_MOVE_FROM(original, d_overflow))
-, d_flags(NTSCFG_MOVE_FROM(original, d_flags))
-, d_vector(NTSCFG_MOVE_FROM(original, d_vector))
+Ipv4RouteLedger::Ipv4RouteLedger(bslmf::MovableRef<Ipv4RouteLedger> original)
+    NTSCFG_NOEXCEPT : d_index(NTSCFG_MOVE_FROM(original, d_index)),
+                      d_overflow(NTSCFG_MOVE_FROM(original, d_overflow)),
+                      d_flags(NTSCFG_MOVE_FROM(original, d_flags)),
+                      d_vector(NTSCFG_MOVE_FROM(original, d_vector))
 {
 }
 
 NTSCFG_INLINE
 Ipv4RouteLedger::Ipv4RouteLedger(const Ipv4RouteLedger& original,
-                       bslma::Allocator* basicAllocator)
+                                 bslma::Allocator*      basicAllocator)
 : d_index(original.d_index)
 , d_overflow(original.d_overflow)
 , d_flags(original.d_flags)
@@ -245,8 +247,8 @@ Ipv4RouteLedger::~Ipv4RouteLedger()
 }
 
 NTSCFG_INLINE
-Ipv4RouteLedger& Ipv4RouteLedger::operator=(bslmf::MovableRef<Ipv4RouteLedger> other)
-    NTSCFG_NOEXCEPT
+Ipv4RouteLedger& Ipv4RouteLedger::operator=(
+    bslmf::MovableRef<Ipv4RouteLedger> other) NTSCFG_NOEXCEPT
 {
     d_index    = NTSCFG_MOVE_FROM(other, d_index);
     d_overflow = NTSCFG_MOVE_FROM(other, d_overflow);
@@ -371,7 +373,7 @@ bool operator<(const Ipv4RouteLedger& lhs, const Ipv4RouteLedger& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&   algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&        algorithm,
                               const Ipv4RouteLedger& value)
 {
     value.hash(algorithm);

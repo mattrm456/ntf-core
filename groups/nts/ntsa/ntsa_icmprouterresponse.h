@@ -70,14 +70,15 @@ class IcmpRouterResponse
     /// Create a new ICMP router response having the same value as the
     /// specified 'original' object. Assign an unspecified but valid value to
     /// the 'original' original.
-    IcmpRouterResponse(bslmf::MovableRef<IcmpRouterResponse> original) NTSCFG_NOEXCEPT;
+    IcmpRouterResponse(bslmf::MovableRef<IcmpRouterResponse> original)
+        NTSCFG_NOEXCEPT;
 
     /// Create a new ICMP router response having the same value as the
     /// specified 'original' object. Optionally specify a 'basicAllocator' used
     /// to supply memory. If 'basicAllocator' is 0, the currently installed
     /// default allocator is used.
     IcmpRouterResponse(const IcmpRouterResponse& original,
-                       bslma::Allocator* basicAllocator = 0);
+                       bslma::Allocator*         basicAllocator = 0);
 
     /// Destroy this object.
     ~IcmpRouterResponse();
@@ -85,8 +86,8 @@ class IcmpRouterResponse
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpRouterResponse& operator=(
-        bslmf::MovableRef<IcmpRouterResponse> other) NTSCFG_NOEXCEPT;
+    IcmpRouterResponse& operator=(bslmf::MovableRef<IcmpRouterResponse> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -155,7 +156,8 @@ class IcmpRouterResponse
 /// into the specified 'stream'. Return a reference to the modifiable 'stream'.
 ///
 /// @related ntsa::IcmpRouterResponse
-bsl::ostream& operator<<(bsl::ostream& stream, const IcmpRouterResponse& object);
+bsl::ostream& operator<<(bsl::ostream&             stream,
+                         const IcmpRouterResponse& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
@@ -192,15 +194,14 @@ IcmpRouterResponse::IcmpRouterResponse(bslma::Allocator* basicAllocator)
 NTSCFG_INLINE
 IcmpRouterResponse::IcmpRouterResponse(
     bslmf::MovableRef<IcmpRouterResponse> original) NTSCFG_NOEXCEPT
-: d_infoVector(NTSCFG_MOVE_FROM(original, d_infoVector))
-, d_timeToLive(NTSCFG_MOVE_FROM(original, d_timeToLive))
+: d_infoVector(NTSCFG_MOVE_FROM(original, d_infoVector)),
+  d_timeToLive(NTSCFG_MOVE_FROM(original, d_timeToLive))
 {
-
 }
 
 NTSCFG_INLINE
-IcmpRouterResponse::IcmpRouterResponse(
-    const IcmpRouterResponse& original, bslma::Allocator* basicAllocator)
+IcmpRouterResponse::IcmpRouterResponse(const IcmpRouterResponse& original,
+                                       bslma::Allocator* basicAllocator)
 : d_infoVector(original.d_infoVector, basicAllocator)
 , d_timeToLive(original.d_timeToLive)
 {
@@ -216,7 +217,7 @@ IcmpRouterResponse& IcmpRouterResponse::operator=(
     bslmf::MovableRef<IcmpRouterResponse> other) NTSCFG_NOEXCEPT
 {
     d_infoVector = NTSCFG_MOVE_FROM(other, d_infoVector);
-    d_timeToLive  = NTSCFG_MOVE_FROM(other, d_timeToLive);
+    d_timeToLive = NTSCFG_MOVE_FROM(other, d_timeToLive);
 
     NTSCFG_MOVE_RESET(other);
 
@@ -224,10 +225,11 @@ IcmpRouterResponse& IcmpRouterResponse::operator=(
 }
 
 NTSCFG_INLINE
-IcmpRouterResponse& IcmpRouterResponse::operator=(const IcmpRouterResponse& other)
+IcmpRouterResponse& IcmpRouterResponse::operator=(
+    const IcmpRouterResponse& other)
 {
     d_infoVector = other.d_infoVector;
-    d_timeToLive  = other.d_timeToLive;
+    d_timeToLive = other.d_timeToLive;
 
     return *this;
 }
@@ -246,7 +248,8 @@ void IcmpRouterResponse::addInfo(const ntsa::IcmpRouterInfo& value)
 }
 
 NTSCFG_INLINE
-void IcmpRouterResponse::setInfo(const bsl::vector<ntsa::IcmpRouterInfo>& value)
+void IcmpRouterResponse::setInfo(
+    const bsl::vector<ntsa::IcmpRouterInfo>& value)
 {
     d_infoVector = value;
 }
@@ -278,7 +281,8 @@ NTSCFG_INLINE void IcmpRouterResponse::hash(HASH_ALGORITHM& algorithm) const
 }
 
 NTSCFG_INLINE
-bsl::ostream& operator<<(bsl::ostream& stream, const IcmpRouterResponse& object)
+bsl::ostream& operator<<(bsl::ostream&             stream,
+                         const IcmpRouterResponse& object)
 {
     return object.print(stream, 0, -1);
 }
@@ -302,7 +306,7 @@ bool operator<(const IcmpRouterResponse& lhs, const IcmpRouterResponse& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&    algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&           algorithm,
                               const IcmpRouterResponse& value)
 {
     value.hash(algorithm);

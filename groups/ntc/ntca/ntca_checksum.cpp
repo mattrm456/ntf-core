@@ -368,13 +368,13 @@ ChecksumXxHash32::ChecksumXxHash32(Digest digest)
 
 ChecksumXxHash32::ChecksumXxHash32(const ChecksumXxHash32& original)
 {
-    bsl::memcpy(this, &original, sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
 }
 
 ChecksumXxHash32::ChecksumXxHash32(
     bslmf::MovableRef<ChecksumXxHash32> original) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(this, &original, sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &original, sizeof *this);
     NTSCFG_MOVE_RESET(original);
 }
 
@@ -385,7 +385,7 @@ ChecksumXxHash32::~ChecksumXxHash32()
 ChecksumXxHash32& ChecksumXxHash32::operator=(const ChecksumXxHash32& other)
 {
     if (this != &other) {
-        bsl::memcpy(this, &other, sizeof *this);
+        NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
     }
 
     return *this;
@@ -394,7 +394,7 @@ ChecksumXxHash32& ChecksumXxHash32::operator=(const ChecksumXxHash32& other)
 ChecksumXxHash32& ChecksumXxHash32::operator=(
     bslmf::MovableRef<ChecksumXxHash32> other) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(this, &other, sizeof *this);
+    NTSCFG_MEMORY_COPY(this, &other, sizeof *this);
     NTSCFG_MOVE_RESET(other);
 
     return *this;
@@ -454,7 +454,7 @@ ntsa::Error ChecksumXxHash32::update(const void* data, bsl::size_t size)
 
         for (bsl::size_t accumulator = 0; accumulator < 4; ++accumulator) {
             for (bsl::size_t offset = 0; offset < 16; offset += 16) {
-                const bsl::uint32_t next = 
+                const bsl::uint32_t next =
                     ChecksumXxHash32::decode(d_buffer, offset);
 
                 bsl::uint32_t value = d_accumulator[accumulator];

@@ -366,7 +366,7 @@ bool operator<(const IgmpHeader& lhs, const IgmpHeader& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&   algorithm,
                               const IgmpHeader& value)
 {
     value.hash(algorithm);

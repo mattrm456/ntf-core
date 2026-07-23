@@ -36,7 +36,8 @@ EthernetRouteTable::~EthernetRouteTable()
 {
 }
 
-EthernetRouteTable& EthernetRouteTable::operator=(const EthernetRouteTable& other)
+EthernetRouteTable& EthernetRouteTable::operator=(
+    const EthernetRouteTable& other)
 {
     d_ethernetAddressByIpv4Address = other.d_ethernetAddressByIpv4Address;
 
@@ -129,20 +130,20 @@ bool EthernetRouteTable::find(ntsa::Ipv6Address*           result,
 void EthernetRouteTable::load(bsl::vector<ntsa::EthernetRoute>* result) const
 {
     typedef bsl::pair<bdlb::NullableValue<ntsa::Ipv4Address>,
-                      bdlb::NullableValue<ntsa::Ipv6Address>
-    > IpAddressPair;
+                      bdlb::NullableValue<ntsa::Ipv6Address> >
+        IpAddressPair;
 
     typedef bsl::unordered_map<ntsa::EthernetAddress, IpAddressPair>
-    IpAddressPairByEthernetAddress;
+        IpAddressPairByEthernetAddress;
 
     IpAddressPairByEthernetAddress map;
 
     {
-        Ipv4AddressByEthernetAddress::const_iterator
-            it = d_ipv4AddressByEthernetAddress.begin();
+        Ipv4AddressByEthernetAddress::const_iterator it =
+            d_ipv4AddressByEthernetAddress.begin();
 
-        Ipv4AddressByEthernetAddress::const_iterator
-            et = d_ipv4AddressByEthernetAddress.end();
+        Ipv4AddressByEthernetAddress::const_iterator et =
+            d_ipv4AddressByEthernetAddress.end();
 
         for (; it != et; ++it) {
             map[it->first].first = it->second;
@@ -150,11 +151,11 @@ void EthernetRouteTable::load(bsl::vector<ntsa::EthernetRoute>* result) const
     }
 
     {
-        Ipv6AddressByEthernetAddress::const_iterator
-            it = d_ipv6AddressByEthernetAddress.begin();
+        Ipv6AddressByEthernetAddress::const_iterator it =
+            d_ipv6AddressByEthernetAddress.begin();
 
-        Ipv6AddressByEthernetAddress::const_iterator
-            et = d_ipv6AddressByEthernetAddress.end();
+        Ipv6AddressByEthernetAddress::const_iterator et =
+            d_ipv6AddressByEthernetAddress.end();
 
         for (; it != et; ++it) {
             map[it->first].second = it->second;
@@ -186,8 +187,8 @@ void EthernetRouteTable::load(bsl::vector<ntsa::EthernetRoute>* result) const
 }
 
 bsl::ostream& EthernetRouteTable::print(bsl::ostream& stream,
-                                int           level,
-                                int           spacesPerLevel) const
+                                        int           level,
+                                        int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

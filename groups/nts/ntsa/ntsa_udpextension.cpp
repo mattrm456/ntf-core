@@ -48,7 +48,7 @@ ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder,
 
     if (initialPosition % 2 != 0) {
         bsl::uint8_t padding = 0xFF;
-        error = decoder->decodeUint8(&padding);
+        error                = decoder->decodeUint8(&padding);
         if (error) {
             return error;
         }
@@ -82,7 +82,7 @@ ntsa::Error UdpExtension::decode(ntsa::PacketDecoder* decoder,
 
         d_vector.push_back(NTSCFG_MOVE(option));
 
-         const bsl::size_t p1 = decoder->position();
+        const bsl::size_t p1 = decoder->position();
 
         n += static_cast<bsl::size_t>(p1 - p0);
 

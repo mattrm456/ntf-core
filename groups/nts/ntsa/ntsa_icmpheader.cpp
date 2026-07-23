@@ -28,8 +28,7 @@ ntsa::Error IcmpHeader::decode(ntsa::PacketDecoder* decoder)
 {
     ntsa::Error error;
 
-    error = decoder->decodeRaw(this,
-                               static_cast<bsl::size_t>(k_LENGTH));
+    error = decoder->decodeRaw(this, static_cast<bsl::size_t>(k_LENGTH));
     if (error) {
         return error;
     }
@@ -41,8 +40,7 @@ ntsa::Error IcmpHeader::encode(ntsa::PacketEncoder* encoder) const
 {
     ntsa::Error error;
 
-    error = encoder->encodeRaw(this,
-                               static_cast<bsl::size_t>(k_LENGTH));
+    error = encoder->encodeRaw(this, static_cast<bsl::size_t>(k_LENGTH));
     if (error) {
         return error;
     }
@@ -51,8 +49,8 @@ ntsa::Error IcmpHeader::encode(ntsa::PacketEncoder* encoder) const
 }
 
 bsl::ostream& IcmpHeader::print(bsl::ostream& stream,
-                               int           level,
-                               int           spacesPerLevel) const
+                                int           level,
+                                int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

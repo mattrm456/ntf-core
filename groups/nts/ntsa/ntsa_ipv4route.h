@@ -294,7 +294,7 @@ void Ipv4Route::setDestinationIpv4Address(const ntsa::Ipv4Address& value)
 NTSCFG_INLINE
 void Ipv4Route::setDestinationIpv4Mask(const ntsa::Ipv4Address& value)
 {
-    d_destinationIpv4Mask = value;
+    d_destinationIpv4Mask       = value;
     d_destinationIpv4MaskLength = bdlb::BitUtil::numBitsSet(value.value());
 }
 

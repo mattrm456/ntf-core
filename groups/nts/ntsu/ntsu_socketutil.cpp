@@ -108,10 +108,10 @@ BSLS_IDENT_RCSID(ntsu_socketutil_cpp, "$Id$ $CSID$")
 #include <sys/sendfile.h>
 #endif
 #if defined(BSLS_PLATFORM_OS_LINUX)
+#include <linux/errqueue.h>
+#include <linux/if_ether.h>
 #include <netinet/ip.h>
 #include <netpacket/packet.h>
-#include <linux/if_ether.h>
-#include <linux/errqueue.h>
 #endif
 #endif
 

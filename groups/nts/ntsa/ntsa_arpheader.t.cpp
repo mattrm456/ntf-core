@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpHeaderTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

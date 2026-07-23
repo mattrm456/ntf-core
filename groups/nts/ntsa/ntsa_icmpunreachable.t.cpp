@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::IcmpUnreachableTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

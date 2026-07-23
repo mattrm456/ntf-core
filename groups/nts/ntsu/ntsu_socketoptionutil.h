@@ -163,7 +163,7 @@ class SocketOptionUtil
                                  ntsa::SocketOptionType::Value type,
                                  ntsa::Handle                  socket);
 
-    /// Load into the specified 'result' each socket option for the 
+    /// Load into the specified 'result' each socket option for the
     /// specified 'socket'. Return the error.
     static ntsa::Error getConfig(ntsa::SocketConfig* result,
                                  ntsa::Handle        socket);
@@ -285,7 +285,7 @@ class SocketOptionUtil
     static ntsa::Error getDomain(int* domain, ntsa::Handle socket);
 
     /// Load into the specified 'type' the native type (e.g, stream,
-    /// datagram, raw, etc.) of the specified 'socket'. Return the error. 
+    /// datagram, raw, etc.) of the specified 'socket'. Return the error.
     static ntsa::Error getType(int* type, ntsa::Handle socket);
 
     /// Load into the specified 'protocol' the native protocol (e.g., TCP, UDP,

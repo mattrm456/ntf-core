@@ -44,7 +44,7 @@ ntsa::Error IcmpTimeout::decode(ntsa::PacketDecoder* decoder)
 
     if (payloadSize > 0) {
         d_payloadSize = bsl::min(payloadSize, sizeof d_payloadData);
-        error = decoder->decodeRaw(d_payloadData, d_payloadSize);
+        error         = decoder->decodeRaw(d_payloadData, d_payloadSize);
         if (error) {
             return error;
         }

@@ -56,7 +56,6 @@ NTSCFG_TEST_FUNCTION(ntsa::Ipv6HeaderTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6HeaderTest::verifyUsage)
 {
-    
 }
 
 }  // close namespace ntsa

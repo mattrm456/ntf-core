@@ -137,8 +137,7 @@ class Ipv6Header
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    Ipv6Header& operator=(bslmf::MovableRef<Ipv6Header> other)
-        NTSCFG_NOEXCEPT;
+    Ipv6Header& operator=(bslmf::MovableRef<Ipv6Header> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -333,8 +332,8 @@ Ipv6Header::~Ipv6Header()
 }
 
 NTSCFG_INLINE
-Ipv6Header& Ipv6Header::operator=(
-    bslmf::MovableRef<Ipv6Header> other) NTSCFG_NOEXCEPT
+Ipv6Header& Ipv6Header::operator=(bslmf::MovableRef<Ipv6Header> other)
+    NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -426,14 +425,14 @@ void Ipv6Header::setDscp(bsl::uint8_t value)
 {
     d_trafficClassHi = static_cast<bsl::uint8_t>(value >> 2);
     d_trafficClassLo = static_cast<bsl::uint8_t>(((value & 0x03) << 2) |
-                                                  (d_trafficClassLo & 0x03));
+                                                 (d_trafficClassLo & 0x03));
 }
 
 NTSCFG_INLINE
 void Ipv6Header::setEcn(bsl::uint8_t value)
 {
-    d_trafficClassLo = static_cast<bsl::uint8_t>((d_trafficClassLo & 0x0C) |
-                                                  (value & 0x03));
+    d_trafficClassLo =
+        static_cast<bsl::uint8_t>((d_trafficClassLo & 0x0C) | (value & 0x03));
 }
 
 NTSCFG_INLINE
@@ -460,7 +459,8 @@ NTSCFG_INLINE
 bsl::uint32_t Ipv6Header::flowLabel() const
 {
     return (static_cast<bsl::uint32_t>(d_flowLabelHi) << 16) |
-           static_cast<bsl::uint32_t>(static_cast<bsl::uint16_t>(d_flowLabelLo));
+           static_cast<bsl::uint32_t>(
+               static_cast<bsl::uint16_t>(d_flowLabelLo));
 }
 
 NTSCFG_INLINE
@@ -507,7 +507,7 @@ bool operator<(const Ipv6Header& lhs, const Ipv6Header& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&       algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&   algorithm,
                               const Ipv6Header& value)
 {
     value.hash(algorithm);

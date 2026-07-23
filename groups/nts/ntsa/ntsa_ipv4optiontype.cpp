@@ -44,8 +44,8 @@ int Ipv4OptionType::fromInt(Ipv4OptionType::Value* result, int number)
     }
 }
 
-int Ipv4OptionType::fromString(Ipv4OptionType::Value*  result,
-                                const bslstl::StringRef& string)
+int Ipv4OptionType::fromString(Ipv4OptionType::Value*   result,
+                               const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;
@@ -117,8 +117,8 @@ const char* Ipv4OptionType::toString(Ipv4OptionType::Value value)
     return 0;
 }
 
-bsl::ostream& Ipv4OptionType::print(bsl::ostream&          stream,
-                                     Ipv4OptionType::Value value)
+bsl::ostream& Ipv4OptionType::print(bsl::ostream&         stream,
+                                    Ipv4OptionType::Value value)
 {
     return stream << toString(value);
 }

@@ -49,11 +49,11 @@ BSLS_IDENT_RCSID(ntsu_adapterutil_cpp, "$Id$ $CSID$")
 #include <ifaddrs.h>
 #endif
 #if defined(BSLS_PLATFORM_OS_LINUX)
-#include <sys/syscall.h>
 #include <linux/capability.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 #include <linux/version.h>
+#include <sys/syscall.h>
 #endif
 #include <errno.h>
 #include <netdb.h>
@@ -305,7 +305,7 @@ void AdapterUtil::discoverAdapterList(bsl::vector<ntsa::Adapter>* result)
             struct ::ifreq ethtoolIfr;
             bsl::memset(&ethtoolIfr, 0, sizeof ethtoolIfr);
 
-            const char* ifaName = interfaceAddress->ifa_name;
+            const char*       ifaName       = interfaceAddress->ifa_name;
             const bsl::size_t ifaNameLength = bsl::strlen(ifaName);
 
             if (ifaNameLength < sizeof ethtoolIfr.ifr_ifrn.ifrn_name) {
@@ -322,9 +322,8 @@ void AdapterUtil::discoverAdapterList(bsl::vector<ntsa::Adapter>* result)
 
                 rc = ::ioctl(fd, SIOCETHTOOL, &ethtoolIfr);
                 if (rc == 0) {
-                    adapter.setSpeed(
-                        static_cast<bsl::size_t>(
-                            ethtool_cmd_speed(&ethtoolGset)));
+                    adapter.setSpeed(static_cast<bsl::size_t>(
+                        ethtool_cmd_speed(&ethtoolGset)));
                 }
 
                 struct ::ethtool_ts_info ethtoolTsInfo;

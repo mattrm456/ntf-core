@@ -561,7 +561,6 @@ bsl::shared_ptr<ntsi::Resolver> System::createResolver(
     return resolver;
 }
 
-
 bsl::shared_ptr<ntsi::Device> System::createDevice(
     const ntsa::DeviceConfig& configuration,
     bslma::Allocator*         basicAllocator)

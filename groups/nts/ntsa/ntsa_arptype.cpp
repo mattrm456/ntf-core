@@ -40,7 +40,7 @@ int ArpType::fromInt(ArpType::Value* result, int number)
 }
 
 int ArpType::fromString(ArpType::Value*          result,
-                         const bslstl::StringRef& string)
+                        const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;

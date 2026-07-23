@@ -1663,7 +1663,7 @@ struct System {
     /// this function when possible.
     static bool supportsTransportLoopback(ntsa::Transport::Value transport);
 
-    /// Return true if raw transport through low-level network devices is 
+    /// Return true if raw transport through low-level network devices is
     /// supported, otherwise return false.
     static bool supportsRaw();
 

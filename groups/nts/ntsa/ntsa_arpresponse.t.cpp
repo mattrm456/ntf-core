@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpResponseTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

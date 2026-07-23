@@ -46,19 +46,19 @@ class EthernetRouteTable
 {
     /// Defines a type alias for a map of IPv4 addresses to Ethernet addresses.
     typedef bsl::unordered_map<ntsa::Ipv4Address, ntsa::EthernetAddress>
-    EthernetAddressByIpv4Address;
+        EthernetAddressByIpv4Address;
 
     /// Defines a type alias for a map of IPv6 addresses to Ethernet addresses.
     typedef bsl::unordered_map<ntsa::Ipv6Address, ntsa::EthernetAddress>
-    EthernetAddressByIpv6Address;
+        EthernetAddressByIpv6Address;
 
     /// Defines a type alias for a map of Ethernet addresses to IPv4 addresses.
     typedef bsl::unordered_map<ntsa::EthernetAddress, ntsa::Ipv4Address>
-    Ipv4AddressByEthernetAddress;
+        Ipv4AddressByEthernetAddress;
 
     /// Defines a type alias for a map of Ethernet addresses to IPv4 addresses.
     typedef bsl::unordered_map<ntsa::EthernetAddress, ntsa::Ipv6Address>
-    Ipv6AddressByEthernetAddress;
+        Ipv6AddressByEthernetAddress;
 
     /// The map of IPv4 addresses to Ethernet addresses.
     EthernetAddressByIpv4Address d_ethernetAddressByIpv4Address;

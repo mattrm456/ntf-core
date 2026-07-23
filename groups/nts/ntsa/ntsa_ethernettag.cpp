@@ -54,8 +54,8 @@ bsl::ostream& EthernetTag::print(bsl::ostream& stream,
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
 
-    const bsl::uint16_t                 group =     this->group();
-    const ntsa::EthernetPriority::Value priority =  this->priority();
+    const bsl::uint16_t                 group     = this->group();
+    const ntsa::EthernetPriority::Value priority  = this->priority();
     const bool                          droppable = this->droppable();
 
     printer.printAttribute("group", group);

@@ -117,7 +117,8 @@ bsl::ostream& Ipv4Header::print(bsl::ostream& stream,
 
     printer.printAttribute("timeToLive", timeToLive);
 
-    printer.printForeign(this->protocol(), &Ipv4Header::printProtocol,
+    printer.printForeign(this->protocol(),
+                         &Ipv4Header::printProtocol,
                          "protocol");
 
     const bsl::size_t checksum = static_cast<bsl::size_t>(this->checksum());

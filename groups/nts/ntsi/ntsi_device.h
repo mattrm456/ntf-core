@@ -75,7 +75,8 @@ class PacketReceiver
 
     /// Load into the specified 'result' the next packet received. Return the
     /// error.
-    virtual ntsa::Error dequeuePacket(bsl::shared_ptr<ntsa::Packet>* result) = 0;
+    virtual ntsa::Error dequeuePacket(
+        bsl::shared_ptr<ntsa::Packet>* result) = 0;
 };
 
 /// Provide an abstract representation of a network device.
@@ -120,8 +121,8 @@ class Device : public ntsa::PacketFactory,
     virtual ntsa::Error applyFilter(const ntsa::PacketFilter& filter) = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
-    virtual ntsa::Error enqueuePacket(const bsl::shared_ptr<ntsa::Packet>& packet)
-        BSLS_KEYWORD_OVERRIDE = 0;
+    virtual ntsa::Error enqueuePacket(
+        const bsl::shared_ptr<ntsa::Packet>& packet) BSLS_KEYWORD_OVERRIDE = 0;
 
     /// Enqueue the specified 'packet' for transmission. Return the error.
     virtual ntsa::Error enqueuePacket(

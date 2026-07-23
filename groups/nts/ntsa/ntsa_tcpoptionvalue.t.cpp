@@ -73,52 +73,42 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpOptionValueTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

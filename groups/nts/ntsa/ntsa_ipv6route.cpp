@@ -68,21 +68,21 @@ Ipv6Route::~Ipv6Route()
 
 Ipv6Route& Ipv6Route::operator=(const Ipv6Route& other)
 {
-    d_destinationIpv6Address   = other.d_destinationIpv6Address;
-    d_destinationIpv6Mask      = other.d_destinationIpv6Mask;
+    d_destinationIpv6Address    = other.d_destinationIpv6Address;
+    d_destinationIpv6Mask       = other.d_destinationIpv6Mask;
     d_destinationIpv6MaskLength = other.d_destinationIpv6MaskLength;
-    d_gatewayAdapterName       = other.d_gatewayAdapterName;
-    d_gatewayAdapterIndex      = other.d_gatewayAdapterIndex;
-    d_gatewayEthernetAddress   = other.d_gatewayEthernetAddress;
-    d_gatewayIpv6Address       = other.d_gatewayIpv6Address;
-    d_interfaceAdapterName     = other.d_interfaceAdapterName;
-    d_interfaceAdapterIndex    = other.d_interfaceAdapterIndex;
-    d_interfaceEthernetAddress = other.d_interfaceEthernetAddress;
-    d_interfaceIpv6Address     = other.d_interfaceIpv6Address;
-    d_timeToLive               = other.d_timeToLive;
-    d_distance                 = other.d_distance;
-    d_cost                     = other.d_cost;
-    d_flags                    = other.d_flags;
+    d_gatewayAdapterName        = other.d_gatewayAdapterName;
+    d_gatewayAdapterIndex       = other.d_gatewayAdapterIndex;
+    d_gatewayEthernetAddress    = other.d_gatewayEthernetAddress;
+    d_gatewayIpv6Address        = other.d_gatewayIpv6Address;
+    d_interfaceAdapterName      = other.d_interfaceAdapterName;
+    d_interfaceAdapterIndex     = other.d_interfaceAdapterIndex;
+    d_interfaceEthernetAddress  = other.d_interfaceEthernetAddress;
+    d_interfaceIpv6Address      = other.d_interfaceIpv6Address;
+    d_timeToLive                = other.d_timeToLive;
+    d_distance                  = other.d_distance;
+    d_cost                      = other.d_cost;
+    d_flags                     = other.d_flags;
 
     return *this;
 }
@@ -102,8 +102,8 @@ void Ipv6Route::reset()
     d_interfaceIpv6Address.reset();
     d_timeToLive.reset();
     d_distance = 0;
-    d_cost = 0;
-    d_flags = 0;
+    d_cost     = 0;
+    d_flags    = 0;
 }
 
 bool Ipv6Route::equals(const Ipv6Route& other) const
@@ -120,8 +120,7 @@ bool Ipv6Route::equals(const Ipv6Route& other) const
            d_interfaceEthernetAddress == other.d_interfaceEthernetAddress &&
            d_interfaceIpv6Address == other.d_interfaceIpv6Address &&
            d_timeToLive == other.d_timeToLive &&
-           d_distance == other.d_distance &&
-           d_cost == other.d_cost &&
+           d_distance == other.d_distance && d_cost == other.d_cost &&
            d_flags == other.d_flags;
 }
 

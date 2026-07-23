@@ -19,9 +19,9 @@
 #include <bsls_ident.h>
 BSLS_IDENT("$Id: $")
 
+#include <ntsa_ethernetaddress.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
-#include <ntsa_ethernetaddress.h>
 #include <ntsa_packetfilter.h>
 #include <ntsa_port.h>
 #include <ntscfg_platform.h>
@@ -87,19 +87,19 @@ namespace ntsa {
 /// @ingroup module_ntsa_system
 class DeviceConfig
 {
-    bdlb::NullableValue<bsl::string>           d_driverName;
-    bdlb::NullableValue<bsl::string>           d_adapterName;
-    bdlb::NullableValue<bool>                  d_outgoingEnabled;
-    bdlb::NullableValue<ntsa::PacketFilter>    d_outgoingPacketFilter;
-    bdlb::NullableValue<bsl::size_t>           d_outgoingMinThreads;
-    bdlb::NullableValue<bsl::size_t>           d_outgoingMaxThreads;
-    bdlb::NullableValue<bsl::size_t>           d_outgoingMaxPackets;
-    bdlb::NullableValue<bool>                  d_incomingEnabled;
-    bdlb::NullableValue<ntsa::PacketFilter>    d_incomingPacketFilter;
-    bdlb::NullableValue<bsl::size_t>           d_incomingMinThreads;
-    bdlb::NullableValue<bsl::size_t>           d_incomingMaxThreads;
-    bdlb::NullableValue<bsl::size_t>           d_incomingMaxPackets;
-    bdlb::NullableValue<bool>                  d_promiscuous;
+    bdlb::NullableValue<bsl::string>        d_driverName;
+    bdlb::NullableValue<bsl::string>        d_adapterName;
+    bdlb::NullableValue<bool>               d_outgoingEnabled;
+    bdlb::NullableValue<ntsa::PacketFilter> d_outgoingPacketFilter;
+    bdlb::NullableValue<bsl::size_t>        d_outgoingMinThreads;
+    bdlb::NullableValue<bsl::size_t>        d_outgoingMaxThreads;
+    bdlb::NullableValue<bsl::size_t>        d_outgoingMaxPackets;
+    bdlb::NullableValue<bool>               d_incomingEnabled;
+    bdlb::NullableValue<ntsa::PacketFilter> d_incomingPacketFilter;
+    bdlb::NullableValue<bsl::size_t>        d_incomingMinThreads;
+    bdlb::NullableValue<bsl::size_t>        d_incomingMaxThreads;
+    bdlb::NullableValue<bsl::size_t>        d_incomingMaxPackets;
+    bdlb::NullableValue<bool>               d_promiscuous;
 
   public:
     /// Create a new driver configuration. Optionally specify a
@@ -185,7 +185,8 @@ class DeviceConfig
     const bdlb::NullableValue<bool>& outgoingEnabled() const;
 
     /// Return the outgoing packet filter.
-    const bdlb::NullableValue<ntsa::PacketFilter>& outgoingPacketFilter() const;
+    const bdlb::NullableValue<ntsa::PacketFilter>& outgoingPacketFilter()
+        const;
 
     /// Return the minimum number of threads processing outgoing packets.
     const bdlb::NullableValue<bsl::size_t>& outgoingMinThreads() const;
@@ -200,7 +201,8 @@ class DeviceConfig
     const bdlb::NullableValue<bool>& incomingEnabled() const;
 
     /// Return the incoming packet filter.
-    const bdlb::NullableValue<ntsa::PacketFilter>& incomingPacketFilter() const;
+    const bdlb::NullableValue<ntsa::PacketFilter>& incomingPacketFilter()
+        const;
 
     /// Return the minimum number of threads processing incoming packets.
     const bdlb::NullableValue<bsl::size_t>& incomingMinThreads() const;
@@ -297,4 +299,3 @@ void hashAppend(HASH_ALGORITHM& algorithm, const DeviceConfig& value)
 }  // close package namespace
 }  // close enterprise namespace
 #endif
-

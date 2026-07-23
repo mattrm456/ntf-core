@@ -38,12 +38,10 @@ class Ipv6ExtensionTest
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6ExtensionTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::Ipv6ExtensionTest::verifyUsage)
 {
-
 }
 
 }  // close namespace ntsa

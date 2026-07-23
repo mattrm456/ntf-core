@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpTimePointTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

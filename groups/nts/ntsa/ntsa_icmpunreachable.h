@@ -108,8 +108,8 @@ class IcmpUnreachable
     /// Enumerate the constants used by the implementation.
     enum Constant {
         /// The fixed length of the IcmpUnreachable body in octets.
-        k_LENGTH = sizeof(bdlb::BigEndianUint32) + sizeof(ntsa::Ipv4Header) + 8 +
-                   sizeof(bsl::size_t)
+        k_LENGTH = sizeof(bdlb::BigEndianUint32) + sizeof(ntsa::Ipv4Header) +
+                   8 + sizeof(bsl::size_t)
     };
 
     /// Create a new ICMP unreachable having a default value.
@@ -118,8 +118,8 @@ class IcmpUnreachable
     /// Create a new ICMP unreachable having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    IcmpUnreachable(
-        bslmf::MovableRef<IcmpUnreachable> original) NTSCFG_NOEXCEPT;
+    IcmpUnreachable(bslmf::MovableRef<IcmpUnreachable> original)
+        NTSCFG_NOEXCEPT;
 
     /// Create a new ICMP unreachable having the same value as the specified
     /// 'original' object.
@@ -131,8 +131,8 @@ class IcmpUnreachable
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpUnreachable& operator=(
-        bslmf::MovableRef<IcmpUnreachable> other) NTSCFG_NOEXCEPT;
+    IcmpUnreachable& operator=(bslmf::MovableRef<IcmpUnreachable> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -250,8 +250,8 @@ IcmpUnreachable::IcmpUnreachable()
 }
 
 NTSCFG_INLINE
-IcmpUnreachable::IcmpUnreachable(
-    bslmf::MovableRef<IcmpUnreachable> original) NTSCFG_NOEXCEPT
+IcmpUnreachable::IcmpUnreachable(bslmf::MovableRef<IcmpUnreachable> original)
+    NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -384,7 +384,7 @@ bool operator<(const IcmpUnreachable& lhs, const IcmpUnreachable& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&       algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&        algorithm,
                               const IcmpUnreachable& value)
 {
     value.hash(algorithm);

@@ -20,9 +20,9 @@
 BSLS_IDENT("$Id: $")
 
 #include <ntsa_adapter.h>
+#include <ntsa_domainname.h>
 #include <ntsa_error.h>
 #include <ntsa_ethernetaddress.h>
-#include <ntsa_domainname.h>
 #include <ntsa_ipv4address.h>
 #include <ntsa_ipv6address.h>
 #include <ntscfg_platform.h>
@@ -81,7 +81,8 @@ class EthernetRoute
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    EthernetRoute(const EthernetRoute& original, bslma::Allocator* basicAllocator = 0);
+    EthernetRoute(const EthernetRoute& original,
+                  bslma::Allocator*    basicAllocator = 0);
 
     /// Destroy this object.
     ~EthernetRoute();
@@ -229,13 +230,15 @@ const ntsa::EthernetAddress& EthernetRoute::ethernetAddress() const
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::Ipv4Address>& EthernetRoute::ipv4Address() const
+const bdlb::NullableValue<ntsa::Ipv4Address>& EthernetRoute::ipv4Address()
+    const
 {
     return d_ipv4Address;
 }
 
 NTSCFG_INLINE
-const bdlb::NullableValue<ntsa::Ipv6Address>& EthernetRoute::ipv6Address() const
+const bdlb::NullableValue<ntsa::Ipv6Address>& EthernetRoute::ipv6Address()
+    const
 {
     return d_ipv6Address;
 }
@@ -282,7 +285,7 @@ bool operator<(const EthernetRoute& lhs, const EthernetRoute& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&      algorithm,
                               const EthernetRoute& value)
 {
     value.hash(algorithm);

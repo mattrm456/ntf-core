@@ -473,8 +473,8 @@ NTSCFG_INLINE
 ntsa::Error PacketDecoder::seek(bsl::size_t position)
 {
     if (d_begin + position <= d_end) {
-        d_current  = d_begin + position;
-        d_size  = static_cast<bsl::size_t>(d_end - d_current);
+        d_current = d_begin + position;
+        d_size    = static_cast<bsl::size_t>(d_end - d_current);
         return ntsa::Error();
     }
     else {
@@ -514,7 +514,7 @@ ntsa::Error PacketDecoder::truncate(bsl::size_t amount)
     if (amount <= static_cast<bsl::size_t>(d_end - d_begin) &&
         amount <= d_size)
     {
-        d_end -= amount;
+        d_end  -= amount;
         d_size -= amount;
 
         return ntsa::Error();

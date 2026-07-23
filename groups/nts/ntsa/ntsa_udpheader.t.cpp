@@ -56,7 +56,6 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpHeaderTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpHeaderTest::verifyUsage)
 {
-
 }
 
 }  // close namespace ntsa

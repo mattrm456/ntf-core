@@ -213,8 +213,8 @@ IgmpReport::IgmpReport(bslma::Allocator* basicAllocator)
 
 NTSCFG_INLINE
 IgmpReport::IgmpReport(bslmf::MovableRef<IgmpReport> original) NTSCFG_NOEXCEPT
-: d_flags(NTSCFG_MOVE_FROM(original, d_flags))
-, d_records(NTSCFG_MOVE_FROM(original, d_records))
+: d_flags(NTSCFG_MOVE_FROM(original, d_flags)),
+  d_records(NTSCFG_MOVE_FROM(original, d_records))
 {
 }
 

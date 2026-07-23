@@ -101,7 +101,8 @@ class IcmpEchoResponse
     /// Create a new ICMP pong having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    IcmpEchoResponse(bslmf::MovableRef<IcmpEchoResponse> original) NTSCFG_NOEXCEPT;
+    IcmpEchoResponse(bslmf::MovableRef<IcmpEchoResponse> original)
+        NTSCFG_NOEXCEPT;
 
     /// Create a new ICMP pong having the same value as the specified
     /// 'original' object.
@@ -113,7 +114,8 @@ class IcmpEchoResponse
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpEchoResponse& operator=(bslmf::MovableRef<IcmpEchoResponse> other) NTSCFG_NOEXCEPT;
+    IcmpEchoResponse& operator=(bslmf::MovableRef<IcmpEchoResponse> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -235,7 +237,8 @@ IcmpEchoResponse::IcmpEchoResponse()
 }
 
 NTSCFG_INLINE
-IcmpEchoResponse::IcmpEchoResponse(bslmf::MovableRef<IcmpEchoResponse> original) NTSCFG_NOEXCEPT
+IcmpEchoResponse::IcmpEchoResponse(
+    bslmf::MovableRef<IcmpEchoResponse> original) NTSCFG_NOEXCEPT
 : d_identifier(NTSCFG_MOVE_FROM(original, d_identifier)),
   d_sequenceNumber(NTSCFG_MOVE_FROM(original, d_sequenceNumber)),
   d_data(NTSCFG_MOVE_FROM(original, d_data))
@@ -257,8 +260,8 @@ IcmpEchoResponse::~IcmpEchoResponse()
 }
 
 NTSCFG_INLINE
-IcmpEchoResponse& IcmpEchoResponse::operator=(bslmf::MovableRef<IcmpEchoResponse> other)
-    NTSCFG_NOEXCEPT
+IcmpEchoResponse& IcmpEchoResponse::operator=(
+    bslmf::MovableRef<IcmpEchoResponse> other) NTSCFG_NOEXCEPT
 {
     d_identifier     = NTSCFG_MOVE_FROM(other, d_identifier);
     d_sequenceNumber = NTSCFG_MOVE_FROM(other, d_sequenceNumber);
@@ -367,7 +370,8 @@ bool operator<(const IcmpEchoResponse& lhs, const IcmpEchoResponse& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM& algorithm, const IcmpEchoResponse& value)
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&         algorithm,
+                              const IcmpEchoResponse& value)
 {
     value.hash(algorithm);
 }

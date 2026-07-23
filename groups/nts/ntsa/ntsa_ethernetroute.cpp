@@ -33,8 +33,8 @@ EthernetRoute::EthernetRoute(bslma::Allocator* basicAllocator)
     NTSCFG_WARNING_UNUSED(basicAllocator);
 }
 
-EthernetRoute::EthernetRoute(const EthernetRoute&  original,
-                             bslma::Allocator*     basicAllocator)
+EthernetRoute::EthernetRoute(const EthernetRoute& original,
+                             bslma::Allocator*    basicAllocator)
 : d_domainName(original.d_domainName)
 , d_ethernetAddress(original.d_ethernetAddress)
 , d_ipv4Address(original.d_ipv4Address)
@@ -50,11 +50,11 @@ EthernetRoute::~EthernetRoute()
 
 EthernetRoute& EthernetRoute::operator=(const EthernetRoute& other)
 {
-    d_domainName = other.d_domainName;
-    d_ethernetAddress    = other.d_ethernetAddress;
-    d_ipv4Address = other.d_ipv4Address;
+    d_domainName      = other.d_domainName;
+    d_ethernetAddress = other.d_ethernetAddress;
+    d_ipv4Address     = other.d_ipv4Address;
     d_ipv6Address     = other.d_ipv6Address;
-    d_flags                  = other.d_flags;
+    d_flags           = other.d_flags;
 
     return *this;
 }
@@ -73,8 +73,7 @@ bool EthernetRoute::equals(const EthernetRoute& other) const
     return d_domainName == other.d_domainName &&
            d_ethernetAddress == other.d_ethernetAddress &&
            d_ipv4Address == other.d_ipv4Address &&
-           d_ipv6Address == other.d_ipv6Address &&
-           d_flags == other.d_flags;
+           d_ipv6Address == other.d_ipv6Address && d_flags == other.d_flags;
 }
 
 bool EthernetRoute::less(const EthernetRoute& other) const
@@ -115,29 +114,24 @@ bool EthernetRoute::less(const EthernetRoute& other) const
 }
 
 bsl::ostream& EthernetRoute::print(bsl::ostream& stream,
-                               int           level,
-                               int           spacesPerLevel) const
+                                   int           level,
+                                   int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
 
     if (d_domainName.has_value()) {
-        printer.printAttribute("domainName",
-                               d_domainName.value());
+        printer.printAttribute("domainName", d_domainName.value());
     }
 
-
-        printer.printAttribute("ethernetAddress",
-                               d_ethernetAddress);
+    printer.printAttribute("ethernetAddress", d_ethernetAddress);
 
     if (d_ipv4Address.has_value()) {
-        printer.printAttribute("ipv4Address",
-                               d_ipv4Address.value());
+        printer.printAttribute("ipv4Address", d_ipv4Address.value());
     }
 
     if (d_ipv6Address.has_value()) {
-        printer.printAttribute("ipv6Address",
-                               d_ipv6Address.value());
+        printer.printAttribute("ipv6Address", d_ipv6Address.value());
     }
 
     if (d_flags != 0) {

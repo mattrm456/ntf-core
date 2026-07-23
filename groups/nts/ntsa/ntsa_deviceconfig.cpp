@@ -65,19 +65,19 @@ DeviceConfig::~DeviceConfig()
 DeviceConfig& DeviceConfig::operator=(const DeviceConfig& other)
 {
     if (this != &other) {
-        d_driverName            = other.d_driverName;
-        d_adapterName           = other.d_adapterName;
-        d_outgoingEnabled       = other.d_outgoingEnabled;
-        d_outgoingPacketFilter  = other.d_outgoingPacketFilter;
-        d_outgoingMinThreads    = other.d_outgoingMinThreads;
-        d_outgoingMaxThreads    = other.d_outgoingMaxThreads;
-        d_outgoingMaxPackets    = other.d_outgoingMaxPackets;
-        d_incomingEnabled       = other.d_incomingEnabled;
-        d_incomingPacketFilter  = other.d_incomingPacketFilter;
-        d_incomingMinThreads    = other.d_incomingMinThreads;
-        d_incomingMaxThreads    = other.d_incomingMaxThreads;
-        d_incomingMaxPackets    = other.d_incomingMaxPackets;
-        d_promiscuous = other.d_promiscuous;
+        d_driverName           = other.d_driverName;
+        d_adapterName          = other.d_adapterName;
+        d_outgoingEnabled      = other.d_outgoingEnabled;
+        d_outgoingPacketFilter = other.d_outgoingPacketFilter;
+        d_outgoingMinThreads   = other.d_outgoingMinThreads;
+        d_outgoingMaxThreads   = other.d_outgoingMaxThreads;
+        d_outgoingMaxPackets   = other.d_outgoingMaxPackets;
+        d_incomingEnabled      = other.d_incomingEnabled;
+        d_incomingPacketFilter = other.d_incomingPacketFilter;
+        d_incomingMinThreads   = other.d_incomingMinThreads;
+        d_incomingMaxThreads   = other.d_incomingMaxThreads;
+        d_incomingMaxPackets   = other.d_incomingMaxPackets;
+        d_promiscuous          = other.d_promiscuous;
     }
 
     return *this;
@@ -180,26 +180,26 @@ const bdlb::NullableValue<bool>& DeviceConfig::outgoingEnabled() const
     return d_outgoingEnabled;
 }
 
-const bdlb::NullableValue<ntsa::PacketFilter>&
-DeviceConfig::outgoingPacketFilter() const
+const bdlb::NullableValue<ntsa::PacketFilter>& DeviceConfig::
+    outgoingPacketFilter() const
 {
     return d_outgoingPacketFilter;
 }
 
-const bdlb::NullableValue<bsl::size_t>&
-DeviceConfig::outgoingMinThreads() const
+const bdlb::NullableValue<bsl::size_t>& DeviceConfig::outgoingMinThreads()
+    const
 {
     return d_outgoingMinThreads;
 }
 
-const bdlb::NullableValue<bsl::size_t>&
-DeviceConfig::outgoingMaxThreads() const
+const bdlb::NullableValue<bsl::size_t>& DeviceConfig::outgoingMaxThreads()
+    const
 {
     return d_outgoingMaxThreads;
 }
 
-const bdlb::NullableValue<bsl::size_t>&
-DeviceConfig::outgoingMaxPackets() const
+const bdlb::NullableValue<bsl::size_t>& DeviceConfig::outgoingMaxPackets()
+    const
 {
     return d_outgoingMaxPackets;
 }
@@ -209,26 +209,26 @@ const bdlb::NullableValue<bool>& DeviceConfig::incomingEnabled() const
     return d_incomingEnabled;
 }
 
-const bdlb::NullableValue<ntsa::PacketFilter>&
-DeviceConfig::incomingPacketFilter() const
+const bdlb::NullableValue<ntsa::PacketFilter>& DeviceConfig::
+    incomingPacketFilter() const
 {
     return d_incomingPacketFilter;
 }
 
-const bdlb::NullableValue<bsl::size_t>&
-DeviceConfig::incomingMinThreads() const
+const bdlb::NullableValue<bsl::size_t>& DeviceConfig::incomingMinThreads()
+    const
 {
     return d_incomingMinThreads;
 }
 
-const bdlb::NullableValue<bsl::size_t>&
-DeviceConfig::incomingMaxThreads() const
+const bdlb::NullableValue<bsl::size_t>& DeviceConfig::incomingMaxThreads()
+    const
 {
     return d_incomingMaxThreads;
 }
 
-const bdlb::NullableValue<bsl::size_t>&
-DeviceConfig::incomingMaxPackets() const
+const bdlb::NullableValue<bsl::size_t>& DeviceConfig::incomingMaxPackets()
+    const
 {
     return d_incomingMaxPackets;
 }
@@ -240,18 +240,18 @@ const bdlb::NullableValue<bool>& DeviceConfig::promiscuous() const
 
 bool DeviceConfig::equals(const DeviceConfig& other) const
 {
-    return d_driverName           == other.d_driverName         &&
-           d_adapterName          == other.d_adapterName        &&
-           d_outgoingEnabled      == other.d_outgoingEnabled    &&
+    return d_driverName == other.d_driverName &&
+           d_adapterName == other.d_adapterName &&
+           d_outgoingEnabled == other.d_outgoingEnabled &&
            d_outgoingPacketFilter == other.d_outgoingPacketFilter &&
-           d_outgoingMinThreads   == other.d_outgoingMinThreads &&
-           d_outgoingMaxThreads   == other.d_outgoingMaxThreads &&
-           d_outgoingMaxPackets   == other.d_outgoingMaxPackets &&
-           d_incomingEnabled      == other.d_incomingEnabled    &&
+           d_outgoingMinThreads == other.d_outgoingMinThreads &&
+           d_outgoingMaxThreads == other.d_outgoingMaxThreads &&
+           d_outgoingMaxPackets == other.d_outgoingMaxPackets &&
+           d_incomingEnabled == other.d_incomingEnabled &&
            d_incomingPacketFilter == other.d_incomingPacketFilter &&
-           d_incomingMinThreads   == other.d_incomingMinThreads &&
-           d_incomingMaxThreads   == other.d_incomingMaxThreads &&
-           d_incomingMaxPackets   == other.d_incomingMaxPackets &&
+           d_incomingMinThreads == other.d_incomingMinThreads &&
+           d_incomingMaxThreads == other.d_incomingMaxThreads &&
+           d_incomingMaxPackets == other.d_incomingMaxPackets &&
            d_promiscuous == other.d_promiscuous;
 }
 
@@ -375,24 +375,23 @@ bsl::ostream& DeviceConfig::print(bsl::ostream& stream,
     }
 
     if (!d_outgoingPacketFilter.isNull()) {
-        printer.printAttribute(
-            "outgoingPacketFilter",
-            d_outgoingPacketFilter.value());
+        printer.printAttribute("outgoingPacketFilter",
+                               d_outgoingPacketFilter.value());
     }
 
     if (!d_outgoingMinThreads.isNull()) {
-        printer.printAttribute(
-            "outgoingMinThreads", d_outgoingMinThreads.value());
+        printer.printAttribute("outgoingMinThreads",
+                               d_outgoingMinThreads.value());
     }
 
     if (!d_outgoingMaxThreads.isNull()) {
-        printer.printAttribute(
-            "outgoingMaxThreads", d_outgoingMaxThreads.value());
+        printer.printAttribute("outgoingMaxThreads",
+                               d_outgoingMaxThreads.value());
     }
 
     if (!d_outgoingMaxPackets.isNull()) {
-        printer.printAttribute(
-            "outgoingMaxPackets", d_outgoingMaxPackets.value());
+        printer.printAttribute("outgoingMaxPackets",
+                               d_outgoingMaxPackets.value());
     }
 
     if (!d_incomingEnabled.isNull()) {
@@ -400,29 +399,27 @@ bsl::ostream& DeviceConfig::print(bsl::ostream& stream,
     }
 
     if (!d_incomingPacketFilter.isNull()) {
-        printer.printAttribute(
-            "incomingPacketFilter",
-            d_incomingPacketFilter.value());
+        printer.printAttribute("incomingPacketFilter",
+                               d_incomingPacketFilter.value());
     }
 
     if (!d_incomingMinThreads.isNull()) {
-        printer.printAttribute(
-            "incomingMinThreads", d_incomingMinThreads.value());
+        printer.printAttribute("incomingMinThreads",
+                               d_incomingMinThreads.value());
     }
 
     if (!d_incomingMaxThreads.isNull()) {
-        printer.printAttribute(
-            "incomingMaxThreads", d_incomingMaxThreads.value());
+        printer.printAttribute("incomingMaxThreads",
+                               d_incomingMaxThreads.value());
     }
 
     if (!d_incomingMaxPackets.isNull()) {
-        printer.printAttribute(
-            "incomingMaxPackets", d_incomingMaxPackets.value());
+        printer.printAttribute("incomingMaxPackets",
+                               d_incomingMaxPackets.value());
     }
 
     if (!d_promiscuous.isNull()) {
-        printer.printAttribute(
-            "promiscuous", d_promiscuous.value());
+        printer.printAttribute("promiscuous", d_promiscuous.value());
     }
 
     printer.end();
@@ -451,4 +448,3 @@ bool operator<(const DeviceConfig& lhs, const DeviceConfig& rhs)
 
 }  // close package namespace
 }  // close enterprise namespace
-

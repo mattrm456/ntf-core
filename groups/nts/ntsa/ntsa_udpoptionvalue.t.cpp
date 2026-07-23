@@ -73,52 +73,42 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpOptionValueTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

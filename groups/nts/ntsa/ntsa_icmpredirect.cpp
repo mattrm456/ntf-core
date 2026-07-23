@@ -44,7 +44,7 @@ ntsa::Error IcmpRedirect::decode(ntsa::PacketDecoder* decoder)
 
     if (payloadSize > 0) {
         d_payloadSize = bsl::min(payloadSize, sizeof d_payloadData);
-        error = decoder->decodeRaw(d_payloadData, d_payloadSize);
+        error         = decoder->decodeRaw(d_payloadData, d_payloadSize);
         if (error) {
             return error;
         }
@@ -103,9 +103,9 @@ void IcmpRedirect::print(bslim::Printer* printer) const
 }
 
 bsl::ostream& IcmpRedirect::printData(bsl::ostream&            stream,
-                                     const bslstl::StringRef& data,
-                                     int                      level,
-                                     int                      spacesPerLevel)
+                                      const bslstl::StringRef& data,
+                                      int                      level,
+                                      int                      spacesPerLevel)
 {
     NTSCFG_WARNING_UNUSED(level);
     NTSCFG_WARNING_UNUSED(spacesPerLevel);

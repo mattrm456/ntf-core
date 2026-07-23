@@ -65,57 +65,46 @@ class EthernetRouteTableTest
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetRouteTableTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

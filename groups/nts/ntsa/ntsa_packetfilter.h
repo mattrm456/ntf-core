@@ -39,18 +39,18 @@ namespace ntsa {
 /// @ingroup module_ntsa_protocol
 class PacketFilter
 {
-    bsl::vector<ntsa::PacketType::Value>   d_packetType;
-    bsl::vector<ntsa::EthernetAddress>     d_sourceEthernetAddress;
-    bsl::vector<ntsa::Ipv4Address> d_sourceIpv4Address;
-    bsl::vector<ntsa::Ipv6Address> d_sourceIpv6Address;
-    bsl::vector<ntsa::Port>                d_sourceTcpPort;
-    bsl::vector<ntsa::Port>                d_sourceUdpPort;
-    bsl::vector<ntsa::EthernetAddress>     d_destinationEthernetAddress;
-    bsl::vector<ntsa::Ipv4Address> d_destinationIpv4Address;
-    bsl::vector<ntsa::Ipv6Address> d_destinationIpv6Address;
-    bsl::vector<ntsa::Port>                d_destinationTcpPort;
-    bsl::vector<ntsa::Port>                d_destinationUdpPort;
-    bsl::uint32_t                          d_flags;
+    bsl::vector<ntsa::PacketType::Value> d_packetType;
+    bsl::vector<ntsa::EthernetAddress>   d_sourceEthernetAddress;
+    bsl::vector<ntsa::Ipv4Address>       d_sourceIpv4Address;
+    bsl::vector<ntsa::Ipv6Address>       d_sourceIpv6Address;
+    bsl::vector<ntsa::Port>              d_sourceTcpPort;
+    bsl::vector<ntsa::Port>              d_sourceUdpPort;
+    bsl::vector<ntsa::EthernetAddress>   d_destinationEthernetAddress;
+    bsl::vector<ntsa::Ipv4Address>       d_destinationIpv4Address;
+    bsl::vector<ntsa::Ipv6Address>       d_destinationIpv6Address;
+    bsl::vector<ntsa::Port>              d_destinationTcpPort;
+    bsl::vector<ntsa::Port>              d_destinationUdpPort;
+    bsl::uint32_t                        d_flags;
 
   public:
     /// Create new packet filter. Optionally specify a 'basicAllocator' used to
@@ -164,12 +164,10 @@ class PacketFilter
         const;
 
     /// Return the vector of allowed destination IPv4 addresses.
-    const bsl::vector<ntsa::Ipv4Address>& destinationIpv4Address()
-        const;
+    const bsl::vector<ntsa::Ipv4Address>& destinationIpv4Address() const;
 
     /// Return the vector of allowed destination IPv6 addresses.
-    const bsl::vector<ntsa::Ipv6Address>& destinationIpv6Address()
-        const;
+    const bsl::vector<ntsa::Ipv6Address>& destinationIpv6Address() const;
 
     /// Return the vector of allowed destination TCP ports.
     const bsl::vector<ntsa::Port>& destinationTcpPort() const;
@@ -358,9 +356,9 @@ NTSCFG_INLINE
 void PacketFilter::removeSourceIpv4Address(const ntsa::Ipv4Address& value)
 {
     d_sourceIpv4Address.erase(bsl::remove(d_sourceIpv4Address.begin(),
-                                              d_sourceIpv4Address.end(),
-                                              value),
-                                  d_sourceIpv4Address.end());
+                                          d_sourceIpv4Address.end(),
+                                          value),
+                              d_sourceIpv4Address.end());
 }
 
 NTSCFG_INLINE
@@ -373,9 +371,9 @@ NTSCFG_INLINE
 void PacketFilter::removeSourceIpv6Address(const ntsa::Ipv6Address& value)
 {
     d_sourceIpv6Address.erase(bsl::remove(d_sourceIpv6Address.begin(),
-                                              d_sourceIpv6Address.end(),
-                                              value),
-                                  d_sourceIpv6Address.end());
+                                          d_sourceIpv6Address.end(),
+                                          value),
+                              d_sourceIpv6Address.end());
 }
 
 NTSCFG_INLINE
@@ -500,15 +498,13 @@ const bsl::vector<ntsa::EthernetAddress>& PacketFilter::sourceEthernetAddress()
 }
 
 NTSCFG_INLINE
-const bsl::vector<ntsa::Ipv4Address>& PacketFilter::sourceIpv4Address()
-    const
+const bsl::vector<ntsa::Ipv4Address>& PacketFilter::sourceIpv4Address() const
 {
     return d_sourceIpv4Address;
 }
 
 NTSCFG_INLINE
-const bsl::vector<ntsa::Ipv6Address>& PacketFilter::sourceIpv6Address()
-    const
+const bsl::vector<ntsa::Ipv6Address>& PacketFilter::sourceIpv6Address() const
 {
     return d_sourceIpv6Address;
 }
@@ -533,15 +529,15 @@ const bsl::vector<ntsa::EthernetAddress>& PacketFilter::
 }
 
 NTSCFG_INLINE
-const bsl::vector<ntsa::Ipv4Address>& PacketFilter::
-    destinationIpv4Address() const
+const bsl::vector<ntsa::Ipv4Address>& PacketFilter::destinationIpv4Address()
+    const
 {
     return d_destinationIpv4Address;
 }
 
 NTSCFG_INLINE
-const bsl::vector<ntsa::Ipv6Address>& PacketFilter::
-    destinationIpv6Address() const
+const bsl::vector<ntsa::Ipv6Address>& PacketFilter::destinationIpv6Address()
+    const
 {
     return d_destinationIpv6Address;
 }

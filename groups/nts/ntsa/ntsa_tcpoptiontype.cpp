@@ -45,8 +45,8 @@ int TcpOptionType::fromInt(TcpOptionType::Value* result, int number)
     }
 }
 
-int TcpOptionType::fromString(TcpOptionType::Value*  result,
-                                const bslstl::StringRef& string)
+int TcpOptionType::fromString(TcpOptionType::Value*    result,
+                              const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;
@@ -125,8 +125,8 @@ const char* TcpOptionType::toString(TcpOptionType::Value value)
     return 0;
 }
 
-bsl::ostream& TcpOptionType::print(bsl::ostream&          stream,
-                                     TcpOptionType::Value value)
+bsl::ostream& TcpOptionType::print(bsl::ostream&        stream,
+                                   TcpOptionType::Value value)
 {
     return stream << toString(value);
 }

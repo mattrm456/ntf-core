@@ -65,57 +65,46 @@ class PacketFilterTest
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::PacketFilterTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

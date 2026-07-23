@@ -65,8 +65,8 @@ TcpOption::TcpOption(const TcpOption& other, bslma::Allocator* basicAllocator)
         new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
     case ntsa::TcpOptionType::e_UNASSIGNED:
-        new (d_unassigned.buffer()) ntsa::TcpOptionValue(
-            other.d_unassigned.object(), d_allocator_p);
+        new (d_unassigned.buffer())
+            ntsa::TcpOptionValue(other.d_unassigned.object(), d_allocator_p);
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
@@ -118,8 +118,8 @@ TcpOption& TcpOption::operator=(const TcpOption& other)
         new (d_fastOpen.buffer()) bdlb::Guid(other.d_fastOpen.object());
         break;
     case ntsa::TcpOptionType::e_UNASSIGNED:
-        new (d_unassigned.buffer()) ntsa::TcpOptionValue(
-            other.d_unassigned.object(), d_allocator_p);
+        new (d_unassigned.buffer())
+            ntsa::TcpOptionValue(other.d_unassigned.object(), d_allocator_p);
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::TcpOptionType::e_UNDEFINED);
@@ -772,8 +772,8 @@ ntsa::Error TcpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
 
-        error = encoder->encodeRaw(
-            &d_unassigned.object().payload().front(), payloadSize);
+        error = encoder->encodeRaw(&d_unassigned.object().payload().front(),
+                                   payloadSize);
         if (error) {
             return error;
         }

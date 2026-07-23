@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::EthernetTagTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

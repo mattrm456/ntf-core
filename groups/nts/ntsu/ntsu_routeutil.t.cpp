@@ -159,7 +159,8 @@ NTSCFG_TEST_FUNCTION(ntsu::RouteUtilTest::verifyIpv4RouteTable)
 
             if (route.destinationIpv4MaskLength() > 0) {
                 dstAddr.append(1, '/');
-                dstAddr.append(bsl::to_string(route.destinationIpv4MaskLength()));
+                dstAddr.append(
+                    bsl::to_string(route.destinationIpv4MaskLength()));
             }
         }
         else {
@@ -306,7 +307,8 @@ NTSCFG_TEST_FUNCTION(ntsu::RouteUtilTest::verifyIpv6RouteTable)
 
             if (route.destinationIpv6MaskLength() > 0) {
                 dstAddr.append(1, '/');
-                dstAddr.append(bsl::to_string(route.destinationIpv6MaskLength()));
+                dstAddr.append(
+                    bsl::to_string(route.destinationIpv6MaskLength()));
             }
         }
         else {

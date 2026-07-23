@@ -65,8 +65,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionTypeTest::verifyFromInt)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -106,8 +106,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionTypeTest::verifyFromString)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -143,8 +143,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionTypeTest::verifyPrint)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -153,7 +153,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TcpOptionTypeTest::verifyPrint)
             static_cast<ntsa::TcpOptionType::Value>(testData.d_input);
 
         bsl::ostringstream oss;
-        bsl::ostream& result = oss << input;
+        bsl::ostream&      result = oss << input;
         oss.flush();
 
         NTSCFG_TEST_EQ(result.rdbuf(), oss.rdbuf());

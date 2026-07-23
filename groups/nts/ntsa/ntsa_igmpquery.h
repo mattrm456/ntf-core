@@ -114,8 +114,7 @@ class IgmpQuery
     /// 'original' object. Optionally specify a 'basicAllocator' used to supply
     /// memory. If 'basicAllocator' is 0, the currently installed default
     /// allocator is used.
-    IgmpQuery(const IgmpQuery& original,
-              bslma::Allocator* basicAllocator = 0);
+    IgmpQuery(const IgmpQuery& original, bslma::Allocator* basicAllocator = 0);
 
     /// Destroy this object.
     ~IgmpQuery();
@@ -249,10 +248,10 @@ IgmpQuery::IgmpQuery(bslma::Allocator* basicAllocator)
 
 NTSCFG_INLINE
 IgmpQuery::IgmpQuery(bslmf::MovableRef<IgmpQuery> original) NTSCFG_NOEXCEPT
-: d_groupAddress(NTSCFG_MOVE_FROM(original, d_groupAddress))
-, d_flagsAndQrv(NTSCFG_MOVE_FROM(original, d_flagsAndQrv))
-, d_qqic(NTSCFG_MOVE_FROM(original, d_qqic))
-, d_sourceAddresses(NTSCFG_MOVE_FROM(original, d_sourceAddresses))
+: d_groupAddress(NTSCFG_MOVE_FROM(original, d_groupAddress)),
+  d_flagsAndQrv(NTSCFG_MOVE_FROM(original, d_flagsAndQrv)),
+  d_qqic(NTSCFG_MOVE_FROM(original, d_qqic)),
+  d_sourceAddresses(NTSCFG_MOVE_FROM(original, d_sourceAddresses))
 {
 }
 
@@ -326,8 +325,8 @@ NTSCFG_INLINE
 void IgmpQuery::setQrv(bsl::uint8_t value)
 {
     BSLS_ASSERT(value <= 7);
-    d_flagsAndQrv = static_cast<bsl::uint8_t>(
-        (d_flagsAndQrv & 0xF8) | (value & 0x07));
+    d_flagsAndQrv =
+        static_cast<bsl::uint8_t>((d_flagsAndQrv & 0xF8) | (value & 0x07));
 }
 
 NTSCFG_INLINE
@@ -337,8 +336,7 @@ void IgmpQuery::setQqic(bsl::uint8_t value)
 }
 
 NTSCFG_INLINE
-void IgmpQuery::setSourceAddresses(
-    const bsl::vector<ntsa::Ipv4Address>& value)
+void IgmpQuery::setSourceAddresses(const bsl::vector<ntsa::Ipv4Address>& value)
 {
     d_sourceAddresses = value;
 }
@@ -414,7 +412,7 @@ bool operator<(const IgmpQuery& lhs, const IgmpQuery& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM& algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
                               const IgmpQuery& value)
 {
     value.hash(algorithm);

@@ -108,8 +108,8 @@ ntsa::Error Ipv4Packet::decode(ntsa::PacketDecoderContext*       context,
 
         if (checksumValue != 0xFFFF) {
             BSLS_LOG_WARN("Invalid checksum: expected %zu but found %zu",
-                        static_cast<bsl::size_t>(d_header.checksum()),
-                        static_cast<bsl::size_t>(checksumValue));
+                          static_cast<bsl::size_t>(d_header.checksum()),
+                          static_cast<bsl::size_t>(checksumValue));
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 

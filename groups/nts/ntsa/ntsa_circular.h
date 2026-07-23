@@ -767,9 +767,8 @@ CircularUint16::CircularUint16(bsl::uint16_t value)
 }
 
 NTSCFG_INLINE
-CircularUint16::CircularUint16(
-    bslmf::MovableRef<CircularUint16> original) NTSCFG_NOEXCEPT
-: d_value(NTSCFG_MOVE_FROM(original, d_value))
+CircularUint16::CircularUint16(bslmf::MovableRef<CircularUint16> original)
+    NTSCFG_NOEXCEPT : d_value(NTSCFG_MOVE_FROM(original, d_value))
 {
     NTSCFG_MOVE_RESET(original);
 }
@@ -1024,9 +1023,8 @@ CircularUint32::CircularUint32(bsl::uint32_t value)
 }
 
 NTSCFG_INLINE
-CircularUint32::CircularUint32(
-    bslmf::MovableRef<CircularUint32> original) NTSCFG_NOEXCEPT
-: d_value(NTSCFG_MOVE_FROM(original, d_value))
+CircularUint32::CircularUint32(bslmf::MovableRef<CircularUint32> original)
+    NTSCFG_NOEXCEPT : d_value(NTSCFG_MOVE_FROM(original, d_value))
 {
     NTSCFG_MOVE_RESET(original);
 }
@@ -1281,9 +1279,8 @@ CircularUint64::CircularUint64(bsl::uint64_t value)
 }
 
 NTSCFG_INLINE
-CircularUint64::CircularUint64(
-    bslmf::MovableRef<CircularUint64> original) NTSCFG_NOEXCEPT
-: d_value(NTSCFG_MOVE_FROM(original, d_value))
+CircularUint64::CircularUint64(bslmf::MovableRef<CircularUint64> original)
+    NTSCFG_NOEXCEPT : d_value(NTSCFG_MOVE_FROM(original, d_value))
 {
     NTSCFG_MOVE_RESET(original);
 }

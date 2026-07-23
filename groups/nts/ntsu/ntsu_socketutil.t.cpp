@@ -289,9 +289,9 @@ class SocketUtilTest
         bslma::Allocator*      allocator);
 
     static void testStreamSocketZeroCopy(ntsa::Transport::Value transport,
-                                            ntsa::Handle           server,
-                                            ntsa::Handle           client,
-                                            bslma::Allocator*      allocator);
+                                         ntsa::Handle           server,
+                                         ntsa::Handle           client,
+                                         bslma::Allocator*      allocator);
 
     static void testDatagramSocketTxTimestamps(
         ntsa::Transport::Value transport,
@@ -469,7 +469,7 @@ class SocketUtilTest
 /// Describe the parameters of the test.
 class SocketUtilTest::Parameters
 {
-public:
+  public:
     /// Create new test parameters having a default value.
     Parameters();
 
@@ -497,7 +497,7 @@ public:
     /// performed.
     bool zeroCopy() const;
 
-private:
+  private:
     bool d_timestampIncomingData;
     bool d_timestampOutgoingData;
     bool d_zeroCopy;
@@ -694,9 +694,9 @@ void SocketUtilTest::executeStreamSocketTest(
 }
 
 void SocketUtilTest::executeStreamSocketTestParameters(
-        const StreamSocketTestCallback& test,
-        const Parameters&               parameters,
-        bslma::Allocator*               basicAllocator)
+    const StreamSocketTestCallback& test,
+    const Parameters&               parameters,
+    bslma::Allocator*               basicAllocator)
 {
     bslma::Allocator* allocator = bslma::Default::allocator(basicAllocator);
 
@@ -722,8 +722,7 @@ void SocketUtilTest::executeStreamSocketTestParameters(
             ntsa::Transport::e_LOCAL_STREAM))
     {
         if (!parameters.timestampIncomingData() &&
-            !parameters.timestampOutgoingData() &&
-            !parameters.zeroCopy())
+            !parameters.timestampOutgoingData() && !parameters.zeroCopy())
         {
             socketTypes.push_back(ntsa::Transport::e_LOCAL_STREAM);
         }
@@ -820,8 +819,8 @@ void SocketUtilTest::executeStreamSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampIncomingData(client,
-                                                                     true);
+            error =
+                ntsu::SocketOptionUtil::setTimestampIncomingData(client, true);
             NTSCFG_TEST_OK(error);
         }
 
@@ -838,8 +837,8 @@ void SocketUtilTest::executeStreamSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client,
-                                                                     true);
+            error =
+                ntsu::SocketOptionUtil::setTimestampOutgoingData(client, true);
             NTSCFG_TEST_OK(error);
         }
 
@@ -874,8 +873,8 @@ void SocketUtilTest::executeStreamSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(server,
-                                                                     true);
+            error =
+                ntsu::SocketOptionUtil::setTimestampOutgoingData(server, true);
             NTSCFG_TEST_OK(error);
         }
 
@@ -896,13 +895,15 @@ void SocketUtilTest::executeStreamSocketTestParameters(
         if (parameters.timestampIncomingData()) {
             bool clientIncomingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampIncomingData(
-                &clientIncomingTimestamps, client);
+                &clientIncomingTimestamps,
+                client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientIncomingTimestamps);
 
             bool serverIncomingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampIncomingData(
-                &serverIncomingTimestamps, server);
+                &serverIncomingTimestamps,
+                server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverIncomingTimestamps);
         }
@@ -910,27 +911,29 @@ void SocketUtilTest::executeStreamSocketTestParameters(
         if (parameters.timestampOutgoingData()) {
             bool clientOutgoingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampOutgoingData(
-                &clientOutgoingTimestamps, client);
+                &clientOutgoingTimestamps,
+                client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientOutgoingTimestamps);
 
             bool serverOutgoingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampOutgoingData(
-                &serverOutgoingTimestamps, server);
+                &serverOutgoingTimestamps,
+                server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverOutgoingTimestamps);
         }
 
         if (parameters.zeroCopy()) {
             bool clientZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy,
-                                                        client);
+            error =
+                ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy, client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientZeroCopy);
 
             bool serverZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy,
-                                                        server);
+            error =
+                ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy, server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverZeroCopy);
         }
@@ -1015,9 +1018,9 @@ void SocketUtilTest::executeDatagramSocketTest(
 }
 
 void SocketUtilTest::executeDatagramSocketTestParameters(
-        const DatagramSocketTestCallback& test,
-        const Parameters&                 parameters,
-        bslma::Allocator*                 basicAllocator)
+    const DatagramSocketTestCallback& test,
+    const Parameters&                 parameters,
+    bslma::Allocator*                 basicAllocator)
 {
     bslma::Allocator* allocator = bslma::Default::allocator(basicAllocator);
 
@@ -1043,8 +1046,7 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
             ntsa::Transport::e_LOCAL_DATAGRAM))
     {
         if (!parameters.timestampIncomingData() &&
-            !parameters.timestampOutgoingData() &&
-            !parameters.zeroCopy())
+            !parameters.timestampOutgoingData() && !parameters.zeroCopy())
         {
             socketTypes.push_back(ntsa::Transport::e_LOCAL_DATAGRAM);
         }
@@ -1073,8 +1075,8 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampIncomingData(server,
-                                                                     true);
+            error =
+                ntsu::SocketOptionUtil::setTimestampIncomingData(server, true);
             NTSCFG_TEST_OK(error);
         }
 
@@ -1083,8 +1085,8 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(server,
-                                                                     true);
+            error =
+                ntsu::SocketOptionUtil::setTimestampOutgoingData(server, true);
             NTSCFG_TEST_OK(error);
         }
 
@@ -1154,8 +1156,8 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampIncomingData(client,
-                                                                     true);
+            error =
+                ntsu::SocketOptionUtil::setTimestampIncomingData(client, true);
             NTSCFG_TEST_OK(error);
         }
 
@@ -1164,8 +1166,8 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
                 continue;
             }
 
-            error = ntsu::SocketOptionUtil::setTimestampOutgoingData(client,
-                                                                     true);
+            error =
+                ntsu::SocketOptionUtil::setTimestampOutgoingData(client, true);
             NTSCFG_TEST_OK(error);
         }
 
@@ -1222,13 +1224,15 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
         if (parameters.timestampIncomingData()) {
             bool clientIncomingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampIncomingData(
-                &clientIncomingTimestamps, client);
+                &clientIncomingTimestamps,
+                client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientIncomingTimestamps);
 
             bool serverIncomingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampIncomingData(
-                &serverIncomingTimestamps, server);
+                &serverIncomingTimestamps,
+                server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverIncomingTimestamps);
         }
@@ -1236,27 +1240,29 @@ void SocketUtilTest::executeDatagramSocketTestParameters(
         if (parameters.timestampOutgoingData()) {
             bool clientOutgoingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampOutgoingData(
-                &clientOutgoingTimestamps, client);
+                &clientOutgoingTimestamps,
+                client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientOutgoingTimestamps);
 
             bool serverOutgoingTimestamps;
             error = ntsu::SocketOptionUtil::getTimestampOutgoingData(
-                &serverOutgoingTimestamps, server);
+                &serverOutgoingTimestamps,
+                server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverOutgoingTimestamps);
         }
 
         if (parameters.zeroCopy()) {
             bool clientZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy,
-                                                        client);
+            error =
+                ntsu::SocketOptionUtil::getZeroCopy(&clientZeroCopy, client);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(clientZeroCopy);
 
             bool serverZeroCopy;
-            error = ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy,
-                                                        server);
+            error =
+                ntsu::SocketOptionUtil::getZeroCopy(&serverZeroCopy, server);
             NTSCFG_TEST_OK(error);
             NTSCFG_TEST_TRUE(serverZeroCopy);
         }
@@ -3107,12 +3113,12 @@ void SocketUtilTest::testDatagramSocketTransmissionMultipleMessages(
 }
 
 void SocketUtilTest::testDatagramSocketZeroCopy(
-        ntsa::Transport::Value transport,
-        ntsa::Handle           server,
-        const ntsa::Endpoint&  serverEndpoint,
-        ntsa::Handle           client,
-        const ntsa::Endpoint&  clientEndpoint,
-        bslma::Allocator*      allocator)
+    ntsa::Transport::Value transport,
+    ntsa::Handle           server,
+    const ntsa::Endpoint&  serverEndpoint,
+    ntsa::Handle           client,
+    const ntsa::Endpoint&  clientEndpoint,
+    bslma::Allocator*      allocator)
 {
     NTSCFG_TEST_LOG_DEBUG << "Testing " << transport << NTSCFG_TEST_LOG_END;
 
@@ -3124,14 +3130,13 @@ void SocketUtilTest::testDatagramSocketZeroCopy(
     const int msgSize           = 1024;
     const int numMessagesToSend = 10;
 
-    ntsa::Error  error;
+    ntsa::Error error;
 
     bsl::vector<char> message(msgSize, allocator);
     for (int i = 0; i < msgSize; ++i) {
         message[i] = bsl::rand() % 100;
     }
-    const ntsa::Data data(
-        ntsa::ConstBuffer(message.data(), message.size()));
+    const ntsa::Data data(ntsa::ConstBuffer(message.data(), message.size()));
 
     bsl::list<ntsa::ZeroCopy>         feedback(allocator);
     bsl::unordered_set<bsl::uint32_t> sendIDs(allocator);
@@ -3155,10 +3160,9 @@ void SocketUtilTest::testDatagramSocketZeroCopy(
         NTSCFG_TEST_ASSERT(context.bytesSendable() == msgSize);
         NTSCFG_TEST_ASSERT(context.bytesSent() == msgSize);
 
-        SocketUtilTest::extractZeroCopyNotifications(
-            &feedback,
-            client,
-            allocator);
+        SocketUtilTest::extractZeroCopyNotifications(&feedback,
+                                                     client,
+                                                     allocator);
     }
 
     // receive data
@@ -3182,10 +3186,9 @@ void SocketUtilTest::testDatagramSocketZeroCopy(
     // retrieve data from the socket error queue until all send system
     // calls are acknowledged by the OS
     while (!sendIDs.empty()) {
-        SocketUtilTest::extractZeroCopyNotifications(
-            &feedback,
-            client,
-            allocator);
+        SocketUtilTest::extractZeroCopyNotifications(&feedback,
+                                                     client,
+                                                     allocator);
 
         while (!feedback.empty()) {
             const ntsa::ZeroCopy& zc = feedback.front();
@@ -3193,9 +3196,7 @@ void SocketUtilTest::testDatagramSocketZeroCopy(
                 NTSCFG_TEST_EQ(sendIDs.erase(zc.from()), 1);
             }
             else {
-                for (bsl::uint32_t i = zc.from(); i != (zc.thru() + 1);
-                        ++i)
-                {
+                for (bsl::uint32_t i = zc.from(); i != (zc.thru() + 1); ++i) {
                     NTSCFG_TEST_EQ(sendIDs.erase(i), 1);
                 }
             }
@@ -3204,11 +3205,10 @@ void SocketUtilTest::testDatagramSocketZeroCopy(
     }
 }
 
-void SocketUtilTest::testStreamSocketZeroCopy(
-    ntsa::Transport::Value transport,
-    ntsa::Handle           server,
-    ntsa::Handle           client,
-    bslma::Allocator*      allocator)
+void SocketUtilTest::testStreamSocketZeroCopy(ntsa::Transport::Value transport,
+                                              ntsa::Handle           server,
+                                              ntsa::Handle           client,
+                                              bslma::Allocator*      allocator)
 {
     NTSCFG_TEST_LOG_DEBUG << "Testing " << transport << NTSCFG_TEST_LOG_END;
 
@@ -8669,7 +8669,8 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyDatagramSocketZeroCopy)
     parameters.setZeroCopy(true);
 
     SocketUtilTest::executeDatagramSocketTestParameters(
-        &SocketUtilTest::testDatagramSocketZeroCopy, parameters);
+        &SocketUtilTest::testDatagramSocketZeroCopy,
+        parameters);
 
 #endif
 }
@@ -8690,7 +8691,8 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyStreamSocketZeroCopy)
     parameters.setZeroCopy(true);
 
     SocketUtilTest::executeStreamSocketTestParameters(
-        &SocketUtilTest::testStreamSocketZeroCopy, parameters);
+        &SocketUtilTest::testStreamSocketZeroCopy,
+        parameters);
 
 #endif
 }
@@ -8705,7 +8707,8 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyDatagramSocketTimestamping)
     parameters.setTimestampOutgoingData(true);
 
     SocketUtilTest::executeDatagramSocketTestParameters(
-        &SocketUtilTest::testDatagramSocketTxTimestamps, parameters);
+        &SocketUtilTest::testDatagramSocketTxTimestamps,
+        parameters);
 
 #endif
 }
@@ -8720,7 +8723,8 @@ NTSCFG_TEST_FUNCTION(ntsu::SocketUtilTest::verifyStreamSocketTimestamping)
     parameters.setTimestampOutgoingData(true);
 
     SocketUtilTest::executeStreamSocketTestParameters(
-        &SocketUtilTest::testStreamSocketTxTimestamps, parameters);
+        &SocketUtilTest::testStreamSocketTxTimestamps,
+        parameters);
 
 #endif
 }
@@ -8759,7 +8763,8 @@ NTSCFG_TEST_FUNCTION(
     parameters.setZeroCopy(true);
 
     SocketUtilTest::executeStreamSocketTestParameters(
-        &SocketUtilTest::testStreamSocketTxTimestampsAndZeroCopy, parameters);
+        &SocketUtilTest::testStreamSocketTxTimestampsAndZeroCopy,
+        parameters);
 
 #endif
 }

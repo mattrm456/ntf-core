@@ -26,7 +26,7 @@ namespace BloombergLP {
 namespace ntsa {
 
 ntsa::Error Ipv4RouteLedger::decode(ntsa::PacketDecoder* decoder,
-                                    bsl::size_t size)
+                                    bsl::size_t          size)
 {
     ntsa::Error error;
 
@@ -37,19 +37,19 @@ ntsa::Error Ipv4RouteLedger::decode(ntsa::PacketDecoder* decoder,
     }
 
     bsl::uint8_t pointer = 0;
-    error = decoder->decodeUint8(&pointer);
+    error                = decoder->decodeUint8(&pointer);
     if (error) {
         return error;
     }
 
     bsl::uint8_t overflowAndFlags = 0;
-    error = decoder->decodeUint8(&overflowAndFlags);
+    error                         = decoder->decodeUint8(&overflowAndFlags);
     if (error) {
         return error;
     }
 
     const bsl::uint8_t overflow = overflowAndFlags & 0x0F;
-    const bsl::uint8_t flags = overflowAndFlags >> 4;
+    const bsl::uint8_t flags    = overflowAndFlags >> 4;
 
     const bsl::size_t entryVectorBytes = size - 2;
 
@@ -158,9 +158,9 @@ ntsa::Error Ipv4RouteLedger::encode(ntsa::PacketEncoder* encoder) const
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        bsl::uint8_t overflowAndFlags = static_cast<bsl::uint8_t>(d_flags);
-        overflowAndFlags <<= 4;
-        overflowAndFlags |= d_overflow;
+        bsl::uint8_t overflowAndFlags   = static_cast<bsl::uint8_t>(d_flags);
+        overflowAndFlags              <<= 4;
+        overflowAndFlags               |= d_overflow;
 
         error = encoder->encodeUint8(overflowAndFlags);
         if (error) {
@@ -197,9 +197,9 @@ ntsa::Error Ipv4RouteLedger::encode(ntsa::PacketEncoder* encoder) const
             return ntsa::Error(ntsa::Error::e_INVALID);
         }
 
-        bsl::uint8_t overflowAndFlags = static_cast<bsl::uint8_t>(d_flags);
-        overflowAndFlags <<= 4;
-        overflowAndFlags |= d_overflow;
+        bsl::uint8_t overflowAndFlags   = static_cast<bsl::uint8_t>(d_flags);
+        overflowAndFlags              <<= 4;
+        overflowAndFlags               |= d_overflow;
 
         error = encoder->encodeUint8(overflowAndFlags);
         if (error) {
@@ -244,8 +244,8 @@ bsl::size_t Ipv4RouteLedger::payloadSize() const
     else if (d_flags == k_TIMESTAMP_AND_ADDRESS ||
              d_flags == k_TIMESTAMP_AND_ADDRESS_PRESPECIFIED)
     {
-        result += d_vector.size() * (
-            sizeof(bsl::uint32_t) + sizeof(ntsa::Ipv4Address));
+        result += d_vector.size() *
+                  (sizeof(bsl::uint32_t) + sizeof(ntsa::Ipv4Address));
     }
 
     return result;
@@ -287,8 +287,8 @@ bool Ipv4RouteLedger::less(const Ipv4RouteLedger& other) const
 }
 
 bsl::ostream& Ipv4RouteLedger::print(bsl::ostream& stream,
-                                int           level,
-                                int           spacesPerLevel) const
+                                     int           level,
+                                     int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

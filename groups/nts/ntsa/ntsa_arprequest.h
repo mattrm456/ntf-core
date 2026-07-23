@@ -77,8 +77,7 @@ class ArpRequest
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    ArpRequest& operator=(bslmf::MovableRef<ArpRequest> other)
-        NTSCFG_NOEXCEPT;
+    ArpRequest& operator=(bslmf::MovableRef<ArpRequest> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -206,8 +205,7 @@ ArpRequest::ArpRequest()
 }
 
 NTSCFG_INLINE
-ArpRequest::ArpRequest(bslmf::MovableRef<ArpRequest> original)
-    NTSCFG_NOEXCEPT
+ArpRequest::ArpRequest(bslmf::MovableRef<ArpRequest> original) NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,

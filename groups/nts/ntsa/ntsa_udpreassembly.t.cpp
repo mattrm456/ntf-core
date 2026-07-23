@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpReassemblyTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

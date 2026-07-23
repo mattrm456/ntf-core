@@ -102,7 +102,8 @@ class IcmpTimeout
     /// Enumerate the constants used by the implementation.
     enum Constant {
         /// The fixed length of the IcmpTimeout body in octets.
-        k_LENGTH = sizeof(bdlb::BigEndianUint32) + sizeof(ntsa::Ipv4Header) + 8 + sizeof(bsl::size_t)
+        k_LENGTH = sizeof(bdlb::BigEndianUint32) + sizeof(ntsa::Ipv4Header) +
+                   8 + sizeof(bsl::size_t)
     };
 
     /// Create a new ICMP timeout having a default value.
@@ -123,8 +124,8 @@ class IcmpTimeout
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpTimeout& operator=(
-        bslmf::MovableRef<IcmpTimeout> other) NTSCFG_NOEXCEPT;
+    IcmpTimeout& operator=(bslmf::MovableRef<IcmpTimeout> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -242,8 +243,8 @@ IcmpTimeout::IcmpTimeout()
 }
 
 NTSCFG_INLINE
-IcmpTimeout::IcmpTimeout(
-    bslmf::MovableRef<IcmpTimeout> original) NTSCFG_NOEXCEPT
+IcmpTimeout::IcmpTimeout(bslmf::MovableRef<IcmpTimeout> original)
+    NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -265,8 +266,8 @@ IcmpTimeout::~IcmpTimeout()
 }
 
 NTSCFG_INLINE
-IcmpTimeout& IcmpTimeout::operator=(
-    bslmf::MovableRef<IcmpTimeout> other) NTSCFG_NOEXCEPT
+IcmpTimeout& IcmpTimeout::operator=(bslmf::MovableRef<IcmpTimeout> other)
+    NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,

@@ -37,7 +37,7 @@ ntsa::Error Ipv4RouteSequence::decode(ntsa::PacketDecoder* decoder,
     }
 
     bsl::uint8_t pointer = 0;
-    error = decoder->decodeUint8(&pointer);
+    error                = decoder->decodeUint8(&pointer);
     if (error) {
         return error;
     }
@@ -131,8 +131,8 @@ bool Ipv4RouteSequence::less(const Ipv4RouteSequence& other) const
 }
 
 bsl::ostream& Ipv4RouteSequence::print(bsl::ostream& stream,
-                                int           level,
-                                int           spacesPerLevel) const
+                                       int           level,
+                                       int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();

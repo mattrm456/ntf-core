@@ -72,8 +72,8 @@ UdpOption::UdpOption(const UdpOption& other, bslma::Allocator* basicAllocator)
             ntsa::UdpTimePointInterval(other.d_timestamp.object());
         break;
     case ntsa::UdpOptionType::e_UNASSIGNED:
-        new (d_unassigned.buffer()) ntsa::UdpOptionValue(
-            other.d_unassigned.object(), d_allocator_p);
+        new (d_unassigned.buffer())
+            ntsa::UdpOptionValue(other.d_unassigned.object(), d_allocator_p);
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
@@ -136,8 +136,8 @@ UdpOption& UdpOption::operator=(const UdpOption& other)
             ntsa::UdpTimePointInterval(other.d_timestamp.object());
         break;
     case ntsa::UdpOptionType::e_UNASSIGNED:
-        new (d_unassigned.buffer()) ntsa::UdpOptionValue(
-            other.d_unassigned.object(), d_allocator_p);
+        new (d_unassigned.buffer())
+            ntsa::UdpOptionValue(other.d_unassigned.object(), d_allocator_p);
         break;
     default:
         BSLS_ASSERT(d_type == ntsa::UdpOptionType::e_UNDEFINED);
@@ -499,8 +499,7 @@ ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            ntsa::UdpFragmentation& fragmentation =
-                this->makeFragmentation();
+            ntsa::UdpFragmentation& fragmentation = this->makeFragmentation();
 
             bsl::uint16_t start;
             error = decoder->decodeUint16(&start);
@@ -551,7 +550,8 @@ ntsa::Error UdpOption::decode(ntsa::PacketDecoder* decoder)
 
             this->makeMaxDatagramSize(maxDatagramSize);
         }
-        else if (type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE) {
+        else if (type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE)
+        {
             if (payloadSize != 3) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
@@ -731,9 +731,8 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
         }
 
         if (d_fragmentation.object().rdos().has_value()) {
-            error = encoder->encodeUint16(
-                static_cast<bsl::uint16_t>(
-                    d_fragmentation.object().rdos().value()));
+            error = encoder->encodeUint16(static_cast<bsl::uint16_t>(
+                d_fragmentation.object().rdos().value()));
             if (error) {
                 return error;
             }
@@ -762,7 +761,8 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
         }
     }
     else if (d_type == ntsa::UdpOptionType::e_MAX_REASSEMBLED_DATAGRAM_SIZE) {
-        const bsl::size_t payloadSize = sizeof(bdlb::BigEndianUint16) + sizeof(bsl::uint8_t);
+        const bsl::size_t payloadSize =
+            sizeof(bdlb::BigEndianUint16) + sizeof(bsl::uint8_t);
 
         const bsl::size_t optionSize =
             sizeof(bsl::uint8_t) + sizeof(bsl::uint8_t) + payloadSize;
@@ -936,8 +936,8 @@ ntsa::Error UdpOption::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
 
-        error = encoder->encodeRaw(
-            &d_unassigned.object().payload().front(), payloadSize);
+        error = encoder->encodeRaw(&d_unassigned.object().payload().front(),
+                                   payloadSize);
         if (error) {
             return error;
         }

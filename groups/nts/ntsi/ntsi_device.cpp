@@ -39,4 +39,3 @@ Network::~Network()
 
 }  // close package namespace
 }  // close enterprise namespace
-

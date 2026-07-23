@@ -96,8 +96,7 @@ class IgmpJoin
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IgmpJoin& operator=(
-        bslmf::MovableRef<IgmpJoin> other) NTSCFG_NOEXCEPT;
+    IgmpJoin& operator=(bslmf::MovableRef<IgmpJoin> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -203,8 +202,7 @@ IgmpJoin::IgmpJoin()
 }
 
 NTSCFG_INLINE
-IgmpJoin::IgmpJoin(
-    bslmf::MovableRef<IgmpJoin> original) NTSCFG_NOEXCEPT
+IgmpJoin::IgmpJoin(bslmf::MovableRef<IgmpJoin> original) NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -226,8 +224,8 @@ IgmpJoin::~IgmpJoin()
 }
 
 NTSCFG_INLINE
-IgmpJoin& IgmpJoin::operator=(
-    bslmf::MovableRef<IgmpJoin> other) NTSCFG_NOEXCEPT
+IgmpJoin& IgmpJoin::operator=(bslmf::MovableRef<IgmpJoin> other)
+    NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -309,8 +307,7 @@ bool operator<(const IgmpJoin& lhs, const IgmpJoin& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&  algorithm,
-                              const IgmpJoin& value)
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM& algorithm, const IgmpJoin& value)
 {
     value.hash(algorithm);
 }

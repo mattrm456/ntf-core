@@ -48,9 +48,9 @@ class DeviceTest
     // otherwise.
     static bool discoverDefault(ntsa::Adapter* result);
 
-    // Load into the specified 'result' a new packet with the specified 'id' 
+    // Load into the specified 'result' a new packet with the specified 'id'
     // intended to be transmitted by the specified 'device'.
-    static void createPacket(bsl::shared_ptr<ntsa::Packet>*       result, 
+    static void createPacket(bsl::shared_ptr<ntsa::Packet>*       result,
                              const bsl::shared_ptr<ntsi::Device>& device,
                              bsl::uint16_t                        id);
 
@@ -114,7 +114,7 @@ bool DeviceTest::discoverDefault(ntsa::Adapter* result)
     return false;
 }
 
-void DeviceTest::createPacket(bsl::shared_ptr<ntsa::Packet>*       result, 
+void DeviceTest::createPacket(bsl::shared_ptr<ntsa::Packet>*       result,
                               const bsl::shared_ptr<ntsi::Device>& device,
                               bsl::uint16_t                        id)
 {
@@ -148,7 +148,7 @@ void DeviceTest::createPacket(bsl::shared_ptr<ntsa::Packet>*       result,
 
     ntsa::UdpPacket& udp = ipv4.payload().makeUdp();
 
-    const ntsa::Port sourceUdpPort = 3001;
+    const ntsa::Port sourceUdpPort      = 3001;
     const ntsa::Port destinationUdpPort = 4001;
 
     udp.header().setSourcePort(sourceUdpPort);
@@ -182,9 +182,9 @@ void DeviceTest::reader(const bsl::shared_ptr<ntsi::Device>& device,
                 break;
             }
             else {
-                BALL_LOG_ERROR << "Failed to dequeue packet from device: "
-                               << error
-                               << BALL_LOG_END;
+                BALL_LOG_ERROR
+                    << "Failed to dequeue packet from device: " << error
+                    << BALL_LOG_END;
                 break;
             }
         }
@@ -261,8 +261,7 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
     deviceConfig.setIncomingPacketFilter(incomingPacketFilter);
 
     bsl::shared_ptr<ntsi::Device> device =
-        ntso::DeviceUtil::createDevice(
-            deviceConfig, NTSCFG_TEST_ALLOCATOR);
+        ntso::DeviceUtil::createDevice(deviceConfig, NTSCFG_TEST_ALLOCATOR);
 
     error = device->open();
     NTSCFG_TEST_OK(error);
@@ -277,9 +276,8 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
         incomingThreadAttributes.setThreadName("test-incoming");
 
         rc = incomingThreadGroup.addThread(
-            bdlf::BindUtil::bind(
-                &DeviceTest::reader, device, duration),
-                incomingThreadAttributes);
+            bdlf::BindUtil::bind(&DeviceTest::reader, device, duration),
+            incomingThreadAttributes);
         NTSCFG_TEST_EQ(rc, 0);
     }
 
@@ -288,30 +286,33 @@ void DeviceTest::verifyAdapter(const ntsa::Adapter& adapter)
         outgoingThreadAttributes.setThreadName("test-outgoing");
 
         rc = outgoingThreadGroup.addThread(
-            bdlf::BindUtil::bind(
-                &DeviceTest::writer, device, duration),
-                outgoingThreadAttributes);
+            bdlf::BindUtil::bind(&DeviceTest::writer, device, duration),
+            outgoingThreadAttributes);
         NTSCFG_TEST_EQ(rc, 0);
     }
 
     bslmt::ThreadUtil::sleep(duration);
 
-    BALL_LOG_WARN << "Join application outgoing thread group starting" << BALL_LOG_END;
+    BALL_LOG_WARN << "Join application outgoing thread group starting"
+                  << BALL_LOG_END;
 
     outgoingThreadGroup.joinAll();
 
-    BALL_LOG_WARN << "Join application outgoing thread group complete" << BALL_LOG_END;
+    BALL_LOG_WARN << "Join application outgoing thread group complete"
+                  << BALL_LOG_END;
 
     BALL_LOG_WARN << "Closing device" << BALL_LOG_END;
 
     error = device->close();
     NTSCFG_TEST_OK(error);
 
-    BALL_LOG_WARN << "Join application incoming thread group starting" << BALL_LOG_END;
+    BALL_LOG_WARN << "Join application incoming thread group starting"
+                  << BALL_LOG_END;
 
     incomingThreadGroup.joinAll();
 
-    BALL_LOG_WARN << "Join application incoming thread group complete" << BALL_LOG_END;
+    BALL_LOG_WARN << "Join application incoming thread group complete"
+                  << BALL_LOG_END;
 }
 
 NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyLoopback)
@@ -348,4 +349,3 @@ NTSCFG_TEST_FUNCTION(ntso::DeviceTest::verifyDefault)
 
 }  // close namespace ntso
 }  // close namespace BloombergLP
-

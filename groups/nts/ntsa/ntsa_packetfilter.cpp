@@ -150,13 +150,11 @@ bsl::ostream& PacketFilter::print(bsl::ostream& stream,
     }
 
     if (d_sourceIpv4Address.size() > 0) {
-        printer.printAttribute("sourceIpv4Address",
-                               d_sourceIpv4Address);
+        printer.printAttribute("sourceIpv4Address", d_sourceIpv4Address);
     }
 
     if (d_sourceIpv6Address.size() > 0) {
-        printer.printAttribute("sourceIpv6Address",
-                               d_sourceIpv6Address);
+        printer.printAttribute("sourceIpv6Address", d_sourceIpv6Address);
     }
 
     if (d_sourceTcpPort.size() > 0) {

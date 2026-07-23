@@ -109,26 +109,22 @@ bsl::ostream& UdpOptionValue::print(bsl::ostream& stream,
     return stream;
 }
 
-bsl::ostream& operator<<(bsl::ostream&         stream,
-                         const UdpOptionValue& object)
+bsl::ostream& operator<<(bsl::ostream& stream, const UdpOptionValue& object)
 {
     return object.print(stream, 0, -1);
 }
 
-bool operator==(const UdpOptionValue& lhs,
-                const UdpOptionValue& rhs)
+bool operator==(const UdpOptionValue& lhs, const UdpOptionValue& rhs)
 {
     return lhs.equals(rhs);
 }
 
-bool operator!=(const UdpOptionValue& lhs,
-                const UdpOptionValue& rhs)
+bool operator!=(const UdpOptionValue& lhs, const UdpOptionValue& rhs)
 {
     return !operator==(lhs, rhs);
 }
 
-bool operator<(const UdpOptionValue& lhs,
-               const UdpOptionValue& rhs)
+bool operator<(const UdpOptionValue& lhs, const UdpOptionValue& rhs)
 {
     return lhs.less(rhs);
 }

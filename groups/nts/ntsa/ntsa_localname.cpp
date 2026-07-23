@@ -31,8 +31,8 @@ BSLS_IDENT_RCSID(ntsa_localname_cpp, "$Id$ $CSID$")
 
 #if defined(BSLS_PLATFORM_OS_UNIX)
 #include <errno.h>
-#include <unistd.h>
 #include <sys/un.h>
+#include <unistd.h>
 #endif
 
 #if defined(BSLS_PLATFORM_OS_WINDOWS)
@@ -98,7 +98,9 @@ LocalName& LocalName::operator=(bslmf::MovableRef<LocalName> other)
     NTSCFG_NOEXCEPT
 {
     if (this != &NTSCFG_MOVE_ACCESS(other)) {
-        NTSCFG_MEMORY_COPY(this, &NTSCFG_MOVE_ACCESS(other), sizeof(LocalName));
+        NTSCFG_MEMORY_COPY(this,
+                           &NTSCFG_MOVE_ACCESS(other),
+                           sizeof(LocalName));
         NTSCFG_MOVE_RESET(other);
     }
 
@@ -160,7 +162,7 @@ ntsa::Error LocalName::setValue(const bslstl::StringRef& value)
             path.c_str(),
             (int)(size),
             (int)(ntsa::LocalName::k_MAX_PATH_LENGTH -
-            static_cast<unsigned>(d_abstract)));
+                  static_cast<unsigned>(d_abstract)));
         return ntsa::Error(ntsa::Error::e_LIMIT);
     }
 
@@ -318,7 +320,7 @@ ntsa::Error LocalName::generateUnique(ntsa::LocalName*   name,
     }
 
     bsl::string path = directory;
-    rc = bdls::PathUtil::appendIfValid(&path, basename);
+    rc               = bdls::PathUtil::appendIfValid(&path, basename);
     if (rc != 0) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
@@ -357,9 +359,9 @@ bsl::string LocalName::defaultDirectory()
             path.resize(static_cast<bsl::size_t>(rc - 1));
             if (rc > 1) {
                 rc = GetEnvironmentVariable(
-                        "SOCKDIR",
-                        path.data(),
-                        static_cast<DWORD>(path.size() + 1));
+                    "SOCKDIR",
+                    path.data(),
+                    static_cast<DWORD>(path.size() + 1));
                 if (rc <= 0) {
                     path.clear();
                 }

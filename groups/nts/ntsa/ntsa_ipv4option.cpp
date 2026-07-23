@@ -22,7 +22,7 @@ namespace BloombergLP {
 namespace ntsa {
 
 bsl::size_t Ipv4Option::paddingSize(const bsl::uint8_t* cursor,
-                                   bsl::size_t         optionSize)
+                                    bsl::size_t         optionSize)
 {
     const bsl::size_t address = static_cast<bsl::size_t>(
         reinterpret_cast<bsl::uintptr_t>(cursor + optionSize));
@@ -36,7 +36,8 @@ Ipv4Option::Ipv4Option(bslma::Allocator* basicAllocator)
 {
 }
 
-Ipv4Option::Ipv4Option(const Ipv4Option& other, bslma::Allocator* basicAllocator)
+Ipv4Option::Ipv4Option(const Ipv4Option& other,
+                       bslma::Allocator* basicAllocator)
 : d_type(other.d_type)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
@@ -46,15 +47,18 @@ Ipv4Option::Ipv4Option(const Ipv4Option& other, bslma::Allocator* basicAllocator
     }
     else if (d_type == ntsa::Ipv4OptionType::e_RECORD_ROUTE) {
         new (d_recordRoute.buffer())
-            ntsa::Ipv4RouteSequence(other.d_recordRoute.object(), d_allocator_p);
+            ntsa::Ipv4RouteSequence(other.d_recordRoute.object(),
+                                    d_allocator_p);
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_LOOSE) {
         new (d_sourceRouteLoose.buffer())
-            ntsa::Ipv4RouteSequence(other.d_sourceRouteLoose.object(), d_allocator_p);
+            ntsa::Ipv4RouteSequence(other.d_sourceRouteLoose.object(),
+                                    d_allocator_p);
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_TIGHT) {
         new (d_sourceRouteTight.buffer())
-            ntsa::Ipv4RouteSequence(other.d_sourceRouteTight.object(), d_allocator_p);
+            ntsa::Ipv4RouteSequence(other.d_sourceRouteTight.object(),
+                                    d_allocator_p);
     }
     else if (d_type == ntsa::Ipv4OptionType::e_UNASSIGNED) {
         new (d_unassigned.buffer())
@@ -100,15 +104,18 @@ Ipv4Option& Ipv4Option::operator=(const Ipv4Option& other)
     }
     else if (d_type == ntsa::Ipv4OptionType::e_RECORD_ROUTE) {
         new (d_recordRoute.buffer())
-            ntsa::Ipv4RouteSequence(other.d_recordRoute.object(), d_allocator_p);
+            ntsa::Ipv4RouteSequence(other.d_recordRoute.object(),
+                                    d_allocator_p);
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_LOOSE) {
         new (d_sourceRouteLoose.buffer())
-            ntsa::Ipv4RouteSequence(other.d_sourceRouteLoose.object(), d_allocator_p);
+            ntsa::Ipv4RouteSequence(other.d_sourceRouteLoose.object(),
+                                    d_allocator_p);
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_TIGHT) {
         new (d_sourceRouteTight.buffer())
-            ntsa::Ipv4RouteSequence(other.d_sourceRouteTight.object(), d_allocator_p);
+            ntsa::Ipv4RouteSequence(other.d_sourceRouteTight.object(),
+                                    d_allocator_p);
     }
     else if (d_type == ntsa::Ipv4OptionType::e_UNASSIGNED) {
         new (d_unassigned.buffer())
@@ -169,8 +176,7 @@ ntsa::Ipv4RouteLedger& Ipv4Option::makeTimestamp()
     }
     else {
         this->reset();
-        new (d_timestamp.buffer())
-            ntsa::Ipv4RouteLedger(d_allocator_p);
+        new (d_timestamp.buffer()) ntsa::Ipv4RouteLedger(d_allocator_p);
         d_type = ntsa::Ipv4OptionType::e_TIMESTAMP;
     }
 
@@ -185,14 +191,12 @@ ntsa::Ipv4RouteLedger& Ipv4Option::makeTimestamp(
     }
     else {
         this->reset();
-        new (d_timestamp.buffer())
-            ntsa::Ipv4RouteLedger(value, d_allocator_p);
+        new (d_timestamp.buffer()) ntsa::Ipv4RouteLedger(value, d_allocator_p);
         d_type = ntsa::Ipv4OptionType::e_TIMESTAMP;
     }
 
     return d_timestamp.object();
 }
-
 
 ntsa::Ipv4RouteSequence& Ipv4Option::makeRecordRoute()
 {
@@ -201,8 +205,7 @@ ntsa::Ipv4RouteSequence& Ipv4Option::makeRecordRoute()
     }
     else {
         this->reset();
-        new (d_recordRoute.buffer())
-            ntsa::Ipv4RouteSequence(d_allocator_p);
+        new (d_recordRoute.buffer()) ntsa::Ipv4RouteSequence(d_allocator_p);
         d_type = ntsa::Ipv4OptionType::e_RECORD_ROUTE;
     }
 
@@ -309,7 +312,8 @@ ntsa::Ipv4OptionValue& Ipv4Option::makeUnassigned(
     }
     else {
         this->reset();
-        new (d_unassigned.buffer()) ntsa::Ipv4OptionValue(value, d_allocator_p);
+        new (d_unassigned.buffer())
+            ntsa::Ipv4OptionValue(value, d_allocator_p);
         d_type = ntsa::Ipv4OptionType::e_UNASSIGNED;
     }
 
@@ -656,8 +660,8 @@ ntsa::Error Ipv4Option::encode(ntsa::PacketEncoder* encoder, bool final) const
             return error;
         }
 
-        error = encoder->encodeRaw(
-            &d_unassigned.object().payload().front(), payloadSize);
+        error = encoder->encodeRaw(&d_unassigned.object().payload().front(),
+                                   payloadSize);
         if (error) {
             return error;
         }
@@ -786,9 +790,11 @@ bool Ipv4Option::equals(const Ipv4Option& other) const
     case ntsa::Ipv4OptionType::e_RECORD_ROUTE:
         return d_recordRoute.object() == other.d_recordRoute.object();
     case ntsa::Ipv4OptionType::e_SOURCE_ROUTE_LOOSE:
-        return d_sourceRouteLoose.object() == other.d_sourceRouteLoose.object();
+        return d_sourceRouteLoose.object() ==
+               other.d_sourceRouteLoose.object();
     case ntsa::Ipv4OptionType::e_SOURCE_ROUTE_TIGHT:
-        return d_sourceRouteTight.object() == other.d_sourceRouteTight.object();
+        return d_sourceRouteTight.object() ==
+               other.d_sourceRouteTight.object();
     case ntsa::Ipv4OptionType::e_UNASSIGNED:
         return d_unassigned.object() == other.d_unassigned.object();
     default:
@@ -825,8 +831,8 @@ bool Ipv4Option::less(const Ipv4Option& other) const
 }
 
 bsl::ostream& Ipv4Option::print(bsl::ostream& stream,
-                               int           level,
-                               int           spacesPerLevel) const
+                                int           level,
+                                int           spacesPerLevel) const
 {
     bslim::Printer printer(&stream, level, spacesPerLevel);
     printer.start();
@@ -845,10 +851,12 @@ bsl::ostream& Ipv4Option::print(bsl::ostream& stream,
         printer.printAttribute("recordRoute", d_recordRoute.object());
         break;
     case ntsa::Ipv4OptionType::e_SOURCE_ROUTE_LOOSE:
-        printer.printAttribute("sourceRouteLoose", d_sourceRouteLoose.object());
+        printer.printAttribute("sourceRouteLoose",
+                               d_sourceRouteLoose.object());
         break;
     case ntsa::Ipv4OptionType::e_SOURCE_ROUTE_TIGHT:
-        printer.printAttribute("sourceRouteTight", d_sourceRouteTight.object());
+        printer.printAttribute("sourceRouteTight",
+                               d_sourceRouteTight.object());
         break;
     case ntsa::Ipv4OptionType::e_UNASSIGNED:
         printer.printAttribute("unassigned", d_unassigned.object());
@@ -879,10 +887,12 @@ void Ipv4Option::print(bslim::Printer* printer) const
         printer->printAttribute("recordRoute", d_recordRoute.object());
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_LOOSE) {
-        printer->printAttribute("sourceRouteLoose", d_sourceRouteLoose.object());
+        printer->printAttribute("sourceRouteLoose",
+                                d_sourceRouteLoose.object());
     }
     else if (d_type == ntsa::Ipv4OptionType::e_SOURCE_ROUTE_TIGHT) {
-        printer->printAttribute("sourceRouteTight", d_sourceRouteTight.object());
+        printer->printAttribute("sourceRouteTight",
+                                d_sourceRouteTight.object());
     }
     else if (d_type == ntsa::Ipv4OptionType::e_UNASSIGNED) {
         printer->printAttribute("unassigned", d_unassigned.object());

@@ -32,10 +32,10 @@ BSLS_IDENT("$Id: $")
 #include <ntsa_ipv6routetable.h>
 #include <ntscfg_platform.h>
 #include <ntsscm_version.h>
-#include <ball_log.h>
+#include <bsl_memory.h>
 #include <bsl_string.h>
 #include <bsl_vector.h>
-#include <bsl_memory.h>
+#include <ball_log.h>
 
 namespace BloombergLP {
 namespace ntsu {
@@ -47,7 +47,8 @@ namespace ntsu {
 /// This struct is thread safe.
 ///
 /// @ingroup module_ntsu
-class RouteUtil {
+class RouteUtil
+{
     /// Provide a private, platform-specific implementation of utilities for
     /// discovering route tables.
     class Impl;
@@ -55,7 +56,7 @@ class RouteUtil {
     /// The log category.
     BALL_LOG_SET_CLASS_CATEGORY("NTSU.ROUTEUTIL");
 
-public:
+  public:
     /// Load the Ethernet route table into the specified 'result'. Return the
     /// error.
     static ntsa::Error load(ntsa::EthernetRouteTable* result);

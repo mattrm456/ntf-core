@@ -214,14 +214,12 @@ void DeviceUtilTest::reader(
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
                 BALL_LOG_DEBUG << "Network device descriptor " << device
-                               << " read would block"
-                               << BALL_LOG_END;
+                               << " read would block" << BALL_LOG_END;
                 continue;
             }
             else if (error == ntsa::Error(ntsa::Error::e_EOF)) {
                 BALL_LOG_DEBUG << "Network device descriptor " << device
-                               << " read EOF"
-                               << BALL_LOG_END;
+                               << " read EOF" << BALL_LOG_END;
                 break;
             }
             else {
@@ -277,8 +275,7 @@ void DeviceUtilTest::writer(
         if (error) {
             if (error != ntsa::Error(ntsa::Error::e_EOF)) {
                 BALL_LOG_ERROR
-                    << "Failed to dequeue packet from packet queue: "
-                    << error
+                    << "Failed to dequeue packet from packet queue: " << error
                     << BALL_LOG_END;
             }
             break;
@@ -293,14 +290,12 @@ void DeviceUtilTest::writer(
         if (error) {
             if (error == ntsa::Error(ntsa::Error::e_WOULD_BLOCK)) {
                 BALL_LOG_DEBUG << "Network device descriptor " << device
-                               << " write would block"
-                               << BALL_LOG_END;
+                               << " write would block" << BALL_LOG_END;
                 continue;
             }
             else if (error == ntsa::Error(ntsa::Error::e_EOF)) {
                 BALL_LOG_DEBUG << "Network device descriptor " << device
-                               << " write EOF"
-                               << BALL_LOG_END;
+                               << " write EOF" << BALL_LOG_END;
                 break;
             }
             else {

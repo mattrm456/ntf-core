@@ -19,8 +19,8 @@
 BSLS_IDENT_RCSID(ntsa_arpheader_cpp, "$Id$ $CSID$")
 
 #include <ntsa_arptype.h>
-#include <ntsa_ethernetprotocol.h>
 #include <ntsa_ethernetaddress.h>
+#include <ntsa_ethernetprotocol.h>
 #include <ntsa_ipv4address.h>
 #include <bsl_cstdlib.h>
 #include <bsl_cstring.h>
@@ -32,8 +32,7 @@ ntsa::Error ArpHeader::decode(ntsa::PacketDecoder* decoder)
 {
     ntsa::Error error;
 
-    error = decoder->decodeRaw(this,
-                               static_cast<bsl::size_t>(k_LENGTH));
+    error = decoder->decodeRaw(this, static_cast<bsl::size_t>(k_LENGTH));
     if (error) {
         return error;
     }
@@ -99,8 +98,7 @@ ntsa::Error ArpHeader::encode(ntsa::PacketEncoder* encoder) const
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
 
-    error = encoder->encodeRaw(this,
-                               static_cast<bsl::size_t>(k_LENGTH));
+    error = encoder->encodeRaw(this, static_cast<bsl::size_t>(k_LENGTH));
     if (error) {
         return error;
     }
@@ -126,17 +124,15 @@ void ArpHeader::print(bslim::Printer* printer) const
                           &ArpHeader::printAddressType,
                           "hardwareType");
 
-    printer->printAttribute(
-        "hardwareAddressLength",
-        static_cast<int>(this->hardwareAddressLength()));
+    printer->printAttribute("hardwareAddressLength",
+                            static_cast<int>(this->hardwareAddressLength()));
 
     printer->printForeign(this->protocolType(),
                           &ArpHeader::printAddressType,
                           "protocolType");
 
-    printer->printAttribute(
-        "protocolAddressLength",
-        static_cast<int>(this->protocolAddressLength()));
+    printer->printAttribute("protocolAddressLength",
+                            static_cast<int>(this->protocolAddressLength()));
 
     const bsl::uint16_t operation = this->operation();
 
@@ -145,8 +141,8 @@ void ArpHeader::print(bslim::Printer* printer) const
         printer->printAttribute("operation", type);
     }
     else {
-        printer->printAttribute(
-            "operation", static_cast<int>(this->operation()));
+        printer->printAttribute("operation",
+                                static_cast<int>(this->operation()));
     }
 }
 

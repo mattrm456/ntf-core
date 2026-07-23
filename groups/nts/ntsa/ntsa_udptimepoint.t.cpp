@@ -83,52 +83,42 @@ NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyTypeTraits)
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::UdpTimePointTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

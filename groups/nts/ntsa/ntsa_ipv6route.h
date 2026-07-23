@@ -300,8 +300,9 @@ void Ipv6Route::setDestinationIpv6Mask(const ntsa::Ipv6Address& value)
     value.copyTo(&byQword, sizeof byQword);
 
     d_destinationIpv6MaskLength =
-        bdlb::BitUtil::numBitsSet(static_cast<unsigned long long>(byQword[0]))
-      + bdlb::BitUtil::numBitsSet(static_cast<unsigned long long>(byQword[1]));
+        bdlb::BitUtil::numBitsSet(
+            static_cast<unsigned long long>(byQword[0])) +
+        bdlb::BitUtil::numBitsSet(static_cast<unsigned long long>(byQword[1]));
 }
 
 NTSCFG_INLINE

@@ -162,8 +162,8 @@ UdpReassembly::UdpReassembly()
 NTSCFG_INLINE
 UdpReassembly::UdpReassembly(bslmf::MovableRef<UdpReassembly> original)
     NTSCFG_NOEXCEPT
-: d_maxSize(NTSCFG_MOVE_FROM(original, d_maxSize))
-, d_maxFragments(NTSCFG_MOVE_FROM(original, d_maxFragments))
+: d_maxSize(NTSCFG_MOVE_FROM(original, d_maxSize)),
+  d_maxFragments(NTSCFG_MOVE_FROM(original, d_maxFragments))
 {
     NTSCFG_MOVE_RESET(original);
 }
@@ -184,7 +184,7 @@ NTSCFG_INLINE
 UdpReassembly& UdpReassembly::operator=(bslmf::MovableRef<UdpReassembly> other)
     NTSCFG_NOEXCEPT
 {
-    d_maxSize = NTSCFG_MOVE_FROM(other, d_maxSize);
+    d_maxSize      = NTSCFG_MOVE_FROM(other, d_maxSize);
     d_maxFragments = NTSCFG_MOVE_FROM(other, d_maxFragments);
 
     NTSCFG_MOVE_RESET(other);
@@ -195,7 +195,7 @@ UdpReassembly& UdpReassembly::operator=(bslmf::MovableRef<UdpReassembly> other)
 NTSCFG_INLINE
 UdpReassembly& UdpReassembly::operator=(const UdpReassembly& other)
 {
-    d_maxSize = other.d_maxSize;
+    d_maxSize      = other.d_maxSize;
     d_maxFragments = other.d_maxFragments;
 
     return *this;
@@ -204,7 +204,7 @@ UdpReassembly& UdpReassembly::operator=(const UdpReassembly& other)
 NTSCFG_INLINE
 void UdpReassembly::reset()
 {
-    d_maxSize = 0;
+    d_maxSize      = 0;
     d_maxFragments = 0;
 }
 

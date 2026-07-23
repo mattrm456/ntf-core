@@ -25,16 +25,15 @@ BSLS_IDENT_RCSID(ntsa_ipv6routetable_cpp, "$Id$ $CSID$")
 namespace BloombergLP {
 namespace ntsa {
 
-class Ipv6RouteTable::Sorter {
-public:
+class Ipv6RouteTable::Sorter
+{
+  public:
     bool operator()(const bsl::shared_ptr<ntsa::Ipv6Route>& lhs,
                     const bsl::shared_ptr<ntsa::Ipv6Route>& rhs) const
     {
-        const bsl::uint32_t lhsMaskLength =
-            lhs->destinationIpv6MaskLength();
+        const bsl::uint32_t lhsMaskLength = lhs->destinationIpv6MaskLength();
 
-        const bsl::uint32_t rhsMaskLength =
-            rhs->destinationIpv6MaskLength();
+        const bsl::uint32_t rhsMaskLength = rhs->destinationIpv6MaskLength();
 
         if (rhsMaskLength < lhsMaskLength) {
             return true;
@@ -105,8 +104,7 @@ bool Ipv6RouteTable::find(
                     route->interfaceEthernetAddress().value();
                 *destinationEthernetAddress =
                     route->gatewayEthernetAddress().value();
-                *sourceIpv6Address =
-                    route->interfaceIpv6Address().value();
+                *sourceIpv6Address = route->interfaceIpv6Address().value();
                 return true;
             }
         }
@@ -126,7 +124,6 @@ bool Ipv6RouteTable::find(
             effectiveIpv6Address = destinationIpv6Address;
         }
         else {
-
             bsl::uint64_t v[2];
             destinationIpv6Address.copyTo(v, sizeof v);
 

@@ -65,57 +65,46 @@ class ArpPayloadTest
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyTypeTraits)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyDefaultConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyMoveConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyCopyConstructor)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyCopyAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyMoveAssignment)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyReset)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyManipulators)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyEquals)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyLess)
 {
-
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::ArpPayloadTest::verifyHash)
 {
-
 }
 
 }  // close namespace ntsa

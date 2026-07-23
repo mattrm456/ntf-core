@@ -55,9 +55,8 @@ void Ipv6Checksum::add(const void* data, bsl::size_t size)
     bsl::size_t         n = size;
 
     while (n > 1) {
-        d_accumulator +=
-            (static_cast<bsl::uint16_t>(p[0]) << 8) |
-             static_cast<bsl::uint16_t>(p[1]);
+        d_accumulator += (static_cast<bsl::uint16_t>(p[0]) << 8) |
+                         static_cast<bsl::uint16_t>(p[1]);
         p += 2;
         n -= 2;
     }

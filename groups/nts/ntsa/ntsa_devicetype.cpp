@@ -42,8 +42,8 @@ int DeviceType::fromInt(DeviceType::Value* result, int number)
     }
 }
 
-int DeviceType::fromString(DeviceType::Value*          result,
-                         const bslstl::StringRef& string)
+int DeviceType::fromString(DeviceType::Value*       result,
+                           const bslstl::StringRef& string)
 {
     if (bdlb::String::areEqualCaseless(string, "UNDEFINED")) {
         *result = e_UNDEFINED;

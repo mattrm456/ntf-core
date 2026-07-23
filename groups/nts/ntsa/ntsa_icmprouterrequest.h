@@ -62,7 +62,8 @@ class IcmpRouterRequest
     /// Create a new ICMP timeout having the same value as the specified
     /// 'original' object. Assign an unspecified but valid value to the
     /// 'original' original.
-    IcmpRouterRequest(bslmf::MovableRef<IcmpRouterRequest> original) NTSCFG_NOEXCEPT;
+    IcmpRouterRequest(bslmf::MovableRef<IcmpRouterRequest> original)
+        NTSCFG_NOEXCEPT;
 
     /// Create a new ICMP timeout having the same value as the specified
     /// 'original' object.
@@ -74,8 +75,8 @@ class IcmpRouterRequest
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IcmpRouterRequest& operator=(
-        bslmf::MovableRef<IcmpRouterRequest> other) NTSCFG_NOEXCEPT;
+    IcmpRouterRequest& operator=(bslmf::MovableRef<IcmpRouterRequest> other)
+        NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -139,7 +140,8 @@ class IcmpRouterRequest
 /// into the specified 'stream'. Return a reference to the modifiable 'stream'.
 ///
 /// @related ntsa::IcmpRouterRequest
-bsl::ostream& operator<<(bsl::ostream& stream, const IcmpRouterRequest& object);
+bsl::ostream& operator<<(bsl::ostream&            stream,
+                         const IcmpRouterRequest& object);
 
 /// Return true if the specified 'lhs' has the same value as the specified
 /// 'rhs', otherwise return false.
@@ -269,7 +271,7 @@ bool operator<(const IcmpRouterRequest& lhs, const IcmpRouterRequest& rhs)
 }
 
 template <typename HASH_ALGORITHM>
-NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&    algorithm,
+NTSCFG_INLINE void hashAppend(HASH_ALGORITHM&          algorithm,
                               const IcmpRouterRequest& value)
 {
     value.hash(algorithm);

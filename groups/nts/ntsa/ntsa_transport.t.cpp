@@ -57,8 +57,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportSecurityTest::verifyFromInt)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -90,8 +90,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportSecurityTest::verifyFromString)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -121,8 +121,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportSecurityTest::verifyPrint)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -131,7 +131,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportSecurityTest::verifyPrint)
             static_cast<ntsa::TransportSecurity::Value>(testData.d_input);
 
         bsl::ostringstream oss;
-        bsl::ostream& result = oss << input;
+        bsl::ostream&      result = oss << input;
         oss.flush();
 
         NTSCFG_TEST_EQ(result.rdbuf(), oss.rdbuf());
@@ -171,8 +171,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportProtocolTest::verifyFromInt)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -205,8 +205,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportProtocolTest::verifyFromString)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -237,8 +237,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportProtocolTest::verifyPrint)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -247,7 +247,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportProtocolTest::verifyPrint)
             static_cast<ntsa::TransportProtocol::Value>(testData.d_input);
 
         bsl::ostringstream oss;
-        bsl::ostream& result = oss << input;
+        bsl::ostream&      result = oss << input;
         oss.flush();
 
         NTSCFG_TEST_EQ(result.rdbuf(), oss.rdbuf());
@@ -287,8 +287,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportDomainTest::verifyFromInt)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -321,8 +321,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportDomainTest::verifyFromString)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -353,8 +353,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportDomainTest::verifyPrint)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -363,7 +363,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportDomainTest::verifyPrint)
             static_cast<ntsa::TransportDomain::Value>(testData.d_input);
 
         bsl::ostringstream oss;
-        bsl::ostream& result = oss << input;
+        bsl::ostream&      result = oss << input;
         oss.flush();
 
         NTSCFG_TEST_EQ(result.rdbuf(), oss.rdbuf());
@@ -402,8 +402,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyFromInt)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -435,8 +435,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyFromString)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -466,8 +466,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyPrint)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -476,7 +476,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportModeTest::verifyPrint)
             static_cast<ntsa::TransportMode::Value>(testData.d_input);
 
         bsl::ostringstream oss;
-        bsl::ostream& result = oss << input;
+        bsl::ostream&      result = oss << input;
         oss.flush();
 
         NTSCFG_TEST_EQ(result.rdbuf(), oss.rdbuf());
@@ -515,8 +515,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportRoleTest::verifyFromInt)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -548,8 +548,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportRoleTest::verifyFromString)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -579,8 +579,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportRoleTest::verifyPrint)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -589,7 +589,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportRoleTest::verifyPrint)
             static_cast<ntsa::TransportRole::Value>(testData.d_input);
 
         bsl::ostringstream oss;
-        bsl::ostream& result = oss << input;
+        bsl::ostream&      result = oss << input;
         oss.flush();
 
         NTSCFG_TEST_EQ(result.rdbuf(), oss.rdbuf());
@@ -632,8 +632,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyFromInt)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -669,8 +669,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyFromString)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -704,8 +704,8 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyPrint)
     };
     // clang-format on
 
-    const bsl::size_t k_TEST_DATA_COUNT = sizeof(k_TEST_DATA) /
-                                          sizeof(k_TEST_DATA[0]);
+    const bsl::size_t k_TEST_DATA_COUNT =
+        sizeof(k_TEST_DATA) / sizeof(k_TEST_DATA[0]);
 
     for (bsl::size_t i = 0; i < k_TEST_DATA_COUNT; ++i) {
         const TestData& testData = k_TEST_DATA[i];
@@ -714,7 +714,7 @@ NTSCFG_TEST_FUNCTION(ntsa::TransportTest::verifyPrint)
             static_cast<ntsa::Transport::Value>(testData.d_input);
 
         bsl::ostringstream oss;
-        bsl::ostream& result = oss << input;
+        bsl::ostream&      result = oss << input;
         oss.flush();
 
         NTSCFG_TEST_EQ(result.rdbuf(), oss.rdbuf());

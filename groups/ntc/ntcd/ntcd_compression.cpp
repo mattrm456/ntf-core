@@ -73,7 +73,7 @@ ntsa::Error CompressionFrameHeader::decode(bsl::size_t* numBytesDecoded,
         return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
     }
 
-    bsl::memcpy(this, source, sizeof(*this));
+    NTSCFG_MEMORY_COPY(this, source, sizeof(*this));
     *numBytesDecoded += sizeof(*this);
 
     error = this->validate();
@@ -261,7 +261,7 @@ ntsa::Error CompressionFrameFooter::decode(bsl::size_t* numBytesDecoded,
         return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
     }
 
-    bsl::memcpy(this, source, sizeof(*this));
+    NTSCFG_MEMORY_COPY(this, source, sizeof(*this));
     *numBytesDecoded += sizeof(*this);
 
     error = this->validate();
@@ -459,7 +459,7 @@ ntsa::Error CompressionBlock::decode(bsl::size_t* numBytesDecoded,
         return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
     }
 
-    bsl::memcpy(this, source, sizeof(*this));
+    NTSCFG_MEMORY_COPY(this, source, sizeof(*this));
     *numBytesDecoded += sizeof(*this);
 
     error = this->validate();

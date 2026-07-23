@@ -95,8 +95,7 @@ class IgmpLeave
     /// Assign the value of the specified 'other' object to this object. Assign
     /// an unspecified but valid value to the 'original' original. Return a
     /// reference to this modifiable object.
-    IgmpLeave& operator=(
-        bslmf::MovableRef<IgmpLeave> other) NTSCFG_NOEXCEPT;
+    IgmpLeave& operator=(bslmf::MovableRef<IgmpLeave> other) NTSCFG_NOEXCEPT;
 
     /// Assign the value of the specified 'other' object to this object.
     /// Return a reference to this modifiable object.
@@ -202,8 +201,7 @@ IgmpLeave::IgmpLeave()
 }
 
 NTSCFG_INLINE
-IgmpLeave::IgmpLeave(
-    bslmf::MovableRef<IgmpLeave> original) NTSCFG_NOEXCEPT
+IgmpLeave::IgmpLeave(bslmf::MovableRef<IgmpLeave> original) NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,
@@ -225,8 +223,8 @@ IgmpLeave::~IgmpLeave()
 }
 
 NTSCFG_INLINE
-IgmpLeave& IgmpLeave::operator=(
-    bslmf::MovableRef<IgmpLeave> other) NTSCFG_NOEXCEPT
+IgmpLeave& IgmpLeave::operator=(bslmf::MovableRef<IgmpLeave> other)
+    NTSCFG_NOEXCEPT
 {
     NTSCFG_MEMORY_COPY(
         this,

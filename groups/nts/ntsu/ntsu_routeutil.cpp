@@ -1614,9 +1614,9 @@ ntsa::Error RouteUtil::Impl::decodeLink(
 #endif
 
 ntsa::Error RouteUtil::Impl::normalizeRoute(
-        ntsa::Ipv4Route*                  route,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv4Route*                  route,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     if (route->destinationIpv4Address().isNull()) {
         route->setDestinationIpv4Address(ntsa::Ipv4Address::any());
@@ -1690,8 +1690,8 @@ ntsa::Error RouteUtil::Impl::normalizeRoute(
                 // TODO: compare
             }
             else {
-                route->setGatewayEthernetAddress(ntsa::EthernetAddress(
-                    gatewayAdapter->ethernetAddress()));
+                route->setGatewayEthernetAddress(
+                    ntsa::EthernetAddress(gatewayAdapter->ethernetAddress()));
             }
         }
     }
@@ -1728,8 +1728,7 @@ ntsa::Error RouteUtil::Impl::normalizeRoute(
         if (route->interfaceEthernetAddress().has_value()) {
             for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
                 ntsa::EthernetAddress ethernetAddress;
-                if (!ethernetAddress.parse(
-                        adapterVector[i].ethernetAddress()))
+                if (!ethernetAddress.parse(adapterVector[i].ethernetAddress()))
                 {
                     continue;
                 }
@@ -1777,8 +1776,8 @@ ntsa::Error RouteUtil::Impl::normalizeRoute(
             // TODO: compare
         }
         else {
-            route->setInterfaceEthernetAddress(ntsa::EthernetAddress(
-                interfaceAdapter->ethernetAddress()));
+            route->setInterfaceEthernetAddress(
+                ntsa::EthernetAddress(interfaceAdapter->ethernetAddress()));
         }
 
         if (route->interfaceIpv4Address().has_value()) {
@@ -1811,9 +1810,9 @@ ntsa::Error RouteUtil::Impl::normalizeRoute(
 }
 
 ntsa::Error RouteUtil::Impl::normalizeRoute(
-        ntsa::Ipv6Route*                  route,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv6Route*                  route,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     if (route->destinationIpv6Address().isNull()) {
         route->setDestinationIpv6Address(ntsa::Ipv6Address::any());
@@ -1887,8 +1886,8 @@ ntsa::Error RouteUtil::Impl::normalizeRoute(
                 // TODO: compare
             }
             else {
-                route->setGatewayEthernetAddress(ntsa::EthernetAddress(
-                    gatewayAdapter->ethernetAddress()));
+                route->setGatewayEthernetAddress(
+                    ntsa::EthernetAddress(gatewayAdapter->ethernetAddress()));
             }
         }
     }
@@ -1925,8 +1924,7 @@ ntsa::Error RouteUtil::Impl::normalizeRoute(
         if (route->interfaceEthernetAddress().has_value()) {
             for (bsl::size_t i = 0; i < adapterVector.size(); ++i) {
                 ntsa::EthernetAddress ethernetAddress;
-                if (!ethernetAddress.parse(
-                        adapterVector[i].ethernetAddress()))
+                if (!ethernetAddress.parse(adapterVector[i].ethernetAddress()))
                 {
                     continue;
                 }
@@ -1974,8 +1972,8 @@ ntsa::Error RouteUtil::Impl::normalizeRoute(
             // TODO: compare
         }
         else {
-            route->setInterfaceEthernetAddress(ntsa::EthernetAddress(
-                interfaceAdapter->ethernetAddress()));
+            route->setInterfaceEthernetAddress(
+                ntsa::EthernetAddress(interfaceAdapter->ethernetAddress()));
         }
 
         if (route->interfaceIpv6Address().has_value()) {
@@ -2016,7 +2014,7 @@ class RouteUtil::Impl
     /// The log category.
     BALL_LOG_SET_CLASS_CATEGORY("NTSU.ROUTEUTIL.IMPL.NATIVE");
 
-public:
+  public:
     /// Provide a private, platform-specific implementation of utilities for
     /// discovering route tables native to the operating system.
     class Native;
@@ -2044,7 +2042,7 @@ class RouteUtil::Impl::Native
 
     static const sockaddr* next(const sockaddr* sa);
 
-public:
+  public:
     /// Load the Ethernet route table for the adapters in the specified
     /// 'adapterVector' into the specified 'result'. Return the error.
     static ntsa::Error load(ntsa::EthernetRouteTable*         result,
@@ -2068,9 +2066,9 @@ public:
 };
 
 ntsa::Error RouteUtil::Impl::Native::decodeRouteHeader(
-        const rt_msghdr**    rtm,
-        const bsl::uint8_t** current,
-        const bsl::uint8_t*  end)
+    const rt_msghdr**    rtm,
+    const bsl::uint8_t** current,
+    const bsl::uint8_t*  end)
 {
     *rtm = 0;
 
@@ -2157,8 +2155,8 @@ const sockaddr* RouteUtil::Impl::Native::next(const sockaddr* sa)
 }
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::EthernetRouteTable*         result,
-        const bsl::vector<ntsa::Adapter>& adapterVector)
+    ntsa::EthernetRouteTable*         result,
+    const bsl::vector<ntsa::Adapter>& adapterVector)
 {
     NTSCFG_WARNING_UNUSED(adapterVector);
 
@@ -2304,11 +2302,10 @@ ntsa::Error RouteUtil::Impl::Native::load(
     return ntsa::Error();
 }
 
-
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv4RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv4RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     ntsa::Error error;
     int         rc;
@@ -2395,8 +2392,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
         error =
             Impl::decodeNetMask(&destinationIpv4Mask, rti_info[RTAX_NETMASK]);
         if (error) {
-            NTSU_ROUTEUTIL_LOG_ERROR_DECODE_RTAX_NETMASK(rti_info[RTAX_NETMASK],
-                                                     error);
+            NTSU_ROUTEUTIL_LOG_ERROR_DECODE_RTAX_NETMASK(
+                rti_info[RTAX_NETMASK],
+                error);
             return error;
         }
 
@@ -2490,11 +2488,10 @@ ntsa::Error RouteUtil::Impl::Native::load(
     return ntsa::Error();
 }
 
-
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv6RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv6RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     ntsa::Error error;
     int         rc;
@@ -2581,8 +2578,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
         error =
             Impl::decodeNetMask(&destinationIpv6Mask, rti_info[RTAX_NETMASK]);
         if (error) {
-            NTSU_ROUTEUTIL_LOG_ERROR_DECODE_RTAX_NETMASK(rti_info[RTAX_NETMASK],
-                                                     error);
+            NTSU_ROUTEUTIL_LOG_ERROR_DECODE_RTAX_NETMASK(
+                rti_info[RTAX_NETMASK],
+                error);
             return error;
         }
 
@@ -2663,8 +2661,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
             route.setInterfaceIpv6Address(interfaceIpv6Address.value());
         }
 
-        error = RouteUtil::Impl::normalizeRoute(
-            &route, adapterVector, ethernetRouteTable);
+        error = RouteUtil::Impl::normalizeRoute(&route,
+                                                adapterVector,
+                                                ethernetRouteTable);
         if (error) {
             return error;
         }
@@ -2684,7 +2683,7 @@ class RouteUtil::Impl::Native
     /// The log category.
     BALL_LOG_SET_CLASS_CATEGORY("NTSU.ROUTEUTIL.IMPL.NATIVE");
 
-public:
+  public:
     /// Load the Ethernet route table for the adapters in the specified
     /// 'adapterVector' into the specified 'result'. Return the error.
     static ntsa::Error load(ntsa::EthernetRouteTable*         result,
@@ -2708,8 +2707,8 @@ public:
 };
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::EthernetRouteTable*         result,
-        const bsl::vector<ntsa::Adapter>& adapterVector)
+    ntsa::EthernetRouteTable*         result,
+    const bsl::vector<ntsa::Adapter>& adapterVector)
 {
     NTSCFG_WARNING_UNUSED(adapterVector);
 
@@ -2793,9 +2792,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
 }
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv4RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv4RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     ntsa::Error error;
 
@@ -2804,8 +2803,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
     int fd = ::socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (fd < 0) {
         error = ntsa::Error::last();
-        BALL_LOG_ERROR << "Failed to create netlink socket: "
-                       << error
+        BALL_LOG_ERROR << "Failed to create netlink socket: " << error
                        << BALL_LOG_END;
         return error;
     }
@@ -2813,10 +2811,10 @@ ntsa::Error RouteUtil::Impl::Native::load(
     char requestBuffer[8192];
     NTSCFG_MEMORY_ZERO(requestBuffer, sizeof requestBuffer);
 
-    struct nlmsghdr *requestHeader =
-        reinterpret_cast<struct nlmsghdr *>(requestBuffer);
+    struct nlmsghdr* requestHeader =
+        reinterpret_cast<struct nlmsghdr*>(requestBuffer);
 
-    struct rtmsg *requestPayload =
+    struct rtmsg* requestPayload =
         reinterpret_cast<struct rtmsg*>(NLMSG_DATA(requestHeader));
 
     requestHeader->nlmsg_len   = NLMSG_LENGTH(sizeof(struct rtmsg));
@@ -2831,8 +2829,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
     if (sendResult < 0) {
         error = ntsa::Error::last();
-        BALL_LOG_ERROR << "Failed to send to netlink socket: "
-                       << error
+        BALL_LOG_ERROR << "Failed to send to netlink socket: " << error
                        << BALL_LOG_END;
 
         ::close(fd);
@@ -2843,11 +2840,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
         static_cast<bsl::size_t>(requestHeader->nlmsg_len))
     {
         BALL_LOG_ERROR << "Failed to send to netlink socket: expected to send "
-                       << requestHeader->nlmsg_len
-                       << " bytes but only sent "
-                       << sendResult
-                       << " bytes"
-                       << BALL_LOG_END;
+                       << requestHeader->nlmsg_len << " bytes but only sent "
+                       << sendResult << " bytes" << BALL_LOG_END;
 
         ::close(fd);
         return ntsa::Error(ntsa::Error::e_INVALID);
@@ -2863,15 +2857,14 @@ ntsa::Error RouteUtil::Impl::Native::load(
         if (receiveResult < 0) {
             error = ntsa::Error::last();
             BALL_LOG_ERROR << "Failed to receive from netlink socket: "
-                           << error
-                           << BALL_LOG_END;
+                           << error << BALL_LOG_END;
 
             ::close(fd);
             return error;
         }
 
-        struct nlmsghdr *responseHeader =
-            reinterpret_cast<struct nlmsghdr *>(responseBuffer);
+        struct nlmsghdr* responseHeader =
+            reinterpret_cast<struct nlmsghdr*>(responseBuffer);
 
         while (NLMSG_OK(responseHeader, receiveResult)) {
             if (responseHeader->nlmsg_type == NLMSG_DONE) {
@@ -2880,8 +2873,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
             if (responseHeader->nlmsg_type == NLMSG_ERROR) {
                 BALL_LOG_ERROR << "Failed to receive from netlink socket: "
-                               << "NLMSG_ERROR"
-                               << BALL_LOG_END;
+                               << "NLMSG_ERROR" << BALL_LOG_END;
 
                 ::close(fd);
                 return ntsa::Error(ntsa::Error::e_INVALID);
@@ -2898,16 +2890,16 @@ ntsa::Error RouteUtil::Impl::Native::load(
             NullableEthernetAddress interfaceEthernetAddress;
             NullableIpv4Address     interfaceIpv4Address;
 
-            struct rtmsg *responsePayload = reinterpret_cast<struct rtmsg*>(
-                NLMSG_DATA(responseHeader));
+            struct rtmsg* responsePayload =
+                reinterpret_cast<struct rtmsg*>(NLMSG_DATA(responseHeader));
 
             if (responsePayload->rtm_family != AF_INET) {
                 ::close(fd);
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            struct rtattr *rt_attr = reinterpret_cast<struct rtattr*>(
-                RTM_RTA(responsePayload));
+            struct rtattr* rt_attr =
+                reinterpret_cast<struct rtattr*>(RTM_RTA(responsePayload));
 
             int attr_len = RTM_PAYLOAD(responseHeader);
 
@@ -2962,16 +2954,15 @@ ntsa::Error RouteUtil::Impl::Native::load(
                         return ntsa::Error(ntsa::Error::e_INVALID);
                     }
 
-                    interfaceAdapterIndex.makeValue(
-                        static_cast<bsl::uint32_t>(
-                            *reinterpret_cast<int*>(RTA_DATA(rt_attr))));
+                    interfaceAdapterIndex.makeValue(static_cast<bsl::uint32_t>(
+                        *reinterpret_cast<int*>(RTA_DATA(rt_attr))));
                 }
 
                 rt_attr = RTA_NEXT(rt_attr, attr_len);
             }
 
-            const bsl::uint32_t netmaskPrefix = static_cast<bsl::uint32_t>(
-                responsePayload->rtm_dst_len);
+            const bsl::uint32_t netmaskPrefix =
+                static_cast<bsl::uint32_t>(responsePayload->rtm_dst_len);
 
             if (netmaskPrefix > 0) {
                 bsl::uint32_t netmaskValue =
@@ -2998,8 +2989,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
             if (interfaceAdapterName.has_value() &&
                 interfaceAdapterIndex.isNull())
             {
-                unsigned int adapterIndex = if_nametoindex(
-                    interfaceAdapterName.value().c_str());
+                unsigned int adapterIndex =
+                    if_nametoindex(interfaceAdapterName.value().c_str());
 
                 if (adapterIndex != 0) {
                     interfaceAdapterIndex.makeValue(
@@ -3010,7 +3001,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
             ntsa::Ipv4Route route;
 
             if (destinationIpv4Address.has_value()) {
-                route.setDestinationIpv4Address(destinationIpv4Address.value());
+                route.setDestinationIpv4Address(
+                    destinationIpv4Address.value());
             }
 
             if (destinationIpv4Mask.has_value()) {
@@ -3026,7 +3018,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
             }
 
             if (gatewayEthernetAddress.has_value()) {
-                route.setGatewayEthernetAddress(gatewayEthernetAddress.value());
+                route.setGatewayEthernetAddress(
+                    gatewayEthernetAddress.value());
             }
 
             if (gatewayIpv4Address.has_value()) {
@@ -3050,8 +3043,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 route.setInterfaceIpv4Address(interfaceIpv4Address.value());
             }
 
-            error = RouteUtil::Impl::normalizeRoute(
-                &route, adapterVector, ethernetRouteTable);
+            error = RouteUtil::Impl::normalizeRoute(&route,
+                                                    adapterVector,
+                                                    ethernetRouteTable);
             if (error) {
                 return error;
             }
@@ -3072,9 +3066,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
 }
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv6RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv6RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     ntsa::Error error;
 
@@ -3083,8 +3077,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
     int fd = ::socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (fd < 0) {
         error = ntsa::Error::last();
-        BALL_LOG_ERROR << "Failed to create netlink socket: "
-                       << error
+        BALL_LOG_ERROR << "Failed to create netlink socket: " << error
                        << BALL_LOG_END;
         return error;
     }
@@ -3092,10 +3085,10 @@ ntsa::Error RouteUtil::Impl::Native::load(
     char requestBuffer[8192];
     NTSCFG_MEMORY_ZERO(requestBuffer, sizeof requestBuffer);
 
-    struct nlmsghdr *requestHeader =
-        reinterpret_cast<struct nlmsghdr *>(requestBuffer);
+    struct nlmsghdr* requestHeader =
+        reinterpret_cast<struct nlmsghdr*>(requestBuffer);
 
-    struct rtmsg *requestPayload =
+    struct rtmsg* requestPayload =
         reinterpret_cast<struct rtmsg*>(NLMSG_DATA(requestHeader));
 
     requestHeader->nlmsg_len   = NLMSG_LENGTH(sizeof(struct rtmsg));
@@ -3110,8 +3103,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
     if (sendResult < 0) {
         error = ntsa::Error::last();
-        BALL_LOG_ERROR << "Failed to send to netlink socket: "
-                       << error
+        BALL_LOG_ERROR << "Failed to send to netlink socket: " << error
                        << BALL_LOG_END;
 
         ::close(fd);
@@ -3122,11 +3114,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
         static_cast<bsl::size_t>(requestHeader->nlmsg_len))
     {
         BALL_LOG_ERROR << "Failed to send to netlink socket: expected to send "
-                       << requestHeader->nlmsg_len
-                       << " bytes but only sent "
-                       << sendResult
-                       << " bytes"
-                       << BALL_LOG_END;
+                       << requestHeader->nlmsg_len << " bytes but only sent "
+                       << sendResult << " bytes" << BALL_LOG_END;
 
         ::close(fd);
         return ntsa::Error(ntsa::Error::e_INVALID);
@@ -3142,15 +3131,14 @@ ntsa::Error RouteUtil::Impl::Native::load(
         if (receiveResult < 0) {
             error = ntsa::Error::last();
             BALL_LOG_ERROR << "Failed to receive from netlink socket: "
-                           << error
-                           << BALL_LOG_END;
+                           << error << BALL_LOG_END;
 
             ::close(fd);
             return error;
         }
 
-        struct nlmsghdr *responseHeader =
-            reinterpret_cast<struct nlmsghdr *>(responseBuffer);
+        struct nlmsghdr* responseHeader =
+            reinterpret_cast<struct nlmsghdr*>(responseBuffer);
 
         while (NLMSG_OK(responseHeader, receiveResult)) {
             if (responseHeader->nlmsg_type == NLMSG_DONE) {
@@ -3159,8 +3147,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
             if (responseHeader->nlmsg_type == NLMSG_ERROR) {
                 BALL_LOG_ERROR << "Failed to receive from netlink socket: "
-                               << "NLMSG_ERROR"
-                               << BALL_LOG_END;
+                               << "NLMSG_ERROR" << BALL_LOG_END;
 
                 ::close(fd);
                 return ntsa::Error(ntsa::Error::e_INVALID);
@@ -3177,16 +3164,16 @@ ntsa::Error RouteUtil::Impl::Native::load(
             NullableEthernetAddress interfaceEthernetAddress;
             NullableIpv6Address     interfaceIpv6Address;
 
-            struct rtmsg *responsePayload = reinterpret_cast<struct rtmsg*>(
-                NLMSG_DATA(responseHeader));
+            struct rtmsg* responsePayload =
+                reinterpret_cast<struct rtmsg*>(NLMSG_DATA(responseHeader));
 
             if (responsePayload->rtm_family != AF_INET6) {
                 ::close(fd);
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
-            struct rtattr *rt_attr = reinterpret_cast<struct rtattr*>(
-                RTM_RTA(responsePayload));
+            struct rtattr* rt_attr =
+                reinterpret_cast<struct rtattr*>(RTM_RTA(responsePayload));
 
             int attr_len = RTM_PAYLOAD(responseHeader);
 
@@ -3241,16 +3228,15 @@ ntsa::Error RouteUtil::Impl::Native::load(
                         return ntsa::Error(ntsa::Error::e_INVALID);
                     }
 
-                    interfaceAdapterIndex.makeValue(
-                        static_cast<bsl::uint32_t>(
-                            *reinterpret_cast<int*>(RTA_DATA(rt_attr))));
+                    interfaceAdapterIndex.makeValue(static_cast<bsl::uint32_t>(
+                        *reinterpret_cast<int*>(RTA_DATA(rt_attr))));
                 }
 
                 rt_attr = RTA_NEXT(rt_attr, attr_len);
             }
 
-            const bsl::uint32_t netmaskPrefix = static_cast<bsl::uint32_t>(
-                responsePayload->rtm_dst_len);
+            const bsl::uint32_t netmaskPrefix =
+                static_cast<bsl::uint32_t>(responsePayload->rtm_dst_len);
 
             if (netmaskPrefix > 0) {
                 struct in6_addr m;
@@ -3260,12 +3246,14 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
                 for (int i = 0; i < 16; i++) {
                     if (n >= 8) {
-                        m.s6_addr[i] = 0xFF;
-                        n -= 8;
-                    } else if (n > 0) {
+                        m.s6_addr[i]  = 0xFF;
+                        n            -= 8;
+                    }
+                    else if (n > 0) {
                         m.s6_addr[i] = (0xFF << (8 - n)) & 0xFF;
-                        n = 0;
-                    } else {
+                        n            = 0;
+                    }
+                    else {
                         break;
                     }
                 }
@@ -3290,8 +3278,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
             if (interfaceAdapterName.has_value() &&
                 interfaceAdapterIndex.isNull())
             {
-                unsigned int adapterIndex = if_nametoindex(
-                    interfaceAdapterName.value().c_str());
+                unsigned int adapterIndex =
+                    if_nametoindex(interfaceAdapterName.value().c_str());
 
                 if (adapterIndex != 0) {
                     interfaceAdapterIndex.makeValue(
@@ -3302,7 +3290,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
             ntsa::Ipv6Route route;
 
             if (destinationIpv6Address.has_value()) {
-                route.setDestinationIpv6Address(destinationIpv6Address.value());
+                route.setDestinationIpv6Address(
+                    destinationIpv6Address.value());
             }
 
             if (destinationIpv6Mask.has_value()) {
@@ -3318,7 +3307,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
             }
 
             if (gatewayEthernetAddress.has_value()) {
-                route.setGatewayEthernetAddress(gatewayEthernetAddress.value());
+                route.setGatewayEthernetAddress(
+                    gatewayEthernetAddress.value());
             }
 
             if (gatewayIpv6Address.has_value()) {
@@ -3342,8 +3332,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
                 route.setInterfaceIpv6Address(interfaceIpv6Address.value());
             }
 
-            error = RouteUtil::Impl::normalizeRoute(
-                &route, adapterVector, ethernetRouteTable);
+            error = RouteUtil::Impl::normalizeRoute(&route,
+                                                    adapterVector,
+                                                    ethernetRouteTable);
             if (error) {
                 return error;
             }
@@ -3366,8 +3357,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
 #elif defined(BSLS_PLATFORM_OS_WINDOWS)
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::EthernetRouteTable*         result,
-        const bsl::vector<ntsa::Adapter>& adapterVector)
+    ntsa::EthernetRouteTable*         result,
+    const bsl::vector<ntsa::Adapter>& adapterVector)
 {
     result->reset();
 
@@ -3377,9 +3368,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
 }
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv4RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv4RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     result->reset();
 
@@ -3390,9 +3381,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
 }
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv6RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv6RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     result->reset();
 
@@ -3405,8 +3396,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
 #else
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::EthernetRouteTable*         result,
-        const bsl::vector<ntsa::Adapter>& adapterVector)
+    ntsa::EthernetRouteTable*         result,
+    const bsl::vector<ntsa::Adapter>& adapterVector)
 {
     result->reset();
 
@@ -3416,9 +3407,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
 }
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv4RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv4RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     result->reset();
 
@@ -3429,9 +3420,9 @@ ntsa::Error RouteUtil::Impl::Native::load(
 }
 
 ntsa::Error RouteUtil::Impl::Native::load(
-        ntsa::Ipv6RouteTable*             result,
-        const bsl::vector<ntsa::Adapter>& adapterVector,
-        const ntsa::EthernetRouteTable&   ethernetRouteTable)
+    ntsa::Ipv6RouteTable*             result,
+    const bsl::vector<ntsa::Adapter>& adapterVector,
+    const ntsa::EthernetRouteTable&   ethernetRouteTable)
 {
     result->reset();
 
@@ -3443,8 +3434,7 @@ ntsa::Error RouteUtil::Impl::Native::load(
 
 #endif
 
-#if defined(BSLS_PLATFORM_OS_DARWIN)  || \
-    defined(BSLS_PLATFORM_OS_FREEBSD) || \
+#if defined(BSLS_PLATFORM_OS_DARWIN) || defined(BSLS_PLATFORM_OS_FREEBSD) ||  \
     defined(BSLS_PLATFORM_OS_LINUX)
 
 ntsa::Error RouteUtil::load(ntsa::EthernetRouteTable* result)
@@ -3481,8 +3471,9 @@ ntsa::Error RouteUtil::load(ntsa::Ipv4RouteTable*             result,
                             const bsl::vector<ntsa::Adapter>& adapterVector,
                             const ntsa::EthernetRouteTable& ethernetRouteTable)
 {
-    return RouteUtil::Impl::Native::load(
-        result, adapterVector, ethernetRouteTable);
+    return RouteUtil::Impl::Native::load(result,
+                                         adapterVector,
+                                         ethernetRouteTable);
 }
 
 ntsa::Error RouteUtil::load(ntsa::Ipv6RouteTable* result)
@@ -3505,8 +3496,9 @@ ntsa::Error RouteUtil::load(ntsa::Ipv6RouteTable*             result,
                             const bsl::vector<ntsa::Adapter>& adapterVector,
                             const ntsa::EthernetRouteTable& ethernetRouteTable)
 {
-    return RouteUtil::Impl::Native::load(
-        result, adapterVector, ethernetRouteTable);
+    return RouteUtil::Impl::Native::load(result,
+                                         adapterVector,
+                                         ethernetRouteTable);
 }
 
 #else
