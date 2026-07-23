@@ -50,9 +50,6 @@ class UdpOptionValue
     /// The option payload.
     bsl::vector<bsl::uint8_t> d_payload;
 
-    /// The memory allocator.
-    bslma::Allocator* d_allocator_p;
-
 public:
     /// Create a new UDP option value. Optionally specify a 'basicAllocator'
     /// used to supply memory. If 'basicAllocator' is 0, the currently

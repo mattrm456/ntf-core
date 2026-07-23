@@ -2160,6 +2160,8 @@ ntsa::Error RouteUtil::Impl::Native::load(
         ntsa::EthernetRouteTable*         result,
         const bsl::vector<ntsa::Adapter>& adapterVector)
 {
+    NTSCFG_WARNING_UNUSED(adapterVector);
+
     ntsa::Error error;
     int         rc;
 

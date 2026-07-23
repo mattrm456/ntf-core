@@ -997,6 +997,8 @@ ntsa::Error DeviceUtil::Impl::applyFilter(ntsa::Handle              device,
                                           const ntsa::Adapter&      adapter,
                                           const ntsa::PacketFilter& filter)
 {
+    NTSCFG_WARNING_UNUSED(adapter);
+
     ntsa::Error error;
     int         rc;
 
@@ -1031,6 +1033,9 @@ ntsa::Error DeviceUtil::Impl::applyFilter(
     const ntsa::Adapter&               adapter,
     const ntsu::PacketFilter::Program& program)
 {
+    NTSCFG_WARNING_UNUSED(deviceType);
+    NTSCFG_WARNING_UNUSED(adapter);
+
     ntsa::Error error;
     int         rc;
 
@@ -1469,12 +1474,17 @@ ntsa::Error DeviceUtil::waitUntilReadable(ntsa::Handle              device,
 
 ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle device)
 {
+    NTSCFG_WARNING_UNUSED(device);
+
     return ntsa::Error();
 }
 
 ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle              device,
                                           const bsls::TimeInterval& timeout)
 {
+    NTSCFG_WARNING_UNUSED(device);
+    NTSCFG_WARNING_UNUSED(timeout);
+
     return ntsa::Error();
 }
 
@@ -1592,7 +1602,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
                 packetType = BSLS_BYTEORDER_HOST_TO_BE(PF_INET);
             }
 
-            if (buffer.size() < sizeof packetType) {
+            if (static_cast<bsl::size_t>(buffer.size()) < sizeof packetType) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
@@ -1627,7 +1637,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
                 packetType = BSLS_BYTEORDER_HOST_TO_BE(PF_INET6);
             }
 
-            if (buffer.size() < sizeof packetType) {
+            if (static_cast<bsl::size_t>(buffer.size()) < sizeof packetType) {
                 return ntsa::Error(ntsa::Error::e_INVALID);
             }
 
@@ -1666,10 +1676,10 @@ ntsa::Error DeviceUtil::enqueuePacket(
                         static_cast<bsl::size_t>(buffer.size()));
             if (bytesSent < 0) {
                 int lastError = errno;
-                if (error == EWOULDBLOCK) {
+                if (lastError == EWOULDBLOCK) {
                     return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
                 }
-                else if (error == EINTR) {
+                else if (lastError == EINTR) {
                     continue;
                 }
                 else {
@@ -1734,10 +1744,10 @@ ntsa::Error DeviceUtil::enqueuePacket(
                         static_cast<bsl::size_t>(buffer.size()));
             if (bytesSent < 0) {
                 int lastError = errno;
-                if (error == EWOULDBLOCK) {
+                if (lastError == EWOULDBLOCK) {
                     return ntsa::Error(ntsa::Error::e_WOULD_BLOCK);
                 }
-                else if (error == EINTR) {
+                else if (lastError == EINTR) {
                     continue;
                 }
                 else {
@@ -2067,8 +2077,8 @@ class DeviceUtil::Impl
 
     /// Set the promiscuous mode of the specified 'device' to the specified
     /// 'value'. Return the error.
-    static ntsa::Error setPromiscuous(ntsa::Handle         device, 
-                                      const ntsa::Adapter& adapter, 
+    static ntsa::Error setPromiscuous(ntsa::Handle         device,
+                                      const ntsa::Adapter& adapter,
                                       bool                 value);
 
     /// Set the blocking mode of the specified 'device' to the specified
@@ -2131,7 +2141,7 @@ class DeviceUtil::Impl
 };
 
 ntsa::Error DeviceUtil::Impl::setPromiscuous(
-    ntsa::Handle         device, 
+    ntsa::Handle         device,
     const ntsa::Adapter& adapter,
     bool                 value)
 {
@@ -2473,7 +2483,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     *txBufferSize = 0;
     *rxBufferSize = 0;
 
-    const int domain   = AF_PACKET; 
+    const int domain   = AF_PACKET;
     const int mode     = SOCK_RAW | SOCK_CLOEXEC;
     const int protocol = htons(ETH_P_ALL);
 
@@ -2546,10 +2556,10 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     if (loopback)
     {
         int ignoreOutgoing = 1;
-        rc = setsockopt(device, 
-                        SOL_PACKET, 
-                        PACKET_IGNORE_OUTGOING, 
-                        &ignoreOutgoing, 
+        rc = setsockopt(device,
+                        SOL_PACKET,
+                        PACKET_IGNORE_OUTGOING,
+                        &ignoreOutgoing,
                         sizeof ignoreOutgoing);
 
         if (rc != 0) {
@@ -2604,15 +2614,15 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
             return error;
         }
 
-        if (static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue) != 
-            adapter.index()) 
+        if (static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue) !=
+            adapter.index())
         {
-            BALL_LOG_ERROR 
+            BALL_LOG_ERROR
                 << "Failed to open device: network interface index "
-                << "mismatch: expected " 
-                << adapter.index() 
-                << " but found " 
-                << static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue) 
+                << "mismatch: expected "
+                << adapter.index()
+                << " but found "
+                << static_cast<bsl::uint32_t>(ifr.ifr_ifru.ifru_ivalue)
                 << BALL_LOG_END;
 
             return ntsa::Error(ntsa::Error::e_INVALID);
@@ -2623,10 +2633,10 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
 
         sll.sll_family = AF_PACKET;
         sll.sll_ifindex = ifr.ifr_ifindex;
-        sll.sll_protocol = htons(ETH_P_ALL); 
+        sll.sll_protocol = htons(ETH_P_ALL);
 
-        rc = ::bind(device, 
-                    reinterpret_cast<struct sockaddr *>(&sll), 
+        rc = ::bind(device,
+                    reinterpret_cast<struct sockaddr *>(&sll),
                     sizeof sll);
         if (rc != 0) {
             const int lastError = errno;
@@ -2693,7 +2703,7 @@ ntsa::Error DeviceUtil::open(ntsa::Handle*             result,
     *txBufferSize =
         static_cast<bsl::size_t>(DeviceUtil::Impl::k_DEFAULT_TX_BUFFER_SIZE);
 
-    *rxBufferSize = 
+    *rxBufferSize =
         static_cast<bsl::size_t>(DeviceUtil::Impl::k_DEFAULT_RX_BUFFER_SIZE);
 
     return ntsa::Error();
@@ -2792,7 +2802,7 @@ ntsa::Error DeviceUtil::waitUntilWritable(ntsa::Handle              device,
 {
     NTSCFG_WARNING_UNUSED(device);
     NTSCFG_WARNING_UNUSED(timeout);
-    
+
     return ntsa::Error();
 }
 
@@ -2886,7 +2896,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
     if (!packetFactory) {
         return ntsa::Error(ntsa::Error::e_INVALID);
     }
-    
+
     bdlbb::BlobBuffer packetBuffer;
     packetFactory->createOutgoingBlobBuffer(&packetBuffer);
 
@@ -2902,7 +2912,7 @@ ntsa::Error DeviceUtil::enqueuePacket(
     NTSU_DEVICEUTIL_LOG_PACKET_OUTGOING(device, packet, buffer);
 
     do {
-        ssize_t bytesSent = 
+        ssize_t bytesSent =
             ::send(device,
                    packetBuffer.data(),
                    static_cast<bsl::size_t>(packetBuffer.size()),
@@ -2975,9 +2985,9 @@ ntsa::Error DeviceUtil::dequeuePacket(
     bdlbb::BlobBuffer packetBuffer;
     packetFactory->createIncomingBlobBuffer(&packetBuffer);
 
-    ssize_t bytesRead = ::recv(device, 
-                               packetBuffer.data(), 
-                               static_cast<bsl::size_t>(packetBuffer.size()), 
+    ssize_t bytesRead = ::recv(device,
+                               packetBuffer.data(),
+                               static_cast<bsl::size_t>(packetBuffer.size()),
                                0);
 
     if (bytesRead < 0) {

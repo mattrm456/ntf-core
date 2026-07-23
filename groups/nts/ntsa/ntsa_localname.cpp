@@ -81,13 +81,13 @@ LocalName::LocalName()
 
 LocalName::LocalName(bslmf::MovableRef<LocalName> original) NTSCFG_NOEXCEPT
 {
-    bsl::memcpy(this, &NTSCFG_MOVE_ACCESS(original), sizeof(LocalName));
+    NTSCFG_MEMORY_COPY(this, &NTSCFG_MOVE_ACCESS(original), sizeof(LocalName));
     NTSCFG_MOVE_RESET(original);
 }
 
 LocalName::LocalName(const LocalName& other)
 {
-    bsl::memcpy(this, &other, sizeof(LocalName));
+    NTSCFG_MEMORY_COPY(this, &other, sizeof(LocalName));
 }
 
 LocalName::~LocalName()
@@ -98,7 +98,7 @@ LocalName& LocalName::operator=(bslmf::MovableRef<LocalName> other)
     NTSCFG_NOEXCEPT
 {
     if (this != &NTSCFG_MOVE_ACCESS(other)) {
-        bsl::memcpy(this, &NTSCFG_MOVE_ACCESS(other), sizeof(LocalName));
+        NTSCFG_MEMORY_COPY(this, &NTSCFG_MOVE_ACCESS(other), sizeof(LocalName));
         NTSCFG_MOVE_RESET(other);
     }
 
@@ -108,7 +108,7 @@ LocalName& LocalName::operator=(bslmf::MovableRef<LocalName> other)
 LocalName& LocalName::operator=(const LocalName& other)
 {
     if (this != &other) {
-        bsl::memcpy(this, &other, sizeof(LocalName));
+        NTSCFG_MEMORY_COPY(this, &other, sizeof(LocalName));
     }
 
     return *this;
@@ -295,11 +295,11 @@ ntsa::LocalName LocalName::generateUnique()
 ntsa::Error LocalName::generateUnique(ntsa::LocalName* name)
 {
     return ntsa::LocalName::generateUnique(
-        name, 
+        name,
         ntsa::LocalName::defaultDirectory());
 }
 
-ntsa::Error LocalName::generateUnique(ntsa::LocalName*   name, 
+ntsa::Error LocalName::generateUnique(ntsa::LocalName*   name,
                                       const bsl::string& directory)
 {
     ntsa::Error error;
@@ -342,7 +342,7 @@ bsl::string LocalName::defaultDirectory()
     bsl::string path;
 
     if (path.empty()) {
-#if defined(BSLS_PLATFORM_OS_UNIX) 
+#if defined(BSLS_PLATFORM_OS_UNIX)
         const char* sockDir = bsl::getenv("SOCKDIR");
         if (sockDir != 0) {
             const bsl::size_t sockDirLength = bsl::strlen(sockDir);
@@ -367,7 +367,7 @@ bsl::string LocalName::defaultDirectory()
         }
 #endif
     }
-    
+
     if (path.empty()) {
         bsl::string tempDir;
         rc = bdls::FilesystemUtil::getSystemTemporaryDirectory(&tempDir);
