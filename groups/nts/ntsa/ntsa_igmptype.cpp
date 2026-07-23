@@ -53,6 +53,10 @@ int IgmpType::fromString(IgmpType::Value*         result,
         *result = e_QUERY;
         return 0;
     }
+    if (bdlb::String::areEqualCaseless(string, "REPORT_V1")) {
+        *result = e_REPORT_V1;
+        return 0;
+    }
     if (bdlb::String::areEqualCaseless(string, "REPORT_V2")) {
         *result = e_REPORT_V2;
         return 0;

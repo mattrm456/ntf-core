@@ -38,20 +38,10 @@ class TcpExtensionTest
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpExtensionTest::verifyTypeTraits)
 {
-    const bool isBitwiseInitializable =
-        NTSCFG_TYPE_CHECK_BITWISE_INITIALIZABLE(ntsa::TcpExtension);
+    const bool isAllocatorAware =
+        NTSCFG_TYPE_CHECK_ALLOCATOR_AWARE(ntsa::TcpExtension);
 
-    NTSCFG_TEST_TRUE(isBitwiseInitializable);
-
-    const bool isBitwiseMovable =
-        NTSCFG_TYPE_CHECK_BITWISE_MOVABLE(ntsa::TcpExtension);
-
-    NTSCFG_TEST_TRUE(isBitwiseMovable);
-
-    const bool isBitwiseCopyable =
-        NTSCFG_TYPE_CHECK_BITWISE_COPYABLE(ntsa::TcpExtension);
-
-    NTSCFG_TEST_TRUE(isBitwiseCopyable);
+    NTSCFG_TEST_TRUE(isAllocatorAware);
 }
 
 NTSCFG_TEST_FUNCTION(ntsa::TcpExtensionTest::verifyUsage)
