@@ -18,11 +18,13 @@
 #include <bsls_ident.h>
 BSLS_IDENT_RCSID(ntcs_blobbufferfactory_cpp, "$Id$ $CSID$")
 
+#include <bdlb_bitutil.h>
 #include <bslma_allocator.h>
 #include <bslma_default.h>
 #include <bslmf_assert.h>
 #include <bslmt_threadutil.h>
 #include <bsls_assert.h>
+#include <bsls_bslexceptionutil.h>
 #include <bsls_log.h>
 
 // Uncomment to enable pooling.
@@ -384,145 +386,340 @@ bsl::size_t BlobBufferFactory::numBytesInUse() const
 // 4 = strong                 4 = strong
 // 4 = weak                   4 = weak
 // 4 = data                   8 = data
-// 4 = data                   8 = pool
-// 4 = next                   8 = next
-// 24                         40
-// 64 - 24 = 40 bytes padding
-// 64 - 40 = 24 bytes padding
+// 4 = pool                   8 = pool
+// 4 = next                   4 = next
+// 4 = index                  4 = index
+// 4 = shard                  4 = shard
+// 32                         44
+// 64 - 32 = 32 bytes padding
+// 64 - 44 = 20 bytes padding
 BSLMF_ASSERT(sizeof(BlobBufferPoolObject) == 64);
 
-#define NTCS_BLOB_BUFFER_POOL_ASSERT(expression)
+namespace {
 
-BlobBufferPoolObject::BlobBufferPoolObject(BlobBufferPool* pool)
+// The next home shard index to assign, plus one, shared by all pools.
+bsls::AtomicOperations::AtomicTypes::Uint s_nextShard;
+
+}  // close unnamed namespace
+
+BlobBufferPoolObject::BlobBufferPoolObject(BlobBufferPool* pool,
+                                           bsl::uint32_t   index)
 : bslma::SharedPtrRep()
 , d_data_p(0)
 , d_pool_p(pool)
-, d_next_p(0)
-, d_generation(0)
+, d_next(0)
+, d_index(index)
+, d_shard(0)
 , d_padding()
 {
+    BSLS_ASSERT(index != 0);
+
     d_data_p = (char*)(this) + sizeof(BlobBufferPoolObject);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(
-        (bsl::size_t)(bsl::uintptr_t)(d_data_p) % 16 == 0);
+    BSLS_ASSERT((bsl::size_t)(bsl::uintptr_t)(d_data_p) % 16 == 0);
 }
 
-BlobBufferPoolObject* BlobBufferPool::replenish()
+bsl::size_t BlobBufferPool::homeShard()
 {
-    const bsl::size_t allocationSize =
-        sizeof(BlobBufferPoolObject) + d_blobBufferSize;
+    // Zero indicates the calling thread has not yet been assigned a shard.
+    // Threads are assigned shards round-robin, which distributes them more
+    // evenly than hashing a thread identifier.
 
-    void* arena = d_aligningAllocator.allocate(allocationSize);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(
-        (bsl::size_t)(bsl::uintptr_t)(arena) % k_ALIGNMENT == 0);
+    static BSLS_KEYWORD_THREAD_LOCAL unsigned int s_shard = 0;
 
-    new (arena) BlobBufferPoolObject(this);
+    unsigned int shard = s_shard;
+    if (NTCCFG_UNLIKELY(shard == 0)) {
+        shard = bsls::AtomicOperations::addUintNvRelaxed(&s_nextShard, 1);
+        if (shard == 0) {
+            shard = bsls::AtomicOperations::addUintNvRelaxed(&s_nextShard, 1);
+        }
+        s_shard = shard;
+    }
 
-    BlobBufferPoolObject* object = (BlobBufferPoolObject*)(arena);
+    return static_cast<bsl::size_t>(shard - 1) & (k_NUM_SHARDS - 1);
+}
+
+void BlobBufferPool::locate(bsl::size_t*  slab,
+                            bsl::size_t*  offset,
+                            bsl::uint32_t index) const
+{
+    BSLS_ASSERT(index != 0);
+
+    // Slab 'i' holds '2^i' objects for 'i <= L', so the indices '[1, 2^(L+1))'
+    // occupy slabs '0' through 'L', and index 'n' in that range is in slab
+    // 'floor(log2(n))' at offset 'n - 2^slab'. Every later slab holds '2^L'
+    // objects.
+
+    const bsl::size_t n = index;
+
+    if (n < (static_cast<bsl::size_t>(2) << d_slabShift)) {
+        const bsl::size_t log2 =
+            31 - bdlb::BitUtil::numLeadingUnsetBits(index);
+        *slab   = log2;
+        *offset = n - (static_cast<bsl::size_t>(1) << log2);
+    }
+    else {
+        const bsl::size_t m = n - (static_cast<bsl::size_t>(2) << d_slabShift);
+        *slab   = d_slabShift + 1 + (m >> d_slabShift);
+        *offset = m & ((static_cast<bsl::size_t>(1) << d_slabShift) - 1);
+    }
+}
+
+BlobBufferPoolObject* BlobBufferPool::lookup(bsl::uint32_t index) const
+{
+    // The caller observed 'index' (with acquire semantics) after the object
+    // was carved, and the slab table current when the object was carved, or
+    // any later table, holds the address of its slab, so the table may be
+    // read without locking. Load the table only after observing the index.
+
+    bsl::size_t slab;
+    bsl::size_t offset;
+    this->locate(&slab, &offset, index);
+
+    char** slabTable = d_slabTable.loadAcquire();
+
+    return reinterpret_cast<BlobBufferPoolObject*>(slabTable[slab] +
+                                                   offset * d_objectSize);
+}
+
+BlobBufferPoolObject* BlobBufferPool::pop(Shard* shard) const
+{
+    Handle::IndexType oldIndex;
+    Handle::TagType   oldTag;
+
+    shard->d_head.loadAcquire(&oldIndex, &oldTag);
+
+    while (oldIndex != 0) {
+        BlobBufferPoolObject* object = this->lookup(oldIndex);
+
+        const Handle::IndexType newIndex = object->next();
+        const Handle::TagType   newTag   = oldTag + 1;
+
+        Handle::IndexType nowIndex;
+        Handle::TagType   nowTag;
+
+        const bool unchanged = shard->d_head.testAndSwapAcqRel(&nowIndex,
+                                                               &nowTag,
+                                                               oldIndex,
+                                                               oldTag,
+                                                               newIndex,
+                                                               newTag);
+        if (unchanged) {
+            return object;
+        }
+
+        oldIndex = nowIndex;
+        oldTag   = nowTag;
+    }
+
+    return 0;
+}
+
+void BlobBufferPool::push(Shard*                shard,
+                          BlobBufferPoolObject* first,
+                          BlobBufferPoolObject* last)
+{
+    const Handle::IndexType firstIndex = first->index();
+
+    Handle::IndexType oldIndex;
+    Handle::TagType   oldTag;
+
+    shard->d_head.loadRelaxed(&oldIndex, &oldTag);
+
+    while (true) {
+        last->setNext(oldIndex);
+
+        const Handle::TagType newTag = oldTag + 1;
+
+        Handle::IndexType nowIndex;
+        Handle::TagType   nowTag;
+
+        const bool unchanged = shard->d_head.testAndSwapAcqRel(&nowIndex,
+                                                               &nowTag,
+                                                               oldIndex,
+                                                               oldTag,
+                                                               firstIndex,
+                                                               newTag);
+        if (unchanged) {
+            return;
+        }
+
+        oldIndex = nowIndex;
+        oldTag   = nowTag;
+    }
+}
+
+BlobBufferPoolObject* BlobBufferPool::carve()
+{
+    if (NTCCFG_UNLIKELY(d_numCarved == Handle::Util::maxIndex())) {
+        bsls::BslExceptionUtil::throwBadAlloc();
+    }
+
+    const bsl::uint32_t index = d_numCarved + 1;
+
+    bsl::size_t slab;
+    bsl::size_t offset;
+    this->locate(&slab, &offset, index);
+
+    char** slabTable = d_slabTable.loadRelaxed();
+
+    if (offset == 0) {
+        BSLS_ASSERT(slab == d_numSlabs);
+
+        // Allocate the slab table, or grow it, if necessary, by copying it to
+        // a table twice the size. Publish the new table but retain the old
+        // one, since other threads may still be reading it.
+
+        if (d_numSlabs == d_slabTableCapacity) {
+            const bsl::size_t newCapacity =
+                d_slabTableCapacity == 0
+                    ? static_cast<bsl::size_t>(k_INITIAL_SLAB_TABLE_CAPACITY)
+                    : d_slabTableCapacity * 2;
+
+            d_slabTables.reserve(d_slabTables.size() + 1);
+
+            char** newSlabTable = static_cast<char**>(
+                d_countingAllocator.allocate(newCapacity * sizeof(char*)));
+
+            for (bsl::size_t i = 0; i < d_numSlabs; ++i) {
+                newSlabTable[i] = slabTable[i];
+            }
+
+            d_slabTables.push_back(newSlabTable);
+            d_slabTable.storeRelease(newSlabTable);
+
+            slabTable           = newSlabTable;
+            d_slabTableCapacity = newCapacity;
+        }
+
+        const bsl::size_t numObjects =
+            (slab <= d_slabShift) ? (static_cast<bsl::size_t>(1) << slab)
+                                  : (static_cast<bsl::size_t>(1)
+                                     << d_slabShift);
+
+        char* memory = static_cast<char*>(
+            d_aligningAllocator.allocate(numObjects * d_objectSize));
+        BSLS_ASSERT((bsl::size_t)(bsl::uintptr_t)(memory) % k_ALIGNMENT == 0);
+
+        // The address of the slab is published to other threads by the
+        // release semantics of the push of any object carved from it.
+
+        slabTable[slab] = memory;
+        ++d_numSlabs;
+    }
+
+    void* arena = slabTable[slab] + offset * d_objectSize;
+
+    BlobBufferPoolObject* object =
+        new (arena) BlobBufferPoolObject(this, index);
     object->resetCountsRaw(0, 0);
 
-    ++d_numPooled;
-    d_numBytesInUse += allocationSize;
+    d_numCarved = index;
+    d_numPooled.addRelaxed(1);
 
     return object;
 }
 
+BlobBufferPoolObject* BlobBufferPool::replenish()
+{
+    LockGuard guard(&d_mutex);
+    return this->carve();
+}
+
 BlobBufferPool::BlobBufferPool(bsl::size_t       blobBufferSize,
                                bslma::Allocator* basicAllocator)
-: d_head()
-, d_blobBufferSize(blobBufferSize)
-, d_numAllocated(0)
+: d_blobBufferSize(blobBufferSize)
+, d_objectSize(0)
+, d_slabShift(0)
+, d_slabTable(0)
+, d_shards()
+, d_mutex()
+, d_slabTableCapacity(0)
+, d_numSlabs(0)
+, d_numCarved(0)
 , d_numPooled(0)
-, d_numBytesInUse(0)
-, d_aligningAllocator(k_ALIGNMENT, basicAllocator)
+, d_countingAllocator(basicAllocator)
+, d_aligningAllocator(k_ALIGNMENT, &d_countingAllocator)
+, d_slabTables(&d_countingAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
+    BSLMF_ASSERT(sizeof(Shard) == k_CACHE_LINE_SIZE);
+    BSLMF_ASSERT((k_NUM_SHARDS & (k_NUM_SHARDS - 1)) == 0);
+    BSLMF_ASSERT((k_MAX_SLAB_OBJECTS & (k_MAX_SLAB_OBJECTS - 1)) == 0);
+    BSLMF_ASSERT(k_ALIGNMENT >= sizeof(BlobBufferPoolObject));
+
+    // Round the size of each object up to the alignment so that every
+    // object carved from a slab is aligned.
+
+    d_objectSize = sizeof(BlobBufferPoolObject) + d_blobBufferSize;
+    d_objectSize = (d_objectSize + (k_ALIGNMENT - 1)) &
+                   ~static_cast<bsl::size_t>(k_ALIGNMENT - 1);
+
+    // Choose the maximum number of objects per slab: the largest power of
+    // two no greater than either limit, but at least one.
+
+    bsl::size_t maxSlabObjects = k_MAX_SLAB_SIZE / d_objectSize;
+    if (maxSlabObjects > k_MAX_SLAB_OBJECTS) {
+        maxSlabObjects = k_MAX_SLAB_OBJECTS;
+    }
+
+    while ((static_cast<bsl::size_t>(2) << d_slabShift) <= maxSlabObjects) {
+        ++d_slabShift;
+    }
+
+    // The slab table is allocated when the first object is carved, so that
+    // a pool that is never used allocates no memory.
 }
 
 BlobBufferPool::~BlobBufferPool()
 {
-    bsl::uint64_t numAllocated = d_numAllocated.loadAcquire();
+    BSLS_ASSERT_OPT(this->numBuffersAllocated() == 0);
 
-    if (numAllocated != 0) {
-        bsl::cout << "numAllocated = " << numAllocated << bsl::endl;
+    // Each object is trivially destructible in effect, so release the slabs
+    // without destroying the objects carved from them, then release every
+    // slab table.
+
+    char** slabTable = d_slabTable.loadRelaxed();
+
+    BSLS_ASSERT(d_numSlabs == 0 || slabTable != 0);
+
+    for (bsl::size_t i = 0; i < d_numSlabs; ++i) {
+        d_aligningAllocator.deallocate(slabTable[i]);
     }
 
-    bsl::uint64_t numFreed = 0;
-
-    BlobBufferPoolObject* currentObject;
-    Handle::TagType       currentTag;
-
-    d_head.loadAcquire(&currentObject, &currentTag);
-
-    while (currentObject) {
-        BlobBufferPoolObject* targetObject = currentObject;
-        currentObject                      = currentObject->next();
-        d_aligningAllocator.deallocate(targetObject);
-        ++numFreed;
-    }
-
-    if (numAllocated != 0) {
-        bsl::cout << "numFreed = " << numFreed << bsl::endl;
+    for (bsl::size_t i = 0; i < d_slabTables.size(); ++i) {
+        d_countingAllocator.deallocate(d_slabTables[i]);
     }
 }
 
 void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
 {
-    BlobBufferPoolObject* object = 0;
+    const bsl::size_t home  = BlobBufferPool::homeShard();
+    Shard*            shard = &d_shards.d_shard[home];
 
-    BlobBufferPoolObject* oldHead;
-    Handle::TagType       oldTag;
-
-    d_head.loadAcquire(&oldHead, &oldTag);
-
-    bsl::size_t       numSpins = 0;
-    const bsl::size_t maxSpins = 3;
-
-    while (true) {
-        if (oldHead == 0) {
-            break;
-        }
-
-        BlobBufferPoolObject* newHead = oldHead->next();
-        Handle::TagType       newTag  = (oldTag + 1) % Handle::maxTag();
-
-        BlobBufferPoolObject* nowHead;
-        Handle::TagType       nowTag;
-
-        const bool unchanged = d_head.testAndSwapAcqRel(&nowHead,
-                                                        &nowTag,
-                                                        oldHead,
-                                                        oldTag,
-                                                        newHead,
-                                                        newTag);
-
-        if (unchanged) {
-            object = oldHead;
-            break;
-        }
-        else {
-            oldHead = nowHead;
-            oldTag  = nowTag;
-
-            if (numSpins++ == maxSpins) {
-                numSpins = 0;
-                bslmt::ThreadUtil::yield();
-            }
-        }
-    }
+    BlobBufferPoolObject* object = this->pop(shard);
 
     if (NTCCFG_UNLIKELY(object == 0)) {
-        object = this->replenish();
-    }
-    else {
-        object->setNext(0);
+        for (bsl::size_t i = 1; i < k_NUM_SHARDS; ++i) {
+            object = this->pop(
+                &d_shards.d_shard[(home + i) & (k_NUM_SHARDS - 1)]);
+            if (object != 0) {
+                break;
+            }
+        }
+
+        if (object == 0) {
+            object = this->replenish();
+        }
     }
 
-    ++d_numAllocated;
+    object->setNext(0);
+    object->setShard(static_cast<bsl::uint32_t>(home));
 
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->data() != 0);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->next() == 0);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numReferences() == 0);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numWeakReferences() == 0);
+    shard->d_numAllocated.addRelaxed(1);
+
+    BSLS_ASSERT(object->data() != 0);
+    BSLS_ASSERT(object->numReferences() == 0);
+    BSLS_ASSERT(object->numWeakReferences() == 0);
 
     object->resetCountsRaw(1, 0);
 
@@ -532,82 +729,76 @@ void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
 
 void BlobBufferPool::release(BlobBufferPoolObject* object)
 {
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->data() != 0);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->next() == 0);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numReferences() == 0);
-    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numWeakReferences() == 0);
+    BSLS_ASSERT(object);
+    BSLS_ASSERT(object->data() != 0);
+    BSLS_ASSERT(object->next() == 0);
+    BSLS_ASSERT(object->numReferences() == 0);
+    BSLS_ASSERT(object->numWeakReferences() == 0);
 
-    BlobBufferPoolObject* oldHead;
-    Handle::TagType       oldTag;
+    Shard* shard = &d_shards.d_shard[object->shard()];
 
-    d_head.loadAcquire(&oldHead, &oldTag);
+    BlobBufferPool::push(shard, object, object);
 
-    bsl::size_t       numSpins = 0;
-    const bsl::size_t maxSpins = 3;
-
-    while (true) {
-        object->setNext(oldHead);
-
-        BlobBufferPoolObject* newHead = object;
-        Handle::TagType       newTag  = (oldTag + 1) % Handle::maxTag();
-
-        BlobBufferPoolObject* nowHead;
-        Handle::TagType       nowTag;
-
-        const bool unchanged = d_head.testAndSwapAcqRel(&nowHead,
-                                                        &nowTag,
-                                                        oldHead,
-                                                        oldTag,
-                                                        newHead,
-                                                        newTag);
-
-        if (unchanged) {
-            break;
-        }
-        else {
-            oldHead = nowHead;
-            oldTag  = nowTag;
-
-            if (numSpins++ == maxSpins) {
-                numSpins = 0;
-                bslmt::ThreadUtil::yield();
-            }
-        }
-    }
-
-    --d_numAllocated;
+    shard->d_numAllocated.subtractRelaxed(1);
 }
 
 void BlobBufferPool::reserve(bsl::size_t numObjects)
 {
-    for (bsl::size_t i = 0; i < numObjects; ++i) {
-        BlobBufferPoolObject* object = this->replenish();
+    // Carve the objects under the lock, linking them into one chain per
+    // shard, then push each chain with a single operation, distributing the
+    // reserved objects evenly across the shards.
 
-        BlobBufferPoolObject* currentObject;
-        Handle::TagType       currentTag;
+    BlobBufferPoolObject* first[k_NUM_SHARDS] = {};
+    BlobBufferPoolObject* last[k_NUM_SHARDS]  = {};
 
-        d_head.load(&currentObject, &currentTag);
+    {
+        LockGuard guard(&d_mutex);
 
-        if (currentObject == 0) {
-            d_head.store(object, 0);
+        for (bsl::size_t i = 0; i < numObjects; ++i) {
+            BlobBufferPoolObject* object = this->carve();
+
+            const bsl::size_t index = i & (k_NUM_SHARDS - 1);
+            object->setNext(first[index] != 0 ? first[index]->index() : 0);
+            first[index] = object;
+            if (last[index] == 0) {
+                last[index] = object;
+            }
         }
-        else {
-            object->setNext(currentObject);
-            d_head.store(object, 0);
+    }
+
+    for (bsl::size_t index = 0; index < k_NUM_SHARDS; ++index) {
+        if (first[index] != 0) {
+            BlobBufferPool::push(&d_shards.d_shard[index],
+                                 first[index],
+                                 last[index]);
         }
     }
 }
 
 bsl::size_t BlobBufferPool::numBuffersAllocated() const
 {
-    return NTCCFG_WARNING_NARROW(bsl::size_t, d_numAllocated.loadRelaxed());
+    // Each allocation and its release are counted on the same shard, but the
+    // shards are not read atomically as a whole, so the sum may be
+    // transiently inconsistent while other threads allocate and release
+    // concurrently.
+
+    bsls::Types::Int64 numAllocated = 0;
+    for (bsl::size_t index = 0; index < k_NUM_SHARDS; ++index) {
+        numAllocated += d_shards.d_shard[index].d_numAllocated.loadRelaxed();
+    }
+
+    if (numAllocated > 0) {
+        return NTCCFG_WARNING_NARROW(bsl::size_t, numAllocated);
+    }
+    else {
+        return 0;
+    }
 }
 
 bsl::size_t BlobBufferPool::numBuffersAvailable() const
 {
-    bsl::uint64_t numAllocated = d_numAllocated.loadRelaxed();
-    bsl::uint64_t numPooled    = d_numPooled.loadRelaxed();
+    const bsl::uint64_t numPooled    = d_numPooled.loadRelaxed();
+    const bsl::uint64_t numAllocated = this->numBuffersAllocated();
 
     if (numPooled > numAllocated) {
         return NTCCFG_WARNING_NARROW(bsl::size_t, numPooled - numAllocated);
@@ -624,7 +815,8 @@ bsl::size_t BlobBufferPool::numBuffersPooled() const
 
 bsl::size_t BlobBufferPool::numBytesInUse() const
 {
-    return NTCCFG_WARNING_NARROW(bsl::size_t, d_numBytesInUse.loadRelaxed());
+    return NTCCFG_WARNING_NARROW(bsl::size_t,
+                                 d_countingAllocator.numBytesInUse());
 }
 
 }  // close package namespace

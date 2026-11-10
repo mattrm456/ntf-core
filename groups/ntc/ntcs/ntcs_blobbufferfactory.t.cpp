@@ -30,24 +30,15 @@ namespace ntcs {
 // Provide tests for 'ntcs::BlobBufferFactory'.
 class BlobBufferFactoryTest
 {
-    class Object;
-
     static void logAfterAllocation(
         const ntcs::BlobBufferFactory& blobBufferFactory);
 
     static void logAfterAllocation(const ntcs::BlobBufferPool& blobBufferPool);
 
-    static void* allocate(bsl::size_t alignment);
-
-    static void free(void* address);
-
     static void work(bdlbb::BlobBufferFactory* blobBufferFactory,
                      bslmt::Barrier*           barrier,
                      bsl::size_t               numIterations,
                      bsl::size_t               maxThreads);
-
-    template <unsigned ALIGNMENT>
-    static void verifyTagSize(bsl::size_t maxTag);
 
   public:
     // TODO
@@ -89,27 +80,6 @@ class BlobBufferFactoryTest
     static void verifyCase12();
 };
 
-class BlobBufferFactoryTest::Object
-{
-    int d_value;
-
-  public:
-    Object()
-    : d_value(0)
-    {
-    }
-
-    void setValue(int value)
-    {
-        d_value = value;
-    }
-
-    int value() const
-    {
-        return d_value;
-    }
-};
-
 void BlobBufferFactoryTest::logAfterAllocation(
     const ntcs::BlobBufferFactory& blobBufferFactory)
 {
@@ -138,15 +108,6 @@ void BlobBufferFactoryTest::logAfterAllocation(
                    (int)(blobBufferPool.numBytesInUse()));
 }
 
-void* BlobBufferFactoryTest::allocate(bsl::size_t alignment)
-{
-    return reinterpret_cast<void*>(0 + alignment);
-}
-
-void BlobBufferFactoryTest::free(void* address)
-{
-}
-
 void BlobBufferFactoryTest::work(bdlbb::BlobBufferFactory* blobBufferFactory,
                                  bslmt::Barrier*           barrier,
                                  bsl::size_t               numIterations,
@@ -164,93 +125,6 @@ void BlobBufferFactoryTest::work(bdlbb::BlobBufferFactory* blobBufferFactory,
 
     barrier->wait();
     barrier->wait();
-}
-
-template <unsigned ALIGNMENT>
-void BlobBufferFactoryTest::verifyTagSize(bsl::size_t maxTag)
-{
-    NTCI_LOG_CONTEXT();
-
-    typedef ntcs::BlobBufferPoolHandleUtil<void, ALIGNMENT> Util;
-
-    NTSCFG_TEST_EQ(Util::maxTag(), maxTag);
-
-    bsl::size_t alignment = ALIGNMENT;
-    {
-        bsl::size_t tag = 0;
-        while (true) {
-            bool isValid = Util::isValid(tag);
-            if (tag <= maxTag) {
-                NTSCFG_TEST_TRUE(isValid);
-                NTCI_LOG_DEBUG("Align %zu tag %zu = 1",
-                               (bsl::size_t)(alignment),
-                               (bsl::size_t)(tag));
-            }
-            else {
-                NTSCFG_TEST_FALSE(isValid);
-                NTCI_LOG_DEBUG("Align %zu tag %zu = 0",
-                               (bsl::size_t)(alignment),
-                               (bsl::size_t)(tag));
-                break;
-            }
-
-            ++tag;
-        }
-    }
-
-    void*       memory   = BlobBufferFactoryTest::allocate(alignment);
-    void*       original = memory;
-    void*       ptr      = 0;
-    bsl::size_t tag      = 0;
-
-    NTSCFG_TEST_EQ(reinterpret_cast<bsl::size_t>(memory) % alignment, 0);
-
-    ptr = Util::getPtr(memory);
-    tag = Util::getTag(memory);
-
-    NTSCFG_TEST_EQ(ptr, memory);
-    NTSCFG_TEST_EQ(tag, 0);
-
-    for (bsl::size_t newTag = 1; newTag <= maxTag; ++newTag) {
-        Util::setTag(&memory, newTag);
-
-        ptr = Util::getPtr(memory);
-        tag = Util::getTag(memory);
-
-        NTSCFG_TEST_EQ(ptr, original);
-        NTSCFG_TEST_EQ(tag, newTag);
-    }
-
-    ptr = Util::getPtr(memory);
-    tag = Util::getTag(memory);
-
-    NTSCFG_TEST_EQ(ptr, original);
-    NTSCFG_TEST_EQ(tag, maxTag);
-
-    for (bsl::size_t newPtrMultiple = 2; newPtrMultiple <= 1024;
-         ++newPtrMultiple)
-    {
-        void* newPtr = reinterpret_cast<void*>(
-            reinterpret_cast<bsl::size_t>(original) * newPtrMultiple);
-
-        Util::setPtr(&memory, newPtr);
-
-        ptr = Util::getPtr(memory);
-        tag = Util::getTag(memory);
-
-        NTSCFG_TEST_EQ(ptr, newPtr);
-        NTSCFG_TEST_EQ(tag, maxTag);
-    }
-
-    Util::set(&memory, original, 0);
-
-    ptr = Util::getPtr(memory);
-    tag = Util::getTag(memory);
-
-    NTSCFG_TEST_EQ(ptr, original);
-    NTSCFG_TEST_EQ(tag, 0);
-
-    BlobBufferFactoryTest::free(memory);
 }
 
 NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase1)
@@ -970,14 +844,22 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase7)
         bsl::cout << bsl::setw(W) << bsl::right
                   << DATA[variation].d_numIterations;
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].accumulatedWallTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].accumulatedWallTime()
+                     ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].accumulatedUserTime() +
-                         stopwatchList[variation].accumulatedSystemTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].accumulatedUserTime() +
+                         stopwatchList[variation].accumulatedSystemTime()
+                     ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].accumulatedUserTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].accumulatedUserTime()
+                     ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].accumulatedSystemTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].accumulatedSystemTime()
+                    ).totalMicroseconds();
         bsl::cout << bsl::endl;
     }
 }
@@ -1057,15 +939,22 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase8)
         bsl::cout << bsl::setw(W) << bsl::right
                   << DATA[variation].d_numIterations;
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].first.accumulatedWallTime();
-        bsl::cout
-            << bsl::setw(W) << bsl::right
-            << stopwatchList[variation].first.accumulatedUserTime() +
-                   stopwatchList[variation].first.accumulatedSystemTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedWallTime()
+                     ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].first.accumulatedUserTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime() +
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                     ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].first.accumulatedSystemTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                    ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
                   << stopwatchList[variation].second;
         bsl::cout << bsl::endl;
@@ -1148,15 +1037,22 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase9)
         bsl::cout << bsl::setw(W) << bsl::right
                   << DATA[variation].d_numIterations;
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].first.accumulatedWallTime();
-        bsl::cout
-            << bsl::setw(W) << bsl::right
-            << stopwatchList[variation].first.accumulatedUserTime() +
-                   stopwatchList[variation].first.accumulatedSystemTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedWallTime()
+                     ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].first.accumulatedUserTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime() +
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                     ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
-                  << stopwatchList[variation].first.accumulatedSystemTime();
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                    ).totalMicroseconds();
         bsl::cout << bsl::setw(W) << bsl::right
                   << stopwatchList[variation].second;
         bsl::cout << bsl::endl;
@@ -1166,173 +1062,237 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase9)
 
 NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase10)
 {
-    BlobBufferFactoryTest::verifyTagSize<2>(1);
-    BlobBufferFactoryTest::verifyTagSize<4>(3);
-    BlobBufferFactoryTest::verifyTagSize<8>(7);
-    BlobBufferFactoryTest::verifyTagSize<16>(15);
-    BlobBufferFactoryTest::verifyTagSize<4096>(4095);
+    // Concern: A tagged index encodes and decodes every index and tag.
+    //
+    // Plan: Round-trip representative and boundary values through the
+    // utility, and verify the tag wraps around to zero.
+
+    typedef ntcs::BlobBufferPoolHandleUtil Util;
+
+    NTSCFG_TEST_EQ(Util::maxIndex(), 0xFFFFFFFFU);
+    NTSCFG_TEST_EQ(Util::maxTag(), 0xFFFFFFFFU);
+
+    const Util::IndexType INDEXES[] = {
+        0, 1, 2, 0x7FFFFFFFU, 0x80000000U, 0xFFFFFFFEU, 0xFFFFFFFFU
+    };
+
+    const Util::TagType TAGS[] = {
+        0, 1, 2, 0x7FFFFFFFU, 0x80000000U, 0xFFFFFFFEU, 0xFFFFFFFFU
+    };
+
+    for (bsl::size_t i = 0; i < sizeof INDEXES / sizeof INDEXES[0]; ++i) {
+        for (bsl::size_t j = 0; j < sizeof TAGS / sizeof TAGS[0]; ++j) {
+            const Util::RawType raw = Util::initialize(INDEXES[i], TAGS[j]);
+
+            NTSCFG_TEST_EQ(Util::getIndex(raw), INDEXES[i]);
+            NTSCFG_TEST_EQ(Util::getTag(raw), TAGS[j]);
+
+            Util::IndexType index = 0;
+            Util::TagType   tag   = 0;
+            Util::get(&index, &tag, raw);
+
+            NTSCFG_TEST_EQ(index, INDEXES[i]);
+            NTSCFG_TEST_EQ(tag, TAGS[j]);
+        }
+    }
+
+    NTSCFG_TEST_EQ(Util::initialize(0, 0), 0);
+
+    const Util::TagType nextTag = Util::maxTag() + 1;
+    NTSCFG_TEST_EQ(nextTag, 0);
 }
 
 NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase11)
 {
-    enum { ALIGNMENT = 4 };
+    // Concern: The atomic tagged index loads, stores, swaps, and
+    // tests-and-swaps both the index and the tag, and a test-and-swap fails
+    // if either the index or the tag differs from its expected value.
+    //
+    // Plan: Exercise each operation and verify the resulting values.
 
-    bslma::Allocator* allocator = NTSCFG_TEST_ALLOCATOR;
+    typedef ntcs::BlobBufferPoolHandle Handle;
 
-    Object* object1 = new (*allocator) Object();
-    NTSCFG_TEST_EQ((bsl::size_t)(bsl::uintptr_t)(object1) % ALIGNMENT, 0);
-
-    Object* object2 = new (*allocator) Object();
-    NTSCFG_TEST_EQ((bsl::size_t)(bsl::uintptr_t)(object2) % ALIGNMENT, 0);
-
-    typedef ntcs::BlobBufferPoolHandle<Object, ALIGNMENT> Handle;
+    const Handle::IndexType INDEX1 = 1;
+    const Handle::IndexType INDEX2 = 2;
 
     Handle handle;
 
     {
-        Object*         currentObject;
-        Handle::TagType currentTag;
+        Handle::IndexType currentIndex;
+        Handle::TagType   currentTag;
 
-        handle.load(&currentObject, &currentTag);
+        handle.load(&currentIndex, &currentTag);
 
-        NTSCFG_TEST_EQ(currentObject, 0);
+        NTSCFG_TEST_EQ(currentIndex, 0);
         NTSCFG_TEST_EQ(currentTag, 0);
     }
 
     {
-        Object*         previousObject;
-        Handle::TagType previousTag;
+        Handle::IndexType previousIndex;
+        Handle::TagType   previousTag;
 
-        handle.swap(&previousObject, &previousTag, object1, 1);
+        handle.swap(&previousIndex, &previousTag, INDEX1, 1);
 
-        NTSCFG_TEST_EQ(previousObject, 0);
+        NTSCFG_TEST_EQ(previousIndex, 0);
         NTSCFG_TEST_EQ(previousTag, 0);
     }
 
     {
-        Object*         currentObject;
-        Handle::TagType currentTag;
+        Handle::IndexType currentIndex;
+        Handle::TagType   currentTag;
 
-        handle.load(&currentObject, &currentTag);
+        handle.load(&currentIndex, &currentTag);
 
-        NTSCFG_TEST_EQ(currentObject, object1);
+        NTSCFG_TEST_EQ(currentIndex, INDEX1);
         NTSCFG_TEST_EQ(currentTag, 1);
     }
 
     handle.store(0, 0);
 
     {
-        Object*         currentObject;
-        Handle::TagType currentTag;
+        Handle::IndexType currentIndex;
+        Handle::TagType   currentTag;
 
-        handle.load(&currentObject, &currentTag);
+        handle.load(&currentIndex, &currentTag);
 
-        NTSCFG_TEST_EQ(currentObject, 0);
+        NTSCFG_TEST_EQ(currentIndex, 0);
         NTSCFG_TEST_EQ(currentTag, 0);
     }
 
     {
-        Object*         previousObject;
-        Handle::TagType previousTag;
+        Handle::IndexType previousIndex;
+        Handle::TagType   previousTag;
 
-        bool result = handle.testAndSwap(&previousObject,
+        bool result = handle.testAndSwap(&previousIndex,
                                          &previousTag,
                                          0,
                                          0,
-                                         object1,
+                                         INDEX1,
                                          1);
 
         NTSCFG_TEST_TRUE(result);
 
-        NTSCFG_TEST_EQ(previousObject, 0);
+        NTSCFG_TEST_EQ(previousIndex, 0);
         NTSCFG_TEST_EQ(previousTag, 0);
     }
 
     {
-        Object*         currentObject;
-        Handle::TagType currentTag;
+        Handle::IndexType currentIndex;
+        Handle::TagType   currentTag;
 
-        handle.load(&currentObject, &currentTag);
+        handle.load(&currentIndex, &currentTag);
 
-        NTSCFG_TEST_EQ(currentObject, object1);
+        NTSCFG_TEST_EQ(currentIndex, INDEX1);
         NTSCFG_TEST_EQ(currentTag, 1);
     }
 
-    handle.store(object1, 2);
+    handle.store(INDEX1, 2);
+
+    // The index matches but the tag does not.
 
     {
-        Object*         previousObject;
-        Handle::TagType previousTag;
+        Handle::IndexType previousIndex;
+        Handle::TagType   previousTag;
 
-        bool result = handle.testAndSwap(&previousObject,
+        bool result = handle.testAndSwap(&previousIndex,
                                          &previousTag,
-                                         object1,
+                                         INDEX1,
                                          1,
-                                         object2,
+                                         INDEX2,
                                          2);
 
         NTSCFG_TEST_FALSE(result);
 
-        NTSCFG_TEST_EQ(previousObject, object1);
+        NTSCFG_TEST_EQ(previousIndex, INDEX1);
+        NTSCFG_TEST_EQ(previousTag, 2);
+    }
+
+    // The tag matches but the index does not.
+
+    {
+        Handle::IndexType previousIndex;
+        Handle::TagType   previousTag;
+
+        bool result = handle.testAndSwapAcqRel(&previousIndex,
+                                               &previousTag,
+                                               INDEX2,
+                                               2,
+                                               INDEX2,
+                                               3);
+
+        NTSCFG_TEST_FALSE(result);
+
+        NTSCFG_TEST_EQ(previousIndex, INDEX1);
         NTSCFG_TEST_EQ(previousTag, 2);
     }
 
     {
-        Object*         currentObject;
-        Handle::TagType currentTag;
+        Handle::IndexType currentIndex;
+        Handle::TagType   currentTag;
 
-        handle.load(&currentObject, &currentTag);
+        handle.loadAcquire(&currentIndex, &currentTag);
 
-        NTSCFG_TEST_EQ(currentObject, object1);
+        NTSCFG_TEST_EQ(currentIndex, INDEX1);
         NTSCFG_TEST_EQ(currentTag, 2);
     }
 
     {
-        Object*         previousObject;
-        Handle::TagType previousTag;
+        Handle::IndexType previousIndex;
+        Handle::TagType   previousTag;
 
-        bool result = handle.testAndSwap(&previousObject,
-                                         &previousTag,
-                                         object2,
-                                         2,
-                                         object2,
-                                         3);
-
-        NTSCFG_TEST_FALSE(result);
-
-        NTSCFG_TEST_EQ(previousObject, object1);
-        NTSCFG_TEST_EQ(previousTag, 2);
-    }
-
-    {
-        Object*         previousObject;
-        Handle::TagType previousTag;
-
-        bool result = handle.testAndSwap(&previousObject,
-                                         &previousTag,
-                                         object1,
-                                         2,
-                                         object2,
-                                         3);
+        bool result = handle.testAndSwapAcqRel(&previousIndex,
+                                               &previousTag,
+                                               INDEX1,
+                                               2,
+                                               INDEX2,
+                                               3);
 
         NTSCFG_TEST_TRUE(result);
 
-        NTSCFG_TEST_EQ(previousObject, object1);
+        NTSCFG_TEST_EQ(previousIndex, INDEX1);
         NTSCFG_TEST_EQ(previousTag, 2);
     }
 
     {
-        Object*         currentObject;
-        Handle::TagType currentTag;
+        Handle::IndexType currentIndex;
+        Handle::TagType   currentTag;
 
-        handle.load(&currentObject, &currentTag);
+        handle.loadRelaxed(&currentIndex, &currentTag);
 
-        NTSCFG_TEST_EQ(currentObject, object2);
+        NTSCFG_TEST_EQ(currentIndex, INDEX2);
         NTSCFG_TEST_EQ(currentTag, 3);
     }
 
-    allocator->deleteObject(object1);
-    allocator->deleteObject(object2);
+    // The tag wraps around to zero.
+
+    handle.storeRelease(INDEX2, Handle::maxTag());
+
+    {
+        Handle::IndexType previousIndex;
+        Handle::TagType   previousTag;
+
+        bool result = handle.testAndSwap(&previousIndex,
+                                         &previousTag,
+                                         INDEX2,
+                                         Handle::maxTag(),
+                                         INDEX1,
+                                         Handle::maxTag() + 1);
+
+        NTSCFG_TEST_TRUE(result);
+
+        NTSCFG_TEST_EQ(previousIndex, INDEX2);
+        NTSCFG_TEST_EQ(previousTag, Handle::maxTag());
+    }
+
+    {
+        Handle::IndexType currentIndex;
+        Handle::TagType   currentTag;
+
+        handle.load(&currentIndex, &currentTag);
+
+        NTSCFG_TEST_EQ(currentIndex, INDEX1);
+        NTSCFG_TEST_EQ(currentTag, 0);
+    }
 }
 
 NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase12)

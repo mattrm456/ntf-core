@@ -30,6 +30,7 @@ BSLS_IDENT("$Id: $")
 #include <bsls_atomic.h>
 #include <bsls_platform.h>
 #include <bsl_memory.h>
+#include <bsl_vector.h>
 #include <bsl_typeinfo.h>
 
 namespace BloombergLP {
@@ -258,227 +259,125 @@ class BlobBufferPool;
 class BlobBufferPoolObject;
 
 /// @internal @brief
-/// Provide utilities for manipulating a tagged pointer to a pooled blob
+/// Provide utilities for manipulating a tagged index to a pooled blob
 /// buffer.
+///
+/// @details
+/// A tagged index is a 64-bit value whose low 32 bits identify an object
+/// and whose high 32 bits are a tag that is changed on every update of the
+/// head of a free list. The tag defends against the ABA problem: a stale
+/// compare-and-swap succeeds only if the head refers to the same index and
+/// the tag has wrapped around to the same value, which requires 2^32
+/// intervening updates. An index of zero is the null index.
 ///
 /// @par Thread Safety
 /// This struct is thread safe.
 ///
 /// @ingroup module_ntcs
-template <typename TYPE, unsigned ALIGNMENT>
 struct BlobBufferPoolHandleUtil {
-    /// Define a type alias for the raw pointer type.
-    typedef void* RawType;
+    /// Define a type alias for the raw tagged index type.
+    typedef bsl::uint64_t RawType;
 
-    /// Define a type alias for the object pointer type.
-    typedef TYPE* PtrType;
+    /// Define a type alias for the index type.
+    typedef bsl::uint32_t IndexType;
 
     /// Define a type alias for the tag type.
-    typedef bsl::size_t TagType;
+    typedef bsl::uint32_t TagType;
 
-    /// Return the address that respresents the specified object 'ptr' and
+    /// Return the raw value that represents the specified 'index' and
     /// 'tag'.
-    static RawType initialize(PtrType ptr, TagType tag);
+    static RawType initialize(IndexType index, TagType tag);
 
-    /// Set the value of the specified 'address' to represent the specified
-    /// object 'ptr' and 'tag'.
-    static void set(RawType* address, PtrType ptr, TagType tag);
+    /// Load into the specified 'index' and 'tag' the index and tag
+    /// represented by the specified 'raw' value.
+    static void get(IndexType* index, TagType* tag, RawType raw);
 
-    /// Set the value of the specified 'address' to represent the specified
-    /// object 'ptr' while leaving the tag unchanged.
-    static void setPtr(RawType* address, PtrType ptr);
+    /// Return the index represented by the specified 'raw' value.
+    static IndexType getIndex(RawType raw);
 
-    /// Set the value of the specified 'address' to represent the specified
-    /// 'tag' while leaving the object pointer unchanged.
-    static void setTag(RawType* address, TagType tag);
+    /// Return the tag represented by the specified 'raw' value.
+    static TagType getTag(RawType raw);
 
-    /// Load into the specified object 'ptr' and 'tag' the object pointer
-    /// and tag represented by the specified 'address'.
-    static void get(PtrType* ptr, TagType* tag, RawType address);
+    /// Return the maximum index value.
+    static IndexType maxIndex();
 
-    /// Return the object pointer represented by the specified 'address'.
-    static PtrType getPtr(RawType address);
-
-    /// Return the tag represented by the specified 'address'.
-    static TagType getTag(RawType address);
-
-    /// Return the maximum tag value for the alignment.
+    /// Return the maximum tag value.
     static TagType maxTag();
-
-    /// Return true if the specified 'ptr' has a valid alignment, otherwise
-    /// return false.
-    static bool isAligned(PtrType ptr);
-
-    /// Return true if the specified 'tag' is valid for the alignment,
-    /// otherwise return false.
-    static bool isValid(TagType tag);
 };
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE typename BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::RawType
-BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::initialize(PtrType ptr, TagType tag)
+NTCCFG_INLINE
+BlobBufferPoolHandleUtil::RawType BlobBufferPoolHandleUtil::initialize(
+    IndexType index,
+    TagType   tag)
 {
-    RawType result;
-    BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::set(&result, ptr, tag);
-    return result;
+    return (static_cast<RawType>(tag) << 32) | static_cast<RawType>(index);
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::set(
-    RawType* address,
-    PtrType  ptr,
-    TagType  tag)
+NTCCFG_INLINE
+void BlobBufferPoolHandleUtil::get(IndexType* index, TagType* tag, RawType raw)
 {
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-    const bsl::size_t PTR_MASK = ~TAG_MASK;
-
-    BSLS_ASSERT((reinterpret_cast<bsl::size_t>(ptr) & TAG_MASK) == 0);
-    BSLS_ASSERT((tag & PTR_MASK) == 0);
-
-    bsl::size_t number  = reinterpret_cast<bsl::size_t>(ptr) & PTR_MASK;
-    number             |= tag & TAG_MASK;
-
-    *address = reinterpret_cast<TYPE*>(number);
+    *index = static_cast<IndexType>(raw & 0xFFFFFFFFULL);
+    *tag   = static_cast<TagType>(raw >> 32);
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::setPtr(
-    RawType* address,
-    PtrType  ptr)
+NTCCFG_INLINE
+BlobBufferPoolHandleUtil::IndexType BlobBufferPoolHandleUtil::getIndex(
+    RawType raw)
 {
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-    const bsl::size_t PTR_MASK = ~TAG_MASK;
-
-    bsl::size_t number = reinterpret_cast<bsl::size_t>(*address);
-
-    BSLS_ASSERT((reinterpret_cast<bsl::size_t>(ptr) & TAG_MASK) == 0);
-
-    number =
-        (reinterpret_cast<bsl::size_t>(ptr) & PTR_MASK) | (number & TAG_MASK);
-
-    *address = reinterpret_cast<TYPE*>(number);
+    return static_cast<IndexType>(raw & 0xFFFFFFFFULL);
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::setTag(
-    RawType* address,
-    TagType  tag)
+NTCCFG_INLINE
+BlobBufferPoolHandleUtil::TagType BlobBufferPoolHandleUtil::getTag(
+    RawType raw)
 {
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-    const bsl::size_t PTR_MASK = ~TAG_MASK;
-
-    bsl::size_t number = reinterpret_cast<bsl::size_t>(*address);
-
-    BSLS_ASSERT((tag & PTR_MASK) == 0);
-
-    number = (number & PTR_MASK) | (tag & TAG_MASK);
-
-    *address = reinterpret_cast<TYPE*>(number);
+    return static_cast<TagType>(raw >> 32);
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::get(
-    PtrType* ptr,
-    TagType* tag,
-    RawType  address)
+NTCCFG_INLINE
+BlobBufferPoolHandleUtil::IndexType BlobBufferPoolHandleUtil::maxIndex()
 {
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-    const bsl::size_t PTR_MASK = ~TAG_MASK;
-
-    bsl::size_t number = reinterpret_cast<bsl::size_t>(address);
-
-    *ptr = reinterpret_cast<TYPE*>(number & PTR_MASK);
-    *tag = number & TAG_MASK;
+    return 0xFFFFFFFFU;
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE typename BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::PtrType
-BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::getPtr(RawType address)
+NTCCFG_INLINE
+BlobBufferPoolHandleUtil::TagType BlobBufferPoolHandleUtil::maxTag()
 {
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-    const bsl::size_t PTR_MASK = ~TAG_MASK;
-
-    bsl::size_t number = reinterpret_cast<bsl::size_t>(address);
-
-    bsl::size_t result = number & PTR_MASK;
-
-    return reinterpret_cast<TYPE*>(result);
-}
-
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE typename BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::TagType
-BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::getTag(RawType address)
-{
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-
-    bsl::size_t number = reinterpret_cast<bsl::size_t>(address);
-
-    bsl::size_t result = number & TAG_MASK;
-
-    return result;
-}
-
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE typename BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::TagType
-BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::maxTag()
-{
-    return ALIGNMENT - 1;
-}
-
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE bool BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::isAligned(
-    PtrType ptr)
-{
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-
-    return (reinterpret_cast<bsl::size_t>(ptr) & TAG_MASK) == 0;
-}
-
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE bool BlobBufferPoolHandleUtil<TYPE, ALIGNMENT>::isValid(
-    TagType tag)
-{
-    const bsl::size_t TAG_MASK = ALIGNMENT - 1;
-    const bsl::size_t PTR_MASK = ~TAG_MASK;
-
-    return ((tag & PTR_MASK) == 0);
+    return 0xFFFFFFFFU;
 }
 
 /// @internal @brief
-/// Provide an atomic tagged pointer to a parameterized type.
+/// Provide an atomic tagged index.
 ///
 /// @details
-/// This class implements an atomic tagged pointer to a parameterized
-/// 'TYPE' allocated at an address having the parameterized power-of-two
-/// 'ALIGNMENT'. This class supports common pointer operations in a way that
-/// is guaranteed to be atomic.  Operations on objects of this class provide
-/// the sequential consistency memory ordering guarantee unless explicitly
-/// qualified with a less strict consistency guarantee suffix (i.e.,
-/// Acquire, Release, AcqRel or Relaxed).
+/// This class implements an atomic tagged index, using only 64-bit atomic
+/// operations, which are available on every supported platform. Operations
+/// on objects of this class provide the sequential consistency memory
+/// ordering guarantee unless explicitly qualified with a less strict
+/// consistency guarantee suffix (i.e., Acquire, Release, AcqRel or
+/// Relaxed).
 ///
 /// @par Thread Safety
 /// This class is thread safe.
 ///
 /// @ingroup module_ntcs
-template <typename TYPE, unsigned ALIGNMENT>
 class BlobBufferPoolHandle
 {
   public:
     /// Define a type alias for the utility.
-    typedef ntcs::BlobBufferPoolHandleUtil<TYPE, ALIGNMENT> Util;
+    typedef ntcs::BlobBufferPoolHandleUtil Util;
 
-    /// Define a type alias for the raw pointer type.
-    typedef typename Util::RawType RawType;
+    /// Define a type alias for the raw tagged index type.
+    typedef Util::RawType RawType;
 
-    /// Define a type alias for the object pointer type.
-    typedef typename Util::PtrType PtrType;
+    /// Define a type alias for the index type.
+    typedef Util::IndexType IndexType;
 
     /// Define a type alias for the tag type.
-    typedef typename Util::TagType TagType;
+    typedef Util::TagType TagType;
 
   private:
-    // DATA
-    bsls::AtomicOperations::AtomicTypes::Pointer d_value;
+    bsls::AtomicOperations::AtomicTypes::Uint64 d_value;
 
   private:
     BlobBufferPoolHandle(const BlobBufferPoolHandle&) BSLS_KEYWORD_DELETED;
@@ -486,257 +385,234 @@ class BlobBufferPoolHandle
         BSLS_KEYWORD_DELETED;
 
   public:
-    /// Create an atomic tagged pointer object having the default value of
-    /// NULL with a tag set to zero.
+    /// Create an atomic tagged index having the null index and a tag of
+    /// zero.
     BlobBufferPoolHandle();
 
-    /// Create an atomic pointer object having the specified 'value'.
-    BlobBufferPoolHandle(PtrType object, TagType tag);
+    /// Create an atomic tagged index having the specified 'index' and
+    /// 'tag'.
+    BlobBufferPoolHandle(IndexType index, TagType tag);
 
-    /// Destroy this atomic pointer.
+    /// Destroy this object.
     ~BlobBufferPoolHandle();
 
-    /// Atomically assign the specified 'value' to this object, providing
-    /// the sequential consistency memory ordering guarantee.
-    void store(PtrType newObject, TagType newTag);
-
-    /// Atomically assign the specified 'value' to this object, providing
-    /// the relaxed memory ordering guarantee.
-    void storeRelaxed(PtrType newObject, TagType newTag);
-
-    /// Atomically assign the specified 'value' to this object, providing
-    /// the release memory ordering guarantee.
-    void storeRelease(PtrType newObject, TagType newTag);
-
-    /// Atomically set the value of this handle to point to the specified
-    /// 'newObject' and 'newTag' and load into the specified 'oldObject' and
-    /// 'oldTag' the previous object pointed to by this handle and the tag,
-    /// respectively. Perform the operation with the sequential consistency
-    /// memory ordering guarantee.
-    void swap(PtrType* previousObject,
-              TagType* previousTag,
-              PtrType  newObject,
-              TagType  newTag);
-
-    /// Atomically set the value of this handle to point to the specified
-    /// 'newObject' and 'newTag' and load into the specified 'oldObject' and
-    /// 'oldTag' the previous object pointed to by this handle and the tag,
-    /// respectively. Perform the operation with the acquire/release memory
-    /// ordering guarantee.
-    void swapAcqRel(PtrType* previousObject,
-                    TagType* previousTag,
-                    PtrType  newObject,
-                    TagType  newTag);
-
-    /// Compare the value of this object to the specified 'compareValue'.
-    /// If they are equal, set the value of this atomic pointer to the
-    /// specified 'swapValue', otherwise leave this value unchanged.  Return
-    /// the previous value of this atomic pointer, whether or not the swap
-    /// occurred.  Note that the entire test-and-swap operation is performed
-    /// atomically.
-    bool testAndSwap(PtrType* previousObject,
-                     TagType* previousTag,
-                     PtrType  expectedObject,
-                     TagType  expectedTag,
-                     PtrType  newObject,
-                     TagType  newTag);
-
-    /// Compare the value of this object to the specified 'compareValue'.
-    /// If they are equal, set the value of this atomic pointer to the
-    /// specified 'swapValue', otherwise leave this value unchanged.  Return
-    /// the previous value of this atomic pointer, whether or not the swap
-    /// occurred.  Note that the entire test-and-swap operation is performed
-    /// atomically and it provides the acquire/release memory ordering
+    /// Atomically set the value of this object to the specified 'newIndex'
+    /// and 'newTag', providing the sequential consistency memory ordering
     /// guarantee.
-    bool testAndSwapAcqRel(PtrType* previousObject,
-                           TagType* previousTag,
-                           PtrType  expectedObject,
-                           TagType  expectedTag,
-                           PtrType  newObject,
-                           TagType  newTag);
+    void store(IndexType newIndex, TagType newTag);
 
-    /// Return the current value of this object.
-    void load(PtrType* currentObject, TagType* currentTag) const;
+    /// Atomically set the value of this object to the specified 'newIndex'
+    /// and 'newTag', providing the relaxed memory ordering guarantee.
+    void storeRelaxed(IndexType newIndex, TagType newTag);
 
-    /// Return the current value of this object, providing the relaxed
-    /// memory ordering guarantee.
-    void loadRelaxed(PtrType* currentObject, TagType* currentTag) const;
+    /// Atomically set the value of this object to the specified 'newIndex'
+    /// and 'newTag', providing the release memory ordering guarantee.
+    void storeRelease(IndexType newIndex, TagType newTag);
 
-    /// Return the current value of this object, providing the acquire
-    /// memory ordering guarantee.
-    void loadAcquire(PtrType* currentObject, TagType* currentTag) const;
+    /// Atomically set the value of this object to the specified 'newIndex'
+    /// and 'newTag' and load into the specified 'previousIndex' and
+    /// 'previousTag' the previous value. Perform the operation with the
+    /// sequential consistency memory ordering guarantee.
+    void swap(IndexType* previousIndex,
+              TagType*   previousTag,
+              IndexType  newIndex,
+              TagType    newTag);
 
-    /// Return the maximum tag value for the alignment.
+    /// Atomically set the value of this object to the specified 'newIndex'
+    /// and 'newTag' and load into the specified 'previousIndex' and
+    /// 'previousTag' the previous value. Perform the operation with the
+    /// acquire/release memory ordering guarantee.
+    void swapAcqRel(IndexType* previousIndex,
+                    TagType*   previousTag,
+                    IndexType  newIndex,
+                    TagType    newTag);
+
+    /// Compare the value of this object to the specified 'expectedIndex'
+    /// and 'expectedTag'. If they are equal, set the value of this object
+    /// to the specified 'newIndex' and 'newTag', otherwise leave this value
+    /// unchanged. Load into the specified 'previousIndex' and
+    /// 'previousTag' the previous value, whether or not the swap occurred,
+    /// and return true if the swap occurred, otherwise return false. Note
+    /// that the entire test-and-swap operation is performed atomically and
+    /// provides the sequential consistency memory ordering guarantee.
+    bool testAndSwap(IndexType* previousIndex,
+                     TagType*   previousTag,
+                     IndexType  expectedIndex,
+                     TagType    expectedTag,
+                     IndexType  newIndex,
+                     TagType    newTag);
+
+    /// Compare the value of this object to the specified 'expectedIndex'
+    /// and 'expectedTag'. If they are equal, set the value of this object
+    /// to the specified 'newIndex' and 'newTag', otherwise leave this value
+    /// unchanged. Load into the specified 'previousIndex' and
+    /// 'previousTag' the previous value, whether or not the swap occurred,
+    /// and return true if the swap occurred, otherwise return false. Note
+    /// that the entire test-and-swap operation is performed atomically and
+    /// provides the acquire/release memory ordering guarantee.
+    bool testAndSwapAcqRel(IndexType* previousIndex,
+                           TagType*   previousTag,
+                           IndexType  expectedIndex,
+                           TagType    expectedTag,
+                           IndexType  newIndex,
+                           TagType    newTag);
+
+    /// Load into the specified 'currentIndex' and 'currentTag' the current
+    /// value of this object, providing the sequential consistency memory
+    /// ordering guarantee.
+    void load(IndexType* currentIndex, TagType* currentTag) const;
+
+    /// Load into the specified 'currentIndex' and 'currentTag' the current
+    /// value of this object, providing the relaxed memory ordering
+    /// guarantee.
+    void loadRelaxed(IndexType* currentIndex, TagType* currentTag) const;
+
+    /// Load into the specified 'currentIndex' and 'currentTag' the current
+    /// value of this object, providing the acquire memory ordering
+    /// guarantee.
+    void loadAcquire(IndexType* currentIndex, TagType* currentTag) const;
+
+    /// Return the maximum tag value.
     static TagType maxTag();
 };
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE BlobBufferPoolHandle<TYPE, ALIGNMENT>::BlobBufferPoolHandle()
+NTCCFG_INLINE
+BlobBufferPoolHandle::BlobBufferPoolHandle()
 {
-    bsls::AtomicOperations_Imp::initPointer(&d_value, 0);
+    bsls::AtomicOperations::initUint64(&d_value, 0);
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE BlobBufferPoolHandle<TYPE, ALIGNMENT>::BlobBufferPoolHandle(
-    PtrType object,
-    TagType tag)
+NTCCFG_INLINE
+BlobBufferPoolHandle::BlobBufferPoolHandle(IndexType index, TagType tag)
 {
-    bsls::AtomicOperations_Imp::initPointer(&d_value,
-                                            Util::initialize(object, tag));
+    bsls::AtomicOperations::initUint64(&d_value,
+                                       Util::initialize(index, tag));
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE BlobBufferPoolHandle<TYPE, ALIGNMENT>::~BlobBufferPoolHandle()
+NTCCFG_INLINE
+BlobBufferPoolHandle::~BlobBufferPoolHandle()
 {
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::store(
-    PtrType newObject,
-    TagType newTag)
+NTCCFG_INLINE
+void BlobBufferPoolHandle::store(IndexType newIndex, TagType newTag)
 {
-    RawType newRaw;
-    Util::set(&newRaw, newObject, newTag);
-
-    bsls::AtomicOperations_Imp::setPtr(&d_value, newRaw);
+    bsls::AtomicOperations::setUint64(&d_value,
+                                      Util::initialize(newIndex, newTag));
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::storeRelaxed(
-    PtrType newObject,
-    TagType newTag)
+NTCCFG_INLINE
+void BlobBufferPoolHandle::storeRelaxed(IndexType newIndex, TagType newTag)
 {
-    RawType newRaw;
-    Util::set(&newRaw, newObject, newTag);
-
-    bsls::AtomicOperations_Imp::setPtrRelaxed(&d_value, newRaw);
+    bsls::AtomicOperations::setUint64Relaxed(
+        &d_value,
+        Util::initialize(newIndex, newTag));
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::storeRelease(
-    PtrType newObject,
-    TagType newTag)
+NTCCFG_INLINE
+void BlobBufferPoolHandle::storeRelease(IndexType newIndex, TagType newTag)
 {
-    RawType newRaw;
-    Util::set(&newRaw, newObject, newTag);
-
-    bsls::AtomicOperations_Imp::setPtrRelease(&d_value, newRaw);
+    bsls::AtomicOperations::setUint64Release(
+        &d_value,
+        Util::initialize(newIndex, newTag));
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::swap(
-    PtrType* previousObject,
-    TagType* previousTag,
-    PtrType  newObject,
-    TagType  newTag)
+NTCCFG_INLINE
+void BlobBufferPoolHandle::swap(IndexType* previousIndex,
+                                TagType*   previousTag,
+                                IndexType  newIndex,
+                                TagType    newTag)
 {
-    RawType newRaw;
-    Util::set(&newRaw, newObject, newTag);
+    const RawType previousRaw = bsls::AtomicOperations::swapUint64(
+        &d_value,
+        Util::initialize(newIndex, newTag));
 
-    RawType previousRaw =
-        bsls::AtomicOperations_Imp::swapPtr(&d_value, newRaw);
-
-    Util::get(previousObject, previousTag, previousRaw);
+    Util::get(previousIndex, previousTag, previousRaw);
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::swapAcqRel(
-    PtrType* previousObject,
-    TagType* previousTag,
-    PtrType  newObject,
-    TagType  newTag)
+NTCCFG_INLINE
+void BlobBufferPoolHandle::swapAcqRel(IndexType* previousIndex,
+                                      TagType*   previousTag,
+                                      IndexType  newIndex,
+                                      TagType    newTag)
 {
-    RawType newRaw;
-    Util::set(&newRaw, newObject, newTag);
+    const RawType previousRaw = bsls::AtomicOperations::swapUint64AcqRel(
+        &d_value,
+        Util::initialize(newIndex, newTag));
 
-    RawType previousRaw =
-        bsls::AtomicOperations_Imp::swapPtrAcqRel(&d_value, newRaw);
-
-    Util::get(previousObject, previousTag, previousRaw);
+    Util::get(previousIndex, previousTag, previousRaw);
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE bool BlobBufferPoolHandle<TYPE, ALIGNMENT>::testAndSwap(
-    PtrType* previousObject,
-    TagType* previousTag,
-    PtrType  expectedObject,
-    TagType  expectedTag,
-    PtrType  newObject,
-    TagType  newTag)
+NTCCFG_INLINE
+bool BlobBufferPoolHandle::testAndSwap(IndexType* previousIndex,
+                                       TagType*   previousTag,
+                                       IndexType  expectedIndex,
+                                       TagType    expectedTag,
+                                       IndexType  newIndex,
+                                       TagType    newTag)
 {
-    RawType expectedRaw;
-    Util::set(&expectedRaw, expectedObject, expectedTag);
+    const RawType expectedRaw = Util::initialize(expectedIndex, expectedTag);
 
-    RawType newRaw;
-    Util::set(&newRaw, newObject, newTag);
+    const RawType previousRaw = bsls::AtomicOperations::testAndSwapUint64(
+        &d_value,
+        expectedRaw,
+        Util::initialize(newIndex, newTag));
 
-    RawType previousRaw =
-        bsls::AtomicOperations_Imp::testAndSwapPtr(&d_value,
-                                                   expectedRaw,
-                                                   newRaw);
+    Util::get(previousIndex, previousTag, previousRaw);
 
-    Util::get(previousObject, previousTag, previousRaw);
-
-    return (*previousObject == expectedObject) &&
-           (*previousTag == expectedTag);
+    return previousRaw == expectedRaw;
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE bool BlobBufferPoolHandle<TYPE, ALIGNMENT>::testAndSwapAcqRel(
-    PtrType* previousObject,
-    TagType* previousTag,
-    PtrType  expectedObject,
-    TagType  expectedTag,
-    PtrType  newObject,
-    TagType  newTag)
+NTCCFG_INLINE
+bool BlobBufferPoolHandle::testAndSwapAcqRel(IndexType* previousIndex,
+                                             TagType*   previousTag,
+                                             IndexType  expectedIndex,
+                                             TagType    expectedTag,
+                                             IndexType  newIndex,
+                                             TagType    newTag)
 {
-    RawType expectedRaw;
-    Util::set(&expectedRaw, expectedObject, expectedTag);
+    const RawType expectedRaw = Util::initialize(expectedIndex, expectedTag);
 
-    RawType newRaw;
-    Util::set(&newRaw, newObject, newTag);
+    const RawType previousRaw =
+        bsls::AtomicOperations::testAndSwapUint64AcqRel(
+            &d_value,
+            expectedRaw,
+            Util::initialize(newIndex, newTag));
 
-    RawType previousRaw =
-        bsls::AtomicOperations_Imp::testAndSwapPtrAcqRel(&d_value,
-                                                         expectedRaw,
-                                                         newRaw);
+    Util::get(previousIndex, previousTag, previousRaw);
 
-    Util::get(previousObject, previousTag, previousRaw);
-
-    return (*previousObject == expectedObject) &&
-           (*previousTag == expectedTag);
+    return previousRaw == expectedRaw;
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::load(
-    PtrType* currentObject,
-    TagType* currentTag) const
+NTCCFG_INLINE
+void BlobBufferPoolHandle::load(IndexType* currentIndex,
+                                TagType*   currentTag) const
 {
-    RawType currentRaw = bsls::AtomicOperations_Imp::getPtr(&d_value);
-    Util::get(currentObject, currentTag, currentRaw);
+    Util::get(currentIndex,
+              currentTag,
+              bsls::AtomicOperations::getUint64(&d_value));
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::loadRelaxed(
-    PtrType* currentObject,
-    TagType* currentTag) const
+NTCCFG_INLINE
+void BlobBufferPoolHandle::loadRelaxed(IndexType* currentIndex,
+                                       TagType*   currentTag) const
 {
-    RawType currentRaw = bsls::AtomicOperations_Imp::getPtrRelaxed(&d_value);
-    Util::get(currentObject, currentTag, currentRaw);
+    Util::get(currentIndex,
+              currentTag,
+              bsls::AtomicOperations::getUint64Relaxed(&d_value));
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE void BlobBufferPoolHandle<TYPE, ALIGNMENT>::loadAcquire(
-    PtrType* currentObject,
-    TagType* currentTag) const
+NTCCFG_INLINE
+void BlobBufferPoolHandle::loadAcquire(IndexType* currentIndex,
+                                       TagType*   currentTag) const
 {
-    RawType currentRaw = bsls::AtomicOperations_Imp::getPtrAcquire(&d_value);
-    Util::get(currentObject, currentTag, currentRaw);
+    Util::get(currentIndex,
+              currentTag,
+              bsls::AtomicOperations::getUint64Acquire(&d_value));
 }
 
-template <typename TYPE, unsigned ALIGNMENT>
-NTCCFG_INLINE typename BlobBufferPoolHandle<TYPE, ALIGNMENT>::TagType
-BlobBufferPoolHandle<TYPE, ALIGNMENT>::maxTag()
+NTCCFG_INLINE
+BlobBufferPoolHandle::TagType BlobBufferPoolHandle::maxTag()
 {
     return Util::maxTag();
 }
@@ -755,7 +631,7 @@ struct BlobBufferPoolObjectPadding {
     }
 
 #if defined(BSLS_PLATFORM_CPU_64_BIT)
-    bsl::uint8_t zero[16];
+    bsl::uint8_t zero[20];
 #elif defined(BSLS_PLATFORM_CPU_32_BIT)
     bsl::uint8_t zero[32];
 #else
@@ -767,6 +643,17 @@ struct BlobBufferPoolObjectPadding {
 /// Provide an intrusively linked-list of blob buffers implementing a shared
 /// pointer representation.
 ///
+/// @details
+/// Each object is the header of a contiguous region of memory: the object
+/// itself occupies the first 64 bytes and the blob buffer data immediately
+/// follows it. Each object is identified by a non-zero index, and objects
+/// are linked into free lists by index rather than by address. The link to
+/// the next object is atomic because a thread popping an object from a free
+/// list may read the link while another thread that has already popped the
+/// same object overwrites it; the tagged head of the free list detects that
+/// case and rejects the stale pop, but the read itself must not be a data
+/// race.
+///
 /// @par Thread Safety
 /// This class is not thread safe.
 ///
@@ -775,8 +662,9 @@ class BlobBufferPoolObject : public bslma::SharedPtrRep
 {
     char*                       d_data_p;
     BlobBufferPool*             d_pool_p;
-    BlobBufferPoolObject*       d_next_p;
-    bsls::AtomicUint64          d_generation;
+    bsls::AtomicUint            d_next;
+    bsl::uint32_t               d_index;
+    bsl::uint32_t               d_shard;
     BlobBufferPoolObjectPadding d_padding;
 
   private:
@@ -785,9 +673,9 @@ class BlobBufferPoolObject : public bslma::SharedPtrRep
         BSLS_KEYWORD_DELETED;
 
   public:
-    /// Create a new blob buffer pool object that belongs to the specified
-    /// 'pool'.
-    explicit BlobBufferPoolObject(BlobBufferPool* pool);
+    /// Create a new blob buffer pool object identified by the specified
+    /// non-zero 'index' that belongs to the specified 'pool'.
+    BlobBufferPoolObject(BlobBufferPool* pool, bsl::uint32_t index);
 
     /// Destroy this object.
     ~BlobBufferPoolObject() BSLS_KEYWORD_OVERRIDE;
@@ -796,11 +684,13 @@ class BlobBufferPoolObject : public bslma::SharedPtrRep
     /// specified 'data'.
     void setData(char* data);
 
-    /// Set the next object in linked list to the specified 'next' object.
-    void setNext(BlobBufferPoolObject* next);
+    /// Set the index of the next object in linked list to the specified
+    /// 'next' index, or zero if this object is the last in the list.
+    void setNext(bsl::uint32_t next);
 
-    /// Increment the generation.
-    void incrementGeneration();
+    /// Set the index of the free list to which this object is returned
+    /// when released to the specified 'shard'.
+    void setShard(bsl::uint32_t shard);
 
     /// Destroy the object referred to by this representation.  This method
     /// is invoked by 'releaseRef' when the number of shared references
@@ -824,21 +714,50 @@ class BlobBufferPoolObject : public bslma::SharedPtrRep
     /// Return the blob buffer data to which this object manages.
     char* data() const;
 
-    /// Return the next object in linked list.
-    BlobBufferPoolObject* next() const;
+    /// Return the index of the next object in linked list, or zero if this
+    /// object is the last in the list.
+    bsl::uint32_t next() const;
 
-    /// Return the generation.
-    bsl::uint64_t generation() const;
+    /// Return the index that identifies this object.
+    bsl::uint32_t index() const;
+
+    /// Return the index of the free list to which this object is returned
+    /// when released.
+    bsl::uint32_t shard() const;
 
     /// Return the (untyped) address of the modifiable shared object to
     /// which this object refers.
     void* originalPtr() const BSLS_KEYWORD_OVERRIDE;
 };
 
-#define NTCS_BLOBBUFFERPOOL_DEBUG 0
-
 /// @internal @brief
 /// Provide a pool of blob buffers.
+///
+/// @details
+/// This class implements a pool of blob buffers as a set of lock-free,
+/// intrusive free lists ("shards"), each headed by a tagged index. Each
+/// thread is assigned a home shard the first time it uses any pool. A
+/// buffer is allocated by popping from the home shard, then, if the home
+/// shard is empty, by popping from the other shards, and only if every
+/// shard is empty by carving a new buffer from the memory pool. A buffer is
+/// released by pushing it back onto the home shard of the thread that
+/// allocated it, so buffers flow back to the threads that need them, and
+/// releasing a buffer requires no thread-local lookup. Each shard occupies
+/// its own cache line, so threads with different home shards do not
+/// contend.
+///
+/// Memory is acquired in slabs that grow geometrically up to a maximum size,
+/// and buffers are carved from the current slab one at a time, on demand,
+/// so the number of buffers pooled counts only buffers that have actually
+/// been needed. Memory is not returned to the allocator supplied at
+/// construction until this object is destroyed.
+///
+/// Buffers are identified by index, starting at one, in the order they are
+/// carved. Slab 'i' holds '2^i' buffers for 'i <= L', and every later slab
+/// holds '2^L' buffers, where '2^L' is the maximum number of buffers per
+/// slab, so the slab and offset of an index are computed directly. The
+/// addresses of the slabs are kept in a table that is replaced, but never
+/// freed, when it grows, so threads may read the table without locking.
 ///
 /// @par Thread Safety
 /// This class is thread safe.
@@ -846,37 +765,111 @@ class BlobBufferPoolObject : public bslma::SharedPtrRep
 /// @ingroup module_ntcs
 class BlobBufferPool : public bdlbb::BlobBufferFactory
 {
-    enum {
-        k_ALIGNMENT = 256  // 4096
+    /// Enumerate the constants used in the implementation.
+    enum Constants {
+        /// The alignment of each blob buffer pool object, which is the size
+        /// of the object header.
+        k_ALIGNMENT = 64,
+
+        /// The number of free lists. Must be a power of two.
+        k_NUM_SHARDS = 16,
+
+        /// The assumed maximum size of a cache line, which is 128 bytes on
+        /// some platforms (e.g. Apple Silicon) and which also accounts for
+        /// adjacent-line prefetching on others.
+        k_CACHE_LINE_SIZE = 128,
+
+        /// The maximum number of objects carved from a single slab. Must be
+        /// a power of two.
+        k_MAX_SLAB_OBJECTS = 64,
+
+        /// The maximum number of bytes in a single slab, unless a single
+        /// object is larger.
+        k_MAX_SLAB_SIZE = 1024 * 1024,
+
+        /// The initial capacity of the slab table.
+        k_INITIAL_SLAB_TABLE_CAPACITY = 16
     };
 
-    typedef ntcs::BlobBufferPoolHandle<ntcs::BlobBufferPoolObject, k_ALIGNMENT>
-        Handle;
+    /// Define a type alias for a tagged index to the head of a free list.
+    typedef ntcs::BlobBufferPoolHandle Handle;
 
-#if NTCS_BLOBBUFFERPOOL_DEBUG
-    enum {k_OBJECT_ARRAY_CAPACITY = 11};
-#endif
+    /// Define a type alias for a mutex.
+    typedef ntccfg::Mutex Mutex;
 
-    Handle      d_head;
-    bsl::size_t d_blobBufferSize;
+    /// Define a type alias for a mutex lock guard.
+    typedef ntccfg::LockGuard LockGuard;
 
-#if NTCS_BLOBBUFFERPOOL_DEBUG
-    BlobBufferPoolObject* d_objectArray[k_OBJECT_ARRAY_CAPACITY];
-    bsl::size_t           d_objectCount;
-#endif
+    /// Describe a free list and the number of buffers allocated by the
+    /// threads whose home is this free list and not yet released, padded
+    /// to occupy a cache line.
+    struct Shard {
+        Handle             d_head;
+        bsls::AtomicInt64  d_numAllocated;
+        char               d_padding[k_CACHE_LINE_SIZE - sizeof(Handle) -
+                                     sizeof(bsls::AtomicInt64)];
+    };
 
-    bsls::AtomicUint64       d_numAllocated;
-    bsls::AtomicUint64       d_numPooled;
-    bsls::AtomicUint64       d_numBytesInUse;
-    bdlma::AligningAllocator d_aligningAllocator;
-    bslma::Allocator*        d_allocator_p;
+    /// Describe the array of shards, padded on both sides so that no shard
+    /// shares a cache line with the fields read by every allocation or
+    /// written by the slow path.
+    struct ShardArray {
+        char  d_leadingPadding[k_CACHE_LINE_SIZE];
+        Shard d_shard[k_NUM_SHARDS];
+        char  d_trailingPadding[k_CACHE_LINE_SIZE];
+    };
+
+    bsl::size_t                d_blobBufferSize;
+    bsl::size_t                d_objectSize;
+    bsl::size_t                d_slabShift;
+    bsls::AtomicPointer<char*> d_slabTable;
+    ShardArray                 d_shards;
+    Mutex                      d_mutex;
+    bsl::size_t                d_slabTableCapacity;
+    bsl::size_t                d_numSlabs;
+    bsl::uint32_t              d_numCarved;
+    bsls::AtomicUint64         d_numPooled;
+    bdlma::CountingAllocator   d_countingAllocator;
+    bdlma::AligningAllocator   d_aligningAllocator;
+    bsl::vector<char**>        d_slabTables;
+    bslma::Allocator*          d_allocator_p;
 
   private:
     BlobBufferPool(const BlobBufferPool&) BSLS_KEYWORD_DELETED;
     BlobBufferPool& operator=(const BlobBufferPool&) BSLS_KEYWORD_DELETED;
 
   private:
-    /// Replenish the pool with one more object.
+    /// Return the index of the home shard of the calling thread.
+    static bsl::size_t homeShard();
+
+    /// Load into the specified 'slab' and 'offset' the index of the slab
+    /// and the position within that slab of the object identified by the
+    /// specified non-zero 'index'.
+    void locate(bsl::size_t* slab, bsl::size_t* offset, bsl::uint32_t index)
+        const;
+
+    /// Return the object identified by the specified non-zero 'index'. The
+    /// behavior is undefined unless the object has been carved and its
+    /// index was observed after it was carved.
+    BlobBufferPoolObject* lookup(bsl::uint32_t index) const;
+
+    /// Pop an object from the specified 'shard' and return it, or return
+    /// null if 'shard' is empty.
+    BlobBufferPoolObject* pop(Shard* shard) const;
+
+    /// Push the chain of objects from the specified 'first' through the
+    /// specified 'last', linked by their 'next' pointers, onto the
+    /// specified 'shard'.
+    static void push(Shard*                shard,
+                     BlobBufferPoolObject* first,
+                     BlobBufferPoolObject* last);
+
+    /// Construct a new object in memory carved from the current slab,
+    /// acquiring a new slab, and growing the slab table, if necessary, and
+    /// return it. The behavior is undefined unless 'd_mutex' is locked.
+    BlobBufferPoolObject* carve();
+
+    /// Return a new object carved from the memory pool.
     BlobBufferPoolObject* replenish();
 
   public:
@@ -887,7 +880,8 @@ class BlobBufferPool : public bdlbb::BlobBufferFactory
     explicit BlobBufferPool(bsl::size_t       blobBufferSize,
                             bslma::Allocator* basicAllocator = 0);
 
-    /// Destroy this object.
+    /// Destroy this object. The behavior is undefined unless every blob
+    /// buffer allocated from this object has been released.
     ~BlobBufferPool() BSLS_KEYWORD_OVERRIDE;
 
     /// Allocate a blob buffer from this blob buffer factory, and load it
@@ -929,15 +923,15 @@ void BlobBufferPoolObject::setData(char* data)
 }
 
 NTCCFG_INLINE
-void BlobBufferPoolObject::setNext(BlobBufferPoolObject* next)
+void BlobBufferPoolObject::setNext(bsl::uint32_t next)
 {
-    d_next_p = next;
+    d_next.storeRelaxed(next);
 }
 
 NTCCFG_INLINE
-void BlobBufferPoolObject::incrementGeneration()
+void BlobBufferPoolObject::setShard(bsl::uint32_t shard)
 {
-    d_generation.add(1);
+    d_shard = shard;
 }
 
 NTCCFG_INLINE
@@ -965,15 +959,21 @@ char* BlobBufferPoolObject::data() const
 }
 
 NTCCFG_INLINE
-BlobBufferPoolObject* BlobBufferPoolObject::next() const
+bsl::uint32_t BlobBufferPoolObject::next() const
 {
-    return d_next_p;
+    return d_next.loadRelaxed();
 }
 
 NTCCFG_INLINE
-bsl::uint64_t BlobBufferPoolObject::generation() const
+bsl::uint32_t BlobBufferPoolObject::index() const
 {
-    return d_generation.load();
+    return d_index;
+}
+
+NTCCFG_INLINE
+bsl::uint32_t BlobBufferPoolObject::shard() const
+{
+    return d_shard;
 }
 
 NTCCFG_INLINE
