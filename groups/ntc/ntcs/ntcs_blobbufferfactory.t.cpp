@@ -82,6 +82,11 @@ class BlobBufferFactoryTest
 
     // TODO
     static void verifyCase11();
+
+    // Verify 'ntcs::BlobBufferFactory' tracks the number of buffers
+    // allocated, available, and pooled, and the number of bytes in use,
+    // independently of how the underlying memory pool acquires memory.
+    static void verifyCase12();
 };
 
 class BlobBufferFactoryTest::Object
@@ -1069,7 +1074,7 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase8)
 
 NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase9)
 {
-#if 0
+#if 1
     bslma::Allocator *allocator = bslma::Default::defaultAllocator();
 
     // clang-format off
@@ -1328,6 +1333,109 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase11)
 
     allocator->deleteObject(object1);
     allocator->deleteObject(object2);
+}
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase12)
+{
+    // Concern: The number of buffers allocated, available, and pooled, and
+    // the number of bytes in use, are tracked correctly regardless of how
+    // many blocks the underlying memory pool acquires at a time.
+    //
+    // Plan: Allocate more buffers than the underlying memory pool acquires
+    // in its initial allocation, release them, then allocate a smaller
+    // number of buffers again. Verify the buffer counts exactly, and verify
+    // the number of bytes in use only against properties guaranteed by the
+    // contract of the underlying memory pool: it never shrinks while the
+    // factory exists, it is sufficient to hold every pooled buffer, and all
+    // memory is returned when the factory is destroyed.
+
+    const bsl::size_t BLOB_BUFFER_SIZE = 4096;
+    const bsl::size_t NUM_BUFFERS      = 1000;
+    const bsl::size_t NUM_REUSED       = 10;
+
+    bdlma::CountingAllocator countingAllocator(NTSCFG_TEST_ALLOCATOR);
+
+    {
+        ntcs::BlobBufferFactory blobBufferFactory(BLOB_BUFFER_SIZE,
+                                                  &countingAllocator);
+
+        NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAllocated(), 0);
+        NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAvailable(), 0);
+        NTSCFG_TEST_EQ(blobBufferFactory.numBuffersPooled(), 0);
+        NTSCFG_TEST_EQ(blobBufferFactory.numBytesInUse(), 0);
+
+        bsl::size_t numBytesInUse = 0;
+
+        {
+            bsl::vector<bdlbb::BlobBuffer> blobBufferVector(
+                NTSCFG_TEST_ALLOCATOR);
+            blobBufferVector.resize(NUM_BUFFERS);
+
+            for (bsl::size_t i = 0; i < NUM_BUFFERS; ++i) {
+                blobBufferFactory.allocate(&blobBufferVector[i]);
+
+                NTSCFG_TEST_NE(blobBufferVector[i].data(), 0);
+                NTSCFG_TEST_EQ(static_cast<bsl::size_t>(blobBufferVector[i].size()),
+                               BLOB_BUFFER_SIZE);
+
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAllocated(), i + 1);
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAvailable(), 0);
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersPooled(), i + 1);
+
+                NTSCFG_TEST_GE(blobBufferFactory.numBytesInUse(),
+                               numBytesInUse);
+                NTSCFG_TEST_GE(blobBufferFactory.numBytesInUse(),
+                               (i + 1) * BLOB_BUFFER_SIZE);
+
+                numBytesInUse = blobBufferFactory.numBytesInUse();
+            }
+
+            NTSCFG_TEST_GE(countingAllocator.numBytesInUse(),
+                           static_cast<bsls::Types::Int64>(numBytesInUse));
+
+            for (bsl::size_t i = 0; i < NUM_BUFFERS; ++i) {
+                blobBufferVector[i].reset();
+
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAllocated(),
+                               NUM_BUFFERS - (i + 1));
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAvailable(),
+                               i + 1);
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersPooled(),
+                               NUM_BUFFERS);
+
+                NTSCFG_TEST_EQ(blobBufferFactory.numBytesInUse(),
+                               numBytesInUse);
+            }
+        }
+
+        {
+            bsl::vector<bdlbb::BlobBuffer> blobBufferVector(
+                NTSCFG_TEST_ALLOCATOR);
+            blobBufferVector.resize(NUM_REUSED);
+
+            for (bsl::size_t i = 0; i < NUM_REUSED; ++i) {
+                blobBufferFactory.allocate(&blobBufferVector[i]);
+
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAllocated(), i + 1);
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAvailable(),
+                               NUM_BUFFERS - (i + 1));
+                NTSCFG_TEST_EQ(blobBufferFactory.numBuffersPooled(),
+                               NUM_BUFFERS);
+
+                NTSCFG_TEST_GE(blobBufferFactory.numBytesInUse(),
+                               numBytesInUse);
+
+                numBytesInUse = blobBufferFactory.numBytesInUse();
+            }
+        }
+
+        NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAllocated(), 0);
+        NTSCFG_TEST_EQ(blobBufferFactory.numBuffersAvailable(), NUM_BUFFERS);
+        NTSCFG_TEST_EQ(blobBufferFactory.numBuffersPooled(), NUM_BUFFERS);
+        NTSCFG_TEST_EQ(blobBufferFactory.numBytesInUse(), numBytesInUse);
+    }
+
+    NTSCFG_TEST_EQ(countingAllocator.numBytesInUse(), 0);
 }
 
 }  // close namespace ntcs

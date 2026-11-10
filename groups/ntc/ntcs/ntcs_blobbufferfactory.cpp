@@ -33,56 +33,38 @@ BSLS_IDENT_RCSID(ntcs_blobbufferfactory_cpp, "$Id$ $CSID$")
 
 #if NTCS_BLOBBUFFERFACTORY_LOG
 
-#define NTCS_BLOBBUFFERFACTORY_LOG_SYSTEM_ACQUIRE(address, blockSize)         \
-    BSLS_LOG_TRACE("Acquired system memory: address = %p, blockSize = %d",    \
-                   address,                                                   \
-                   (int)(blockSize))
-
-#define NTCS_BLOBBUFFERFACTORY_LOG_SYSTEM_RELEASE(address, blockSize)         \
-    BSLS_LOG_TRACE("Released system memory: address = %p, blockSize = %d",    \
-                   address,                                                   \
-                   (int)(blockSize))
-
 #define NTCS_BLOBBUFFERFACTORY_LOG_POOL_ACQUIRE(address,                      \
-                                                blockSize,                    \
-                                                numBytesInUse,                \
                                                 numAllocated,                 \
-                                                numPooled)                    \
-    BSLS_LOG_TRACE("Acquired buffer memory: address = %p, blockSize = %d, "   \
-                   "numBytesInUse = %d, numAllocated = %d, numPooled = %d",   \
+                                                numPooled,                    \
+                                                numBytesInUse)                \
+    BSLS_LOG_TRACE("Acquired buffer memory: address = %p, "                   \
+                   "numAllocated = %d, numPooled = %d, numBytesInUse = %d",   \
                    address,                                                   \
-                   (int)(blockSize),                                          \
-                   (int)(numBytesInUse),                                      \
                    (int)(numAllocated),                                       \
-                   (int)(numPooled))
+                   (int)(numPooled),                                          \
+                   (int)(numBytesInUse))
 
 #define NTCS_BLOBBUFFERFACTORY_LOG_POOL_RELEASE(address,                      \
-                                                blockSize,                    \
-                                                numBytesInUse,                \
                                                 numAllocated,                 \
-                                                numPooled)                    \
-    BSLS_LOG_TRACE("Released buffer memory: address = %p, blockSize = %d, "   \
-                   "numBytesInUse = %d, numAllocated = %d, numPooled = %d",   \
+                                                numPooled,                    \
+                                                numBytesInUse)                \
+    BSLS_LOG_TRACE("Released buffer memory: address = %p, "                   \
+                   "numAllocated = %d, numPooled = %d, numBytesInUse = %d",   \
                    address,                                                   \
-                   (int)(d_blockSize),                                        \
-                   (int)(numBytesInUse),                                      \
                    (int)(numAllocated),                                       \
-                   (int)(numPooled))
+                   (int)(numPooled),                                          \
+                   (int)(numBytesInUse))
 
 #else
 
-#define NTCS_BLOBBUFFERFACTORY_LOG_SYSTEM_ACQUIRE(address, blockSize)
-#define NTCS_BLOBBUFFERFACTORY_LOG_SYSTEM_RELEASE(address, blockSize)
 #define NTCS_BLOBBUFFERFACTORY_LOG_POOL_ACQUIRE(address,                      \
-                                                blockSize,                    \
-                                                numBytesInUse,                \
                                                 numAllocated,                 \
-                                                numPooled)
+                                                numPooled,                    \
+                                                numBytesInUse)
 #define NTCS_BLOBBUFFERFACTORY_LOG_POOL_RELEASE(address,                      \
-                                                blockSize,                    \
-                                                numBytesInUse,                \
                                                 numAllocated,                 \
-                                                numPooled)
+                                                numPooled,                    \
+                                                numBytesInUse)
 
 #endif
 
@@ -269,58 +251,17 @@ bsl::size_t BlobBufferFactoryMetrics::numBytesInUse() const
     return NTCCFG_WARNING_NARROW(bsl::size_t, d_numBytesInUse.loadRelaxed());
 }
 
-BlobBufferFactoryAllocator::BlobBufferFactoryAllocator(
-    bslma::Allocator* basicAllocator)
-: d_blockSize(0)
-, d_numBytesInUse(0)
-, d_allocator_p(bslma::Default::allocator(basicAllocator))
+void BlobBufferFactory::updateNumPooled(bsl::uint64_t numAllocated)
 {
-}
-
-BlobBufferFactoryAllocator::~BlobBufferFactoryAllocator()
-{
-    BSLS_ASSERT_OPT(d_numBytesInUse == 0);
-}
-
-void* BlobBufferFactoryAllocator::allocate(size_type size)
-{
-    bsl::uint64_t previous = d_blockSize.testAndSwap(0, size);
-    if (previous != 0) {
-        BSLS_ASSERT_OPT(previous == size);
+    bsl::uint64_t numPooled = d_numPooled.loadRelaxed();
+    while (numPooled < numAllocated) {
+        const bsl::uint64_t previous =
+            d_numPooled.testAndSwap(numPooled, numAllocated);
+        if (previous == numPooled) {
+            break;
+        }
+        numPooled = previous;
     }
-
-    d_numBytesInUse.addRelaxed(d_blockSize.loadRelaxed());
-
-    void* address = d_allocator_p->allocate(size);
-
-    NTCS_BLOBBUFFERFACTORY_LOG_SYSTEM_ACQUIRE(address, size);
-
-    return address;
-}
-
-void BlobBufferFactoryAllocator::deallocate(void* address)
-{
-    bsl::uint64_t blockSize = d_blockSize.loadRelaxed();
-    BSLS_ASSERT_OPT(blockSize != 0);
-
-    d_numBytesInUse.subtractRelaxed(blockSize);
-
-    d_allocator_p->deallocate(address);
-
-    NTCS_BLOBBUFFERFACTORY_LOG_SYSTEM_RELEASE(address, blockSize);
-}
-
-bsl::size_t BlobBufferFactoryAllocator::numBytesInUse() const
-{
-    return NTCCFG_WARNING_NARROW(bsl::size_t, d_numBytesInUse.loadRelaxed());
-}
-
-bsl::size_t BlobBufferFactoryAllocator::blockSize() const
-{
-    bsl::uint64_t blockSize = d_blockSize.loadRelaxed();
-    BSLS_ASSERT_OPT(blockSize != 0);
-
-    return NTCCFG_WARNING_NARROW(bsl::size_t, blockSize);
 }
 
 void* BlobBufferFactory::allocate(size_type size)
@@ -329,30 +270,22 @@ void* BlobBufferFactory::allocate(size_type size)
 
     void* address = d_memoryPool.allocate(size);
 
-    bsl::uint64_t numAllocated = d_numAllocated.addRelaxed(1);
-
-    bsl::size_t numBytesInUse = d_memoryPoolAllocator.numBytesInUse();
-    bsl::size_t numPooled     = numBytesInUse / d_blockSize;
-
-    d_numPooled     = numPooled;
-    d_numAvailable  = numPooled - numAllocated;
-    d_numBytesInUse = numBytesInUse;
+    const bsl::uint64_t numAllocated = d_numAllocated.addRelaxed(1);
+    this->updateNumPooled(numAllocated);
 
     NTCS_BLOBBUFFERFACTORY_LOG_POOL_ACQUIRE(address,
-                                            d_blockSize,
-                                            numBytesInUse,
                                             numAllocated,
-                                            numPooled);
+                                            d_numPooled.loadRelaxed(),
+                                            this->numBytesInUse());
 
     return address;
 
 #else
 
-    void* address = d_allocator_p->allocate(size);
+    void* address = d_memoryPoolAllocator.allocate(size);
 
     d_numAllocated.addRelaxed(1);
     d_numPooled.addRelaxed(1);
-    d_numBytesInUse.addRelaxed(d_blobBufferSize);
 
     return address;
 
@@ -361,32 +294,29 @@ void* BlobBufferFactory::allocate(size_type size)
 
 void BlobBufferFactory::deallocate(void* address)
 {
+    if (address == 0) {
+        return;
+    }
+
 #if NTCS_BLOBBUFFERFACTORY_POOL
 
     d_memoryPool.deallocate(address);
 
-    bsl::uint64_t numAllocated = d_numAllocated.subtractRelaxed(1);
-
-    bsl::size_t numBytesInUse = d_memoryPoolAllocator.numBytesInUse();
-    bsl::size_t numPooled     = numBytesInUse / d_blockSize;
-
-    d_numPooled     = numPooled;
-    d_numAvailable  = numPooled - numAllocated;
-    d_numBytesInUse = numBytesInUse;
+    const bsl::uint64_t numAllocated = d_numAllocated.subtractRelaxed(1);
 
     NTCS_BLOBBUFFERFACTORY_LOG_POOL_RELEASE(address,
-                                            d_blockSize,
-                                            numBytesInUse,
                                             numAllocated,
-                                            numPooled);
+                                            d_numPooled.loadRelaxed(),
+                                            this->numBytesInUse());
+
+    NTCCFG_WARNING_UNUSED(numAllocated);
 
 #else
 
-    d_allocator_p->deallocate(address);
+    d_memoryPoolAllocator.deallocate(address);
 
     d_numAllocated.subtractRelaxed(1);
     d_numPooled.subtractRelaxed(1);
-    d_numBytesInUse.subtractRelaxed(d_blobBufferSize);
 
 #endif
 }
@@ -394,37 +324,12 @@ void BlobBufferFactory::deallocate(void* address)
 BlobBufferFactory::BlobBufferFactory(bsl::size_t       blobBufferSize,
                                      bslma::Allocator* basicAllocator)
 : d_memoryPoolAllocator(basicAllocator)
-, d_memoryPool(bsls::BlockGrowth::BSLS_CONSTANT,
-               k_MAX_BLOCKS_PER_CHUNK,
-               &d_memoryPoolAllocator)
+, d_memoryPool(&d_memoryPoolAllocator)
 , d_blobBufferSize(blobBufferSize)
-, d_blockSize(0)
 , d_numAllocated(0)
-, d_numAvailable(0)
 , d_numPooled(0)
-, d_numBytesInUse(0)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-#if NTCS_BLOBBUFFERFACTORY_POOL
-
-    // Allocate a pseudo blob buffer to determine the block size used by the
-    // concurrent memory pool.
-
-    {
-        bsl::shared_ptr<char> probe =
-            bslstl::SharedPtrUtil::createInplaceUninitializedBuffer(
-                d_blobBufferSize,
-                &d_memoryPool);
-
-        BSLS_ASSERT_OPT(probe.get() != 0);
-    }
-
-    // Remember the block size.
-
-    d_blockSize = d_memoryPoolAllocator.blockSize();
-    BSLS_ASSERT_OPT(d_blockSize != 0);
-
-#endif
 }
 
 BlobBufferFactory::~BlobBufferFactory()
@@ -447,7 +352,20 @@ bsl::size_t BlobBufferFactory::numBuffersAllocated() const
 
 bsl::size_t BlobBufferFactory::numBuffersAvailable() const
 {
-    return NTCCFG_WARNING_NARROW(bsl::size_t, d_numAvailable.loadRelaxed());
+    // Load the number pooled before the number allocated: the number pooled
+    // is raised only after the number allocated is incremented, but a
+    // concurrent allocation may still be observed between the two loads, so
+    // saturate at zero.
+
+    const bsl::uint64_t numPooled    = d_numPooled.loadAcquire();
+    const bsl::uint64_t numAllocated = d_numAllocated.loadAcquire();
+
+    if (numPooled > numAllocated) {
+        return NTCCFG_WARNING_NARROW(bsl::size_t, numPooled - numAllocated);
+    }
+    else {
+        return 0;
+    }
 }
 
 bsl::size_t BlobBufferFactory::numBuffersPooled() const
@@ -457,7 +375,8 @@ bsl::size_t BlobBufferFactory::numBuffersPooled() const
 
 bsl::size_t BlobBufferFactory::numBytesInUse() const
 {
-    return NTCCFG_WARNING_NARROW(bsl::size_t, d_numBytesInUse.loadRelaxed());
+    return NTCCFG_WARNING_NARROW(bsl::size_t,
+                                 d_memoryPoolAllocator.numBytesInUse());
 }
 
 // 32-bits                    64-bits:
@@ -472,6 +391,8 @@ bsl::size_t BlobBufferFactory::numBytesInUse() const
 // 64 - 40 = 24 bytes padding
 BSLMF_ASSERT(sizeof(BlobBufferPoolObject) == 64);
 
+#define NTCS_BLOB_BUFFER_POOL_ASSERT(expression)
+
 BlobBufferPoolObject::BlobBufferPoolObject(BlobBufferPool* pool)
 : bslma::SharedPtrRep()
 , d_data_p(0)
@@ -481,7 +402,8 @@ BlobBufferPoolObject::BlobBufferPoolObject(BlobBufferPool* pool)
 , d_padding()
 {
     d_data_p = (char*)(this) + sizeof(BlobBufferPoolObject);
-    BSLS_ASSERT((bsl::size_t)(bsl::uintptr_t)(d_data_p) % 16 == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(
+        (bsl::size_t)(bsl::uintptr_t)(d_data_p) % 16 == 0);
 }
 
 BlobBufferPoolObject* BlobBufferPool::replenish()
@@ -490,7 +412,8 @@ BlobBufferPoolObject* BlobBufferPool::replenish()
         sizeof(BlobBufferPoolObject) + d_blobBufferSize;
 
     void* arena = d_aligningAllocator.allocate(allocationSize);
-    BSLS_ASSERT((bsl::size_t)(bsl::uintptr_t)(arena) % k_ALIGNMENT == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(
+        (bsl::size_t)(bsl::uintptr_t)(arena) % k_ALIGNMENT == 0);
 
     new (arena) BlobBufferPoolObject(this);
 
@@ -551,6 +474,9 @@ void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
 
     d_head.loadAcquire(&oldHead, &oldTag);
 
+    bsl::size_t       numSpins = 0;
+    const bsl::size_t maxSpins = 3;
+
     while (true) {
         if (oldHead == 0) {
             break;
@@ -576,6 +502,11 @@ void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
         else {
             oldHead = nowHead;
             oldTag  = nowTag;
+
+            if (numSpins++ == maxSpins) {
+                numSpins = 0;
+                bslmt::ThreadUtil::yield();
+            }
         }
     }
 
@@ -588,10 +519,10 @@ void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
 
     ++d_numAllocated;
 
-    BSLS_ASSERT(object->data() != 0);
-    BSLS_ASSERT(object->next() == 0);
-    BSLS_ASSERT(object->numReferences() == 0);
-    BSLS_ASSERT(object->numWeakReferences() == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->data() != 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->next() == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numReferences() == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numWeakReferences() == 0);
 
     object->resetCountsRaw(1, 0);
 
@@ -601,16 +532,19 @@ void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
 
 void BlobBufferPool::release(BlobBufferPoolObject* object)
 {
-    BSLS_ASSERT(object);
-    BSLS_ASSERT(object->data() != 0);
-    BSLS_ASSERT(object->next() == 0);
-    BSLS_ASSERT(object->numReferences() == 0);
-    BSLS_ASSERT(object->numWeakReferences() == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->data() != 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->next() == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numReferences() == 0);
+    NTCS_BLOB_BUFFER_POOL_ASSERT(object->numWeakReferences() == 0);
 
     BlobBufferPoolObject* oldHead;
     Handle::TagType       oldTag;
 
     d_head.loadAcquire(&oldHead, &oldTag);
+
+    bsl::size_t       numSpins = 0;
+    const bsl::size_t maxSpins = 3;
 
     while (true) {
         object->setNext(oldHead);
@@ -634,6 +568,11 @@ void BlobBufferPool::release(BlobBufferPoolObject* object)
         else {
             oldHead = nowHead;
             oldTag  = nowTag;
+
+            if (numSpins++ == maxSpins) {
+                numSpins = 0;
+                bslmt::ThreadUtil::yield();
+            }
         }
     }
 

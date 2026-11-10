@@ -163,61 +163,22 @@ class BlobBufferFactoryMetrics
 };
 
 /// @internal @brief
-/// Provide an instrumented allocator to allocate memory for the blob buffer
-/// factory concurrent pool allocator.
-///
-/// @par Thread Safety
-/// This class is thread safe.
-///
-/// @ingroup module_ntcs
-class BlobBufferFactoryAllocator : public bslma::Allocator
-{
-    bsls::AtomicUint64 d_blockSize;
-    bsls::AtomicUint64 d_numBytesInUse;
-    bslma::Allocator*  d_allocator_p;
-
-  private:
-    BlobBufferFactoryAllocator(const BlobBufferFactoryAllocator&)
-        BSLS_KEYWORD_DELETED;
-    BlobBufferFactoryAllocator& operator=(const BlobBufferFactoryAllocator&)
-        BSLS_KEYWORD_DELETED;
-
-  public:
-    /// Create a new blob buffer factory allocator. Optionally specify a
-    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0,
-    /// the currently installed default allocator is used.
-    explicit BlobBufferFactoryAllocator(bslma::Allocator* basicAllocator = 0);
-
-    /// Destroy this object.
-    ~BlobBufferFactoryAllocator() BSLS_KEYWORD_OVERRIDE;
-
-    /// Return a newly allocated block of memory of (at least) the specified
-    /// positive 'size' (in bytes).  If 'size' is 0, a null pointer is
-    /// returned with no other effect.  If this allocator cannot return the
-    /// requested number of bytes, then it will throw a 'bsl::bad_alloc'
-    /// exception in an exception-enabled build, or else will abort the
-    /// program in a non-exception build.  The behavior is undefined unless
-    /// '0 <= size'.  Note that the alignment of the address returned
-    /// conforms to the platform requirement for any object of the specified
-    /// 'size'.
-    void* allocate(size_type size) BSLS_KEYWORD_OVERRIDE;
-
-    /// Return the memory block at the specified 'address' back to this
-    /// allocator.  If 'address' is 0, this function has no effect.  The
-    /// behavior is undefined unless 'address' was allocated using this
-    /// allocator object and has not already been deallocated.
-    void deallocate(void* address) BSLS_KEYWORD_OVERRIDE;
-
-    /// Return the number of bytes allocated from the allocator supplied
-    /// to this object at the time of its construction and not yet freed.
-    bsl::size_t numBytesInUse() const;
-
-    /// Return the block size.
-    bsl::size_t blockSize() const;
-};
-
-/// @internal @brief
 /// Provide a pool of blob buffers.
+///
+/// @details
+/// The buffer statistics are tracked in terms of the observable behavior of
+/// this object, and make no assumptions about the private implementation
+/// details of the underlying memory pool (e.g., how many blocks it carves
+/// from each chunk of memory it acquires). The number of buffers allocated
+/// is the number of blob buffers currently outstanding. The number of
+/// buffers pooled is the high-water mark of the number of buffers allocated:
+/// the underlying pool never returns memory to its allocator before it is
+/// destroyed, so at least that many buffers' worth of memory is retained for
+/// reuse. The number of buffers available is the difference between the
+/// two. The number of bytes in use is the actual number of bytes the
+/// underlying pool has acquired from the allocator supplied at construction,
+/// which may exceed 'numBuffersPooled() * blobBufferSize' because the pool
+/// pre-allocates blocks in bulk.
 ///
 /// @par Thread Safety
 /// This class is thread safe.
@@ -226,21 +187,12 @@ class BlobBufferFactoryAllocator : public bslma::Allocator
 class BlobBufferFactory : public bdlbb::BlobBufferFactory,
                           private bslma::Allocator
 {
-    /// Enumerate the constants used in the implementation.
-    enum Constants {
-        /// The maximum memory blocks per pooled chunk of memory.
-        k_MAX_BLOCKS_PER_CHUNK = 1
-    };
-
-    ntcs::BlobBufferFactoryAllocator d_memoryPoolAllocator;
-    bdlma::ConcurrentPoolAllocator   d_memoryPool;
-    bsl::size_t                      d_blobBufferSize;
-    bsl::size_t                      d_blockSize;
-    bsls::AtomicUint64               d_numAllocated;
-    bsls::AtomicUint64               d_numAvailable;
-    bsls::AtomicUint64               d_numPooled;
-    bsls::AtomicUint64               d_numBytesInUse;
-    bslma::Allocator*                d_allocator_p;
+    bdlma::CountingAllocator       d_memoryPoolAllocator;
+    bdlma::ConcurrentPoolAllocator d_memoryPool;
+    bsl::size_t                    d_blobBufferSize;
+    bsls::AtomicUint64             d_numAllocated;
+    bsls::AtomicUint64             d_numPooled;
+    bslma::Allocator*              d_allocator_p;
 
   private:
     BlobBufferFactory(const BlobBufferFactory&) BSLS_KEYWORD_DELETED;
@@ -264,6 +216,11 @@ class BlobBufferFactory : public bdlbb::BlobBufferFactory,
     /// behavior is undefined unless 'address' was allocated using this
     /// allocator object and has not already been deallocated.
     void deallocate(void* address) BSLS_KEYWORD_OVERRIDE;
+
+    /// Raise the high-water mark of the number of buffers pooled to the
+    /// specified 'numAllocated', if 'numAllocated' is greater than the
+    /// current high-water mark.
+    void updateNumPooled(bsl::uint64_t numAllocated);
 
   public:
     /// Create a new blob buffer factory that allocates blob buffers each
