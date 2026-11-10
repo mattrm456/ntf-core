@@ -40,6 +40,73 @@ class BlobBufferFactoryTest
                      bsl::size_t               numIterations,
                      bsl::size_t               maxThreads);
 
+    template <typename TYPE>
+    class Channel;
+
+    class Token;
+
+    /// Provide a meta-function that creates a blob buffer factory of the
+    /// parameterized 'FACTORY' type, runs each producer and consumer pair,
+    /// and reports the number of buffers pooled, or, if 'FACTORY' is
+    /// 'void', runs each pair without allocating.
+    template <typename FACTORY>
+    struct Runner;
+
+    /// Allocate the specified 'numItems' blob buffers from the specified
+    /// 'blobBufferFactory', writing the sequence number of each into its
+    /// data, and send each through the specified 'channel'. Synchronize
+    /// the start and end of the measured work on the specified 'barrier'.
+    static void produce(bdlbb::BlobBufferFactory*      blobBufferFactory,
+                        Channel<bdlbb::BlobBuffer>*    channel,
+                        bslmt::Barrier*                barrier,
+                        bsl::size_t                    numItems);
+
+    /// Receive the specified 'numItems' blob buffers from the specified
+    /// 'channel', reading the sequence number from each and releasing it,
+    /// and load into the specified 'checksum' the sum of the sequence
+    /// numbers. Synchronize the start and end of the measured work on the
+    /// specified 'barrier'.
+    static void consume(Channel<bdlbb::BlobBuffer>* channel,
+                        bslmt::Barrier*             barrier,
+                        bsl::size_t                 numItems,
+                        bsl::uint64_t*              checksum);
+
+    /// Send the specified 'numItems' tokens holding sequence numbers
+    /// through the specified 'channel', without allocating. Synchronize
+    /// the start and end of the measured work on the specified 'barrier'.
+    static void produceBaseline(Channel<Token>* channel,
+                                bslmt::Barrier* barrier,
+                                bsl::size_t     numItems);
+
+    /// Receive the specified 'numItems' tokens from the specified
+    /// 'channel' and load into the specified 'checksum' the sum of their
+    /// sequence numbers. Synchronize the start and end of the measured
+    /// work on the specified 'barrier'.
+    static void consumeBaseline(Channel<Token>* channel,
+                                bslmt::Barrier* barrier,
+                                bsl::size_t     numItems,
+                                bsl::uint64_t*  checksum);
+
+    /// Return the number of blob buffers pooled by the specified
+    /// 'blobBufferFactory', or a negative value if the factory does not
+    /// report that statistic.
+    static bsl::int64_t numBuffersPooled(
+        const bdlbb::PooledBlobBufferFactory& blobBufferFactory);
+    static bsl::int64_t numBuffersPooled(
+        const ntcs::BlobBufferFactory& blobBufferFactory);
+    static bsl::int64_t numBuffersPooled(
+        const ntcs::BlobBufferPool& blobBufferPool);
+
+    /// Measure and print the time to pass blob buffers allocated from a
+    /// newly-created blob buffer factory of the parameterized 'FACTORY'
+    /// type from producer threads to consumer threads, each pair
+    /// communicating through its own channel, for each number of pairs, or,
+    /// if the parameterized 'FACTORY' type is 'void', the time to pass
+    /// tokens through the same channels without allocating. Label the
+    /// results with the specified 'name'.
+    template <typename FACTORY>
+    static void measureProducerConsumer(const char* name);
+
   public:
     // TODO
     static void verifyCase1();
@@ -78,6 +145,114 @@ class BlobBufferFactoryTest
     // allocated, available, and pooled, and the number of bytes in use,
     // independently of how the underlying memory pool acquires memory.
     static void verifyCase12();
+
+    // Measure the performance of each blob buffer factory when blob buffers
+    // are allocated by one thread and released by another.
+    static void verifyCase13();
+};
+
+/// Provide a bounded, lock-free channel through which a single producer
+/// thread sends values to a single consumer thread. Values are swapped
+/// into and out of the channel, so sending a blob buffer does not change
+/// its reference count.
+template <typename TYPE>
+class BlobBufferFactoryTest::Channel
+{
+    enum {
+        k_CAPACITY        = 256,
+        k_CACHE_LINE_SIZE = 128,
+        k_SPIN_LIMIT      = 1024
+    };
+
+    TYPE               d_slot[k_CAPACITY];
+    char               d_padding0[k_CACHE_LINE_SIZE];
+    bsls::AtomicUint64 d_head;
+    char               d_padding1[k_CACHE_LINE_SIZE - sizeof(bsls::AtomicUint64)];
+    bsls::AtomicUint64 d_tail;
+    char               d_padding2[k_CACHE_LINE_SIZE - sizeof(bsls::AtomicUint64)];
+
+    /// Wait briefly, yielding the processor after the specified number of
+    /// 'spins' exceeds the spin limit.
+    static void pause(bsl::size_t* spins)
+    {
+        if (++*spins > k_SPIN_LIMIT) {
+            bslmt::ThreadUtil::yield();
+            *spins = 0;
+        }
+    }
+
+  private:
+    Channel(const Channel&) BSLS_KEYWORD_DELETED;
+    Channel& operator=(const Channel&) BSLS_KEYWORD_DELETED;
+
+  public:
+    /// Create a new, empty channel.
+    Channel()
+    : d_head(0)
+    , d_tail(0)
+    {
+    }
+
+    /// Swap the specified 'value' into the channel, waiting while the
+    /// channel is full. The behavior is undefined unless called only by
+    /// the producer thread.
+    void push(TYPE* value)
+    {
+        const bsl::uint64_t tail  = d_tail.loadRelaxed();
+        bsl::size_t         spins = 0;
+        while (tail - d_head.loadAcquire() == k_CAPACITY) {
+            pause(&spins);
+        }
+
+        d_slot[tail % k_CAPACITY].swap(*value);
+        d_tail.storeRelease(tail + 1);
+    }
+
+    /// Swap the next value out of the channel into the specified 'value',
+    /// waiting while the channel is empty. The behavior is undefined
+    /// unless called only by the consumer thread.
+    void pop(TYPE* value)
+    {
+        const bsl::uint64_t head  = d_head.loadRelaxed();
+        bsl::size_t         spins = 0;
+        while (d_tail.loadAcquire() == head) {
+            pause(&spins);
+        }
+
+        d_slot[head % k_CAPACITY].swap(*value);
+        d_head.storeRelease(head + 1);
+    }
+};
+
+/// Provide a value sent through a channel in the baseline measurement.
+class BlobBufferFactoryTest::Token
+{
+    bsl::uint64_t d_value;
+
+  public:
+    /// Create a new token having the value zero.
+    Token()
+    : d_value(0)
+    {
+    }
+
+    /// Set the value of this token to the specified 'value'.
+    void setValue(bsl::uint64_t value)
+    {
+        d_value = value;
+    }
+
+    /// Swap the value of this token with the specified 'other' token.
+    void swap(Token& other)
+    {
+        bsl::swap(d_value, other.d_value);
+    }
+
+    /// Return the value of this token.
+    bsl::uint64_t value() const
+    {
+        return d_value;
+    }
 };
 
 void BlobBufferFactoryTest::logAfterAllocation(
@@ -126,6 +301,324 @@ void BlobBufferFactoryTest::work(bdlbb::BlobBufferFactory* blobBufferFactory,
     barrier->wait();
     barrier->wait();
 }
+
+void BlobBufferFactoryTest::produce(
+    bdlbb::BlobBufferFactory*   blobBufferFactory,
+    Channel<bdlbb::BlobBuffer>* channel,
+    bslmt::Barrier*             barrier,
+    bsl::size_t                 numItems)
+{
+    barrier->wait();
+    barrier->wait();
+
+    for (bsl::size_t i = 0; i < numItems; ++i) {
+        bdlbb::BlobBuffer blobBuffer;
+        blobBufferFactory->allocate(&blobBuffer);
+
+        const bsl::uint64_t value = i;
+        bsl::memcpy(blobBuffer.data(), &value, sizeof value);
+
+        channel->push(&blobBuffer);
+    }
+
+    barrier->wait();
+    barrier->wait();
+}
+
+void BlobBufferFactoryTest::consume(Channel<bdlbb::BlobBuffer>* channel,
+                                    bslmt::Barrier*             barrier,
+                                    bsl::size_t                 numItems,
+                                    bsl::uint64_t*              checksum)
+{
+    bsl::uint64_t sum = 0;
+
+    barrier->wait();
+    barrier->wait();
+
+    for (bsl::size_t i = 0; i < numItems; ++i) {
+        bdlbb::BlobBuffer blobBuffer;
+        channel->pop(&blobBuffer);
+
+        bsl::uint64_t value;
+        bsl::memcpy(&value, blobBuffer.data(), sizeof value);
+
+        sum += value;
+    }
+
+    barrier->wait();
+    barrier->wait();
+
+    *checksum = sum;
+}
+
+void BlobBufferFactoryTest::produceBaseline(Channel<Token>* channel,
+                                            bslmt::Barrier* barrier,
+                                            bsl::size_t     numItems)
+{
+    barrier->wait();
+    barrier->wait();
+
+    for (bsl::size_t i = 0; i < numItems; ++i) {
+        Token token;
+        token.setValue(i);
+        channel->push(&token);
+    }
+
+    barrier->wait();
+    barrier->wait();
+}
+
+void BlobBufferFactoryTest::consumeBaseline(Channel<Token>* channel,
+                                            bslmt::Barrier* barrier,
+                                            bsl::size_t     numItems,
+                                            bsl::uint64_t*  checksum)
+{
+    bsl::uint64_t sum = 0;
+
+    barrier->wait();
+    barrier->wait();
+
+    for (bsl::size_t i = 0; i < numItems; ++i) {
+        Token token;
+        channel->pop(&token);
+        sum += token.value();
+    }
+
+    barrier->wait();
+    barrier->wait();
+
+    *checksum = sum;
+}
+
+bsl::int64_t BlobBufferFactoryTest::numBuffersPooled(
+    const bdlbb::PooledBlobBufferFactory& blobBufferFactory)
+{
+    NTCCFG_WARNING_UNUSED(blobBufferFactory);
+    return -1;
+}
+
+bsl::int64_t BlobBufferFactoryTest::numBuffersPooled(
+    const ntcs::BlobBufferFactory& blobBufferFactory)
+{
+    return static_cast<bsl::int64_t>(blobBufferFactory.numBuffersPooled());
+}
+
+bsl::int64_t BlobBufferFactoryTest::numBuffersPooled(
+    const ntcs::BlobBufferPool& blobBufferPool)
+{
+    return static_cast<bsl::int64_t>(blobBufferPool.numBuffersPooled());
+}
+
+template <typename FACTORY>
+void BlobBufferFactoryTest::measureProducerConsumer(const char* name)
+{
+    // clang-format off
+    struct Data {
+        bsl::size_t d_numPairs;
+        bsl::size_t d_numItemsPerPair;
+    }
+    DATA[] = {
+#if NTC_BUILD_WITH_VALGRIND
+        { 1,  100000 },
+        { 2,   50000 },
+        { 4,   25000 },
+        { 5,   20000 }
+#else
+        { 1, 10000000 },
+        { 2,  5000000 },
+        { 4,  2500000 },
+        { 5,  2000000 }
+#endif
+    };
+    // clang-format on
+
+    enum { NUM_DATA = sizeof(DATA) / sizeof(DATA[0]) };
+
+    bsl::vector<bsl::pair<bsls::Stopwatch, bsl::int64_t> > stopwatchList(
+                                                                     NUM_DATA);
+
+    for (bsl::size_t variation = 0; variation < NUM_DATA; ++variation) {
+        const bsl::size_t numPairs        = DATA[variation].d_numPairs;
+        const bsl::size_t numItemsPerPair = DATA[variation].d_numItemsPerPair;
+
+        stopwatchList[variation].second =
+            BlobBufferFactoryTest::Runner<FACTORY>::run(
+                &stopwatchList[variation].first,
+                numPairs,
+                numItemsPerPair);
+    }
+
+    const bsl::size_t W = 15;
+
+    bsl::cout << name << " (producer/consumer)" << bsl::endl;
+    bsl::cout << bsl::setw(W) << bsl::right << "Pairs";
+    bsl::cout << bsl::setw(W) << bsl::right << "Items/Pair";
+    bsl::cout << bsl::setw(W) << bsl::right << "Wall";
+    bsl::cout << bsl::setw(W) << bsl::right << "CPU";
+    bsl::cout << bsl::setw(W) << bsl::right << "User";
+    bsl::cout << bsl::setw(W) << bsl::right << "System";
+    bsl::cout << bsl::setw(W) << bsl::right << "NumPooled";
+    bsl::cout << bsl::endl;
+
+    for (bsl::size_t variation = 0; variation < NUM_DATA; ++variation) {
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << DATA[variation].d_numPairs;
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << DATA[variation].d_numItemsPerPair;
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedWallTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime() +
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                     ).totalMicroseconds();
+        if (stopwatchList[variation].second >= 0) {
+            bsl::cout << bsl::setw(W) << bsl::right
+                      << stopwatchList[variation].second;
+        }
+        else {
+            bsl::cout << bsl::setw(W) << bsl::right << "-";
+        }
+        bsl::cout << bsl::endl;
+    }
+}
+
+template <typename FACTORY>
+struct BlobBufferFactoryTest::Runner {
+    typedef BlobBufferFactoryTest::Channel<bdlbb::BlobBuffer> Channel;
+
+    /// Run the specified 'numPairs' producer and consumer pairs, each
+    /// passing the specified 'numItemsPerPair' blob buffers, measuring the
+    /// work with the specified 'stopwatch', and return the number of buffers
+    /// pooled by the factory afterwards.
+    static bsl::int64_t run(bsls::Stopwatch* stopwatch,
+                            bsl::size_t      numPairs,
+                            bsl::size_t      numItemsPerPair)
+    {
+        bslma::Allocator* allocator = NTSCFG_TEST_ALLOCATOR;
+
+        FACTORY        blobBufferFactory(64);
+        bslmt::Barrier barrier(static_cast<int>(2 * numPairs + 1));
+
+        bsl::vector<bsl::shared_ptr<Channel> > channelVector(allocator);
+        bsl::vector<bsl::uint64_t> checksumVector(numPairs, 0, allocator);
+
+        for (bsl::size_t i = 0; i < numPairs; ++i) {
+            channelVector.push_back(bsl::allocate_shared<Channel>(allocator));
+        }
+
+        bslmt::ThreadGroup threadGroup(allocator);
+
+        for (bsl::size_t i = 0; i < numPairs; ++i) {
+            threadGroup.addThread(
+                bdlf::BindUtil::bind(&BlobBufferFactoryTest::produce,
+                                     &blobBufferFactory,
+                                     channelVector[i].get(),
+                                     &barrier,
+                                     numItemsPerPair));
+
+            threadGroup.addThread(
+                bdlf::BindUtil::bind(&BlobBufferFactoryTest::consume,
+                                     channelVector[i].get(),
+                                     &barrier,
+                                     numItemsPerPair,
+                                     &checksumVector[i]));
+        }
+
+        barrier.wait();
+        stopwatch->start(true);
+        barrier.wait();
+
+        barrier.wait();
+        stopwatch->stop();
+        barrier.wait();
+
+        threadGroup.joinAll();
+
+        const bsl::uint64_t expected =
+            static_cast<bsl::uint64_t>(numItemsPerPair) *
+            (static_cast<bsl::uint64_t>(numItemsPerPair) - 1) / 2;
+
+        for (bsl::size_t i = 0; i < numPairs; ++i) {
+            NTSCFG_TEST_EQ(checksumVector[i], expected);
+        }
+
+        return BlobBufferFactoryTest::numBuffersPooled(blobBufferFactory);
+    }
+};
+
+template <>
+struct BlobBufferFactoryTest::Runner<void> {
+    typedef BlobBufferFactoryTest::Channel<BlobBufferFactoryTest::Token>
+        Channel;
+
+    /// Run the specified 'numPairs' producer and consumer pairs, each
+    /// passing the specified 'numItemsPerPair' tokens without allocating,
+    /// measuring the work with the specified 'stopwatch', and return a
+    /// negative value.
+    static bsl::int64_t run(bsls::Stopwatch* stopwatch,
+                            bsl::size_t      numPairs,
+                            bsl::size_t      numItemsPerPair)
+    {
+        bslma::Allocator* allocator = NTSCFG_TEST_ALLOCATOR;
+
+        bslmt::Barrier barrier(static_cast<int>(2 * numPairs + 1));
+
+        bsl::vector<bsl::shared_ptr<Channel> > channelVector(allocator);
+        bsl::vector<bsl::uint64_t> checksumVector(numPairs, 0, allocator);
+
+        for (bsl::size_t i = 0; i < numPairs; ++i) {
+            channelVector.push_back(bsl::allocate_shared<Channel>(allocator));
+        }
+
+        bslmt::ThreadGroup threadGroup(allocator);
+
+        for (bsl::size_t i = 0; i < numPairs; ++i) {
+            threadGroup.addThread(
+                bdlf::BindUtil::bind(&BlobBufferFactoryTest::produceBaseline,
+                                     channelVector[i].get(),
+                                     &barrier,
+                                     numItemsPerPair));
+
+            threadGroup.addThread(
+                bdlf::BindUtil::bind(&BlobBufferFactoryTest::consumeBaseline,
+                                     channelVector[i].get(),
+                                     &barrier,
+                                     numItemsPerPair,
+                                     &checksumVector[i]));
+        }
+
+        barrier.wait();
+        stopwatch->start(true);
+        barrier.wait();
+
+        barrier.wait();
+        stopwatch->stop();
+        barrier.wait();
+
+        threadGroup.joinAll();
+
+        const bsl::uint64_t expected =
+            static_cast<bsl::uint64_t>(numItemsPerPair) *
+            (static_cast<bsl::uint64_t>(numItemsPerPair) - 1) / 2;
+
+        for (bsl::size_t i = 0; i < numPairs; ++i) {
+            NTSCFG_TEST_EQ(checksumVector[i], expected);
+        }
+
+        return -1;
+    }
+};
 
 NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase1)
 {
@@ -1396,6 +1889,33 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase12)
     }
 
     NTSCFG_TEST_EQ(countingAllocator.numBytesInUse(), 0);
+}
+
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase13)
+{
+    // Concern: Blob buffer factories perform well when blob buffers are
+    // allocated by one thread and released by another, as when an I/O
+    // thread reads into blob buffers that are released by the threads that
+    // process them.
+    //
+    // Plan: For each number of producer and consumer pairs, allocate blob
+    // buffers on each producer thread, write to each, and pass each to the
+    // paired consumer thread through a bounded, lock-free channel; read and
+    // release each on the consumer thread. Measure the same handoff of
+    // plain tokens without allocating, to separate the cost of the channel
+    // from the cost of allocation. Verify every item arrives intact.
+
+    BlobBufferFactoryTest::measureProducerConsumer<void>("Baseline");
+
+    BlobBufferFactoryTest::measureProducerConsumer<
+        bdlbb::PooledBlobBufferFactory>("bdlbb::PooledBlobBufferFactory");
+
+    BlobBufferFactoryTest::measureProducerConsumer<ntcs::BlobBufferFactory>(
+        "ntcs::BlobBufferFactory");
+
+    BlobBufferFactoryTest::measureProducerConsumer<ntcs::BlobBufferPool>(
+        "ntcs::BlobBufferPool");
 }
 
 }  // close namespace ntcs

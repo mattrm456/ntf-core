@@ -767,17 +767,19 @@ class BlobBufferPool : public bdlbb::BlobBufferFactory
 {
     /// Enumerate the constants used in the implementation.
     enum Constants {
-        /// The alignment of each blob buffer pool object, which is the size
-        /// of the object header.
-        k_ALIGNMENT = 64,
-
-        /// The number of free lists. Must be a power of two.
-        k_NUM_SHARDS = 16,
-
         /// The assumed maximum size of a cache line, which is 128 bytes on
         /// some platforms (e.g. Apple Silicon) and which also accounts for
         /// adjacent-line prefetching on others.
         k_CACHE_LINE_SIZE = 128,
+
+        /// The alignment of each blob buffer pool object. Objects are
+        /// aligned to the cache line size so that the header of one object
+        /// never shares a cache line with the data of its neighbor, which
+        /// may be in use by a different thread.
+        k_ALIGNMENT = k_CACHE_LINE_SIZE,
+
+        /// The number of free lists. Must be a power of two.
+        k_NUM_SHARDS = 16,
 
         /// The maximum number of objects carved from a single slab. Must be
         /// a power of two.
