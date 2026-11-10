@@ -845,13 +845,6 @@ class BlobBufferPoolObject : public bslma::SharedPtrRep
     /// Increment the generation.
     void incrementGeneration();
 
-// MRM
-#if 0
-    BlobBufferPoolObject* compareAndSwapNext(BlobBufferPoolObject* expected,
-                                             BlobBufferPoolObject* next);
-        // Set the next object in linked list to the specified 'next' object.
-#endif
-
     /// Destroy the object referred to by this representation.  This method
     /// is invoked by 'releaseRef' when the number of shared references
     /// reaches zero and should not be explicitly invoked otherwise.

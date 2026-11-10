@@ -168,8 +168,6 @@ void BlobBufferFactoryMetrics::getStats(bdld::ManagedDatum* result)
     bsl::size_t bytesInUse    = 0;
     bsl::size_t bytesPooled   = 0;
 
-    // MRM: Calculate values.
-
     array.data()[0] = bdld::Datum::createDouble(double(buffersInUse));
     array.data()[1] = bdld::Datum::createDouble(double(buffersPooled));
     array.data()[2] = bdld::Datum::createDouble(double(bytesInUse));
@@ -470,7 +468,8 @@ bsl::size_t BlobBufferFactory::numBytesInUse() const
 // 4 = data                   8 = pool
 // 4 = next                   8 = next
 // 24                         40
-// 64 - 24 = 40 bytes padding 64 - 40 = 24 bytes padding
+// 64 - 24 = 40 bytes padding
+// 64 - 40 = 24 bytes padding
 BSLMF_ASSERT(sizeof(BlobBufferPoolObject) == 64);
 
 BlobBufferPoolObject::BlobBufferPoolObject(BlobBufferPool* pool)
@@ -514,10 +513,6 @@ BlobBufferPool::BlobBufferPool(bsl::size_t       blobBufferSize,
 , d_aligningAllocator(k_ALIGNMENT, basicAllocator)
 , d_allocator_p(bslma::Default::allocator(basicAllocator))
 {
-#if NTCS_BLOBBUFFERPOOL_DEBUG
-    bsl::memset(d_objectArray, 0, sizeof d_objectArray);
-    d_objectCount = 0;
-#endif
 }
 
 BlobBufferPool::~BlobBufferPool()
@@ -545,8 +540,6 @@ BlobBufferPool::~BlobBufferPool()
     if (numAllocated != 0) {
         bsl::cout << "numFreed = " << numFreed << bsl::endl;
     }
-
-    // BSLS_ASSERT_OPT(d_numAllocated.loadAcquire() == 0);
 }
 
 void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
@@ -559,7 +552,6 @@ void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
     d_head.loadAcquire(&oldHead, &oldTag);
 
     while (true) {
-        // MRM: for (unsigned int attempt = 0; true; ++attempt) {
         if (oldHead == 0) {
             break;
         }
@@ -578,40 +570,12 @@ void BlobBufferPool::allocate(bdlbb::BlobBuffer* buffer)
                                                         newTag);
 
         if (unchanged) {
-// MRM: Remove after debugging.
-#if NTCS_BLOBBUFFERPOOL_DEBUG
-            BSLS_ASSERT(object != d_objectArray[d_objectCount - 1]);
-#endif
-
-            // MRM: Remove after debugging. This condition is only true
-            // when the total number of objects is pre-reserved.
-            // BSLS_ASSERT(newHead != 0);
-
             object = oldHead;
             break;
         }
         else {
             oldHead = nowHead;
             oldTag  = nowTag;
-
-// MRM
-#if 0
-            if (attempt % 2 == 0) {
-                for (unsigned i = 0; i < 3; ++i) {
-                    BlobBufferPoolObject* currentHead;
-                    Handle::TagType       currentTag;
-
-                    d_head.loadRelaxed(&currentHead, &currentTag);
-
-                    if ((currentHead == oldHead) && (currentTag == nowTag)) {
-                        break;
-                    }
-                }
-            }
-#endif
-
-            // MRM: Remove after debugging.
-            // bslmt::ThreadUtil::yield();
         }
     }
 
@@ -643,21 +607,12 @@ void BlobBufferPool::release(BlobBufferPoolObject* object)
     BSLS_ASSERT(object->numReferences() == 0);
     BSLS_ASSERT(object->numWeakReferences() == 0);
 
-// MRM: Remove after debugging.
-#if NTCS_BLOBBUFFERPOOL_DEBUG
-    BSLS_ASSERT(object != d_objectArray[d_objectCount - 1]);
-#endif
-
     BlobBufferPoolObject* oldHead;
     Handle::TagType       oldTag;
 
     d_head.loadAcquire(&oldHead, &oldTag);
 
     while (true) {
-        // MRM: for (unsigned int attempt = 0; true; ++attempt) {
-        // MRM: Remove after debugging.
-        BSLS_ASSERT(oldHead != object);
-
         object->setNext(oldHead);
 
         BlobBufferPoolObject* newHead = object;
@@ -674,34 +629,11 @@ void BlobBufferPool::release(BlobBufferPoolObject* object)
                                                         newTag);
 
         if (unchanged) {
-            // MRM: Remove after debugging. This condition is only true
-            // when the total number of objects is pre-reserved.
-            // BSLS_ASSERT(oldHead != 0);
-
             break;
         }
         else {
             oldHead = nowHead;
             oldTag  = nowTag;
-
-// MRM
-#if 0
-            if (attempt % 2 == 0) {
-                for (unsigned i = 0; i < 3; ++i) {
-                    BlobBufferPoolObject* currentHead;
-                    Handle::TagType       currentTag;
-
-                    d_head.loadRelaxed(&currentHead, &currentTag);
-
-                    if ((currentHead == oldHead) && (currentTag == nowTag)) {
-                        break;
-                    }
-                }
-            }
-#endif
-
-            // MRM: Remove after debugging.
-            // MRM: bslmt::ThreadUtil::yield();
         }
     }
 
@@ -712,18 +644,6 @@ void BlobBufferPool::reserve(bsl::size_t numObjects)
 {
     for (bsl::size_t i = 0; i < numObjects; ++i) {
         BlobBufferPoolObject* object = this->replenish();
-
-#if NTCS_BLOBBUFFERPOOL_DEBUG
-        d_objectArray[(k_OBJECT_ARRAY_CAPACITY - 1) - d_objectCount++] =
-            object;
-#endif
-
-#if 0
-
-        ++d_numAllocated;
-        this->release(object);
-
-#else
 
         BlobBufferPoolObject* currentObject;
         Handle::TagType       currentTag;
@@ -737,8 +657,6 @@ void BlobBufferPool::reserve(bsl::size_t numObjects)
             object->setNext(currentObject);
             d_head.store(object, 0);
         }
-
-#endif
     }
 }
 
