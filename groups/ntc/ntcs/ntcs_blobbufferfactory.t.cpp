@@ -96,6 +96,53 @@ class BlobBufferFactoryTest
         const ntcs::BlobBufferFactory& blobBufferFactory);
     static bsl::int64_t numBuffersPooled(
         const ntcs::BlobBufferPool& blobBufferPool);
+    static bsl::int64_t numBuffersPooled(
+        const ntcs::BlobBufferCache& blobBufferCache);
+
+    /// Return the maximum number of buffers a thread may cache for a blob
+    /// buffer cache whose buffers have the specified 'blobBufferSize'.
+    static bsl::size_t expectedMaxCached(bsl::size_t blobBufferSize);
+
+    /// Return the number of buffers left in the cache of a thread that
+    /// releases the specified 'numReleased' buffers into an empty cache
+    /// holding at most the specified 'maxCached' buffers and flushing the
+    /// specified 'batchSize' buffers at a time.
+    static bsl::size_t expectedCached(bsl::size_t numReleased,
+                                      bsl::size_t maxCached,
+                                      bsl::size_t batchSize);
+
+    /// Allocate and release the specified 'numBuffers' blob buffers from
+    /// the specified 'blobBufferCache', so that they are left in the cache
+    /// of the calling thread. Then wait twice on the specified 'barrier'.
+    static void fillCacheAndWait(ntcs::BlobBufferCache* blobBufferCache,
+                                 bsl::size_t            numBuffers,
+                                 bslmt::Barrier*        barrier);
+
+    /// Allocate and release the specified 'numBuffers' blob buffers from
+    /// the specified 'blobBufferCache', so that they are left in the cache
+    /// of the calling thread, then return.
+    static void fillCache(ntcs::BlobBufferCache* blobBufferCache,
+                          bsl::size_t            numBuffers);
+
+    /// Verify the behavior of a thread that uses more blob buffer caches
+    /// than it has per-thread caches.
+    static void useManyCaches();
+
+    /// Run the specified 'numPairs' producer and consumer pairs, each
+    /// passing the specified 'numItemsPerPair' blob buffers of the
+    /// specified 'blobBufferSize' allocated from a new blob buffer cache,
+    /// and verify every item arrives intact and the statistics afterwards.
+    static void stressBlobBufferCache(bsl::size_t blobBufferSize,
+                                      bsl::size_t numPairs,
+                                      bsl::size_t numItemsPerPair);
+
+    /// Measure and print the time for threads to allocate and release blob
+    /// buffers from a newly-created blob buffer factory of the
+    /// parameterized 'FACTORY' type, each thread releasing each buffer
+    /// before allocating the next. Label the results with the specified
+    /// 'name'.
+    template <typename FACTORY>
+    static void measureSameThread(const char* name);
 
     /// Measure and print the time to pass blob buffers allocated from a
     /// newly-created blob buffer factory of the parameterized 'FACTORY'
@@ -149,6 +196,33 @@ class BlobBufferFactoryTest
     // Measure the performance of each blob buffer factory when blob buffers
     // are allocated by one thread and released by another.
     static void verifyCase13();
+
+    // Verify the basic behavior of 'ntcs::BlobBufferCache' on one thread.
+    static void verifyCase14();
+
+    // Verify 'ntcs::BlobBufferCache' moves buffers between the cache of a
+    // thread and the shared layer in batches.
+    static void verifyCase15();
+
+    // Verify 'ntcs::BlobBufferCache' may be destroyed while other threads
+    // hold its buffers in their caches, and that those threads may then use
+    // another blob buffer cache.
+    static void verifyCase16();
+
+    // Verify the caches of a thread are flushed when the thread exits.
+    static void verifyCase17();
+
+    // Verify a thread may use more blob buffer caches than it has
+    // per-thread caches.
+    static void verifyCase18();
+
+    // Verify 'ntcs::BlobBufferCache' when buffers are allocated by some
+    // threads and released by others.
+    static void verifyCase19();
+
+    // Measure the performance of 'ntcs::BlobBufferCache' when each thread
+    // releases each buffer before allocating the next.
+    static void verifyCase20();
 };
 
 /// Provide a bounded, lock-free channel through which a single producer
@@ -409,6 +483,203 @@ bsl::int64_t BlobBufferFactoryTest::numBuffersPooled(
     return static_cast<bsl::int64_t>(blobBufferPool.numBuffersPooled());
 }
 
+bsl::int64_t BlobBufferFactoryTest::numBuffersPooled(
+    const ntcs::BlobBufferCache& blobBufferCache)
+{
+    return static_cast<bsl::int64_t>(blobBufferCache.numBuffersPooled());
+}
+
+bsl::size_t BlobBufferFactoryTest::expectedMaxCached(
+    bsl::size_t blobBufferSize)
+{
+    const bsl::size_t objectSize = ((64 + blobBufferSize + 127) / 128) * 128;
+
+    bsl::size_t maxCached = (256 * 1024) / objectSize;
+    if (maxCached < 2) {
+        maxCached = 2;
+    }
+    if (maxCached > 128) {
+        maxCached = 128;
+    }
+
+    return maxCached;
+}
+
+bsl::size_t BlobBufferFactoryTest::expectedCached(bsl::size_t numReleased,
+                                                  bsl::size_t maxCached,
+                                                  bsl::size_t batchSize)
+{
+    bsl::size_t numCached = 0;
+    for (bsl::size_t i = 0; i < numReleased; ++i) {
+        ++numCached;
+        if (numCached > maxCached) {
+            numCached -= batchSize;
+        }
+    }
+
+    return numCached;
+}
+
+void BlobBufferFactoryTest::fillCache(ntcs::BlobBufferCache* blobBufferCache,
+                                      bsl::size_t            numBuffers)
+{
+    bsl::vector<bdlbb::BlobBuffer> blobBufferVector(NTSCFG_TEST_ALLOCATOR);
+    blobBufferVector.resize(numBuffers);
+
+    for (bsl::size_t i = 0; i < numBuffers; ++i) {
+        blobBufferCache->allocate(&blobBufferVector[i]);
+    }
+
+    blobBufferVector.clear();
+}
+
+void BlobBufferFactoryTest::fillCacheAndWait(
+    ntcs::BlobBufferCache* blobBufferCache,
+    bsl::size_t            numBuffers,
+    bslmt::Barrier*        barrier)
+{
+    BlobBufferFactoryTest::fillCache(blobBufferCache, numBuffers);
+
+    // Wait while the main thread destroys 'blobBufferCache'.
+
+    barrier->wait();
+    barrier->wait();
+
+    // Use another blob buffer cache, whose per-thread cache reuses the slot
+    // detached from the destroyed blob buffer cache.
+
+    ntcs::BlobBufferCache other(4096, NTSCFG_TEST_ALLOCATOR);
+
+    BlobBufferFactoryTest::fillCache(&other, numBuffers);
+
+    NTSCFG_TEST_EQ(other.numBuffersPooled(), numBuffers);
+    NTSCFG_TEST_EQ(other.numBuffersAvailable(), 0);
+    NTSCFG_TEST_EQ(other.numBuffersAllocated(), numBuffers);
+}
+
+void BlobBufferFactoryTest::useManyCaches()
+{
+    const bsl::size_t NUM_SLOTS  = 8;
+    const bsl::size_t NUM_CACHES = NUM_SLOTS + 2;
+
+    bsl::vector<bsl::shared_ptr<ntcs::BlobBufferCache> > cacheVector(
+        NTSCFG_TEST_ALLOCATOR);
+
+    for (bsl::size_t i = 0; i < NUM_CACHES; ++i) {
+        cacheVector.push_back(bsl::allocate_shared<ntcs::BlobBufferCache>(
+            NTSCFG_TEST_ALLOCATOR,
+            4096,
+            NTSCFG_TEST_ALLOCATOR));
+    }
+
+    // The first caches used have per-thread caches, so a released buffer is
+    // held in the cache of this thread; the rest are used without a
+    // per-thread cache, so a released buffer returns to the shared layer.
+
+    for (bsl::size_t i = 0; i < NUM_CACHES; ++i) {
+        BlobBufferFactoryTest::fillCache(cacheVector[i].get(), 1);
+
+        NTSCFG_TEST_EQ(cacheVector[i]->numBuffersPooled(), 1);
+
+        if (i < NUM_SLOTS) {
+            NTSCFG_TEST_EQ(cacheVector[i]->numBuffersAvailable(), 0);
+            NTSCFG_TEST_EQ(cacheVector[i]->numBuffersAllocated(), 1);
+        }
+        else {
+            NTSCFG_TEST_EQ(cacheVector[i]->numBuffersAvailable(), 1);
+            NTSCFG_TEST_EQ(cacheVector[i]->numBuffersAllocated(), 0);
+        }
+    }
+
+    // Destroying a blob buffer cache frees its per-thread cache, which the
+    // next blob buffer cache used without one then attaches.
+
+    cacheVector[0].reset();
+
+    BlobBufferFactoryTest::fillCache(cacheVector[NUM_SLOTS].get(), 1);
+
+    NTSCFG_TEST_EQ(cacheVector[NUM_SLOTS]->numBuffersPooled(), 1);
+    NTSCFG_TEST_EQ(cacheVector[NUM_SLOTS]->numBuffersAvailable(), 0);
+    NTSCFG_TEST_EQ(cacheVector[NUM_SLOTS]->numBuffersAllocated(), 1);
+
+    BlobBufferFactoryTest::fillCache(cacheVector[NUM_SLOTS + 1].get(), 1);
+
+    NTSCFG_TEST_EQ(cacheVector[NUM_SLOTS + 1]->numBuffersPooled(), 1);
+    NTSCFG_TEST_EQ(cacheVector[NUM_SLOTS + 1]->numBuffersAvailable(), 1);
+    NTSCFG_TEST_EQ(cacheVector[NUM_SLOTS + 1]->numBuffersAllocated(), 0);
+}
+
+void BlobBufferFactoryTest::stressBlobBufferCache(bsl::size_t blobBufferSize,
+                                                  bsl::size_t numPairs,
+                                                  bsl::size_t numItemsPerPair)
+{
+    bslma::Allocator* allocator = NTSCFG_TEST_ALLOCATOR;
+
+    ntcs::BlobBufferCache blobBufferCache(blobBufferSize, allocator);
+
+    NTSCFG_TEST_EQ(blobBufferCache.maxCached(),
+                   BlobBufferFactoryTest::expectedMaxCached(blobBufferSize));
+    NTSCFG_TEST_EQ(blobBufferCache.batchSize(),
+                   blobBufferCache.maxCached() / 2);
+
+    blobBufferCache.reserve(100);
+
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), 100);
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(), 100);
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), 0);
+
+    bslmt::Barrier barrier(static_cast<int>(2 * numPairs + 1));
+
+    bsl::vector<bsl::shared_ptr<Channel<bdlbb::BlobBuffer> > > channelVector(
+        allocator);
+    bsl::vector<bsl::uint64_t> checksumVector(numPairs, 0, allocator);
+
+    for (bsl::size_t i = 0; i < numPairs; ++i) {
+        channelVector.push_back(
+            bsl::allocate_shared<Channel<bdlbb::BlobBuffer> >(allocator));
+    }
+
+    bslmt::ThreadGroup threadGroup(allocator);
+
+    for (bsl::size_t i = 0; i < numPairs; ++i) {
+        threadGroup.addThread(
+            bdlf::BindUtil::bind(&BlobBufferFactoryTest::produce,
+                                 &blobBufferCache,
+                                 channelVector[i].get(),
+                                 &barrier,
+                                 numItemsPerPair));
+
+        threadGroup.addThread(
+            bdlf::BindUtil::bind(&BlobBufferFactoryTest::consume,
+                                 channelVector[i].get(),
+                                 &barrier,
+                                 numItemsPerPair,
+                                 &checksumVector[i]));
+    }
+
+    barrier.wait();
+    barrier.wait();
+    barrier.wait();
+    barrier.wait();
+
+    threadGroup.joinAll();
+
+    const bsl::uint64_t expected =
+        static_cast<bsl::uint64_t>(numItemsPerPair) *
+        (static_cast<bsl::uint64_t>(numItemsPerPair) - 1) / 2;
+
+    for (bsl::size_t i = 0; i < numPairs; ++i) {
+        NTSCFG_TEST_EQ(checksumVector[i], expected);
+    }
+
+    // Every thread that used the blob buffer cache has exited, flushing its
+    // cache, so every buffer is in the shared layer.
+
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), 0);
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(),
+                   blobBufferCache.numBuffersPooled());
+}
+
 template <typename FACTORY>
 void BlobBufferFactoryTest::measureProducerConsumer(const char* name)
 {
@@ -619,6 +890,102 @@ struct BlobBufferFactoryTest::Runner<void> {
         return -1;
     }
 };
+
+template <typename FACTORY>
+void BlobBufferFactoryTest::measureSameThread(const char* name)
+{
+    // clang-format off
+    struct Data {
+        bsl::size_t d_numThreads;
+        bsl::size_t d_numIterations;
+    }
+    DATA[] = {
+#if NTC_BUILD_WITH_VALGRIND
+        { 1,    100000 },
+        { 2,     50000 },
+        { 4,     25000 },
+        { 10,    10000 }
+#else
+        { 1,  10000000 },
+        { 2,   5000000 },
+        { 4,   2500000 },
+        { 10,  1000000 }
+#endif
+    };
+    // clang-format on
+
+    enum { NUM_DATA = sizeof(DATA) / sizeof(DATA[0]) };
+
+    bsl::vector<bsl::pair<bsls::Stopwatch, bsl::int64_t> > stopwatchList(
+                                                                     NUM_DATA);
+
+    for (bsl::size_t variation = 0; variation < NUM_DATA; ++variation) {
+        FACTORY        blobBufferFactory(64);
+        bslmt::Barrier barrier(
+            static_cast<int>(DATA[variation].d_numThreads + 1));
+
+        bslmt::ThreadGroup threadGroup;
+        threadGroup.addThreads(
+            bdlf::BindUtil::bind(&BlobBufferFactoryTest::work,
+                                 &blobBufferFactory,
+                                 &barrier,
+                                 DATA[variation].d_numIterations,
+                                 DATA[variation].d_numThreads),
+            static_cast<int>(DATA[variation].d_numThreads));
+
+        barrier.wait();
+        stopwatchList[variation].first.start(true);
+        barrier.wait();
+
+        barrier.wait();
+        stopwatchList[variation].first.stop();
+        barrier.wait();
+
+        threadGroup.joinAll();
+
+        stopwatchList[variation].second =
+            BlobBufferFactoryTest::numBuffersPooled(blobBufferFactory);
+    }
+
+    const bsl::size_t W = 15;
+
+    bsl::cout << name << bsl::endl;
+    bsl::cout << bsl::setw(W) << bsl::right << "Threads";
+    bsl::cout << bsl::setw(W) << bsl::right << "Iterations";
+    bsl::cout << bsl::setw(W) << bsl::right << "Wall";
+    bsl::cout << bsl::setw(W) << bsl::right << "CPU";
+    bsl::cout << bsl::setw(W) << bsl::right << "User";
+    bsl::cout << bsl::setw(W) << bsl::right << "System";
+    bsl::cout << bsl::setw(W) << bsl::right << "NumPooled";
+    bsl::cout << bsl::endl;
+
+    for (bsl::size_t variation = 0; variation < NUM_DATA; ++variation) {
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << DATA[variation].d_numThreads;
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << DATA[variation].d_numIterations;
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedWallTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime() +
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedUserTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << bsls::TimeInterval(
+                         stopwatchList[variation].first.accumulatedSystemTime()
+                     ).totalMicroseconds();
+        bsl::cout << bsl::setw(W) << bsl::right
+                  << stopwatchList[variation].second;
+        bsl::cout << bsl::endl;
+    }
+}
 
 NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase1)
 {
@@ -1916,7 +2283,226 @@ NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase13)
 
     BlobBufferFactoryTest::measureProducerConsumer<ntcs::BlobBufferPool>(
         "ntcs::BlobBufferPool");
+
+    BlobBufferFactoryTest::measureProducerConsumer<ntcs::BlobBufferCache>(
+        "ntcs::BlobBufferCache");
 }
 
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase14)
+{
+    // Concern: A blob buffer cache derives its per-thread cache limits from
+    // its budget, reports its statistics as documented, and reuses a buffer
+    // released by a thread when that thread next allocates.
+    //
+    // Plan: Allocate and release buffers on one thread, verifying the
+    // statistics and the address of each buffer.
+
+    const bsl::size_t BLOB_BUFFER_SIZE = 4096;
+
+    ntcs::BlobBufferCache blobBufferCache(BLOB_BUFFER_SIZE,
+                                          NTSCFG_TEST_ALLOCATOR);
+
+    NTSCFG_TEST_EQ(blobBufferCache.maxCached(),
+                   BlobBufferFactoryTest::expectedMaxCached(BLOB_BUFFER_SIZE));
+    NTSCFG_TEST_EQ(blobBufferCache.batchSize(),
+                   blobBufferCache.maxCached() / 2);
+
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), 0);
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(), 0);
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), 0);
+    NTSCFG_TEST_EQ(blobBufferCache.numBytesInUse(), 0);
+
+    char* data = 0;
+
+    {
+        bdlbb::BlobBuffer blobBuffer;
+        blobBufferCache.allocate(&blobBuffer);
+
+        NTSCFG_TEST_NE(blobBuffer.data(), 0);
+        NTSCFG_TEST_EQ(static_cast<bsl::size_t>(blobBuffer.size()),
+                       BLOB_BUFFER_SIZE);
+
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), 1);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(), 0);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), 1);
+        NTSCFG_TEST_GE(blobBufferCache.numBytesInUse(), BLOB_BUFFER_SIZE);
+
+        data = blobBuffer.data();
+    }
+
+    // The released buffer is held in the cache of this thread, so it is not
+    // available to other threads, and it is counted as allocated.
+
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), 1);
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(), 0);
+    NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), 1);
+
+    {
+        bdlbb::BlobBuffer blobBuffer;
+        blobBufferCache.allocate(&blobBuffer);
+
+        NTSCFG_TEST_EQ(blobBuffer.data(), data);
+
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), 1);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(), 0);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), 1);
+    }
+}
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase15)
+{
+    // Concern: A thread moves buffers between its cache and the shared layer
+    // in batches, never holding more than the maximum number of buffers in
+    // its cache, and reuses buffers from the shared layer before carving.
+    //
+    // Plan: Allocate many more buffers than a thread may cache, release
+    // them, and verify how many are in the shared layer. Allocate them
+    // again and verify no new buffers are carved.
+
+    const bsl::size_t BLOB_BUFFER_SIZE = 64;
+    const bsl::size_t NUM_BUFFERS      = 1000;
+
+    ntcs::BlobBufferCache blobBufferCache(BLOB_BUFFER_SIZE,
+                                          NTSCFG_TEST_ALLOCATOR);
+
+    const bsl::size_t maxCached = blobBufferCache.maxCached();
+    const bsl::size_t batchSize = blobBufferCache.batchSize();
+
+    NTSCFG_TEST_LT(maxCached, NUM_BUFFERS);
+
+    for (bsl::size_t round = 0; round < 2; ++round) {
+        bsl::vector<bdlbb::BlobBuffer> blobBufferVector(
+            NTSCFG_TEST_ALLOCATOR);
+        blobBufferVector.resize(NUM_BUFFERS);
+
+        for (bsl::size_t i = 0; i < NUM_BUFFERS; ++i) {
+            blobBufferCache.allocate(&blobBufferVector[i]);
+        }
+
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), NUM_BUFFERS);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(), 0);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), NUM_BUFFERS);
+
+        blobBufferVector.clear();
+
+        const bsl::size_t numCached = BlobBufferFactoryTest::expectedCached(
+            NUM_BUFFERS,
+            maxCached,
+            batchSize);
+
+        NTSCFG_TEST_LE(numCached, maxCached);
+
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), NUM_BUFFERS);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(),
+                       NUM_BUFFERS - numCached);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), numCached);
+    }
+}
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase16)
+{
+    // Concern: A blob buffer cache may be destroyed while another thread
+    // holds its buffers in its cache, and that thread may then use another
+    // blob buffer cache.
+    //
+    // Plan: On another thread, allocate and release buffers so they are
+    // held in that thread's cache. Destroy the blob buffer cache on this
+    // thread, then let the other thread use a new blob buffer cache.
+
+    const bsl::size_t NUM_BUFFERS = 10;
+
+    bslmt::Barrier barrier(2);
+
+    bsl::shared_ptr<ntcs::BlobBufferCache> blobBufferCache =
+        bsl::allocate_shared<ntcs::BlobBufferCache>(NTSCFG_TEST_ALLOCATOR,
+                                                    4096,
+                                                    NTSCFG_TEST_ALLOCATOR);
+
+    NTSCFG_TEST_LT(NUM_BUFFERS, blobBufferCache->maxCached());
+
+    bslmt::ThreadGroup threadGroup(NTSCFG_TEST_ALLOCATOR);
+    threadGroup.addThread(
+        bdlf::BindUtil::bind(&BlobBufferFactoryTest::fillCacheAndWait,
+                             blobBufferCache.get(),
+                             NUM_BUFFERS,
+                             &barrier));
+
+    barrier.wait();
+
+    NTSCFG_TEST_EQ(blobBufferCache->numBuffersPooled(), NUM_BUFFERS);
+    NTSCFG_TEST_EQ(blobBufferCache->numBuffersAvailable(), 0);
+    NTSCFG_TEST_EQ(blobBufferCache->numBuffersAllocated(), NUM_BUFFERS);
+
+    blobBufferCache.reset();
+
+    barrier.wait();
+
+    threadGroup.joinAll();
+}
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase17)
+{
+    // Concern: The caches of a thread are flushed to the shared layer when
+    // the thread exits.
+    //
+    // Plan: On another thread, allocate and release buffers so they are
+    // held in that thread's cache, then let the thread exit. Verify every
+    // buffer is in the shared layer, and is reused rather than carved.
+
+    const bsl::size_t NUM_BUFFERS = 10;
+
+    ntcs::BlobBufferCache blobBufferCache(4096, NTSCFG_TEST_ALLOCATOR);
+
+    NTSCFG_TEST_LT(NUM_BUFFERS, blobBufferCache.maxCached());
+
+    for (bsl::size_t round = 0; round < 2; ++round) {
+        bslmt::ThreadGroup threadGroup(NTSCFG_TEST_ALLOCATOR);
+        threadGroup.addThread(
+            bdlf::BindUtil::bind(&BlobBufferFactoryTest::fillCache,
+                                 &blobBufferCache,
+                                 NUM_BUFFERS));
+        threadGroup.joinAll();
+
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersPooled(), NUM_BUFFERS);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAvailable(), NUM_BUFFERS);
+        NTSCFG_TEST_EQ(blobBufferCache.numBuffersAllocated(), 0);
+    }
+}
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase18)
+{
+    // Concern: A thread may use more blob buffer caches than it has
+    // per-thread caches, using the others without a per-thread cache, and
+    // attaches a per-thread cache freed by a destroyed blob buffer cache.
+    //
+    // Plan: On a new thread, so that every per-thread cache is free, use
+    // more blob buffer caches than there are per-thread caches.
+
+    bslmt::ThreadGroup threadGroup(NTSCFG_TEST_ALLOCATOR);
+    threadGroup.addThread(&BlobBufferFactoryTest::useManyCaches);
+    threadGroup.joinAll();
+}
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase19)
+{
+    // Concern: Buffers allocated by some threads and released by others are
+    // never handed out twice, and the statistics are exact once every
+    // thread has exited.
+    //
+    // Plan: For buffer sizes giving a range of per-thread cache limits,
+    // including a batch size of one, pass buffers from producer threads to
+    // consumer threads and verify every item arrives intact.
+
+    BlobBufferFactoryTest::stressBlobBufferCache(64, 4, 200000);
+    BlobBufferFactoryTest::stressBlobBufferCache(4096, 4, 200000);
+    BlobBufferFactoryTest::stressBlobBufferCache(300000, 4, 2000);
+}
+
+NTSCFG_TEST_FUNCTION(ntcs::BlobBufferFactoryTest::verifyCase20)
+{
+    BlobBufferFactoryTest::measureSameThread<ntcs::BlobBufferCache>(
+        "ntcs::BlobBufferCache");
+}
 }  // close namespace ntcs
 }  // close namespace BloombergLP

@@ -23,10 +23,12 @@ BSLS_IDENT("$Id: $")
 #include <ntci_metric.h>
 #include <ntci_monitorable.h>
 #include <ntcscm_version.h>
+#include <bdlb_bitutil.h>
 #include <bdlbb_blob.h>
 #include <bdlma_aligningallocator.h>
 #include <bdlma_concurrentpoolallocator.h>
 #include <bdlma_countingallocator.h>
+#include <bslmt_threadutil.h>
 #include <bsls_atomic.h>
 #include <bsls_platform.h>
 #include <bsl_memory.h>
@@ -181,6 +183,14 @@ class BlobBufferFactoryMetrics
 /// which may exceed 'numBuffersPooled() * blobBufferSize' because the pool
 /// pre-allocates blocks in bulk.
 ///
+/// @par Lifetime of Blob Buffers
+/// As required of every 'bdlbb::BlobBufferFactory', all blob buffers
+/// allocated from this object must be released, by letting the reference
+/// count of each blob buffer's shared pointer reach zero, before this
+/// object is destroyed. A blob buffer released after this object is
+/// destroyed returns its memory to a destroyed object, and the behavior is
+/// undefined.
+///
 /// @par Thread Safety
 /// This class is thread safe.
 ///
@@ -231,7 +241,8 @@ class BlobBufferFactory : public bdlbb::BlobBufferFactory,
     explicit BlobBufferFactory(bsl::size_t       blobBufferSize,
                                bslma::Allocator* basicAllocator = 0);
 
-    /// Destroy this object.
+    /// Destroy this object. The behavior is undefined unless every blob
+    /// buffer allocated from this object has been released.
     ~BlobBufferFactory() BSLS_KEYWORD_OVERRIDE;
 
     /// Allocate a blob buffer from this blob buffer factory, and load it
@@ -759,6 +770,14 @@ class BlobBufferPoolObject : public bslma::SharedPtrRep
 /// addresses of the slabs are kept in a table that is replaced, but never
 /// freed, when it grows, so threads may read the table without locking.
 ///
+/// @par Lifetime of Blob Buffers
+/// As required of every 'bdlbb::BlobBufferFactory', all blob buffers
+/// allocated from this object must be released, by letting the reference
+/// count of each blob buffer's shared pointer reach zero, before this
+/// object is destroyed. A blob buffer released after this object is
+/// destroyed returns its memory to a destroyed object, and the behavior is
+/// undefined.
+///
 /// @par Thread Safety
 /// This class is thread safe.
 ///
@@ -980,6 +999,627 @@ bsl::uint32_t BlobBufferPoolObject::shard() const
 
 NTCCFG_INLINE
 void* BlobBufferPoolObject::originalPtr() const
+{
+    return (void*)(d_data_p);
+}
+
+/// @internal @brief
+/// Provide storage for objects carved from slabs of memory and identified
+/// by index.
+///
+/// @details
+/// This class provides memory for objects of a fixed size, carved one at a
+/// time, on demand, from slabs of memory acquired from the allocator
+/// supplied at construction. Each object is identified by an index,
+/// starting at one, in the order it is carved. Slab 'i' holds '2^i'
+/// objects for 'i <= L', and every later slab holds '2^L' objects, where
+/// '2^L' is the maximum number of objects per slab, so the slab and offset
+/// of an index are computed directly. The addresses of the slabs are kept
+/// in a table that is replaced, but never freed, when it grows, so threads
+/// may look up an index without locking. Memory is not returned to the
+/// allocator until this object is destroyed.
+///
+/// An index may be looked up by a thread only if the thread has observed
+/// the index, with acquire semantics, after the index was published. The
+/// number of published objects is itself available with acquire semantics,
+/// so a thread that obtains an index without such a guarantee may first
+/// check that the index does not exceed the number published.
+///
+/// @par Thread Safety
+/// This class is not thread safe, except that 'lookup' and 'numPublished'
+/// may be called concurrently with any function.
+///
+/// @ingroup module_ntcs
+class BlobBufferSlabStorage
+{
+    bsl::size_t                d_objectSize;
+    bsl::size_t                d_slabShift;
+    bsls::AtomicPointer<char*> d_slabTable;
+    bsls::AtomicUint           d_numPublished;
+    bsl::size_t                d_slabTableCapacity;
+    bsl::size_t                d_numSlabs;
+    bsl::uint32_t              d_numCarved;
+    bdlma::CountingAllocator   d_countingAllocator;
+    bdlma::AligningAllocator   d_aligningAllocator;
+    bsl::vector<char**>        d_slabTables;
+
+  private:
+    BlobBufferSlabStorage(const BlobBufferSlabStorage&) BSLS_KEYWORD_DELETED;
+    BlobBufferSlabStorage& operator=(const BlobBufferSlabStorage&)
+        BSLS_KEYWORD_DELETED;
+
+  private:
+    /// Load into the specified 'slab' and 'offset' the index of the slab
+    /// and the position within that slab of the object identified by the
+    /// specified non-zero 'index'.
+    void locate(bsl::size_t* slab, bsl::size_t* offset, bsl::uint32_t index)
+        const;
+
+  public:
+    /// Create new storage for objects of the specified 'objectSize', which
+    /// must be a multiple of the specified 'alignment', carved from slabs
+    /// of at most the specified 'maxSlabObjects' objects and at most the
+    /// specified 'maxSlabSize' bytes, unless a single object is larger.
+    /// Optionally specify a 'basicAllocator' used to supply memory. If
+    /// 'basicAllocator' is 0, the currently installed default allocator is
+    /// used. The behavior is undefined unless 'alignment' and
+    /// 'maxSlabObjects' are powers of two.
+    BlobBufferSlabStorage(bsl::size_t       objectSize,
+                          bsl::size_t       alignment,
+                          bsl::size_t       maxSlabSize,
+                          bsl::size_t       maxSlabObjects,
+                          bslma::Allocator* basicAllocator = 0);
+
+    /// Destroy this object and release every slab.
+    ~BlobBufferSlabStorage();
+
+    /// Return the memory for a new object, acquiring a new slab, and
+    /// growing the slab table, if necessary, and load into the specified
+    /// 'index' the index that identifies it. The object is not published
+    /// until 'publish' is called for it.
+    void* carve(bsl::uint32_t* index);
+
+    /// Publish the object identified by the specified 'index', which must
+    /// be the index most recently loaded by 'carve', with release
+    /// semantics.
+    void publish(bsl::uint32_t index);
+
+    /// Return the address of the object identified by the specified
+    /// non-zero 'index'. The behavior is undefined unless the object has
+    /// been published and the calling thread has observed 'index' after it
+    /// was published.
+    void* lookup(bsl::uint32_t index) const;
+
+    /// Return the number of objects that have been published, with acquire
+    /// semantics.
+    bsl::uint32_t numPublished() const;
+
+    /// Return the size of each object.
+    bsl::size_t objectSize() const;
+
+    /// Return the number of bytes allocated from the allocator supplied at
+    /// construction and not yet freed.
+    bsl::size_t numBytesInUse() const;
+};
+
+NTCCFG_INLINE
+void BlobBufferSlabStorage::locate(bsl::size_t*  slab,
+                                   bsl::size_t*  offset,
+                                   bsl::uint32_t index) const
+{
+    const bsl::size_t n = index;
+
+    if (n < (static_cast<bsl::size_t>(2) << d_slabShift)) {
+        const bsl::size_t log2 =
+            31 - bdlb::BitUtil::numLeadingUnsetBits(index);
+        *slab   = log2;
+        *offset = n - (static_cast<bsl::size_t>(1) << log2);
+    }
+    else {
+        const bsl::size_t m = n - (static_cast<bsl::size_t>(2) << d_slabShift);
+        *slab   = d_slabShift + 1 + (m >> d_slabShift);
+        *offset = m & ((static_cast<bsl::size_t>(1) << d_slabShift) - 1);
+    }
+}
+
+NTCCFG_INLINE
+void* BlobBufferSlabStorage::lookup(bsl::uint32_t index) const
+{
+    bsl::size_t slab;
+    bsl::size_t offset;
+    this->locate(&slab, &offset, index);
+
+    char** slabTable = d_slabTable.loadAcquire();
+
+    return slabTable[slab] + offset * d_objectSize;
+}
+
+NTCCFG_INLINE
+bsl::uint32_t BlobBufferSlabStorage::numPublished() const
+{
+    return d_numPublished.loadAcquire();
+}
+
+NTCCFG_INLINE
+bsl::size_t BlobBufferSlabStorage::objectSize() const
+{
+    return d_objectSize;
+}
+
+class BlobBufferCache;
+
+/// @internal @brief Provide padding to ensure the correct size of a blob
+/// buffer cache object.
+///
+/// @par Thread Safety
+/// This class is not thread safe.
+///
+/// @ingroup module_ntcs
+struct BlobBufferCacheObjectPadding {
+    BlobBufferCacheObjectPadding()
+    {
+        bsl::memset(this->zero, 0, sizeof this->zero);
+    }
+
+#if defined(BSLS_PLATFORM_CPU_64_BIT)
+    bsl::uint8_t zero[12];
+#elif defined(BSLS_PLATFORM_CPU_32_BIT)
+    bsl::uint8_t zero[28];
+#else
+#error Not implemented
+#endif
+};
+
+/// @internal @brief
+/// Provide a blob buffer of a blob buffer cache, implementing a shared
+/// pointer representation.
+///
+/// @details
+/// Each object is the header of a contiguous region of memory: the object
+/// itself occupies the first 64 bytes and the blob buffer data immediately
+/// follows it. Each object is identified by a non-zero index. Objects in
+/// the free lists shared by all threads are linked by index; objects in the
+/// cache of a single thread are linked by address. The link by index is
+/// atomic because a thread popping objects from a shared free list may read
+/// the link while another thread that has already popped the same object
+/// overwrites it; the tagged head of the free list detects that case and
+/// rejects the stale pop, but the read itself must not be a data race.
+///
+/// @par Thread Safety
+/// This class is not thread safe.
+///
+/// @ingroup module_ntcs
+class BlobBufferCacheObject : public bslma::SharedPtrRep
+{
+    char*                        d_data_p;
+    BlobBufferCache*             d_cache_p;
+    BlobBufferCacheObject*       d_local_p;
+    bsls::AtomicUint             d_next;
+    bsl::uint32_t                d_index;
+    bsl::uint32_t                d_shard;
+    BlobBufferCacheObjectPadding d_padding;
+
+  private:
+    BlobBufferCacheObject(const BlobBufferCacheObject&) BSLS_KEYWORD_DELETED;
+    BlobBufferCacheObject& operator=(const BlobBufferCacheObject&)
+        BSLS_KEYWORD_DELETED;
+
+  public:
+    /// Create a new blob buffer cache object identified by the specified
+    /// non-zero 'index' that belongs to the specified 'cache'.
+    BlobBufferCacheObject(BlobBufferCache* cache, bsl::uint32_t index);
+
+    /// Destroy this object.
+    ~BlobBufferCacheObject() BSLS_KEYWORD_OVERRIDE;
+
+    /// Set the index of the next object in a shared free list to the
+    /// specified 'next' index, or zero if this object is the last in the
+    /// list.
+    void setNext(bsl::uint32_t next);
+
+    /// Set the next object in the cache of a thread to the specified
+    /// 'next' object, or null if this object is the last in the cache.
+    void setLocalNext(BlobBufferCacheObject* next);
+
+    /// Set the index of the shared free list to which this object is
+    /// returned when flushed from the cache of a thread to the specified
+    /// 'shard'.
+    void setShard(bsl::uint32_t shard);
+
+    /// Destroy the object referred to by this representation.  This method
+    /// is invoked by 'releaseRef' when the number of shared references
+    /// reaches zero and should not be explicitly invoked otherwise.
+    void disposeObject() BSLS_KEYWORD_OVERRIDE;
+
+    /// Destroy this representation object and deallocate the associated
+    /// memory.  This method is invoked by 'releaseRef' and 'releaseWeakRef'
+    /// when the number of weak references and the number of shared
+    /// references both reach zero and should not be explicitly invoked
+    /// otherwise.  The behavior is undefined unless 'disposeObject' has
+    /// already been called for this representation.  Note that this method
+    /// effectively serves as the representation object's destructor.
+    void disposeRep() BSLS_KEYWORD_OVERRIDE;
+
+    /// Return a pointer to the deleter stored by the derived representation
+    /// if the deleter has the same type as that described by the specified
+    /// 'type', and a null pointer otherwise.
+    void* getDeleter(const bsl::type_info& type) BSLS_KEYWORD_OVERRIDE;
+
+    /// Return the blob buffer data to which this object manages.
+    char* data() const;
+
+    /// Return the index of the next object in a shared free list, or zero
+    /// if this object is the last in the list.
+    bsl::uint32_t next() const;
+
+    /// Return the next object in the cache of a thread, or null if this
+    /// object is the last in the cache.
+    BlobBufferCacheObject* localNext() const;
+
+    /// Return the index that identifies this object.
+    bsl::uint32_t index() const;
+
+    /// Return the index of the shared free list to which this object is
+    /// returned when flushed from the cache of a thread.
+    bsl::uint32_t shard() const;
+
+    /// Return the (untyped) address of the modifiable shared object to
+    /// which this object refers.
+    void* originalPtr() const BSLS_KEYWORD_OVERRIDE;
+};
+
+/// @internal @brief
+/// Provide a pool of blob buffers with a cache per thread.
+///
+/// @details
+/// This class implements a pool of blob buffers in two layers. The shared
+/// layer is a set of lock-free, intrusive free lists ("shards"), each
+/// headed by a tagged index, as in 'ntcs::BlobBufferPool'. In front of the
+/// shared layer, each thread keeps a small cache of free buffers for each
+/// of up to eight blob buffer caches it uses, so that a thread that
+/// releases a buffer and then allocates another touches only its own
+/// memory, with no atomic read-modify-write operations.
+///
+/// Buffers move between a thread's cache and the shared layer in batches.
+/// When a thread's cache holds more than 'H' buffers, the thread pushes 'K'
+/// of them onto a shared free list with a single compare-and-swap. When a
+/// thread's cache is empty, the thread pops up to 'K' buffers from a shared
+/// free list with a single compare-and-swap, first from its home free list
+/// and then from the others, and only if every shared free list is empty
+/// carves one new buffer. 'H' is the number of buffers that fit in a budget
+/// of 256 KiB per thread per blob buffer cache, but at least 2 and at most
+/// 128, and 'K' is half of 'H'. A buffer flushed from a thread's cache is
+/// pushed onto the free list of the thread that allocated it, so when one
+/// thread allocates buffers that other threads release, the buffers flow
+/// back to the allocating thread in batches.
+///
+/// A thread that has already used eight blob buffer caches uses any other
+/// blob buffer cache without a per-thread cache, popping and pushing single
+/// buffers directly on the shared free lists. A thread's caches are flushed
+/// to the shared layer when the thread exits. Buffers released by a thread
+/// after its caches are flushed, during thread exit, are pushed directly
+/// onto the shared free lists.
+///
+/// Memory is acquired in slabs that grow geometrically up to a maximum
+/// size, and buffers are carved from the current slab one at a time, on
+/// demand. Memory is not returned to the allocator supplied at construction
+/// until this object is destroyed.
+///
+/// @par Statistics
+/// The statistics are maintained without locking and only when buffers move
+/// to or from the shared layer, so they cost nothing when a thread reuses
+/// buffers from its own cache, and they are approximate while other threads
+/// allocate and release buffers. The number of buffers pooled is the number
+/// of buffers carved. The number of buffers available is the number of
+/// buffers in the shared free lists, which any thread may allocate; it does
+/// not include buffers held in the cache of any thread. The number of
+/// buffers allocated is the difference between the two, which is the number
+/// of buffers in use plus the number of buffers held in the caches of
+/// threads, at most 'H' per thread that has used this object. The number of
+/// buffers pooled may exceed the greatest number of buffers ever in use at
+/// once, because buffers held in the cache of one thread are not available
+/// to another.
+///
+/// @par Lifetime of Blob Buffers
+/// As required of every 'bdlbb::BlobBufferFactory', all blob buffers
+/// allocated from this object must be released, by letting the reference
+/// count of each blob buffer's shared pointer reach zero, before this
+/// object is destroyed. A blob buffer released after this object is
+/// destroyed returns its memory to a destroyed object, and the behavior is
+/// undefined. Buffers held in the caches of threads when this object is
+/// destroyed are not in use, so this object may be destroyed while other
+/// threads still hold its buffers in their caches; those caches are
+/// discarded.
+///
+/// @par Thread Safety
+/// This class is thread safe.
+///
+/// @ingroup module_ntcs
+class BlobBufferCache : public bdlbb::BlobBufferFactory
+{
+    /// Enumerate the constants used in the implementation.
+    enum Constants {
+        /// The assumed maximum size of a cache line, which is 128 bytes on
+        /// some platforms (e.g. Apple Silicon) and which also accounts for
+        /// adjacent-line prefetching on others.
+        k_CACHE_LINE_SIZE = 128,
+
+        /// The alignment of each blob buffer cache object. Objects are
+        /// aligned to the cache line size so that the header of one object
+        /// never shares a cache line with the data of its neighbor, which
+        /// may be in use by a different thread.
+        k_ALIGNMENT = k_CACHE_LINE_SIZE,
+
+        /// The number of shared free lists. Must be a power of two.
+        k_NUM_SHARDS = 16,
+
+        /// The number of blob buffer caches for which each thread keeps a
+        /// cache.
+        k_NUM_SLOTS = 8,
+
+        /// The number of bytes of buffers each thread may hold in its
+        /// cache for each blob buffer cache.
+        k_CACHE_BUDGET = 256 * 1024,
+
+        /// The minimum number of buffers each thread may hold in its cache
+        /// for each blob buffer cache.
+        k_MIN_CACHED = 2,
+
+        /// The maximum number of buffers each thread may hold in its cache
+        /// for each blob buffer cache.
+        k_MAX_CACHED = 128,
+
+        /// The maximum number of objects carved from a single slab. Must be
+        /// a power of two.
+        k_MAX_SLAB_OBJECTS = 64,
+
+        /// The maximum number of bytes in a single slab, unless a single
+        /// object is larger.
+        k_MAX_SLAB_SIZE = 1024 * 1024
+    };
+
+    /// Define a type alias for a tagged index to the head of a free list.
+    typedef ntcs::BlobBufferPoolHandle Handle;
+
+    /// Define a type alias for a mutex.
+    typedef ntccfg::Mutex Mutex;
+
+    /// Define a type alias for a mutex lock guard.
+    typedef ntccfg::LockGuard LockGuard;
+
+    /// Describe a shared free list and the number of buffers in it, padded
+    /// to occupy a cache line.
+    struct Shard {
+        Handle            d_head;
+        bsls::AtomicInt64 d_numAvailable;
+        char              d_padding[k_CACHE_LINE_SIZE - sizeof(Handle) -
+                                    sizeof(bsls::AtomicInt64)];
+    };
+
+    /// Describe the array of shared free lists, padded on both sides so
+    /// that no free list shares a cache line with any other field.
+    struct ShardArray {
+        char  d_leadingPadding[k_CACHE_LINE_SIZE];
+        Shard d_shard[k_NUM_SHARDS];
+        char  d_trailingPadding[k_CACHE_LINE_SIZE];
+    };
+
+    /// Describe the cache of one thread for one blob buffer cache.
+    struct Slot;
+
+    /// Describe the caches of one thread.
+    struct Thread;
+
+    /// Describe the state shared by every blob buffer cache.
+    struct Registry;
+
+    bsl::uint64_t           d_cacheId;
+    bslmt::ThreadUtil::Key  d_key;
+    bsl::size_t             d_blobBufferSize;
+    bsl::size_t             d_maxCached;
+    bsl::size_t             d_batchSize;
+    ShardArray              d_shards;
+    BlobBufferSlabStorage   d_storage;
+    Mutex                   d_mutex;
+    Slot*                   d_slotList_p;
+    bsls::AtomicUint64      d_numPooled;
+    bslma::Allocator*       d_allocator_p;
+
+  private:
+    BlobBufferCache(const BlobBufferCache&) BSLS_KEYWORD_DELETED;
+    BlobBufferCache& operator=(const BlobBufferCache&) BSLS_KEYWORD_DELETED;
+
+  private:
+    /// Return the state shared by every blob buffer cache.
+    static Registry& registry();
+
+    /// Flush the caches of the specified 'thread', which is exiting, and
+    /// destroy it.
+    static void exitThread(void* thread);
+
+    /// Return the caches of the calling thread, creating them if
+    /// necessary, or null if the calling thread is exiting and its caches
+    /// have already been flushed.
+    Thread* lookupThread();
+
+    /// Return the cache of the specified 'thread' for this object,
+    /// attaching a free cache if necessary, or null if every cache of
+    /// 'thread' is attached to another blob buffer cache.
+    Slot* lookupSlot(Thread* thread);
+
+    /// Attach a free cache of the specified 'thread' to this object and
+    /// return it, or return null if every cache of 'thread' is attached to
+    /// another blob buffer cache.
+    Slot* attachSlot(Thread* thread);
+
+    /// Detach the specified 'slot' from this object, leaving it free. The
+    /// behavior is undefined unless the registry mutex is locked.
+    void detachSlot(Slot* slot);
+
+    /// Pop up to the specified 'maxObjects' objects from the specified
+    /// 'shard' with a single compare-and-swap, link them by address, load
+    /// the first into the specified 'first', and return the number popped.
+    bsl::size_t popBatch(Shard*                  shard,
+                         bsl::size_t             maxObjects,
+                         BlobBufferCacheObject** first);
+
+    /// Push the chain of objects from the specified 'first' through the
+    /// specified 'last', linked by index, onto the specified 'shard'.
+    static void pushChain(Shard*                 shard,
+                          BlobBufferCacheObject* first,
+                          BlobBufferCacheObject* last);
+
+    /// Push the specified 'numObjects' objects linked by address from the
+    /// specified 'first' onto the shared free list of 'first', relinking
+    /// them by index, and return the object that followed them, or null if
+    /// none did.
+    BlobBufferCacheObject* pushLocal(BlobBufferCacheObject* first,
+                                     bsl::size_t            numObjects);
+
+    /// Construct a new object in memory carved from the slab storage and
+    /// return it.
+    BlobBufferCacheObject* carve();
+
+    /// Return an object for the empty specified 'slot' of a thread whose
+    /// home shared free list is the specified 'home', refilling 'slot'
+    /// from the shared layer.
+    BlobBufferCacheObject* refill(Slot* slot, bsl::size_t home);
+
+    /// Flush a batch of objects from the specified 'slot' to the shared
+    /// layer.
+    void flush(Slot* slot);
+
+    /// Flush every object from the specified 'slot' to the shared layer.
+    void flushAll(Slot* slot);
+
+    /// Return an object popped directly from the shared layer, beginning
+    /// with the free list at the specified 'home', or carved.
+    BlobBufferCacheObject* allocateUncached(bsl::size_t home);
+
+    /// Push the specified 'object' directly onto the shared layer.
+    void releaseUncached(BlobBufferCacheObject* object);
+
+  public:
+    /// Create a new blob buffer cache that allocates blob buffers each
+    /// having the specified 'blobBufferSize'. Optionally specify a
+    /// 'basicAllocator' used to supply memory. If 'basicAllocator' is 0,
+    /// the currently installed default allocator is used.
+    explicit BlobBufferCache(bsl::size_t       blobBufferSize,
+                             bslma::Allocator* basicAllocator = 0);
+
+    /// Destroy this object, discarding the caches of every thread for this
+    /// object. The behavior is undefined unless every blob buffer
+    /// allocated from this object has been released.
+    ~BlobBufferCache() BSLS_KEYWORD_OVERRIDE;
+
+    /// Allocate a blob buffer from this blob buffer factory, and load it
+    /// into the specified 'buffer'.
+    void allocate(bdlbb::BlobBuffer* buffer) BSLS_KEYWORD_OVERRIDE;
+
+    /// Return the specified 'object' to the cache of the calling thread.
+    void release(BlobBufferCacheObject* object);
+
+    /// Reserve the specified 'numObjects' to be available in the shared
+    /// layer.
+    void reserve(bsl::size_t numObjects);
+
+    /// Return the approximate number of blob buffers that are in use or
+    /// held in the cache of any thread.
+    bsl::size_t numBuffersAllocated() const;
+
+    /// Return the approximate number of blob buffers in the shared free
+    /// lists, available to any thread.
+    bsl::size_t numBuffersAvailable() const;
+
+    /// Return the number of blob buffers carved.
+    bsl::size_t numBuffersPooled() const;
+
+    /// Return the number of bytes allocated from the allocator supplied
+    /// to this object at the time of its construction and not yet freed.
+    bsl::size_t numBytesInUse() const;
+
+    /// Return the maximum number of buffers each thread may hold in its
+    /// cache for this object.
+    bsl::size_t maxCached() const;
+
+    /// Return the number of buffers moved between the cache of a thread and
+    /// the shared layer at a time.
+    bsl::size_t batchSize() const;
+};
+
+NTCCFG_INLINE
+BlobBufferCacheObject::~BlobBufferCacheObject()
+{
+}
+
+NTCCFG_INLINE
+void BlobBufferCacheObject::setNext(bsl::uint32_t next)
+{
+    d_next.storeRelaxed(next);
+}
+
+NTCCFG_INLINE
+void BlobBufferCacheObject::setLocalNext(BlobBufferCacheObject* next)
+{
+    d_local_p = next;
+}
+
+NTCCFG_INLINE
+void BlobBufferCacheObject::setShard(bsl::uint32_t shard)
+{
+    d_shard = shard;
+}
+
+NTCCFG_INLINE
+void BlobBufferCacheObject::disposeObject()
+{
+}
+
+NTCCFG_INLINE
+void BlobBufferCacheObject::disposeRep()
+{
+    d_cache_p->release(this);
+}
+
+NTCCFG_INLINE
+void* BlobBufferCacheObject::getDeleter(const bsl::type_info& type)
+{
+    NTCCFG_WARNING_UNUSED(type);
+    return 0;
+}
+
+NTCCFG_INLINE
+char* BlobBufferCacheObject::data() const
+{
+    return d_data_p;
+}
+
+NTCCFG_INLINE
+bsl::uint32_t BlobBufferCacheObject::next() const
+{
+    return d_next.loadRelaxed();
+}
+
+NTCCFG_INLINE
+BlobBufferCacheObject* BlobBufferCacheObject::localNext() const
+{
+    return d_local_p;
+}
+
+NTCCFG_INLINE
+bsl::uint32_t BlobBufferCacheObject::index() const
+{
+    return d_index;
+}
+
+NTCCFG_INLINE
+bsl::uint32_t BlobBufferCacheObject::shard() const
+{
+    return d_shard;
+}
+
+NTCCFG_INLINE
+void* BlobBufferCacheObject::originalPtr() const
 {
     return (void*)(d_data_p);
 }

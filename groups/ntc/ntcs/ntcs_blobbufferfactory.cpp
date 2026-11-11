@@ -22,6 +22,9 @@ BSLS_IDENT_RCSID(ntcs_blobbufferfactory_cpp, "$Id$ $CSID$")
 #include <bslma_allocator.h>
 #include <bslma_default.h>
 #include <bslmf_assert.h>
+#include <bslmt_lockguard.h>
+#include <bslmt_mutex.h>
+#include <bslmt_once.h>
 #include <bslmt_threadutil.h>
 #include <bsls_assert.h>
 #include <bsls_bslexceptionutil.h>
@@ -817,6 +820,870 @@ bsl::size_t BlobBufferPool::numBytesInUse() const
 {
     return NTCCFG_WARNING_NARROW(bsl::size_t,
                                  d_countingAllocator.numBytesInUse());
+}
+
+BlobBufferSlabStorage::BlobBufferSlabStorage(bsl::size_t       objectSize,
+                                             bsl::size_t       alignment,
+                                             bsl::size_t       maxSlabSize,
+                                             bsl::size_t       maxSlabObjects,
+                                             bslma::Allocator* basicAllocator)
+: d_objectSize(objectSize)
+, d_slabShift(0)
+, d_slabTable(0)
+, d_numPublished(0)
+, d_slabTableCapacity(0)
+, d_numSlabs(0)
+, d_numCarved(0)
+, d_countingAllocator(basicAllocator)
+, d_aligningAllocator(alignment, &d_countingAllocator)
+, d_slabTables(&d_countingAllocator)
+{
+    BSLS_ASSERT(alignment != 0);
+    BSLS_ASSERT((alignment & (alignment - 1)) == 0);
+    BSLS_ASSERT((maxSlabObjects & (maxSlabObjects - 1)) == 0);
+    BSLS_ASSERT(objectSize != 0);
+    BSLS_ASSERT(objectSize % alignment == 0);
+
+    // Choose the maximum number of objects per slab: the largest power of
+    // two no greater than either limit, but at least one. The slab table
+    // is allocated when the first object is carved, so that storage that is
+    // never used allocates no memory.
+
+    bsl::size_t maxObjects = maxSlabSize / d_objectSize;
+    if (maxObjects > maxSlabObjects) {
+        maxObjects = maxSlabObjects;
+    }
+
+    while ((static_cast<bsl::size_t>(2) << d_slabShift) <= maxObjects) {
+        ++d_slabShift;
+    }
+}
+
+BlobBufferSlabStorage::~BlobBufferSlabStorage()
+{
+    char** slabTable = d_slabTable.loadRelaxed();
+
+    BSLS_ASSERT(d_numSlabs == 0 || slabTable != 0);
+
+    for (bsl::size_t i = 0; i < d_numSlabs; ++i) {
+        d_aligningAllocator.deallocate(slabTable[i]);
+    }
+
+    for (bsl::size_t i = 0; i < d_slabTables.size(); ++i) {
+        d_countingAllocator.deallocate(d_slabTables[i]);
+    }
+}
+
+void* BlobBufferSlabStorage::carve(bsl::uint32_t* index)
+{
+    if (NTCCFG_UNLIKELY(d_numCarved == BlobBufferPoolHandleUtil::maxIndex())) {
+        bsls::BslExceptionUtil::throwBadAlloc();
+    }
+
+    const bsl::uint32_t newIndex = d_numCarved + 1;
+
+    bsl::size_t slab;
+    bsl::size_t offset;
+    this->locate(&slab, &offset, newIndex);
+
+    char** slabTable = d_slabTable.loadRelaxed();
+
+    if (offset == 0) {
+        BSLS_ASSERT(slab == d_numSlabs);
+
+        // Allocate the slab table, or grow it, if necessary, by copying it to
+        // a table twice the size. Publish the new table but retain the old
+        // one, since other threads may still be reading it.
+
+        if (d_numSlabs == d_slabTableCapacity) {
+            const bsl::size_t newCapacity =
+                d_slabTableCapacity == 0 ? 16 : d_slabTableCapacity * 2;
+
+            d_slabTables.reserve(d_slabTables.size() + 1);
+
+            char** newSlabTable = static_cast<char**>(
+                d_countingAllocator.allocate(newCapacity * sizeof(char*)));
+
+            for (bsl::size_t i = 0; i < d_numSlabs; ++i) {
+                newSlabTable[i] = slabTable[i];
+            }
+
+            d_slabTables.push_back(newSlabTable);
+            d_slabTable.storeRelease(newSlabTable);
+
+            slabTable           = newSlabTable;
+            d_slabTableCapacity = newCapacity;
+        }
+
+        const bsl::size_t numObjects =
+            (slab <= d_slabShift) ? (static_cast<bsl::size_t>(1) << slab)
+                                  : (static_cast<bsl::size_t>(1)
+                                     << d_slabShift);
+
+        char* memory = static_cast<char*>(
+            d_aligningAllocator.allocate(numObjects * d_objectSize));
+
+        // The address of the slab is published to other threads by the
+        // release semantics of 'publish'.
+
+        slabTable[slab] = memory;
+        ++d_numSlabs;
+    }
+
+    d_numCarved = newIndex;
+    *index      = newIndex;
+
+    return slabTable[slab] + offset * d_objectSize;
+}
+
+void BlobBufferSlabStorage::publish(bsl::uint32_t index)
+{
+    BSLS_ASSERT(index == d_numCarved);
+    d_numPublished.storeRelease(index);
+}
+
+bsl::size_t BlobBufferSlabStorage::numBytesInUse() const
+{
+    return NTCCFG_WARNING_NARROW(bsl::size_t,
+                                 d_countingAllocator.numBytesInUse());
+}
+
+// 32-bits                    64-bits:
+// 4 = vtable                 8 = vtable
+// 4 = strong                 4 = strong
+// 4 = weak                   4 = weak
+// 4 = data                   8 = data
+// 4 = cache                  8 = cache
+// 4 = local                  8 = local
+// 4 = next                   4 = next
+// 4 = index                  4 = index
+// 4 = shard                  4 = shard
+// 36                         52
+// 64 - 36 = 28 bytes padding
+// 64 - 52 = 12 bytes padding
+BSLMF_ASSERT(sizeof(BlobBufferCacheObject) == 64);
+
+BlobBufferCacheObject::BlobBufferCacheObject(BlobBufferCache* cache,
+                                             bsl::uint32_t    index)
+: bslma::SharedPtrRep()
+, d_data_p(0)
+, d_cache_p(cache)
+, d_local_p(0)
+, d_next(0)
+, d_index(index)
+, d_shard(0)
+, d_padding()
+{
+    BSLS_ASSERT(index != 0);
+
+    d_data_p = (char*)(this) + sizeof(BlobBufferCacheObject);
+    BSLS_ASSERT((bsl::size_t)(bsl::uintptr_t)(d_data_p) % 16 == 0);
+}
+
+namespace {
+
+// The address that marks a thread whose caches have been flushed because the
+// thread is exiting.
+char s_deadThread;
+
+}  // close unnamed namespace
+
+struct BlobBufferCache::Slot {
+    // The identifier of the blob buffer cache to which this slot is
+    // attached, or zero if this slot is free. Written only while the
+    // registry mutex is locked, and read by the owning thread without
+    // locking.
+    bsls::AtomicUint64 d_cacheId;
+
+    // The blob buffer cache to which this slot is attached. Accessed only
+    // while the registry mutex is locked.
+    BlobBufferCache* d_cache_p;
+
+    // The free objects in this cache, linked by address. Accessed only by
+    // the owning thread.
+    BlobBufferCacheObject* d_stack_p;
+
+    // The number of free objects in this cache. Written only by the owning
+    // thread, and read by a blob buffer cache being destroyed.
+    bsls::AtomicUint64 d_stackSize;
+
+    // The links in the list of slots attached to the blob buffer cache.
+    // Accessed only while the registry mutex is locked.
+    Slot* d_prev_p;
+    Slot* d_next_p;
+
+    Slot()
+    : d_cacheId(0)
+    , d_cache_p(0)
+    , d_stack_p(0)
+    , d_stackSize(0)
+    , d_prev_p(0)
+    , d_next_p(0)
+    {
+    }
+};
+
+struct BlobBufferCache::Thread {
+    // Padding so that no other thread's data shares a cache line with the
+    // data of this thread.
+    char d_leadingPadding[k_CACHE_LINE_SIZE];
+
+    // The index of the shared free list from which this thread refills its
+    // caches, and to which the buffers it allocates are flushed.
+    bsl::size_t d_homeShard;
+
+    // The index of the slot most recently used.
+    bsl::size_t d_lastSlot;
+
+    // The caches of this thread.
+    Slot d_slot[k_NUM_SLOTS];
+
+    char d_trailingPadding[k_CACHE_LINE_SIZE];
+
+    explicit Thread(bsl::size_t homeShard)
+    : d_homeShard(homeShard)
+    , d_lastSlot(0)
+    {
+    }
+};
+
+struct BlobBufferCache::Registry {
+    // The mutex that serializes attaching and detaching slots, the
+    // destruction of blob buffer caches, and the exit of threads.
+    bslmt::Mutex d_mutex;
+
+    // The key of the thread-specific pointer to the caches of each thread.
+    bslmt::ThreadUtil::Key d_key;
+
+    // The last blob buffer cache identifier assigned. Identifiers are never
+    // reused.
+    bsls::AtomicUint64 d_lastCacheId;
+
+    // The last home shared free list index assigned.
+    bsls::AtomicUint d_lastShard;
+
+    Registry()
+    : d_mutex()
+    , d_key()
+    , d_lastCacheId(0)
+    , d_lastShard(0)
+    {
+        const int rc =
+            bslmt::ThreadUtil::createKey(&d_key, &BlobBufferCache::exitThread);
+        BSLS_ASSERT_OPT(rc == 0);
+    }
+};
+
+BlobBufferCache::Registry& BlobBufferCache::registry()
+{
+    // The registry is created once and never destroyed, so that it outlives
+    // every blob buffer cache and every thread.
+
+    static Registry* s_registry_p = 0;
+
+    BSLMT_ONCE_DO
+    {
+        s_registry_p =
+            new (*bslma::Default::globalAllocator()) Registry();
+    }
+
+    return *s_registry_p;
+}
+
+void BlobBufferCache::exitThread(void* value)
+{
+    Registry& registry = BlobBufferCache::registry();
+
+    // Keep the thread marked as exiting, so that buffers released after its
+    // caches are flushed, by the destructors of other thread-specific data,
+    // bypass the caches rather than create new ones.
+
+    if (value == &s_deadThread) {
+        bslmt::ThreadUtil::setSpecific(registry.d_key, &s_deadThread);
+        return;
+    }
+
+    Thread* thread = static_cast<Thread*>(value);
+
+    {
+        bslmt::LockGuard<bslmt::Mutex> guard(&registry.d_mutex);
+
+        for (bsl::size_t i = 0; i < k_NUM_SLOTS; ++i) {
+            Slot* slot = &thread->d_slot[i];
+            if (slot->d_cacheId.loadRelaxed() != 0) {
+                BlobBufferCache* cache = slot->d_cache_p;
+                cache->flushAll(slot);
+                cache->detachSlot(slot);
+            }
+        }
+    }
+
+    bslma::Default::globalAllocator()->deleteObject(thread);
+
+    bslmt::ThreadUtil::setSpecific(registry.d_key, &s_deadThread);
+}
+
+BlobBufferCache::Thread* BlobBufferCache::lookupThread()
+{
+    void* value = bslmt::ThreadUtil::getSpecific(d_key);
+
+    if (NTCCFG_LIKELY(value != 0)) {
+        if (NTCCFG_UNLIKELY(value == &s_deadThread)) {
+            return 0;
+        }
+        return static_cast<Thread*>(value);
+    }
+
+    Registry& registry = BlobBufferCache::registry();
+
+    const bsl::size_t homeShard =
+        static_cast<bsl::size_t>(registry.d_lastShard.addRelaxed(1)) &
+        (k_NUM_SHARDS - 1);
+
+    Thread* thread =
+        new (*bslma::Default::globalAllocator()) Thread(homeShard);
+
+    bslmt::ThreadUtil::setSpecific(d_key, thread);
+
+    return thread;
+}
+
+BlobBufferCache::Slot* BlobBufferCache::lookupSlot(Thread* thread)
+{
+    Slot* slot = &thread->d_slot[thread->d_lastSlot];
+    if (NTCCFG_LIKELY(slot->d_cacheId.loadRelaxed() == d_cacheId)) {
+        return slot;
+    }
+
+    for (bsl::size_t i = 0; i < k_NUM_SLOTS; ++i) {
+        if (thread->d_slot[i].d_cacheId.loadRelaxed() == d_cacheId) {
+            thread->d_lastSlot = i;
+            return &thread->d_slot[i];
+        }
+    }
+
+    return this->attachSlot(thread);
+}
+
+BlobBufferCache::Slot* BlobBufferCache::attachSlot(Thread* thread)
+{
+    for (bsl::size_t i = 0; i < k_NUM_SLOTS; ++i) {
+        Slot* slot = &thread->d_slot[i];
+
+        // Only the owning thread attaches a slot, so a slot observed to be
+        // free remains free until it is attached below. Any objects left in
+        // a slot detached by a destroyed blob buffer cache are discarded.
+
+        if (slot->d_cacheId.loadRelaxed() == 0) {
+            Registry& registry = BlobBufferCache::registry();
+
+            bslmt::LockGuard<bslmt::Mutex> guard(&registry.d_mutex);
+
+            slot->d_cache_p = this;
+            slot->d_stack_p = 0;
+            slot->d_stackSize.storeRelaxed(0);
+
+            slot->d_prev_p = 0;
+            slot->d_next_p = d_slotList_p;
+            if (d_slotList_p != 0) {
+                d_slotList_p->d_prev_p = slot;
+            }
+            d_slotList_p = slot;
+
+            slot->d_cacheId.storeRelaxed(d_cacheId);
+
+            thread->d_lastSlot = i;
+            return slot;
+        }
+    }
+
+    return 0;
+}
+
+void BlobBufferCache::detachSlot(Slot* slot)
+{
+    if (slot->d_prev_p != 0) {
+        slot->d_prev_p->d_next_p = slot->d_next_p;
+    }
+    else {
+        d_slotList_p = slot->d_next_p;
+    }
+
+    if (slot->d_next_p != 0) {
+        slot->d_next_p->d_prev_p = slot->d_prev_p;
+    }
+
+    slot->d_prev_p  = 0;
+    slot->d_next_p  = 0;
+    slot->d_cache_p = 0;
+
+    slot->d_cacheId.storeRelaxed(0);
+}
+
+bsl::size_t BlobBufferCache::popBatch(Shard*                  shard,
+                                      bsl::size_t             maxObjects,
+                                      BlobBufferCacheObject** first)
+{
+    BSLS_ASSERT(maxObjects != 0);
+    BSLS_ASSERT(maxObjects <= k_MAX_CACHED);
+
+    BlobBufferCacheObject* objects[k_MAX_CACHED];
+
+    Handle::IndexType oldIndex;
+    Handle::TagType   oldTag;
+
+    shard->d_head.loadAcquire(&oldIndex, &oldTag);
+
+    while (oldIndex != 0) {
+        // The head index was observed with acquire semantics, so it may be
+        // looked up. Every later index in the list is read while other
+        // threads may be modifying the list, so it may be followed only if
+        // it does not exceed the number of objects published. If the list
+        // is modified during the walk, the compare-and-swap fails.
+
+        bsl::uint32_t numPublished = d_storage.numPublished();
+        bsl::uint32_t index        = oldIndex;
+        bsl::size_t   numObjects   = 0;
+        bool          consistent   = true;
+
+        while (true) {
+            BlobBufferCacheObject* object =
+                static_cast<BlobBufferCacheObject*>(d_storage.lookup(index));
+
+            objects[numObjects++] = object;
+
+            index = object->next();
+            if (index == 0 || numObjects == maxObjects) {
+                break;
+            }
+
+            if (index > numPublished) {
+                numPublished = d_storage.numPublished();
+                if (index > numPublished) {
+                    consistent = false;
+                    break;
+                }
+            }
+        }
+
+        if (!consistent) {
+            shard->d_head.loadAcquire(&oldIndex, &oldTag);
+            continue;
+        }
+
+        Handle::IndexType nowIndex;
+        Handle::TagType   nowTag;
+
+        const bool unchanged = shard->d_head.testAndSwapAcqRel(&nowIndex,
+                                                               &nowTag,
+                                                               oldIndex,
+                                                               oldTag,
+                                                               index,
+                                                               oldTag + 1);
+        if (unchanged) {
+            // The popped objects are now owned by the calling thread, so
+            // link them by address.
+
+            for (bsl::size_t i = 0; i + 1 < numObjects; ++i) {
+                objects[i]->setLocalNext(objects[i + 1]);
+            }
+            objects[numObjects - 1]->setLocalNext(0);
+
+            shard->d_numAvailable.addRelaxed(
+                -static_cast<bsls::Types::Int64>(numObjects));
+
+            *first = objects[0];
+            return numObjects;
+        }
+
+        oldIndex = nowIndex;
+        oldTag   = nowTag;
+    }
+
+    return 0;
+}
+
+void BlobBufferCache::pushChain(Shard*                 shard,
+                                BlobBufferCacheObject* first,
+                                BlobBufferCacheObject* last)
+{
+    const Handle::IndexType firstIndex = first->index();
+
+    Handle::IndexType oldIndex;
+    Handle::TagType   oldTag;
+
+    shard->d_head.loadRelaxed(&oldIndex, &oldTag);
+
+    while (true) {
+        last->setNext(oldIndex);
+
+        Handle::IndexType nowIndex;
+        Handle::TagType   nowTag;
+
+        const bool unchanged = shard->d_head.testAndSwapAcqRel(&nowIndex,
+                                                               &nowTag,
+                                                               oldIndex,
+                                                               oldTag,
+                                                               firstIndex,
+                                                               oldTag + 1);
+        if (unchanged) {
+            return;
+        }
+
+        oldIndex = nowIndex;
+        oldTag   = nowTag;
+    }
+}
+
+BlobBufferCacheObject* BlobBufferCache::pushLocal(
+    BlobBufferCacheObject* first,
+    bsl::size_t            numObjects)
+{
+    BSLS_ASSERT(first != 0);
+    BSLS_ASSERT(numObjects != 0);
+
+    // Relink the objects by index. The object following the chain must be
+    // read before the chain is pushed, since afterwards the chain may be
+    // popped and modified by another thread.
+
+    BlobBufferCacheObject* last = first;
+    for (bsl::size_t i = 1; i < numObjects; ++i) {
+        BlobBufferCacheObject* next = last->localNext();
+        last->setNext(next->index());
+        last = next;
+    }
+
+    BlobBufferCacheObject* remainder = last->localNext();
+
+    Shard* shard = &d_shards.d_shard[first->shard()];
+
+    BlobBufferCache::pushChain(shard, first, last);
+
+    shard->d_numAvailable.addRelaxed(
+        static_cast<bsls::Types::Int64>(numObjects));
+
+    return remainder;
+}
+
+BlobBufferCacheObject* BlobBufferCache::carve()
+{
+    LockGuard guard(&d_mutex);
+
+    bsl::uint32_t index = 0;
+    void*         arena = d_storage.carve(&index);
+
+    BlobBufferCacheObject* object =
+        new (arena) BlobBufferCacheObject(this, index);
+    object->resetCountsRaw(0, 0);
+
+    d_storage.publish(index);
+
+    d_numPooled.addRelaxed(1);
+
+    return object;
+}
+
+BlobBufferCacheObject* BlobBufferCache::refill(Slot* slot, bsl::size_t home)
+{
+    BSLS_ASSERT(slot->d_stack_p == 0);
+
+    BlobBufferCacheObject* first      = 0;
+    bsl::size_t            numObjects = 0;
+
+    for (bsl::size_t i = 0; i < k_NUM_SHARDS; ++i) {
+        numObjects = this->popBatch(
+            &d_shards.d_shard[(home + i) & (k_NUM_SHARDS - 1)],
+            d_batchSize,
+            &first);
+        if (numObjects != 0) {
+            break;
+        }
+    }
+
+    if (numObjects == 0) {
+        return this->carve();
+    }
+
+    slot->d_stack_p = first->localNext();
+    slot->d_stackSize.storeRelaxed(numObjects - 1);
+
+    return first;
+}
+
+void BlobBufferCache::flush(Slot* slot)
+{
+    BSLS_ASSERT(slot->d_stackSize.loadRelaxed() >= d_batchSize);
+
+    slot->d_stack_p = this->pushLocal(slot->d_stack_p, d_batchSize);
+    slot->d_stackSize.storeRelaxed(slot->d_stackSize.loadRelaxed() -
+                                   d_batchSize);
+}
+
+void BlobBufferCache::flushAll(Slot* slot)
+{
+    const bsl::size_t numObjects =
+        static_cast<bsl::size_t>(slot->d_stackSize.loadRelaxed());
+
+    if (numObjects != 0) {
+        BlobBufferCacheObject* remainder =
+            this->pushLocal(slot->d_stack_p, numObjects);
+        BSLS_ASSERT(remainder == 0);
+        NTCCFG_WARNING_UNUSED(remainder);
+    }
+
+    slot->d_stack_p = 0;
+    slot->d_stackSize.storeRelaxed(0);
+}
+
+BlobBufferCacheObject* BlobBufferCache::allocateUncached(bsl::size_t home)
+{
+    for (bsl::size_t i = 0; i < k_NUM_SHARDS; ++i) {
+        BlobBufferCacheObject* object = 0;
+        if (this->popBatch(&d_shards.d_shard[(home + i) & (k_NUM_SHARDS - 1)],
+                           1,
+                           &object) != 0)
+        {
+            return object;
+        }
+    }
+
+    return this->carve();
+}
+
+void BlobBufferCache::releaseUncached(BlobBufferCacheObject* object)
+{
+    Shard* shard = &d_shards.d_shard[object->shard()];
+
+    BlobBufferCache::pushChain(shard, object, object);
+
+    shard->d_numAvailable.addRelaxed(1);
+}
+
+BlobBufferCache::BlobBufferCache(bsl::size_t       blobBufferSize,
+                                 bslma::Allocator* basicAllocator)
+: d_cacheId(BlobBufferCache::registry().d_lastCacheId.addRelaxed(1))
+, d_key(BlobBufferCache::registry().d_key)
+, d_blobBufferSize(blobBufferSize)
+, d_maxCached(0)
+, d_batchSize(0)
+, d_shards()
+, d_storage(((sizeof(BlobBufferCacheObject) + blobBufferSize +
+              (k_ALIGNMENT - 1)) /
+             k_ALIGNMENT) *
+                k_ALIGNMENT,
+            k_ALIGNMENT,
+            k_MAX_SLAB_SIZE,
+            k_MAX_SLAB_OBJECTS,
+            basicAllocator)
+, d_mutex()
+, d_slotList_p(0)
+, d_numPooled(0)
+, d_allocator_p(bslma::Default::allocator(basicAllocator))
+{
+    BSLMF_ASSERT(sizeof(Shard) == k_CACHE_LINE_SIZE);
+    BSLMF_ASSERT((k_NUM_SHARDS & (k_NUM_SHARDS - 1)) == 0);
+    BSLMF_ASSERT(k_ALIGNMENT >= sizeof(BlobBufferCacheObject));
+
+    // Derive the maximum number of buffers each thread may cache, and the
+    // number moved to or from the shared layer at a time, from the budget.
+
+    bsl::size_t maxCached = k_CACHE_BUDGET / d_storage.objectSize();
+    if (maxCached < k_MIN_CACHED) {
+        maxCached = k_MIN_CACHED;
+    }
+    if (maxCached > k_MAX_CACHED) {
+        maxCached = k_MAX_CACHED;
+    }
+
+    d_maxCached = maxCached;
+    d_batchSize = maxCached / 2;
+}
+
+BlobBufferCache::~BlobBufferCache()
+{
+    // Detach the cache of every thread. The objects held in those caches
+    // are not in use, but they are not in the shared free lists either, so
+    // count them to verify every buffer has been released. The objects are
+    // discarded with the slabs that contain them.
+
+    bsl::uint64_t numCached = 0;
+
+    {
+        Registry& registry = BlobBufferCache::registry();
+
+        bslmt::LockGuard<bslmt::Mutex> guard(&registry.d_mutex);
+
+        while (d_slotList_p != 0) {
+            Slot* slot = d_slotList_p;
+            numCached += slot->d_stackSize.loadRelaxed();
+            this->detachSlot(slot);
+        }
+    }
+
+    bsls::Types::Int64 numAvailable = 0;
+    for (bsl::size_t index = 0; index < k_NUM_SHARDS; ++index) {
+        numAvailable += d_shards.d_shard[index].d_numAvailable.loadRelaxed();
+    }
+
+    BSLS_ASSERT_OPT(static_cast<bsls::Types::Int64>(
+                        d_numPooled.loadRelaxed()) ==
+                    numAvailable +
+                        static_cast<bsls::Types::Int64>(numCached));
+}
+
+void BlobBufferCache::allocate(bdlbb::BlobBuffer* buffer)
+{
+    Thread*     thread = this->lookupThread();
+    Slot*       slot   = 0;
+    bsl::size_t home   = 0;
+
+    if (NTCCFG_LIKELY(thread != 0)) {
+        home = thread->d_homeShard;
+        slot = this->lookupSlot(thread);
+    }
+
+    BlobBufferCacheObject* object;
+
+    if (NTCCFG_LIKELY(slot != 0)) {
+        object = slot->d_stack_p;
+        if (NTCCFG_LIKELY(object != 0)) {
+            slot->d_stack_p = object->localNext();
+            slot->d_stackSize.storeRelaxed(slot->d_stackSize.loadRelaxed() -
+                                           1);
+        }
+        else {
+            object = this->refill(slot, home);
+        }
+    }
+    else {
+        object = this->allocateUncached(home);
+    }
+
+    object->setShard(static_cast<bsl::uint32_t>(home));
+
+    BSLS_ASSERT(object->data() != 0);
+    BSLS_ASSERT(object->numReferences() == 0);
+    BSLS_ASSERT(object->numWeakReferences() == 0);
+
+    object->resetCountsRaw(1, 0);
+
+    buffer->buffer().reset(object->data(), object);
+    buffer->setSize(NTCCFG_WARNING_NARROW(int, d_blobBufferSize));
+}
+
+void BlobBufferCache::release(BlobBufferCacheObject* object)
+{
+    BSLS_ASSERT(object);
+    BSLS_ASSERT(object->data() != 0);
+    BSLS_ASSERT(object->numReferences() == 0);
+    BSLS_ASSERT(object->numWeakReferences() == 0);
+
+    Thread* thread = this->lookupThread();
+    Slot*   slot   = thread != 0 ? this->lookupSlot(thread) : 0;
+
+    if (NTCCFG_LIKELY(slot != 0)) {
+        object->setLocalNext(slot->d_stack_p);
+        slot->d_stack_p = object;
+
+        const bsl::uint64_t stackSize = slot->d_stackSize.loadRelaxed() + 1;
+        slot->d_stackSize.storeRelaxed(stackSize);
+
+        if (NTCCFG_UNLIKELY(stackSize > d_maxCached)) {
+            this->flush(slot);
+        }
+
+        return;
+    }
+
+    this->releaseUncached(object);
+}
+
+void BlobBufferCache::reserve(bsl::size_t numObjects)
+{
+    // Carve the objects, linking them by index into one chain per shard,
+    // then push each chain with a single operation, distributing the
+    // reserved objects evenly across the shards.
+
+    BlobBufferCacheObject* first[k_NUM_SHARDS]      = {};
+    BlobBufferCacheObject* last[k_NUM_SHARDS]       = {};
+    bsl::size_t            numChained[k_NUM_SHARDS] = {};
+
+    for (bsl::size_t i = 0; i < numObjects; ++i) {
+        BlobBufferCacheObject* object = this->carve();
+
+        const bsl::size_t index = i & (k_NUM_SHARDS - 1);
+
+        object->setShard(static_cast<bsl::uint32_t>(index));
+        object->setNext(first[index] != 0 ? first[index]->index() : 0);
+
+        first[index] = object;
+        if (last[index] == 0) {
+            last[index] = object;
+        }
+
+        ++numChained[index];
+    }
+
+    for (bsl::size_t index = 0; index < k_NUM_SHARDS; ++index) {
+        if (first[index] != 0) {
+            Shard* shard = &d_shards.d_shard[index];
+            BlobBufferCache::pushChain(shard, first[index], last[index]);
+            shard->d_numAvailable.addRelaxed(
+                static_cast<bsls::Types::Int64>(numChained[index]));
+        }
+    }
+}
+
+bsl::size_t BlobBufferCache::numBuffersAllocated() const
+{
+    const bsl::uint64_t numPooled    = d_numPooled.loadRelaxed();
+    const bsl::uint64_t numAvailable = this->numBuffersAvailable();
+
+    if (numPooled > numAvailable) {
+        return NTCCFG_WARNING_NARROW(bsl::size_t, numPooled - numAvailable);
+    }
+    else {
+        return 0;
+    }
+}
+
+bsl::size_t BlobBufferCache::numBuffersAvailable() const
+{
+    // Each shard's count may be transiently negative, since objects are
+    // counted when the operation that moves them completes, so clamp the
+    // sum at zero.
+
+    bsls::Types::Int64 numAvailable = 0;
+    for (bsl::size_t index = 0; index < k_NUM_SHARDS; ++index) {
+        numAvailable += d_shards.d_shard[index].d_numAvailable.loadRelaxed();
+    }
+
+    if (numAvailable > 0) {
+        return NTCCFG_WARNING_NARROW(bsl::size_t, numAvailable);
+    }
+    else {
+        return 0;
+    }
+}
+
+bsl::size_t BlobBufferCache::numBuffersPooled() const
+{
+    return NTCCFG_WARNING_NARROW(bsl::size_t, d_numPooled.loadRelaxed());
+}
+
+bsl::size_t BlobBufferCache::numBytesInUse() const
+{
+    return d_storage.numBytesInUse();
+}
+
+bsl::size_t BlobBufferCache::maxCached() const
+{
+    return d_maxCached;
+}
+
+bsl::size_t BlobBufferCache::batchSize() const
+{
+    return d_batchSize;
 }
 
 }  // close package namespace
